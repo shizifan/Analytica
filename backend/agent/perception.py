@@ -1,0 +1,718 @@
+"""SlotFillingEngine — 感知层 Slot 填充引擎。
+
+通过 LLM 提取用户意图中的槽位值，并驱动多轮追问对话以澄清分析意图。
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import re
+from copy import deepcopy
+from typing import Any, Optional
+
+from backend.exceptions import SlotFillingError
+from backend.models.schemas import (
+    ALL_SLOT_NAMES,
+    SLOT_SCHEMA,
+    SLOT_SCHEMA_MAP,
+    SlotValue,
+    StructuredIntent,
+)
+
+logger = logging.getLogger("analytica.perception")
+
+# ── LLM Prompt Templates ────────────────────────────────────
+
+SLOT_EXTRACTION_PROMPT = """你是一个数据分析意图槽位提取专家。
+
+【当前已填充的槽位】
+{current_slots_json}
+
+【用户对话历史】
+{conversation_history}
+
+【用户最新输入】
+{latest_user_message}
+
+【任务】
+从用户最新输入（结合对话历史）中识别以下槽位的值：
+{target_slots_list}
+
+【输出格式】（严格 JSON，无任何 markdown 包裹，无 <think> 块）
+{{
+  "extracted": {{
+    "<slot_name>": {{
+      "value": "<提取的值，无法确定时为 null>",
+      "evidence": "支持此提取的原文片段",
+      "confidence": "explicit | implicit"
+    }}
+  }}
+}}
+
+规则：
+- 只输出有依据的槽位，无依据的不输出（宁缺毋滥）
+- time_range 解析为 {{"start": "YYYY-MM-DD", "end": "YYYY-MM-DD", "description": "自然语言"}}
+- output_complexity 判断：查数字→simple_table，看趋势/原因→chart_text，要完整报告/PPT→full_report
+- analysis_subject 提取为列表形式，如 ["集装箱吞吐量"]
+- 不推测用户未表达的内容
+"""
+
+CLARIFICATION_PROMPT = """你是一个友好的数据分析助手，正在帮助用户澄清分析需求。
+
+【当前已填充的槽位】
+{current_slots_json}
+
+【需要追问的槽位】
+名称：{target_slot}
+含义：{slot_meaning}
+
+【要求】
+1. 生成一条自然、友好的中文追问
+2. 如果其他槽位已有推断值，在追问中提及（如"我理解时间范围为……是否正确？"）
+3. 一次只问一个问题
+4. 给用户确认的支点而非从零填写
+
+只输出追问文本，不要输出其他内容。"""
+
+MULTI_SLOT_CLARIFICATION_PROMPT = """你是一个友好的数据分析助手，正在帮助用户澄清分析需求。
+
+【当前已填充的槽位】
+{current_slots_json}
+
+【需要追问的多个槽位】
+{target_slots_info}
+
+【要求】
+1. 将多个需要确认的信息整合为一条自然流畅的中文追问
+2. 清晰分隔各项，不超过 3 句话
+3. 如果某些槽位已有推断值，在追问中提及供用户确认
+4. 给用户确认的支点而非从零填写
+
+只输出追问文本，不要输出其他内容。"""
+
+SLOT_MEANINGS = {
+    "analysis_subject": "分析对象（指标/实体）",
+    "time_range": "分析的时间范围",
+    "output_complexity": "结果期望的复杂程度（simple_table/chart_text/full_report）",
+    "output_format": "输出格式（docx/pptx/pdf/html）",
+    "attribution_needed": "是否需要归因分析",
+    "predictive_needed": "是否需要预测分析",
+    "time_granularity": "数据粒度（日/月/季/年）",
+    "domain": "业务领域",
+    "domain_glossary": "用户自定义业务术语映射",
+}
+
+# Source priority: higher number = higher priority, cannot be overwritten by lower
+SOURCE_PRIORITY = {
+    "default": 0,
+    "inferred": 1,
+    "memory_low_confidence": 2,
+    "memory": 3,
+    "history": 4,
+    "user_input": 5,
+}
+
+# Bypass keywords
+BYPASS_KEYWORDS = ["按你理解执行", "按你的理解执行", "你决定", "都行", "随便", "按默认"]
+
+# Default values for inferable slots
+SLOT_DEFAULTS = {
+    "time_granularity": "monthly",
+    "output_complexity": "simple_table",
+    "output_format": "html",
+    "attribution_needed": False,
+    "predictive_needed": False,
+    "domain": None,
+    "domain_glossary": None,
+}
+
+# Condition activation rules
+CONDITION_RULES = {
+    "output_format": lambda complexity: complexity == "full_report",
+    "attribution_needed": lambda complexity: complexity in ("chart_text", "full_report"),
+    "predictive_needed": lambda complexity: complexity == "full_report",
+}
+
+
+def _strip_think_tags(text: str) -> str:
+    """Remove Qwen3's <think>...</think> reasoning blocks."""
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
+
+def _strip_markdown_fences(text: str) -> str:
+    """Remove ```json ... ``` markdown code fences."""
+    text = text.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        # Remove first line (```json) and last line (```)
+        if lines[-1].strip() == "```":
+            lines = lines[1:-1]
+        else:
+            lines = lines[1:]
+        text = "\n".join(lines)
+    return text.strip()
+
+
+def _clean_llm_output(raw: str) -> str:
+    """Clean LLM output: strip think tags, markdown fences."""
+    cleaned = _strip_think_tags(raw)
+    cleaned = _strip_markdown_fences(cleaned)
+    return cleaned.strip()
+
+
+class SlotFillingEngine:
+    """Core slot filling engine for the perception layer."""
+
+    def __init__(
+        self,
+        llm: Any = None,
+        memory_store: Any = None,
+        max_clarification_rounds: int = 3,
+        llm_timeout: float = 30.0,
+    ):
+        self.llm = llm
+        self.memory_store = memory_store
+        self.max_clarification_rounds = max_clarification_rounds
+        self.llm_timeout = llm_timeout
+
+    def initialize_slots(self, user_memory: dict[str, Any]) -> dict[str, SlotValue]:
+        """Initialize all slots, pre-filling inferable slots from user memory.
+
+        Required slots with inferable=False are NOT pre-filled from memory.
+        """
+        slots: dict[str, SlotValue] = {}
+        for slot_def in SLOT_SCHEMA:
+            name = slot_def.name
+            # Only inferable slots can be pre-filled from memory
+            if slot_def.inferable and name in user_memory and user_memory[name] is not None:
+                slots[name] = SlotValue(
+                    value=user_memory[name],
+                    source="memory",
+                    confirmed=False,
+                )
+            else:
+                slots[name] = SlotValue(value=None, source="default", confirmed=False)
+        return slots
+
+    async def apply_correction_rate_check(
+        self, slots: dict[str, SlotValue], user_id: str
+    ) -> None:
+        """Downgrade memory-sourced slots if correction rate > 0.3."""
+        if self.memory_store is None:
+            return
+        for name, slot in slots.items():
+            if slot.source == "memory" and slot.value is not None:
+                rate = await self.memory_store.get_correction_rate(user_id, name)
+                if rate > 0.3:
+                    slot.source = "memory_low_confidence"
+
+    async def extract_slots_from_text(
+        self,
+        text: str,
+        current_slots: dict[str, SlotValue],
+        conversation_history: list[dict[str, str]],
+    ) -> dict[str, SlotValue]:
+        """Extract slot values from user text using LLM.
+
+        Calls the LLM with retry logic (max 2 attempts), strips <think> tags,
+        and parses extracted slots.
+        """
+        updated_slots = deepcopy(current_slots)
+
+        # Build prompt
+        current_slots_json = {}
+        for name, sv in current_slots.items():
+            current_slots_json[name] = {
+                "value": sv.value,
+                "source": sv.source,
+                "confirmed": sv.confirmed,
+            }
+
+        history_text = ""
+        if conversation_history:
+            for msg in conversation_history:
+                role = msg.get("role", "unknown")
+                content = msg.get("content", "")
+                history_text += f"{role}: {content}\n"
+        if not history_text:
+            history_text = "（无历史对话）"
+
+        target_slots = ", ".join(ALL_SLOT_NAMES)
+
+        prompt = SLOT_EXTRACTION_PROMPT.format(
+            current_slots_json=json.dumps(current_slots_json, ensure_ascii=False, indent=2),
+            conversation_history=history_text,
+            latest_user_message=text,
+            target_slots_list=target_slots,
+        )
+
+        # Call LLM with retry
+        raw_output = await self._call_llm_with_retry(prompt)
+        if raw_output is None:
+            return updated_slots
+
+        # Parse LLM output
+        cleaned = _clean_llm_output(raw_output)
+        try:
+            parsed = json.loads(cleaned)
+        except json.JSONDecodeError:
+            logger.warning("LLM output is not valid JSON after cleaning: %s", cleaned[:200])
+            return updated_slots
+
+        extracted = parsed.get("extracted", {})
+        if not isinstance(extracted, dict):
+            return updated_slots
+
+        # Apply extracted values
+        for slot_name, extraction in extracted.items():
+            if slot_name not in SLOT_SCHEMA_MAP:
+                logger.debug("Ignoring unknown slot name from LLM: %s", slot_name)
+                continue
+
+            if not isinstance(extraction, dict):
+                continue
+
+            value = extraction.get("value")
+            if value is None:
+                continue
+
+            confidence = extraction.get("confidence", "implicit")
+
+            # Determine source and confirmed flag
+            if confidence == "explicit":
+                new_source = "user_input"
+                new_confirmed = True
+            else:
+                new_source = "inferred"
+                new_confirmed = False
+
+            # Check source priority: only update if new source >= current source
+            current_slot = updated_slots.get(slot_name)
+            if current_slot is not None:
+                current_priority = SOURCE_PRIORITY.get(current_slot.source, 0)
+                new_priority = SOURCE_PRIORITY.get(new_source, 0)
+                if current_slot.value is not None and new_priority < current_priority:
+                    continue
+
+            updated_slots[slot_name] = SlotValue(
+                value=value, source=new_source, confirmed=new_confirmed
+            )
+
+        return updated_slots
+
+    def get_empty_required_slots(
+        self, slots: dict[str, SlotValue], current_complexity: str | None
+    ) -> list[str]:
+        """Get list of empty required + activated conditional slots, sorted by priority."""
+        empty_slots = []
+
+        for slot_def in SLOT_SCHEMA:
+            name = slot_def.name
+            slot_val = slots.get(name)
+
+            # Check if this slot should be checked
+            should_check = False
+            if slot_def.required:
+                should_check = True
+            elif slot_def.condition is not None and current_complexity:
+                # Check condition activation
+                condition_fn = CONDITION_RULES.get(name)
+                if condition_fn and condition_fn(current_complexity):
+                    should_check = True
+
+            if not should_check:
+                continue
+
+            # Skip inferable slots (priority 99) — they don't trigger clarification
+            if slot_def.inferable and slot_def.priority == 99:
+                continue
+
+            # Check if empty
+            if slot_val is None or slot_val.value is None:
+                empty_slots.append((slot_def.priority, name))
+
+        empty_slots.sort(key=lambda x: x[0])
+        return [name for _, name in empty_slots]
+
+    async def generate_clarification_question(
+        self, target_slot: str, slots: dict[str, SlotValue]
+    ) -> str:
+        """Generate a clarification question for a specific slot using LLM."""
+        slots_json = {}
+        for name, sv in slots.items():
+            if sv.value is not None:
+                slots_json[name] = {
+                    "value": sv.value,
+                    "source": sv.source,
+                    "confirmed": sv.confirmed,
+                }
+
+        slot_meaning = SLOT_MEANINGS.get(target_slot, target_slot)
+
+        prompt = CLARIFICATION_PROMPT.format(
+            current_slots_json=json.dumps(slots_json, ensure_ascii=False, indent=2),
+            target_slot=target_slot,
+            slot_meaning=slot_meaning,
+        )
+
+        raw_output = await self._call_llm_with_retry(prompt)
+        if raw_output is None:
+            # Fallback question
+            return f"请问您希望的{slot_meaning}是什么？"
+
+        cleaned = _strip_think_tags(raw_output).strip()
+        if not cleaned:
+            return f"请问您希望的{slot_meaning}是什么？"
+        return cleaned
+
+    async def generate_multi_slot_clarification(
+        self, target_slots: list[str], slots: dict[str, SlotValue]
+    ) -> str:
+        """Generate a single clarification question covering multiple empty slots."""
+        slots_json = {}
+        for name, sv in slots.items():
+            if sv.value is not None:
+                slots_json[name] = {
+                    "value": sv.value,
+                    "source": sv.source,
+                    "confirmed": sv.confirmed,
+                }
+
+        target_info_lines = []
+        for slot_name in target_slots:
+            meaning = SLOT_MEANINGS.get(slot_name, slot_name)
+            target_info_lines.append(f"- {slot_name}: {meaning}")
+        target_slots_info = "\n".join(target_info_lines)
+
+        prompt = MULTI_SLOT_CLARIFICATION_PROMPT.format(
+            current_slots_json=json.dumps(slots_json, ensure_ascii=False, indent=2),
+            target_slots_info=target_slots_info,
+        )
+
+        raw_output = await self._call_llm_with_retry(prompt)
+        if raw_output is None:
+            fallback_parts = [SLOT_MEANINGS.get(s, s) for s in target_slots]
+            return f"请问您希望的{'、'.join(fallback_parts)}分别是什么？"
+
+        cleaned = _strip_think_tags(raw_output).strip()
+        if not cleaned:
+            fallback_parts = [SLOT_MEANINGS.get(s, s) for s in target_slots]
+            return f"请问您希望的{'、'.join(fallback_parts)}分别是什么？"
+        return cleaned
+
+    def build_structured_intent(
+        self, slots: dict[str, SlotValue], raw_query: str
+    ) -> StructuredIntent:
+        """Build the final StructuredIntent from filled slots."""
+        # Build analysis goal summary
+        subject = slots.get("analysis_subject")
+        time_range = slots.get("time_range")
+
+        subject_text = ""
+        if subject and subject.value:
+            if isinstance(subject.value, list):
+                subject_text = "、".join(str(v) for v in subject.value)
+            else:
+                subject_text = str(subject.value)
+
+        time_text = ""
+        if time_range and time_range.value:
+            if isinstance(time_range.value, dict):
+                time_text = time_range.value.get("description", "")
+            else:
+                time_text = str(time_range.value)
+
+        analysis_goal = f"分析{time_text}{subject_text}的数据" if subject_text else raw_query
+
+        # Calculate empty required slots
+        complexity = None
+        comp_slot = slots.get("output_complexity")
+        if comp_slot and comp_slot.value:
+            complexity = comp_slot.value
+        empty_required = self.get_empty_required_slots(slots, complexity)
+
+        return StructuredIntent(
+            raw_query=raw_query,
+            analysis_goal=analysis_goal,
+            slots=slots,
+            empty_required_slots=empty_required,
+        )
+
+    async def handle_bypass(
+        self, text: str, slots: dict[str, SlotValue]
+    ) -> dict[str, Any]:
+        """Handle user bypass (e.g., '按你理解执行').
+
+        Fill all empty slots with inferred/default values.
+        """
+        is_bypass = any(kw in text for kw in BYPASS_KEYWORDS)
+        if not is_bypass:
+            return {"bypass_triggered": False}
+
+        # Fill all empty slots with defaults/inferred values
+        for slot_def in SLOT_SCHEMA:
+            name = slot_def.name
+            slot = slots.get(name)
+            if slot is None or slot.value is None:
+                default = SLOT_DEFAULTS.get(name)
+                if default is not None:
+                    slots[name] = SlotValue(
+                        value=default, source="inferred", confirmed=False
+                    )
+                elif name == "time_range":
+                    # Default to last month
+                    import datetime
+                    today = datetime.date.today()
+                    first_of_month = today.replace(day=1)
+                    last_month_end = first_of_month - datetime.timedelta(days=1)
+                    last_month_start = last_month_end.replace(day=1)
+                    slots[name] = SlotValue(
+                        value={
+                            "start": last_month_start.isoformat(),
+                            "end": last_month_end.isoformat(),
+                            "description": "上个月",
+                        },
+                        source="inferred",
+                        confirmed=False,
+                    )
+                elif name == "analysis_subject":
+                    slots[name] = SlotValue(
+                        value=["综合运营数据"], source="inferred", confirmed=False
+                    )
+
+        return {"bypass_triggered": True}
+
+    def handle_max_rounds_reached(
+        self, slots: dict[str, SlotValue]
+    ) -> dict[str, Any]:
+        """Handle when max clarification rounds are reached.
+
+        Fill remaining empty required slots with defaults and proceed.
+        """
+        for slot_def in SLOT_SCHEMA:
+            name = slot_def.name
+            slot = slots.get(name)
+            if (slot is None or slot.value is None) and (slot_def.required or slot_def.inferable):
+                default = SLOT_DEFAULTS.get(name)
+                if default is not None:
+                    slots[name] = SlotValue(
+                        value=default, source="default", confirmed=False
+                    )
+                elif name == "time_range":
+                    import datetime
+                    today = datetime.date.today()
+                    first_of_month = today.replace(day=1)
+                    last_month_end = first_of_month - datetime.timedelta(days=1)
+                    last_month_start = last_month_end.replace(day=1)
+                    slots[name] = SlotValue(
+                        value={
+                            "start": last_month_start.isoformat(),
+                            "end": last_month_end.isoformat(),
+                            "description": "最近一个月（默认）",
+                        },
+                        source="default",
+                        confirmed=False,
+                    )
+                elif name == "analysis_subject":
+                    slots[name] = SlotValue(
+                        value=["综合运营数据"], source="default", confirmed=False
+                    )
+
+        return {"should_proceed_with_defaults": True}
+
+    async def _call_llm_with_retry(
+        self, prompt: str, max_retries: int = 3
+    ) -> str | None:
+        """Call LLM with timeout and retry logic.
+
+        Retries up to max_retries times on timeout or API error.
+        Wait ≥ 1s between retries with exponential backoff.
+        """
+        last_error: Exception | None = None
+
+        for attempt in range(max_retries):
+            if attempt > 0:
+                await asyncio.sleep(1.0 * (2 ** (attempt - 1)))  # Backoff: 1s, 2s, 4s, ...
+
+            try:
+                result = await asyncio.wait_for(
+                    self._invoke_llm(prompt),
+                    timeout=self.llm_timeout,
+                )
+                return result
+            except asyncio.TimeoutError as e:
+                last_error = e
+                logger.warning(
+                    "LLM call timeout (attempt %d/%d)", attempt + 1, max_retries
+                )
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    "LLM call error (attempt %d/%d): %s", attempt + 1, max_retries, e
+                )
+
+        if isinstance(last_error, asyncio.TimeoutError):
+            raise SlotFillingError(f"LLM call timeout after {max_retries} attempts")
+
+        logger.error("LLM call failed after %d attempts: %s", max_retries, last_error)
+        return None
+
+    async def _invoke_llm(self, prompt: str) -> str:
+        """Invoke the LLM and return raw text output."""
+        if self.llm is None:
+            raise SlotFillingError("LLM client not configured")
+
+        # Support both callable and LangChain ChatModel
+        if callable(self.llm) and not hasattr(self.llm, "ainvoke"):
+            result = await self.llm(prompt)
+            if isinstance(result, str):
+                return result
+            return str(result)
+
+        # LangChain ChatModel interface
+        response = await self.llm.ainvoke(prompt)
+        if hasattr(response, "content"):
+            return response.content
+        return str(response)
+
+
+async def run_perception(state: dict) -> dict:
+    """LangGraph perception node implementation.
+
+    Orchestrates the SlotFillingEngine within the agent graph.
+    """
+    from backend.config import get_settings
+    from backend.database import get_session_factory
+
+    settings = get_settings()
+
+    # Initialize LLM
+    from langchain_openai import ChatOpenAI
+    llm = ChatOpenAI(
+        base_url=settings.QWEN_API_BASE,
+        api_key=settings.QWEN_API_KEY,
+        model=settings.QWEN_MODEL,
+        temperature=0.1,
+    )
+
+    # Get DB session for memory
+    from backend.memory.store import MemoryStore
+
+    factory = get_session_factory()
+    async with factory() as db_session:
+        memory_store = MemoryStore(session=db_session)
+        engine = SlotFillingEngine(
+            llm=llm, memory_store=memory_store, max_clarification_rounds=3
+        )
+
+        user_id = state.get("user_id", "anonymous")
+        messages = state.get("messages", [])
+        user_message = ""
+        for msg in reversed(messages):
+            if msg.get("role") == "user":
+                user_message = msg.get("content", "")
+                break
+
+        slots = state.get("slots", {})
+        clarification_round = state.get("clarification_round", 0)
+
+        # Convert dict slots back to SlotValue objects
+        slot_values: dict[str, SlotValue] = {}
+        if slots:
+            for name, sv_data in slots.items():
+                if isinstance(sv_data, SlotValue):
+                    slot_values[name] = sv_data
+                elif isinstance(sv_data, dict):
+                    slot_values[name] = SlotValue(**sv_data)
+        else:
+            # First turn: initialize from memory
+            user_prefs = await memory_store.get_user_preferences(user_id)
+            slot_values = engine.initialize_slots(user_prefs)
+            await engine.apply_correction_rate_check(slot_values, user_id)
+
+        # Check bypass
+        bypass_result = await engine.handle_bypass(user_message, slot_values)
+        if bypass_result.get("bypass_triggered"):
+            intent = engine.build_structured_intent(slot_values, user_message)
+            state["slots"] = {n: sv.model_dump() for n, sv in slot_values.items()}
+            state["structured_intent"] = intent.model_dump()
+            state["empty_required_slots"] = []
+            state["current_target_slot"] = None
+            state["current_phase"] = "perception"
+            state["messages"].append({
+                "role": "assistant",
+                "content": "好的，按我的理解为您执行分析。",
+            })
+            return state
+
+        # Extract slots from text
+        slot_values = await engine.extract_slots_from_text(
+            user_message, slot_values, messages[:-1] if len(messages) > 1 else []
+        )
+
+        # Get current complexity
+        complexity = None
+        comp_slot = slot_values.get("output_complexity")
+        if comp_slot and comp_slot.value:
+            complexity = comp_slot.value
+
+        # Check empty required slots
+        empty_required = engine.get_empty_required_slots(slot_values, complexity)
+
+        # Record slots to history
+        session_id = state.get("session_id", "")
+        for name, sv in slot_values.items():
+            if sv.value is not None and sv.source == "user_input":
+                await memory_store.record_slot(
+                    session_id, name, sv.value, sv.source,
+                    round_num=clarification_round + 1,
+                )
+
+        # Update state
+        state["slots"] = {n: sv.model_dump() for n, sv in slot_values.items()}
+        state["empty_required_slots"] = empty_required
+        state["current_phase"] = "perception"
+        state["clarification_round"] = clarification_round + 1
+
+        if empty_required:
+            # Check max rounds
+            if clarification_round >= engine.max_clarification_rounds:
+                engine.handle_max_rounds_reached(slot_values)
+                state["slots"] = {n: sv.model_dump() for n, sv in slot_values.items()}
+                intent = engine.build_structured_intent(slot_values, user_message)
+                state["structured_intent"] = intent.model_dump()
+                state["empty_required_slots"] = []
+                state["current_target_slot"] = None
+                state["messages"].append({
+                    "role": "assistant",
+                    "content": "已达到最大追问轮数，使用默认值继续分析。",
+                })
+                return state
+
+            # Generate clarification — multi-slot when possible
+            if len(empty_required) > 1:
+                question = await engine.generate_multi_slot_clarification(
+                    empty_required, slot_values
+                )
+            else:
+                question = await engine.generate_clarification_question(
+                    empty_required[0], slot_values
+                )
+            state["current_target_slot"] = empty_required[0]  # 兼容前端展示
+            state["structured_intent"] = None
+            state["messages"].append({
+                "role": "assistant",
+                "content": question,
+            })
+        else:
+            # All slots filled — build intent
+            intent = engine.build_structured_intent(slot_values, user_message)
+            state["structured_intent"] = intent.model_dump()
+            state["current_target_slot"] = None
+            state["messages"].append({
+                "role": "assistant",
+                "content": f"已理解您的分析需求：{intent.analysis_goal}",
+            })
+
+        return state

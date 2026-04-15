@@ -1,0 +1,36 @@
+[project]
+name = "analytica"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiomysql>=0.3.2",
+    "alembic>=1.18.4",
+    "fastapi>=0.135.3",
+    "httpx>=0.28.1",
+    "langchain-openai>=0.3",
+    "langgraph>=0.3",
+    "pydantic-settings>=2.0",
+    "pymysql>=1.1.2",
+    "python-dotenv>=1.2.2",
+    "sqlalchemy[asyncio]>=2.0",
+    "uvicorn[standard]>=0.44.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.3.0",
+    "pytest-xdist>=3.8.0",
+    "respx>=0.23.1",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "llm_real: tests that call real LLM API",
+    "probe: boundary probe tests (always pass, output report)",
+]
