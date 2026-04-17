@@ -47,6 +47,17 @@ class SummaryGenSkill(BaseSkill):
                 metadata={"stub": True},
             )
 
+        # Filter out failed narrative fallbacks from upstream
+        collected = [c for c in collected if not c.startswith("[自动生成失败]")]
+        if not collected:
+            return SkillOutput(
+                skill_id=self.skill_id,
+                status="partial",
+                output_type="text",
+                data=f"[摘要] 关于{topic}的分析已完成，详见各章节内容。",
+                metadata={"stub": True, "filtered_failed_narratives": True},
+            )
+
         combined = "\n---\n".join(collected)
 
         try:
@@ -59,7 +70,8 @@ class SummaryGenSkill(BaseSkill):
                 api_key=settings.QWEN_API_KEY,
                 model=settings.QWEN_MODEL,
                 temperature=0.3,
-                request_timeout=60,
+                request_timeout=90,
+                extra_body={"enable_thinking": False},
             )
 
             prompt = (

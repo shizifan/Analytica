@@ -86,7 +86,8 @@ class DocxReportSkill(BaseSkill):
                     api_key=settings.QWEN_API_KEY,
                     model=settings.QWEN_MODEL,
                     temperature=0.2,
-                    request_timeout=30,
+                    request_timeout=90,
+                    extra_body={"enable_thinking": False},
                 )
 
                 tools = make_docx_tools(doc, report)

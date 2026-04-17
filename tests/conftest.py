@@ -2,12 +2,47 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
+import pytest_asyncio
 import respx
 import httpx
+from dotenv import load_dotenv
+
+# Load .env for test settings
+load_dotenv()
+
+
+# ── Database Session Fixture ──────────────────────────────────
+
+@pytest_asyncio.fixture(loop_scope="function")
+async def test_db_session():
+    """Provide an async database session for tests.
+
+    Each test gets a fresh session. Test isolation relies on unique
+    UUIDs per test (no cross-test collisions). Tables are ensured
+    to exist at fixture creation time.
+    """
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+    from sqlalchemy.pool import NullPool
+    from backend.database import Base
+
+    db_url = os.getenv("DATABASE_URL", "mysql+aiomysql://root@localhost:3306/analytica")
+    engine = create_async_engine(db_url, echo=False, poolclass=NullPool)
+
+    # Ensure tables exist
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    session = AsyncSession(engine, expire_on_commit=False)
+    try:
+        yield session
+    finally:
+        await session.close()
+        await engine.dispose()
 
 
 # ── Mock LLM ──────────────────────────────────────────────────

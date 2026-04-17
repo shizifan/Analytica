@@ -116,7 +116,8 @@ async def _generate_narrative(
             api_key=settings.QWEN_API_KEY,
             model=settings.QWEN_MODEL,
             temperature=0.3,
-            request_timeout=60,
+            request_timeout=90,
+            extra_body={"enable_thinking": False},
         )
 
         prompt = (

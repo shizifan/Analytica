@@ -218,8 +218,8 @@ class SlotFillingEngine:
             # 检查 slot_constraints 中是否有默认值覆盖
             constraint = self.slot_constraints.get(name)
             constraint_default = getattr(constraint, "default_value", None) if constraint else None
-            # Only inferable slots can be pre-filled from memory
-            if slot_def.inferable and name in user_memory and user_memory[name] is not None:
+            # Memory preferences can pre-fill any slot (user's past preferences)
+            if name in user_memory and user_memory[name] is not None:
                 slots[name] = SlotValue(
                     value=user_memory[name],
                     source="memory",
@@ -715,6 +715,8 @@ async def run_perception(state: dict, profile: Any = None) -> dict:
         api_key=settings.QWEN_API_KEY,
         model=settings.QWEN_MODEL,
         temperature=0.1,
+        request_timeout=90,
+        extra_body={"enable_thinking": False},
     )
 
     # 从 profile 提取员工域扩展参数
@@ -736,6 +738,7 @@ async def run_perception(state: dict, profile: Any = None) -> dict:
             llm=llm,
             memory_store=memory_store,
             max_clarification_rounds=3,
+            llm_timeout=60.0,
             extra_slot_defs=extra_slot_defs,
             slot_constraints=slot_constraints,
             prompt_suffix=prompt_suffix,

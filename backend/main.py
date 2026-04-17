@@ -246,6 +246,7 @@ async def regenerate_plan_endpoint(
         model=settings.QWEN_MODEL,
         temperature=0.1,
         request_timeout=120,
+        extra_body={"enable_thinking": False},
     )
 
     engine = PlanningEngine(llm=llm, llm_timeout=120.0, max_retries=3)
@@ -264,6 +265,54 @@ async def regenerate_plan_endpoint(
         **new_plan.model_dump(),
         "markdown_display": md,
         "plan_confirmed": False,
+    }
+
+
+# ── Reflection APIs ──────────────────────────────────────────
+
+class ReflectionSaveRequest(BaseModel):
+    save_preferences: bool = True
+    save_template: bool = True
+    save_skill_notes: bool = True
+
+
+@app.post("/api/sessions/{session_id}/reflection/save")
+async def save_reflection_endpoint(
+    session_id: str,
+    req: ReflectionSaveRequest,
+    db=Depends(get_db_session),
+):
+    """Save reflection results to memory store.
+
+    Human-in-the-Loop: user confirms what to persist after reviewing
+    the reflection card.
+    """
+    store = MemoryStore(db)
+    session = await store.get_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    state = session.get("state_json", {})
+    reflection_summary = state.get("reflection_summary")
+    if reflection_summary is None:
+        raise HTTPException(status_code=404, detail="No reflection summary available")
+
+    user_id = session.get("user_id", "anonymous")
+
+    from backend.agent.reflection import save_reflection
+    saved = await save_reflection(
+        session_id=session_id,
+        reflection_summary=reflection_summary,
+        save_preferences=req.save_preferences,
+        save_template=req.save_template,
+        save_skill_notes=req.save_skill_notes,
+        user_id=user_id,
+        db_session=db,
+    )
+
+    return {
+        "status": "ok",
+        "saved": saved,
     }
 
 
@@ -306,6 +355,8 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                 continue
 
             try:
+                prev_task_statuses: dict[str, str] = {}
+
                 async for event in run_stream(
                     session_id, user_id, user_message, employee_id=employee_id,
                 ):
@@ -334,6 +385,32 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                             await ws.send_json({
                                 "event": "intent_ready",
                                 "intent": node_state["structured_intent"],
+                            })
+
+                        # Push plan update
+                        if node_state.get("analysis_plan"):
+                            await ws.send_json({
+                                "event": "plan_update",
+                                "plan": node_state["analysis_plan"],
+                            })
+
+                        # Push individual task status changes
+                        cur_task_statuses = node_state.get("task_statuses", {})
+                        for tid, ts in cur_task_statuses.items():
+                            if prev_task_statuses.get(tid) != ts:
+                                await ws.send_json({
+                                    "event": "task_update",
+                                    "task_id": tid,
+                                    "status": ts,
+                                })
+                        if cur_task_statuses:
+                            prev_task_statuses = dict(cur_task_statuses)
+
+                        # Push reflection summary
+                        if node_state.get("reflection_summary"):
+                            await ws.send_json({
+                                "event": "reflection",
+                                "summary": node_state["reflection_summary"],
                             })
 
                 await ws.send_json({"event": "turn_complete"})

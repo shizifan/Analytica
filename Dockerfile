@@ -22,6 +22,7 @@ COPY alembic.ini pyproject.toml ./
 # Copy test & mock server (for pipeline testing on target)
 COPY tests/ tests/
 COPY mock_server/ mock_server/
+COPY employees/ employees/
 
 # Copy entrypoint script
 COPY deploy/docker/entrypoint.sh /app/entrypoint.sh

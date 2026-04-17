@@ -23,3 +23,15 @@ mock_server/prod_data/
 
 # E2E test artifacts (generated per run)
 reports/e2e_artifacts/
+
+# Node.js
+node_modules/
+
+# Frontend build output
+frontend/dist/
+
+# Test output
+tests/output/
+
+# Docker build artifacts
+*.tar.gz

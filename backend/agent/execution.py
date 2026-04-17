@@ -342,14 +342,15 @@ async def execute_plan(
                     task_statuses[tid] = status
                     execution_context[tid] = output
 
-                    # Check dynamic re-plan triggers
+                    # Check dynamic re-plan triggers — only for truly empty results.
+                    # Small row counts (2-7) are normal for aggregate/summary APIs.
                     if output.status == "success" and output.output_type == "dataframe":
-                        row_count = output.metadata.get("rows", 0)
-                        if row_count < 10:
+                        row_count = output.metadata.get("rows", -1)
+                        if row_count == 0:
                             needs_replan = True
                             logger.info(
-                                "Task %s returned only %d rows — triggering re-plan",
-                                tid, row_count,
+                                "Task %s returned 0 rows — triggering re-plan",
+                                tid,
                             )
 
                 # Notify done/failed

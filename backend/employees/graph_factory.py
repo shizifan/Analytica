@@ -53,6 +53,7 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
                 model=settings.QWEN_MODEL,
                 temperature=0.1,
                 request_timeout=120,
+                extra_body={"enable_thinking": False},
             )
 
             engine = PlanningEngine(llm=llm, llm_timeout=120.0, max_retries=3)

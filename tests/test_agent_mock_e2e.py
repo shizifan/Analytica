@@ -22,7 +22,8 @@ from backend.skills.base import SkillInput, SkillOutput
 from backend.skills.registry import SkillRegistry
 
 # Ensure all skills are loaded before tests
-import backend.skills.loader  # noqa: F401
+from backend.skills.loader import load_all_skills
+load_all_skills()
 
 
 # ════════════════════════════════════════════════════════════════
@@ -447,8 +448,8 @@ class TestExecutionNode:
 
         assert result_state["current_phase"] == "execution"
         assert result_state["task_statuses"]["T001"] == "done"
-        # Mock data has 4 rows (< 10), so needs_replan is correctly True
-        assert result_state["needs_replan"] is True
+        # Mock data has 4 rows — non-empty result, so no replan needed
+        assert result_state["needs_replan"] is False
         # Should have an assistant message
         assert len(result_state["messages"]) > 0
 
@@ -693,9 +694,9 @@ class TestApiRegistry:
     """Verify the API registry is correctly loaded."""
 
     def test_endpoint_count(self):
-        """Should have 122 endpoints registered (only APIs with prod data)."""
+        """Should have 143 endpoints registered (only APIs with prod data)."""
         from backend.agent.api_registry import ALL_ENDPOINTS
-        assert len(ALL_ENDPOINTS) == 122
+        assert len(ALL_ENDPOINTS) == 143
 
     def test_resolve_valid_endpoint(self):
         """Valid endpoint IDs should resolve correctly."""

@@ -43,8 +43,9 @@ class AgentState(TypedDict, total=False):
     execution_context: dict[str, Any] | None
     needs_replan: bool
 
-    # Reflection (Phase 4 stub)
+    # Reflection
     reflection: dict[str, Any] | None
+    reflection_summary: dict[str, Any] | None
 
     # Control
     current_phase: str
@@ -75,6 +76,7 @@ def make_initial_state(
         execution_context=None,
         needs_replan=False,
         reflection=None,
+        reflection_summary=None,
         current_phase="perception",
         error=None,
     )
@@ -116,6 +118,7 @@ async def planning_node(state: AgentState) -> AgentState:
             model=settings.QWEN_MODEL,
             temperature=0.1,
             request_timeout=120,
+            extra_body={"enable_thinking": False},
         )
 
         engine = PlanningEngine(llm=llm, llm_timeout=120.0, max_retries=3)
@@ -151,13 +154,9 @@ async def execution_node(state: AgentState) -> AgentState:
 
 
 async def reflection_node(state: AgentState) -> AgentState:
-    """Reflection node stub (Phase 4)."""
-    state["current_phase"] = "reflection"
-    state["messages"].append({
-        "role": "assistant",
-        "content": "[Reflection] Phase 4 stub: reflection placeholder.",
-    })
-    return state
+    """Reflection node: extract preferences, templates, and skill feedback."""
+    from backend.agent.reflection import reflection_node as _reflect_node
+    return await _reflect_node(state)
 
 
 # ── Routing Functions ────────────────────────────────────────

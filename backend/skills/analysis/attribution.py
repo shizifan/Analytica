@@ -124,6 +124,7 @@ class AttributionAnalysisSkill(BaseSkill):
                 model=settings.QWEN_MODEL,
                 temperature=0.2,
                 request_timeout=90,
+                extra_body={"enable_thinking": False},
             )
 
             response = await llm.ainvoke([
