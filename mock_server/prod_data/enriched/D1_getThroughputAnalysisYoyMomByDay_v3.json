@@ -1,0 +1,48 @@
+{
+  "api": "getThroughputAnalysisYoyMomByDay",
+  "path": "/api/gateway/getThroughputAnalysisYoyMomByDay",
+  "domain": "D1",
+  "intent": "查询指定日期吞吐量同比/环比（日层面）",
+  "variant": "v3",
+  "params_sent": {
+    "date": "2026-01-15"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 5,
+  "latency_ms": 642.1,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "regionName": "辽港",
+      "qty": 65.18,
+      "yoyQty": 83.47,
+      "momQty": 61.52
+    },
+    {
+      "regionName": "丹东港",
+      "qty": 7.07,
+      "yoyQty": 7.55,
+      "momQty": 0.27
+    },
+    {
+      "regionName": "大连港",
+      "qty": 19.07,
+      "yoyQty": 35.11,
+      "momQty": 15.99
+    },
+    {
+      "regionName": "盘锦港",
+      "qty": 0.33,
+      "yoyQty": 10.09,
+      "momQty": 3.89
+    },
+    {
+      "regionName": "营口港",
+      "qty": 38.71,
+      "yoyQty": 30.72,
+      "momQty": 41.37
+    }
+  ]
+}

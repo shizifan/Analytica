@@ -1,0 +1,24 @@
+{
+  "api": "getShipOperationDynamic",
+  "path": "/api/gateway/getShipOperationDynamic",
+  "domain": "D1",
+  "intent": "查询单船作业动态详情",
+  "params_sent": {},
+  "status": "BIZ_ERROR",
+  "http_status": 200,
+  "error": "success=false, errorCode=103",
+  "response_pattern": "PATTERN_B",
+  "data_sample": {
+    "success": false,
+    "errorCode": 103,
+    "errorInfo": "参数解析异常参数shipRecordId为必填项",
+    "data": null,
+    "space": 40,
+    "jdbcQuerySpace": 0,
+    "__more__": "...(3 more keys)"
+  },
+  "latency_ms": 53.9,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

@@ -1,0 +1,54 @@
+{
+  "api": "getOverviewQuery",
+  "path": "/api/gateway/getOverviewQuery",
+  "domain": "D7",
+  "intent": "查询单台设备综合概览（完好率/台时效率/单耗/作业量/成本，单据大屏）",
+  "variant": "v6",
+  "params_sent": {
+    "date": "2025-06-15",
+    "equipmentNo": "EQ001",
+    "ownerLgZoneName": "全港",
+    "cmpName": "全部",
+    "firstLevelClassName": "装卸机械"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 8,
+  "latency_ms": 972.8,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": null,
+      "typeName": "能源消耗"
+    },
+    {
+      "num": null,
+      "typeName": "材料费用"
+    },
+    {
+      "num": null,
+      "typeName": "作业台时"
+    },
+    {
+      "num": null,
+      "typeName": "日历台时"
+    },
+    {
+      "num": null,
+      "typeName": "完好台时"
+    },
+    {
+      "num": null,
+      "typeName": "非完好台时"
+    },
+    {
+      "num": null,
+      "typeName": "工作台时"
+    },
+    {
+      "num": null,
+      "typeName": "机械作业量"
+    }
+  ]
+}

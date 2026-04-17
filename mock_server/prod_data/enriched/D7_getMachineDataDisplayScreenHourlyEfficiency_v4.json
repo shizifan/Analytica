@@ -1,0 +1,35 @@
+{
+  "api": "getMachineDataDisplayScreenHourlyEfficiency",
+  "path": "/api/gateway/getMachineDataDisplayScreenHourlyEfficiency",
+  "domain": "D7",
+  "intent": "查询指定机种当月台时效率及各台设备明细（机种展示屏）",
+  "variant": "v4",
+  "params_sent": {
+    "secondLevelClassName": "岸桥",
+    "date": "2025-09"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 4,
+  "latency_ms": 526.0,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "usageRate": 326.32978723404256,
+      "ownerLgZoneName": "盘锦港区域"
+    },
+    {
+      "usageRate": 480.0791556728232,
+      "ownerLgZoneName": "大连港区域"
+    },
+    {
+      "usageRate": 673.7773359840954,
+      "ownerLgZoneName": "营口港区域"
+    },
+    {
+      "usageRate": 412.29681978798584,
+      "ownerLgZoneName": "丹东港区域"
+    }
+  ]
+}

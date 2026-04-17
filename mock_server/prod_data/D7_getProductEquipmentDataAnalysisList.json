@@ -1,0 +1,219 @@
+{
+  "api": "getProductEquipmentDataAnalysisList",
+  "path": "/api/gateway/getProductEquipmentDataAnalysisList",
+  "domain": "D7",
+  "intent": "查询生产设备数据分析列表（分页，多指标）",
+  "params_sent": {
+    "dateMonth": "2026-03",
+    "pageNo": 1,
+    "pageSize": 20
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 20,
+  "latency_ms": 732.1,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "ownerLgZoneName": "营口港区域",
+      "deptName": "营口港务股份有限公司机械分公司",
+      "maintenanceFee": 0.0,
+      "fee": 0.0,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.0,
+      "containerElec": 0.0,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "营口港区域",
+      "deptName": "营口港务股份有限公司机械分公司",
+      "maintenanceFee": 28.43,
+      "fee": 0.03,
+      "oilCostTeul": 0.11,
+      "elecCostTeu": 0.0,
+      "containerElec": 0.0,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "营口港区域",
+      "deptName": "营口港务股份有限公司集装箱码头分公司",
+      "maintenanceFee": 1309.73,
+      "fee": 0.01,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.35,
+      "containerElec": 2.83,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "大连港区域",
+      "deptName": "大连港散粮码头公司",
+      "maintenanceFee": 0.0,
+      "fee": 0.0,
+      "oilCostTeul": 0.28,
+      "elecCostTeu": 0.0,
+      "containerElec": 0.0,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "营口港区域",
+      "deptName": "营口集装箱码头有限公司",
+      "maintenanceFee": 0.0,
+      "fee": 0.0,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.42,
+      "containerElec": 3.39,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "大连港区域",
+      "deptName": "大连集装箱码头有限公司",
+      "maintenanceFee": 33407.08,
+      "fee": 7.85,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.0,
+      "containerElec": 0.0,
+      "containerOil": 0.65
+    },
+    {
+      "ownerLgZoneName": "营口港区域",
+      "deptName": "营口港务股份有限公司粮食分公司",
+      "maintenanceFee": 0.0,
+      "fee": 0.0,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.0,
+      "containerElec": 0.0,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "盘锦港区域",
+      "deptName": "盘锦港集团有限公司集装箱分公司",
+      "maintenanceFee": 0.0,
+      "fee": 0.0,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.0,
+      "containerElec": 4.45,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "营口港区域",
+      "deptName": "营口新港矿石码头有限公司",
+      "maintenanceFee": 0.0,
+      "fee": 0.0,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.0,
+      "containerElec": 0.0,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "大连港区域",
+      "deptName": "大连集装箱码头有限公司",
+      "maintenanceFee": 660.0,
+      "fee": 0.1,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.0,
+      "containerElec": 2.86,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "丹东港区域",
+      "deptName": "丹东港口集团杂货码头分公司",
+      "maintenanceFee": 0.0,
+      "fee": 0.0,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.0,
+      "containerElec": 0.0,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "大连港区域",
+      "deptName": "大连港散粮码头公司",
+      "maintenanceFee": 0.0,
+      "fee": 0.0,
+      "oilCostTeul": 0.16,
+      "elecCostTeu": 0.0,
+      "containerElec": 0.0,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "大连港区域",
+      "deptName": "大连长兴岛港口有限公司",
+      "maintenanceFee": 11080.0,
+      "fee": 0.17,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.17,
+      "containerElec": 0.0,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "营口港区域",
+      "deptName": "营口集装箱码头有限公司",
+      "maintenanceFee": 0.0,
+      "fee": 0.0,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.3,
+      "containerElec": 2.37,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "大连港区域",
+      "deptName": "大连港散杂货码头公司（矿石）",
+      "maintenanceFee": 0.0,
+      "fee": 0.0,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.0,
+      "containerElec": 0.0,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "盘锦港区域",
+      "deptName": "盘锦港集团有限公司第一分公司",
+      "maintenanceFee": 0.0,
+      "fee": 0.0,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.0,
+      "containerElec": 0.0,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "营口港区域",
+      "deptName": "营口港务股份有限公司粮食分公司",
+      "maintenanceFee": 0.0,
+      "fee": 0.0,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.0,
+      "containerElec": 0.0,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "营口港区域",
+      "deptName": "营口港务股份有限公司机械分公司",
+      "maintenanceFee": 14529.0,
+      "fee": 0.28,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.02,
+      "containerElec": 0.0,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "营口港区域",
+      "deptName": "辽港控股（营口）有限公司第三分公司",
+      "maintenanceFee": 12044.03846,
+      "fee": 0.02,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.19,
+      "containerElec": 0.0,
+      "containerOil": 0.0
+    },
+    {
+      "ownerLgZoneName": "大连港区域",
+      "deptName": "大连集装箱码头有限公司",
+      "maintenanceFee": 11214.16,
+      "fee": 1.51,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.0,
+      "containerElec": 2.72,
+      "containerOil": 0.0
+    }
+  ]
+}

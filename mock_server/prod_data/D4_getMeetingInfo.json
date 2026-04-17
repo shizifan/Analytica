@@ -1,0 +1,16 @@
+{
+  "api": "getMeetingInfo",
+  "path": "/api/gateway/getMeetingInfo",
+  "domain": "D4",
+  "intent": "查询指定月份董事会/监事会/股东大会召开数量及待处理议案",
+  "params_sent": {
+    "date": "2026-03"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 341.1,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

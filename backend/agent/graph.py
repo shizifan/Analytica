@@ -23,6 +23,7 @@ class AgentState(TypedDict, total=False):
 
     session_id: str
     user_id: str
+    employee_id: str | None  # 员工 ID（可选，用于日志追踪）
     messages: list[dict[str, str]]
 
     # Perception
@@ -50,11 +51,17 @@ class AgentState(TypedDict, total=False):
     error: str | None
 
 
-def make_initial_state(session_id: str, user_id: str, user_message: str) -> AgentState:
+def make_initial_state(
+    session_id: str,
+    user_id: str,
+    user_message: str,
+    employee_id: str | None = None,
+) -> AgentState:
     """Create the initial agent state for a new conversation turn."""
     return AgentState(
         session_id=session_id,
         user_id=user_id,
+        employee_id=employee_id,
         messages=[{"role": "user", "content": user_message}],
         slots={},
         current_target_slot=None,
@@ -138,13 +145,9 @@ async def planning_node(state: AgentState) -> AgentState:
 
 
 async def execution_node(state: AgentState) -> AgentState:
-    """Execution node stub (Phase 3)."""
-    state["current_phase"] = "execution"
-    state["messages"].append({
-        "role": "assistant",
-        "content": "[Execution] Phase 3 stub: execution placeholder.",
-    })
-    return state
+    """Execution node: runs the analysis plan tasks."""
+    from backend.agent.execution import execution_node as _exec_node
+    return await _exec_node(state)
 
 
 async def reflection_node(state: AgentState) -> AgentState:
@@ -237,14 +240,28 @@ def get_compiled_graph():
 
 
 async def run_stream(
-    session_id: str, user_id: str, user_message: str
+    session_id: str,
+    user_id: str,
+    user_message: str,
+    employee_id: str | None = None,
 ) -> AsyncGenerator[dict, None]:
-    """Run the agent graph and stream state updates."""
-    graph = get_compiled_graph()
-    initial = make_initial_state(session_id, user_id, user_message)
+    """Run the agent graph and stream state updates.
 
-    async for event in graph.astream(initial):
-        yield event
+    当 employee_id 提供时，委托给 EmployeeManager 使用员工专属图；
+    否则使用通用单例图（向后兼容）。
+    """
+    if employee_id:
+        from backend.employees.manager import EmployeeManager
+        manager = EmployeeManager.get_instance()
+        async for event in manager.run_employee_stream(
+            employee_id, session_id, user_id, user_message,
+        ):
+            yield event
+    else:
+        graph = get_compiled_graph()
+        initial = make_initial_state(session_id, user_id, user_message)
+        async for event in graph.astream(initial):
+            yield event
 
 
 # ── MySQL Checkpoint Saver ───────────────────────────────────

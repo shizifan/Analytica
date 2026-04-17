@@ -19,6 +19,29 @@ logger = logging.getLogger("analytica")
 async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown."""
     logger.info("Analytica backend starting...")
+
+    # 加载技能
+    from backend.skills.loader import load_all_skills
+    skill_count = load_all_skills()
+    logger.info("Loaded %d skill modules", skill_count)
+
+    # 加载员工配置
+    from pathlib import Path
+    from backend.employees.manager import EmployeeManager
+    manager = EmployeeManager.get_instance()
+    config_dir = Path(__file__).resolve().parent.parent / "employees"
+    emp_count = manager.load_all_profiles(config_dir)
+    logger.info("Loaded %d employee profiles", emp_count)
+
+    # 启动校验
+    if emp_count > 0:
+        errors = manager.validate_all_profiles()
+        if errors:
+            for e in errors:
+                logger.error("Profile validation: %s", e)
+        else:
+            logger.info("All employee profiles validated successfully")
+
     yield
     engine = get_engine()
     await engine.dispose()
@@ -35,23 +58,74 @@ async def health():
     return {"status": "ok", "service": "analytica"}
 
 
+# ── Employee APIs ────────────────────────────────────────────
+
+@app.get("/api/employees")
+async def list_employees():
+    """List all available employees."""
+    from backend.employees.manager import EmployeeManager
+    manager = EmployeeManager.get_instance()
+    return [
+        {
+            "employee_id": p.employee_id,
+            "name": p.name,
+            "description": p.description,
+            "domains": p.domains,
+            "version": p.version,
+        }
+        for p in manager.list_employees()
+    ]
+
+
+@app.get("/api/employees/{employee_id}")
+async def get_employee(employee_id: str):
+    """Get employee details."""
+    from backend.employees.manager import EmployeeManager
+    manager = EmployeeManager.get_instance()
+    profile = manager.get_employee(employee_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail=f"Employee not found: {employee_id}")
+    return {
+        "employee_id": profile.employee_id,
+        "name": profile.name,
+        "description": profile.description,
+        "version": profile.version,
+        "domains": profile.domains,
+        "skills": profile.skills,
+        "perception": profile.perception.model_dump(),
+        "planning": profile.planning.model_dump(),
+    }
+
+
 # ── Session APIs ─────────────────────────────────────────────
 
 class CreateSessionRequest(BaseModel):
     user_id: str
+    employee_id: Optional[str] = None
 
 
 class CreateSessionResponse(BaseModel):
     session_id: str
+    employee_id: Optional[str] = None
 
 
 @app.post("/api/sessions", status_code=201, response_model=CreateSessionResponse)
 async def create_session(req: CreateSessionRequest, db=Depends(get_db_session)):
     """Create a new analysis session."""
+    # 校验 employee_id 是否有效
+    if req.employee_id:
+        from backend.employees.manager import EmployeeManager
+        manager = EmployeeManager.get_instance()
+        if manager.get_employee(req.employee_id) is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unknown employee: {req.employee_id}",
+            )
+
     session_id = str(uuid4())
     store = MemoryStore(db)
-    await store.create_session(session_id, req.user_id)
-    return CreateSessionResponse(session_id=session_id)
+    await store.create_session(session_id, req.user_id, employee_id=req.employee_id)
+    return CreateSessionResponse(session_id=session_id, employee_id=req.employee_id)
 
 
 @app.get("/api/sessions/{session_id}")
@@ -199,7 +273,22 @@ async def regenerate_plan_endpoint(
 async def websocket_chat(ws: WebSocket, session_id: str):
     """WebSocket endpoint for streaming chat."""
     await ws.accept()
-    await ws.send_json({"type": "connected", "session_id": session_id})
+
+    # 从 session 获取 employee_id
+    from backend.database import get_session_factory
+    factory = get_session_factory()
+    employee_id = None
+    async with factory() as db_session:
+        store = MemoryStore(db_session)
+        session_data = await store.get_session(session_id)
+        if session_data:
+            employee_id = session_data.get("employee_id")
+
+    await ws.send_json({
+        "type": "connected",
+        "session_id": session_id,
+        "employee_id": employee_id,
+    })
 
     try:
         while True:
@@ -217,7 +306,9 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                 continue
 
             try:
-                async for event in run_stream(session_id, user_id, user_message):
+                async for event in run_stream(
+                    session_id, user_id, user_message, employee_id=employee_id,
+                ):
                     for node_name, node_state in event.items():
                         # Push slot updates
                         if "slots" in node_state:

@@ -1,0 +1,229 @@
+{
+  "api": "getPersonalCenterYearCargoThroughputTrend",
+  "path": "/api/gateway/getPersonalCenterYearCargoThroughputTrend",
+  "domain": "D1",
+  "intent": "查询年度各月吞吐量趋势（含累计）",
+  "variant": "v12",
+  "params_sent": {
+    "startDate": "2024-01-01",
+    "endDate": "2024-06-30"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 30,
+  "latency_ms": 634.2,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "regionName": "盘锦",
+      "yearId": "2024",
+      "monthId": "01月",
+      "tonQ": 129.6,
+      "teuQ": 3.7
+    },
+    {
+      "regionName": "营口",
+      "yearId": "2024",
+      "monthId": "01月",
+      "tonQ": 1992.9,
+      "teuQ": 50.3
+    },
+    {
+      "regionName": "丹东",
+      "yearId": "2024",
+      "monthId": "01月",
+      "tonQ": 233.9,
+      "teuQ": 1.5
+    },
+    {
+      "regionName": "绥中",
+      "yearId": "2024",
+      "monthId": "01月",
+      "tonQ": 27.0,
+      "teuQ": 0.3
+    },
+    {
+      "regionName": "大连",
+      "yearId": "2024",
+      "monthId": "01月",
+      "tonQ": 1666.7,
+      "teuQ": 43.6
+    },
+    {
+      "regionName": "丹东",
+      "yearId": "2024",
+      "monthId": "02月",
+      "tonQ": 191.7,
+      "teuQ": 1.5
+    },
+    {
+      "regionName": "盘锦",
+      "yearId": "2024",
+      "monthId": "02月",
+      "tonQ": 117.5,
+      "teuQ": 3.5
+    },
+    {
+      "regionName": "大连",
+      "yearId": "2024",
+      "monthId": "02月",
+      "tonQ": 1209.9,
+      "teuQ": 31.5
+    },
+    {
+      "regionName": "营口",
+      "yearId": "2024",
+      "monthId": "02月",
+      "tonQ": 1475.0,
+      "teuQ": 34.6
+    },
+    {
+      "regionName": "绥中",
+      "yearId": "2024",
+      "monthId": "02月",
+      "tonQ": 27.6,
+      "teuQ": 0.2
+    },
+    {
+      "regionName": "大连",
+      "yearId": "2024",
+      "monthId": "03月",
+      "tonQ": 1731.3,
+      "teuQ": 46.0
+    },
+    {
+      "regionName": "丹东",
+      "yearId": "2024",
+      "monthId": "03月",
+      "tonQ": 256.3,
+      "teuQ": 2.5
+    },
+    {
+      "regionName": "营口",
+      "yearId": "2024",
+      "monthId": "03月",
+      "tonQ": 1968.7,
+      "teuQ": 49.7
+    },
+    {
+      "regionName": "绥中",
+      "yearId": "2024",
+      "monthId": "03月",
+      "tonQ": 39.5,
+      "teuQ": 0.4
+    },
+    {
+      "regionName": "盘锦",
+      "yearId": "2024",
+      "monthId": "03月",
+      "tonQ": 140.6,
+      "teuQ": 4.4
+    },
+    {
+      "regionName": "大连",
+      "yearId": "2024",
+      "monthId": "04月",
+      "tonQ": 1626.8,
+      "teuQ": 43.4
+    },
+    {
+      "regionName": "营口",
+      "yearId": "2024",
+      "monthId": "04月",
+      "tonQ": 1771.1,
+      "teuQ": 48.6
+    },
+    {
+      "regionName": "丹东",
+      "yearId": "2024",
+      "monthId": "04月",
+      "tonQ": 266.5,
+      "teuQ": 2.4
+    },
+    {
+      "regionName": "绥中",
+      "yearId": "2024",
+      "monthId": "04月",
+      "tonQ": 24.2,
+      "teuQ": 0.4
+    },
+    {
+      "regionName": "盘锦",
+      "yearId": "2024",
+      "monthId": "04月",
+      "tonQ": 133.2,
+      "teuQ": 4.2
+    },
+    {
+      "regionName": "盘锦",
+      "yearId": "2024",
+      "monthId": "05月",
+      "tonQ": 166.3,
+      "teuQ": 4.2
+    },
+    {
+      "regionName": "大连",
+      "yearId": "2024",
+      "monthId": "05月",
+      "tonQ": 1690.5,
+      "teuQ": 42.8
+    },
+    {
+      "regionName": "营口",
+      "yearId": "2024",
+      "monthId": "05月",
+      "tonQ": 1743.2,
+      "teuQ": 48.0
+    },
+    {
+      "regionName": "丹东",
+      "yearId": "2024",
+      "monthId": "05月",
+      "tonQ": 226.7,
+      "teuQ": 2.1
+    },
+    {
+      "regionName": "绥中",
+      "yearId": "2024",
+      "monthId": "05月",
+      "tonQ": 31.4,
+      "teuQ": 0.5
+    },
+    {
+      "regionName": "营口",
+      "yearId": "2024",
+      "monthId": "06月",
+      "tonQ": 1798.4,
+      "teuQ": 45.6
+    },
+    {
+      "regionName": "大连",
+      "yearId": "2024",
+      "monthId": "06月",
+      "tonQ": 1659.4,
+      "teuQ": 42.3
+    },
+    {
+      "regionName": "丹东",
+      "yearId": "2024",
+      "monthId": "06月",
+      "tonQ": 235.5,
+      "teuQ": 2.3
+    },
+    {
+      "regionName": "盘锦",
+      "yearId": "2024",
+      "monthId": "06月",
+      "tonQ": 156.2,
+      "teuQ": 4.1
+    },
+    {
+      "regionName": "绥中",
+      "yearId": "2024",
+      "monthId": "06月",
+      "tonQ": 41.1,
+      "teuQ": 0.3
+    }
+  ]
+}

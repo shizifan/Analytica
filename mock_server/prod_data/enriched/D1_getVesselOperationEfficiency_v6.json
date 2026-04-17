@@ -1,0 +1,24 @@
+{
+  "api": "getVesselOperationEfficiency",
+  "path": "/api/gateway/getVesselOperationEfficiency",
+  "domain": "D1",
+  "intent": "查询公司船舶作业效率（单船效率平均/最高/最低，按月区间）",
+  "variant": "v6",
+  "params_sent": {
+    "cmpName": "全部",
+    "startMonth": "2026-01",
+    "endMonth": "2026-01"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 1,
+  "latency_ms": 492.0,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "curEfficiency": null,
+      "lastEfficiency": null
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "api": "getBerthOccupancyRateByBusinessType",
+  "path": "/api/gateway/getBerthOccupancyRateByBusinessType",
+  "domain": "D1",
+  "intent": "按业务类型查询泊位占用率",
+  "variant": "v8",
+  "params_sent": {
+    "startDate": "2025-04-01",
+    "endDate": "2025-06-30"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 12,
+  "latency_ms": 1472.6,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "businessType": "散杂货",
+      "dateMonth": "2025-04",
+      "rate": 0.3599
+    },
+    {
+      "businessType": "油品",
+      "dateMonth": "2025-04",
+      "rate": 0.3172
+    },
+    {
+      "businessType": "滚装",
+      "dateMonth": "2025-04",
+      "rate": 0.2532
+    },
+    {
+      "businessType": "集装箱",
+      "dateMonth": "2025-04",
+      "rate": 0.4391
+    },
+    {
+      "businessType": "油品",
+      "dateMonth": "2025-05",
+      "rate": 0.3581
+    },
+    {
+      "businessType": "散杂货",
+      "dateMonth": "2025-05",
+      "rate": 0.3427
+    },
+    {
+      "businessType": "集装箱",
+      "dateMonth": "2025-05",
+      "rate": 0.4221
+    },
+    {
+      "businessType": "滚装",
+      "dateMonth": "2025-05",
+      "rate": 0.2685
+    },
+    {
+      "businessType": "滚装",
+      "dateMonth": "2025-06",
+      "rate": 0.2894
+    },
+    {
+      "businessType": "集装箱",
+      "dateMonth": "2025-06",
+      "rate": 0.4047
+    },
+    {
+      "businessType": "散杂货",
+      "dateMonth": "2025-06",
+      "rate": 0.3317
+    },
+    {
+      "businessType": "油品",
+      "dateMonth": "2025-06",
+      "rate": 0.3187
+    }
+  ]
+}

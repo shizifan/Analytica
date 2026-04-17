@@ -1,0 +1,16 @@
+{
+  "api": "getVisualProgressAnalysisAndStatistics",
+  "path": "/api/gateway/getVisualProgressAnalysisAndStatistics",
+  "domain": "D6",
+  "intent": "查询资本性项目建设阶段分布（前期/施工/竣工验收/交付）",
+  "params_sent": {
+    "dateYear": "2026"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 340.7,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

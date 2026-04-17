@@ -1,0 +1,17 @@
+{
+  "api": "getModelDataDisplayScreenEnergyConsumptionPerUnit",
+  "path": "/api/gateway/getModelDataDisplayScreenEnergyConsumptionPerUnit",
+  "domain": "D7",
+  "intent": "查询指定机种当月能耗单耗（机种展示屏）",
+  "variant": "v5",
+  "params_sent": {
+    "secondLevelClassName": "门机",
+    "date": "2025-06"
+  },
+  "status": "OK_UNKNOWN_FORMAT",
+  "error": null,
+  "latency_ms": 24.4,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

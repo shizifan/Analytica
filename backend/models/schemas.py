@@ -25,8 +25,11 @@ SLOT_SCHEMA: list[SlotDefinition] = [
     SlotDefinition(name="attribution_needed", required=False, priority=5, condition="output_complexity in [chart_text,full_report]"),
     SlotDefinition(name="predictive_needed", required=False, priority=6, condition="output_complexity=full_report"),
     SlotDefinition(name="time_granularity", required=False, priority=99, inferable=True),
-    SlotDefinition(name="domain", required=False, priority=99, inferable=True),
+    SlotDefinition(name="domain", required=False, priority=7, inferable=True),
     SlotDefinition(name="domain_glossary", required=False, priority=99, inferable=True),
+    SlotDefinition(name="comparison_type", required=False, priority=99, inferable=True),
+    SlotDefinition(name="region", required=False, priority=99, inferable=True),
+    SlotDefinition(name="data_granularity", required=False, priority=99, inferable=True),
 ]
 
 ALL_SLOT_NAMES = [s.name for s in SLOT_SCHEMA]

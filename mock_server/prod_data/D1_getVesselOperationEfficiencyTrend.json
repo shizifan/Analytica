@@ -1,0 +1,18 @@
+{
+  "api": "getVesselOperationEfficiencyTrend",
+  "path": "/api/gateway/getVesselOperationEfficiencyTrend",
+  "domain": "D1",
+  "intent": "查询月度船舶作业效率趋势（集装箱/散货/油品效率曲线）",
+  "params_sent": {
+    "startMonth": "2026-01",
+    "endMonth": "2026-03",
+    "cmpName": "全部"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 415.7,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

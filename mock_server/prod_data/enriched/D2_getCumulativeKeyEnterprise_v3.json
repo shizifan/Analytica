@@ -1,0 +1,180 @@
+{
+  "api": "getCumulativeKeyEnterprise",
+  "path": "/api/gateway/getCumulativeKeyEnterprise",
+  "domain": "D2",
+  "intent": "查询年累计重点企业吞吐量排名",
+  "variant": "v3",
+  "params_sent": {
+    "businessSegment": "散杂货",
+    "curDateYear": "2026",
+    "yearDateYear": "2025"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 32,
+  "latency_ms": 557.0,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "throughput": 319.36,
+      "companyName": "杂货码头分公司",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 1328.96,
+      "companyName": "煤矿码头分公司",
+      "dateYear": "2025"
+    },
+    {
+      "throughput": 1255.13,
+      "companyName": "第二分公司",
+      "dateYear": "2025"
+    },
+    {
+      "throughput": 1084.12,
+      "companyName": "长兴岛港口",
+      "dateYear": "2025"
+    },
+    {
+      "throughput": 682.4,
+      "companyName": "绥中港集团",
+      "dateYear": "2025"
+    },
+    {
+      "throughput": 2108.01,
+      "companyName": "股份六公司",
+      "dateYear": "2025"
+    },
+    {
+      "throughput": 204.12,
+      "companyName": "第二分公司",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 3598.6,
+      "companyName": "股份三公司",
+      "dateYear": "2025"
+    },
+    {
+      "throughput": 532.55,
+      "companyName": "散粮码头分公司",
+      "dateYear": "2025"
+    },
+    {
+      "throughput": 264.41,
+      "companyName": "盘锦一公司",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 1829.66,
+      "companyName": "盘锦一公司",
+      "dateYear": "2025"
+    },
+    {
+      "throughput": 136.15,
+      "companyName": "长兴岛港口",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 148.4,
+      "companyName": "煤矿码头分公司",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 195.8,
+      "companyName": "股份粮食公司",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 68.37,
+      "companyName": "散粮码头",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 103.13,
+      "companyName": "散粮码头分公司",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 2552.89,
+      "companyName": "股份一公司",
+      "dateYear": "2025"
+    },
+    {
+      "throughput": 5.35,
+      "companyName": "汽车码头",
+      "dateYear": "2025"
+    },
+    {
+      "throughput": 446.33,
+      "companyName": "散粮码头",
+      "dateYear": "2025"
+    },
+    {
+      "throughput": 601.31,
+      "companyName": "股份一公司",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 0.9,
+      "companyName": "汽车码头",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 391.59,
+      "companyName": "股份六公司",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 545.58,
+      "companyName": "股份三公司",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 96.07,
+      "companyName": "绥中港集团",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 769.23,
+      "companyName": "散杂货码头",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 71.28,
+      "companyName": "中铁渤海",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 1340.64,
+      "companyName": "股份粮食公司",
+      "dateYear": "2025"
+    },
+    {
+      "throughput": 4447.23,
+      "companyName": "散杂货码头",
+      "dateYear": "2025"
+    },
+    {
+      "throughput": 474.63,
+      "companyName": "中铁渤海",
+      "dateYear": "2025"
+    },
+    {
+      "throughput": 225.96,
+      "companyName": "旅顺港",
+      "dateYear": "2025"
+    },
+    {
+      "throughput": 40.29,
+      "companyName": "旅顺港",
+      "dateYear": "2026"
+    },
+    {
+      "throughput": 2089.41,
+      "companyName": "杂货码头分公司",
+      "dateYear": "2025"
+    }
+  ]
+}

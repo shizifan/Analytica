@@ -1,0 +1,74 @@
+{
+  "api": "getInvestPlanTypeProjectList",
+  "path": "/api/gateway/getInvestPlanTypeProjectList",
+  "domain": "D6",
+  "intent": "查询年度投资计划类型汇总（资本性/成本性/计划外项目数和金额）",
+  "variant": "v3",
+  "params_sent": {
+    "currYear": "2023"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 7,
+  "latency_ms": 540.3,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "investProjectType": "机械设备",
+      "total": 481,
+      "engineeringQty": 13,
+      "importantQty": 0,
+      "planInvestAmt": 63960.4,
+      "planPayAmt": 71639.8
+    },
+    {
+      "investProjectType": "行政办公",
+      "total": 208,
+      "engineeringQty": 2,
+      "importantQty": 1,
+      "planInvestAmt": 28632.4,
+      "planPayAmt": 27558.6
+    },
+    {
+      "investProjectType": "其它",
+      "total": 11,
+      "engineeringQty": 0,
+      "importantQty": 0,
+      "planInvestAmt": 1360.0,
+      "planPayAmt": 1428.7
+    },
+    {
+      "investProjectType": "IT",
+      "total": 543,
+      "engineeringQty": 3,
+      "importantQty": 0,
+      "planInvestAmt": 39346.8,
+      "planPayAmt": 39250.2
+    },
+    {
+      "investProjectType": "仓库码头",
+      "total": 431,
+      "engineeringQty": 89,
+      "importantQty": 420,
+      "planInvestAmt": 169592.3,
+      "planPayAmt": 215885.0
+    },
+    {
+      "investProjectType": "船舶",
+      "total": 3,
+      "engineeringQty": 2,
+      "importantQty": 0,
+      "planInvestAmt": 7300.0,
+      "planPayAmt": 7450.0
+    },
+    {
+      "investProjectType": "土地",
+      "total": 8,
+      "engineeringQty": 8,
+      "importantQty": 0,
+      "planInvestAmt": 23577.0,
+      "planPayAmt": 23577.0
+    }
+  ]
+}

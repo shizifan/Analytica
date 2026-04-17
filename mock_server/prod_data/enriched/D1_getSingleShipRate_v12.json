@@ -1,0 +1,145 @@
+{
+  "api": "getSingleShipRate",
+  "path": "/api/gateway/getSingleShipRate",
+  "domain": "D1",
+  "intent": "查询各公司单船效率（作业/小时），按时间段统计",
+  "variant": "v12",
+  "params_sent": {
+    "startDate": "2024-01-01",
+    "endDate": "2024-06-30"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 18,
+  "latency_ms": 789.7,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "regionName": "丹东",
+      "cmpName": "丹东散粮公司",
+      "cargoType": "粮食",
+      "tonQ": 502556.0,
+      "workTh": 514.01
+    },
+    {
+      "regionName": "大连",
+      "cmpName": "大连矿石",
+      "cargoType": "煤炭",
+      "tonQ": 71003.0,
+      "workTh": 69.53
+    },
+    {
+      "regionName": "丹东",
+      "cmpName": "丹东煤矿公司",
+      "cargoType": "矿石",
+      "tonQ": 4005086.0,
+      "workTh": 1457.49
+    },
+    {
+      "regionName": "营口",
+      "cmpName": "营口三公司",
+      "cargoType": "煤炭",
+      "tonQ": 102480.0,
+      "workTh": 131.17
+    },
+    {
+      "regionName": "大连",
+      "cmpName": "大连大连湾",
+      "cargoType": "煤炭",
+      "tonQ": 2264980.0,
+      "workTh": 2258.18
+    },
+    {
+      "regionName": "营口",
+      "cmpName": "营口粮食",
+      "cargoType": "粮食",
+      "tonQ": 1615097.4,
+      "workTh": 2646.69
+    },
+    {
+      "regionName": "大连",
+      "cmpName": "大连长兴岛",
+      "cargoType": "煤炭",
+      "tonQ": 101434.0,
+      "workTh": 71.0
+    },
+    {
+      "regionName": "大连",
+      "cmpName": "大连长兴岛",
+      "cargoType": "油品",
+      "tonQ": 132000.0,
+      "workTh": 44.3
+    },
+    {
+      "regionName": "丹东",
+      "cmpName": "丹东煤矿公司",
+      "cargoType": "煤炭",
+      "tonQ": 1598459.0,
+      "workTh": 1826.67
+    },
+    {
+      "regionName": "营口",
+      "cmpName": "营口五公司",
+      "cargoType": "油品",
+      "tonQ": 2928340.7,
+      "workTh": 610.74
+    },
+    {
+      "regionName": "盘锦",
+      "cmpName": "盘锦散杂货中心",
+      "cargoType": "煤炭",
+      "tonQ": 525215.0,
+      "workTh": 517.5
+    },
+    {
+      "regionName": "大连",
+      "cmpName": "大连散粮",
+      "cargoType": "粮食",
+      "tonQ": 640428.2,
+      "workTh": 892.45
+    },
+    {
+      "regionName": "盘锦",
+      "cmpName": "盘锦散杂货中心",
+      "cargoType": "矿石",
+      "tonQ": 0.0,
+      "workTh": 0.0
+    },
+    {
+      "regionName": "大连",
+      "cmpName": "大连矿石",
+      "cargoType": "矿石",
+      "tonQ": 8205561.0,
+      "workTh": 1636.44
+    },
+    {
+      "regionName": "营口",
+      "cmpName": "营口二公司",
+      "cargoType": "煤炭",
+      "tonQ": 2248818.0,
+      "workTh": 2714.1
+    },
+    {
+      "regionName": "大连",
+      "cmpName": "大连油品码头",
+      "cargoType": "油品",
+      "tonQ": 8140323.0,
+      "workTh": 1787.33
+    },
+    {
+      "regionName": "大连",
+      "cmpName": "大连长油品",
+      "cargoType": "油品",
+      "tonQ": 2331642.0,
+      "workTh": 519.05
+    },
+    {
+      "regionName": "营口",
+      "cmpName": "营口三公司",
+      "cargoType": "矿石",
+      "tonQ": 12738950.6,
+      "workTh": 3635.07
+    }
+  ]
+}

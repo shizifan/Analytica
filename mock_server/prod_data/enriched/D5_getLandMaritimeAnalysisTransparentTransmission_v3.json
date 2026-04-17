@@ -1,0 +1,573 @@
+{
+  "api": "getLandMaritimeAnalysisTransparentTransmission",
+  "path": "/api/gateway/getLandMaritimeAnalysisTransparentTransmission",
+  "domain": "D5",
+  "intent": "查询土地和海域资产穿透分析（面积/价值按港区）",
+  "variant": "v3",
+  "params_sent": {
+    "dateYear": "2023"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 111,
+  "latency_ms": 534.3,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 1.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连港集装箱股份有限公司"
+    },
+    {
+      "num": 11.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连集装箱码头有限公司"
+    },
+    {
+      "num": 58.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连港集团有限公司"
+    },
+    {
+      "num": 11.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连港集发物流有限责任公司"
+    },
+    {
+      "num": 1.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连港湾东车物流有限公司"
+    },
+    {
+      "num": 1.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "盘锦辽滨经济开发建设有限公司"
+    },
+    {
+      "num": 11.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连长兴岛港口投资发展有限公司"
+    },
+    {
+      "num": 2.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "营口市鲅鱼圈区航虹发展有限公司"
+    },
+    {
+      "num": 4.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "绥中港集团有限公司"
+    },
+    {
+      "num": 2.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "黑龙江绥穆大连港物流有限公司"
+    },
+    {
+      "num": 12.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "辽宁港口股份有限公司(大)"
+    },
+    {
+      "num": 31.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "盘锦港集团有限公司"
+    },
+    {
+      "num": 4.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "葫芦岛港务开发建设有限公司"
+    },
+    {
+      "num": 1.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "营口市鲅鱼圈区航正发展有限公司"
+    },
+    {
+      "num": 70.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "营口港务集团有限公司"
+    },
+    {
+      "num": 17.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "辽港控股（营口）有限公司"
+    },
+    {
+      "num": 22.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连港北岸投资开发有限公司"
+    },
+    {
+      "num": 4.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "盘锦港建设有限公司"
+    },
+    {
+      "num": 1.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连庄河港兴投资有限公司"
+    },
+    {
+      "num": 2.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连汽车码头有限公司"
+    },
+    {
+      "num": 2.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连港集装箱发展有限公司"
+    },
+    {
+      "num": 4.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连港地产集团有限公司"
+    },
+    {
+      "num": 1.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "营口市鲅鱼圈区航浦发展有限公司"
+    },
+    {
+      "num": 1.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连港旅顺港务有限公司"
+    },
+    {
+      "num": 2.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "锦州大港地产有限公司"
+    },
+    {
+      "num": 3.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连港石化有限公司"
+    },
+    {
+      "num": 4.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连国际物流园发展有限公司"
+    },
+    {
+      "num": 2.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "营口市鲅鱼圈区航荣发展有限公司"
+    },
+    {
+      "num": 50.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "丹东港口集团有限公司"
+    },
+    {
+      "num": 2.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连海嘉汽车码头有限公司"
+    },
+    {
+      "num": 3.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连港北岸汽车码头有限公司"
+    },
+    {
+      "num": 2.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "营口市鲅鱼圈区港航发展有限公司"
+    },
+    {
+      "num": 2.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连港北岸集装箱码头有限公司"
+    },
+    {
+      "num": 1.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "营口市鲅鱼圈区航富发展有限公司"
+    },
+    {
+      "num": 1.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "营口市鲅鱼圈区航昌发展有限公司"
+    },
+    {
+      "num": 1.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "营口市鲅鱼圈区航桥发展有限公司"
+    },
+    {
+      "num": 9.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "大连长兴岛港口有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "辽港控股（营口）有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "营口港务集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "黑龙江绥穆大连港物流有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "营口市鲅鱼圈区航正发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连庄河港兴投资有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连港北岸投资开发有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "盘锦港建设有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连港地产集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连港集装箱发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连汽车码头有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "营口市鲅鱼圈区航浦发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连港旅顺港务有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "锦州大港地产有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连国际物流园发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连港石化有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连港湾东车物流有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "葫芦岛港务开发建设有限公司"
+    },
+    {
+      "num": 82674411,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连集装箱码头有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连港集装箱股份有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连长兴岛港口投资发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "营口市鲅鱼圈区航虹发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "辽宁港口股份有限公司(大)"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "盘锦港集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连港集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "绥中港集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连港集发物流有限责任公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "营口市鲅鱼圈区航荣发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连港北岸汽车码头有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连海嘉汽车码头有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "营口市鲅鱼圈区港航发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连港北岸集装箱码头有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "大连长兴岛港口有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "营口市鲅鱼圈区航富发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "营口市鲅鱼圈区航昌发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "营口市鲅鱼圈区航桥发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "盘锦辽滨经济开发建设有限公司"
+    },
+    {
+      "num": 458274430.0,
+      "typeName": "资产原值",
+      "ownerUnitName": "丹东港口集团有限公司"
+    },
+    {
+      "num": 65010494,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连集装箱码头有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连港集装箱股份有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "营口市鲅鱼圈区航正发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连汽车码头有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "营口市鲅鱼圈区航桥发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "营口市鲅鱼圈区航荣发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "营口市鲅鱼圈区航富发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "营口市鲅鱼圈区航昌发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连海嘉汽车码头有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连港北岸汽车码头有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连港北岸集装箱码头有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连长兴岛港口有限公司"
+    },
+    {
+      "num": 391810582,
+      "typeName": "资产净值",
+      "ownerUnitName": "丹东港口集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "营口市鲅鱼圈区港航发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "葫芦岛港务开发建设有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "黑龙江绥穆大连港物流有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连港集发物流有限责任公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连港集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连港湾东车物流有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连长兴岛港口投资发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "营口市鲅鱼圈区航虹发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "盘锦港集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "辽宁港口股份有限公司(大)"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "绥中港集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "盘锦辽滨经济开发建设有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连港地产集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "盘锦港建设有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连庄河港兴投资有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "营口市鲅鱼圈区航浦发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "锦州大港地产有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连港旅顺港务有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连港石化有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连国际物流园发展有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "辽港控股（营口）有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "营口港务集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连港北岸投资开发有限公司"
+    },
+    {
+      "num": 0.0,
+      "typeName": "资产净值",
+      "ownerUnitName": "大连港集装箱发展有限公司"
+    }
+  ]
+}

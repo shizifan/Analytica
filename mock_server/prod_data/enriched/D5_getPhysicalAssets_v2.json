@@ -1,0 +1,48 @@
+{
+  "api": "getPhysicalAssets",
+  "path": "/api/gateway/getPhysicalAssets",
+  "domain": "D5",
+  "intent": "查询全港实物资产汇总（总数量/原值/净值）",
+  "variant": "v2",
+  "params_sent": {
+    "dateYear": "2024"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 6,
+  "latency_ms": 646.8,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 43939.0,
+      "typeName": "实物资产数",
+      "dateYear": 2023.0
+    },
+    {
+      "num": 39686501767,
+      "typeName": "资产净值",
+      "dateYear": 2024.0
+    },
+    {
+      "num": 63795.0,
+      "typeName": "实物资产数",
+      "dateYear": 2024.0
+    },
+    {
+      "num": 32888406370.0,
+      "typeName": "资产净值",
+      "dateYear": 2023.0
+    },
+    {
+      "num": 64011981946,
+      "typeName": "资产原值",
+      "dateYear": 2024.0
+    },
+    {
+      "num": 55075144276,
+      "typeName": "资产原值",
+      "dateYear": 2023.0
+    }
+  ]
+}

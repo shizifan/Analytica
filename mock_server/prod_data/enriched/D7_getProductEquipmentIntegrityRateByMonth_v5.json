@@ -1,0 +1,19 @@
+{
+  "api": "getProductEquipmentIntegrityRateByMonth",
+  "path": "/api/gateway/getProductEquipmentIntegrityRateByMonth",
+  "domain": "D7",
+  "intent": "查询生产设备月度完好率（当月vs去年同月同比）",
+  "variant": "v5",
+  "params_sent": {
+    "dateMonth": "2026-03",
+    "preDateMonth": "2025-03",
+    "ownerLgZoneName": "全港"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 660.7,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

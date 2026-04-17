@@ -1,0 +1,26 @@
+{
+  "api": "getContributionTrend",
+  "path": "/api/gateway/getContributionTrend",
+  "domain": "D3",
+  "intent": "查询客户贡献趋势",
+  "params_sent": {
+    "year": "2026",
+    "lastYear": "2025",
+    "statisticType": "0",
+    "contributionType": "吞吐量"
+  },
+  "status": "OK_UNKNOWN_FORMAT",
+  "http_status": 200,
+  "error": null,
+  "response_pattern": "UNKNOWN",
+  "data_sample": {
+    "success": false,
+    "errorCode": 143,
+    "errorInfo": "Gateway error : 请求方式错误",
+    "space": 17
+  },
+  "latency_ms": 36.5,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

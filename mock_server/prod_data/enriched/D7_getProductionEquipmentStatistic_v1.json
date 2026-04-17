@@ -1,0 +1,174 @@
+{
+  "api": "getProductionEquipmentStatistic",
+  "path": "/api/gateway/getProductionEquipmentStatistic",
+  "domain": "D7",
+  "intent": "查询生产设备月度概览（总数/在用/完好率/利用率/平均役龄）",
+  "variant": "v1",
+  "params_sent": {
+    "dateMonth": "2026-01"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 39,
+  "latency_ms": 307.0,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 7,
+      "secondLevelName": "电动堆高机"
+    },
+    {
+      "num": 83,
+      "secondLevelName": "输油臂"
+    },
+    {
+      "num": 6,
+      "secondLevelName": "集卡"
+    },
+    {
+      "num": 36,
+      "secondLevelName": "泵"
+    },
+    {
+      "num": 1,
+      "secondLevelName": "液压倾转平台"
+    },
+    {
+      "num": 4,
+      "secondLevelName": "粮食散货装船机"
+    },
+    {
+      "num": 206,
+      "secondLevelName": "门机"
+    },
+    {
+      "num": 17,
+      "secondLevelName": "抓料机"
+    },
+    {
+      "num": 1,
+      "secondLevelName": "电动叉车"
+    },
+    {
+      "num": 159,
+      "secondLevelName": "轮胎式场桥"
+    },
+    {
+      "num": 44,
+      "secondLevelName": "正面吊"
+    },
+    {
+      "num": 51,
+      "secondLevelName": "轮胎吊"
+    },
+    {
+      "num": 15,
+      "secondLevelName": "桥式抓斗卸船机"
+    },
+    {
+      "num": 34,
+      "secondLevelName": "斗轮堆取料机"
+    },
+    {
+      "num": 1,
+      "secondLevelName": "装载机清扫车"
+    },
+    {
+      "num": 1,
+      "secondLevelName": "登船梯"
+    },
+    {
+      "num": 375,
+      "secondLevelName": "固定皮带机"
+    },
+    {
+      "num": 38,
+      "secondLevelName": "天吊"
+    },
+    {
+      "num": 2,
+      "secondLevelName": "工程技术船"
+    },
+    {
+      "num": 3,
+      "secondLevelName": "装车楼"
+    },
+    {
+      "num": 1,
+      "secondLevelName": "汽车吊"
+    },
+    {
+      "num": 37,
+      "secondLevelName": "堆高机"
+    },
+    {
+      "num": 74,
+      "secondLevelName": "拖轮"
+    },
+    {
+      "num": 4,
+      "secondLevelName": "斗提机"
+    },
+    {
+      "num": 22,
+      "secondLevelName": "龙门吊"
+    },
+    {
+      "num": 6,
+      "secondLevelName": "散货装车机"
+    },
+    {
+      "num": 6,
+      "secondLevelName": "引水船"
+    },
+    {
+      "num": 30,
+      "secondLevelName": "挖掘机"
+    },
+    {
+      "num": 93,
+      "secondLevelName": "装载机"
+    },
+    {
+      "num": 14,
+      "secondLevelName": "推耙机"
+    },
+    {
+      "num": 1,
+      "secondLevelName": "煤炭散货装船机"
+    },
+    {
+      "num": 75,
+      "secondLevelName": "岸桥"
+    },
+    {
+      "num": 21,
+      "secondLevelName": "内燃机车"
+    },
+    {
+      "num": 18,
+      "secondLevelName": "循环拖车"
+    },
+    {
+      "num": 159,
+      "secondLevelName": "叉车"
+    },
+    {
+      "num": 42,
+      "secondLevelName": "轨道式场桥"
+    },
+    {
+      "num": 1,
+      "secondLevelName": "滑移装载机清扫车"
+    },
+    {
+      "num": 6,
+      "secondLevelName": "公铁车"
+    },
+    {
+      "num": 2,
+      "secondLevelName": "粮食散货卸船机"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+# Version control
+.git/
+.gitignore
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+uv.lock
+.python-version
+
+# IDE & tools
+.qoder/
+.qoder-agent-config/
+.DS_Store
+*.swp
+
+# Dev only
+spec/
+reports/
+
+# Database files
+*.db
+
+# Deploy artifacts (not needed in image)
+deploy/wheels/
+*.tar.gz
+
+# Environment (injected at runtime)
+.env

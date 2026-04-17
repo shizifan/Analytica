@@ -1,0 +1,228 @@
+{
+  "api": "getCostProjectCurrentStageQtyList",
+  "path": "/api/gateway/getCostProjectCurrentStageQtyList",
+  "domain": "D6",
+  "intent": "查询成本性项目当前阶段数量（立项/招标/施工/竣工等）",
+  "variant": "v1",
+  "params_sent": {
+    "currYear": "2025"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 42,
+  "latency_ms": 299.0,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "projectQty": 9,
+      "projectCurrentStage": "完工",
+      "ownerLgZoneName": "丹东港"
+    },
+    {
+      "projectQty": 4,
+      "projectCurrentStage": "完工",
+      "ownerLgZoneName": "辽港集团本部"
+    },
+    {
+      "projectQty": 2,
+      "projectCurrentStage": "合同",
+      "ownerLgZoneName": "绥中港"
+    },
+    {
+      "projectQty": 2,
+      "projectCurrentStage": "采购",
+      "ownerLgZoneName": "辽港集团本部"
+    },
+    {
+      "projectQty": 28,
+      "projectCurrentStage": "已关闭",
+      "ownerLgZoneName": "营口港"
+    },
+    {
+      "projectQty": 26,
+      "projectCurrentStage": "实施",
+      "ownerLgZoneName": "丹东港"
+    },
+    {
+      "projectQty": 153,
+      "projectCurrentStage": "已关闭",
+      "ownerLgZoneName": "大连港"
+    },
+    {
+      "projectQty": 26,
+      "projectCurrentStage": "完工",
+      "ownerLgZoneName": "营口港"
+    },
+    {
+      "projectQty": 6,
+      "projectCurrentStage": "待关闭",
+      "ownerLgZoneName": "丹东港"
+    },
+    {
+      "projectQty": 5,
+      "projectCurrentStage": "待关闭",
+      "ownerLgZoneName": "营口港"
+    },
+    {
+      "projectQty": 66,
+      "projectCurrentStage": "采购",
+      "ownerLgZoneName": "营口港"
+    },
+    {
+      "projectQty": 516,
+      "projectCurrentStage": "配置",
+      "ownerLgZoneName": "营口港"
+    },
+    {
+      "projectQty": 61,
+      "projectCurrentStage": "配置",
+      "ownerLgZoneName": "辽港集团本部"
+    },
+    {
+      "projectQty": 1,
+      "projectCurrentStage": "待关闭",
+      "ownerLgZoneName": null
+    },
+    {
+      "projectQty": 3,
+      "projectCurrentStage": "待关闭",
+      "ownerLgZoneName": "盘锦港"
+    },
+    {
+      "projectQty": 18,
+      "projectCurrentStage": "合同",
+      "ownerLgZoneName": "丹东港"
+    },
+    {
+      "projectQty": 711,
+      "projectCurrentStage": "配置",
+      "ownerLgZoneName": "大连港"
+    },
+    {
+      "projectQty": 21,
+      "projectCurrentStage": "合同",
+      "ownerLgZoneName": "营口港"
+    },
+    {
+      "projectQty": 67,
+      "projectCurrentStage": "合同",
+      "ownerLgZoneName": "大连港"
+    },
+    {
+      "projectQty": 126,
+      "projectCurrentStage": "配置",
+      "ownerLgZoneName": "盘锦港"
+    },
+    {
+      "projectQty": 35,
+      "projectCurrentStage": "配置",
+      "ownerLgZoneName": null
+    },
+    {
+      "projectQty": 2,
+      "projectCurrentStage": "已取消",
+      "ownerLgZoneName": "盘锦港"
+    },
+    {
+      "projectQty": 8,
+      "projectCurrentStage": "实施",
+      "ownerLgZoneName": "辽港集团本部"
+    },
+    {
+      "projectQty": 141,
+      "projectCurrentStage": "采购",
+      "ownerLgZoneName": "大连港"
+    },
+    {
+      "projectQty": 4,
+      "projectCurrentStage": "已关闭",
+      "ownerLgZoneName": "盘锦港"
+    },
+    {
+      "projectQty": 69,
+      "projectCurrentStage": "采购",
+      "ownerLgZoneName": "盘锦港"
+    },
+    {
+      "projectQty": 1,
+      "projectCurrentStage": "采购",
+      "ownerLgZoneName": "绥中港"
+    },
+    {
+      "projectQty": 8,
+      "projectCurrentStage": "已取消",
+      "ownerLgZoneName": "大连港"
+    },
+    {
+      "projectQty": 1,
+      "projectCurrentStage": "完工",
+      "ownerLgZoneName": "绥中港"
+    },
+    {
+      "projectQty": 30,
+      "projectCurrentStage": "采购",
+      "ownerLgZoneName": "丹东港"
+    },
+    {
+      "projectQty": 1,
+      "projectCurrentStage": "实施",
+      "ownerLgZoneName": "绥中港"
+    },
+    {
+      "projectQty": 13,
+      "projectCurrentStage": "已关闭",
+      "ownerLgZoneName": "丹东港"
+    },
+    {
+      "projectQty": 265,
+      "projectCurrentStage": "实施",
+      "ownerLgZoneName": "大连港"
+    },
+    {
+      "projectQty": 10,
+      "projectCurrentStage": "待关闭",
+      "ownerLgZoneName": "大连港"
+    },
+    {
+      "projectQty": 1,
+      "projectCurrentStage": "已取消",
+      "ownerLgZoneName": "丹东港"
+    },
+    {
+      "projectQty": 10,
+      "projectCurrentStage": "合同",
+      "ownerLgZoneName": "盘锦港"
+    },
+    {
+      "projectQty": 33,
+      "projectCurrentStage": "实施",
+      "ownerLgZoneName": "盘锦港"
+    },
+    {
+      "projectQty": 57,
+      "projectCurrentStage": "配置",
+      "ownerLgZoneName": "丹东港"
+    },
+    {
+      "projectQty": 45,
+      "projectCurrentStage": "配置",
+      "ownerLgZoneName": "绥中港"
+    },
+    {
+      "projectQty": 38,
+      "projectCurrentStage": "完工",
+      "ownerLgZoneName": "大连港"
+    },
+    {
+      "projectQty": 121,
+      "projectCurrentStage": "实施",
+      "ownerLgZoneName": "营口港"
+    },
+    {
+      "projectQty": 5,
+      "projectCurrentStage": "已关闭",
+      "ownerLgZoneName": "辽港集团本部"
+    }
+  ]
+}

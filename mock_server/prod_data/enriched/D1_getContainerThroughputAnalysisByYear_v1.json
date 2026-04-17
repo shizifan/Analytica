@@ -1,0 +1,115 @@
+{
+  "api": "getContainerThroughputAnalysisByYear",
+  "path": "/api/gateway/getContainerThroughputAnalysisByYear",
+  "domain": "D1",
+  "intent": "查询集装箱吞吐量年度月趋势（当年vs上年，TEU）",
+  "variant": "v1",
+  "params_sent": {
+    "dateYear": "2025",
+    "preYear": "2024"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 24,
+  "latency_ms": 418.0,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "dateMonth": "2024-01",
+      "qty": 99.4
+    },
+    {
+      "dateMonth": "2024-02",
+      "qty": 71.3
+    },
+    {
+      "dateMonth": "2024-03",
+      "qty": 103.0
+    },
+    {
+      "dateMonth": "2024-04",
+      "qty": 99.0
+    },
+    {
+      "dateMonth": "2024-05",
+      "qty": 97.5
+    },
+    {
+      "dateMonth": "2024-06",
+      "qty": 94.6
+    },
+    {
+      "dateMonth": "2024-07",
+      "qty": 93.5
+    },
+    {
+      "dateMonth": "2024-08",
+      "qty": 98.1
+    },
+    {
+      "dateMonth": "2024-09",
+      "qty": 95.1
+    },
+    {
+      "dateMonth": "2024-10",
+      "qty": 98.0
+    },
+    {
+      "dateMonth": "2024-11",
+      "qty": 104.6
+    },
+    {
+      "dateMonth": "2024-12",
+      "qty": 107.4
+    },
+    {
+      "dateMonth": "2025-01",
+      "qty": 92.5
+    },
+    {
+      "dateMonth": "2025-02",
+      "qty": 77.3
+    },
+    {
+      "dateMonth": "2025-03",
+      "qty": 111.1
+    },
+    {
+      "dateMonth": "2025-04",
+      "qty": 99.8
+    },
+    {
+      "dateMonth": "2025-05",
+      "qty": 102.7
+    },
+    {
+      "dateMonth": "2025-06",
+      "qty": 102.6
+    },
+    {
+      "dateMonth": "2025-07",
+      "qty": 100.2
+    },
+    {
+      "dateMonth": "2025-08",
+      "qty": 101.9
+    },
+    {
+      "dateMonth": "2025-09",
+      "qty": 102.4
+    },
+    {
+      "dateMonth": "2025-10",
+      "qty": 104.9
+    },
+    {
+      "dateMonth": "2025-11",
+      "qty": 105.5
+    },
+    {
+      "dateMonth": "2025-12",
+      "qty": 101.7
+    }
+  ]
+}

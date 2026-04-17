@@ -17,3 +17,6 @@ wheels/
 
 # Qoder
 .qoder/
+
+# E2E test artifacts (generated per run)
+reports/e2e_artifacts/

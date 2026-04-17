@@ -1,0 +1,26 @@
+{
+  "api": "getMonthlyCargoThroughputCategory",
+  "path": "/api/gateway/getMonthlyCargoThroughputCategory",
+  "domain": "D2",
+  "intent": "查询月度货种吞吐量分类",
+  "params_sent": {
+    "date": "2026-03"
+  },
+  "status": "BIZ_ERROR",
+  "http_status": 200,
+  "error": "success=false, errorCode=3",
+  "response_pattern": "PATTERN_B",
+  "data_sample": {
+    "success": false,
+    "errorCode": 3,
+    "errorInfo": "未定义异常SQL executed exception, Query failed (#20260416_132110_79457_jnucg): line 15:84: Column 't0_cargo_category_name' cannot be resolved",
+    "data": null,
+    "space": 384,
+    "jdbcQuerySpace": 0,
+    "__more__": "...(3 more keys)"
+  },
+  "latency_ms": 398.8,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

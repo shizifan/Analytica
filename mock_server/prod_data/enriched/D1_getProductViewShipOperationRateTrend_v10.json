@@ -1,0 +1,103 @@
+{
+  "api": "getProductViewShipOperationRateTrend",
+  "path": "/api/gateway/getProductViewShipOperationRateTrend",
+  "domain": "D1",
+  "intent": "查询船舶作业效率月度趋势（集装箱/散货/油品曲线）",
+  "variant": "v10",
+  "params_sent": {
+    "startDate": "2025-10-01",
+    "endDate": "2025-12-31"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 12,
+  "latency_ms": 658.9,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "monthId": "2025-10",
+      "monthStr": "10月",
+      "statCargoKind": "粮食",
+      "tonQ": 376812.6,
+      "workTh": 537.2
+    },
+    {
+      "monthId": "2025-10",
+      "monthStr": "10月",
+      "statCargoKind": "煤炭",
+      "tonQ": 1586625.0,
+      "workTh": 1121.6
+    },
+    {
+      "monthId": "2025-10",
+      "monthStr": "10月",
+      "statCargoKind": "油品",
+      "tonQ": 1760938.0,
+      "workTh": 412.5
+    },
+    {
+      "monthId": "2025-10",
+      "monthStr": "10月",
+      "statCargoKind": "矿石",
+      "tonQ": 4586715.0,
+      "workTh": 1139.2
+    },
+    {
+      "monthId": "2025-11",
+      "monthStr": "11月",
+      "statCargoKind": "粮食",
+      "tonQ": 196699.7,
+      "workTh": 248.3
+    },
+    {
+      "monthId": "2025-11",
+      "monthStr": "11月",
+      "statCargoKind": "煤炭",
+      "tonQ": 1270661.0,
+      "workTh": 1055.7
+    },
+    {
+      "monthId": "2025-11",
+      "monthStr": "11月",
+      "statCargoKind": "矿石",
+      "tonQ": 3754994.0,
+      "workTh": 935.7
+    },
+    {
+      "monthId": "2025-11",
+      "monthStr": "11月",
+      "statCargoKind": "油品",
+      "tonQ": 1670000.0,
+      "workTh": 395.5
+    },
+    {
+      "monthId": "2025-12",
+      "monthStr": "12月",
+      "statCargoKind": "粮食",
+      "tonQ": 576530.1,
+      "workTh": 1050.6
+    },
+    {
+      "monthId": "2025-12",
+      "monthStr": "12月",
+      "statCargoKind": "煤炭",
+      "tonQ": 1148016.0,
+      "workTh": 892.5
+    },
+    {
+      "monthId": "2025-12",
+      "monthStr": "12月",
+      "statCargoKind": "油品",
+      "tonQ": 3239656.8,
+      "workTh": 693.9
+    },
+    {
+      "monthId": "2025-12",
+      "monthStr": "12月",
+      "statCargoKind": "矿石",
+      "tonQ": 3962239.0,
+      "workTh": 1225.9
+    }
+  ]
+}

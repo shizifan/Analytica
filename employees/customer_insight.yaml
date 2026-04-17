@@ -1,0 +1,88 @@
+employee_id: customer_insight
+name: 市场商务与战略客户洞察专家
+description: 专注于战略客户贡献分析、客户结构洞察和市场商务数据
+version: "1.1"
+domains: [D2, D3]
+endpoints: []  # 空 = D2+D3 全部端点
+
+skills:
+  - skill_api_fetch
+  - skill_desc_analysis
+  - skill_attribution
+  - skill_chart_line
+  - skill_chart_bar
+  - skill_summary_gen
+  - skill_report_html
+  - skill_report_pptx
+
+perception:
+  domain_keywords:
+    D2: [商务驾驶舱, 市场, 重点企业, 业务板块, 吞吐量分析]
+    D3: [客户, 战略客户, 客户贡献, 客户信用, 客户结构, 排名]
+  system_prompt_suffix: |
+    你是市场商务与战略客户洞察专家，专注于客户贡献排名、客户趋势分析、
+    客户结构变化洞察、市场商务数据分析。
+  extra_slots:
+    - name: client_name
+      required: false
+      priority: 8
+      inferable: false
+      meaning: "指定客户名称（如某战略客户）"
+    - name: ranking_metric
+      required: false
+      priority: 9
+      inferable: true
+      meaning: "排名维度（吞吐量/收入/利润/货量）"
+      allowed_values: [吞吐量, 收入, 利润, 货量]
+    - name: ranking_top_n
+      required: false
+      priority: 10
+      inferable: true
+      meaning: "排名取前 N 位（默认 10）"
+  slot_constraints:
+    domain:
+      allowed_values: [D2, D3]
+      default_value: D3
+    data_granularity:
+      allowed_values: [port, zone, company, customer, cargo, business]
+
+planning:
+  prompt_suffix: |
+    ## 分析策略 Cookbook
+
+    ### 核心原则
+    - 有 startDate/endDate 或 date(yyyy-MM) 参数的 API 能做时间维度分析
+    - 无时间参数的 API（getCustomerQty/getCustomerTypeAnalysis/getStrategicCustomers）返回当前快照
+    - 返回 num/typeName 透视格式的 API，需按 typeName 分组后提取各指标数值
+    - getSumContributionRankOfStrategicCustomer 返回 clientName/num，注意目前数据可能全为零
+
+    ### D3 客户分析策略
+    **客户概览（静态快照）：**
+    - 客户总量 → getCustomerQty（totalQty/outPortQty/strategyClientQty/customerFilesNumber）
+    - 客户类型结构 → getCustomerTypeAnalysis（clientType/qty）
+    - 客户行业分析 → getCustomerFieldAnalysis（field/count/ratio）
+    - 战略客户名单 → getStrategicCustomers（displayCode/displayName，仅名单无业绩数据）
+
+    **战略客户趋势分析（可做趋势）：**
+    - 当期月度趋势 → getCurStrategyCustomerTrendAnalysis（dateMonth/num/typeName 透视格式，多月×多指标）
+    - 历年累计趋势 → getSumStrategyCustomerTrendAnalysis（月份序列，长期趋势）
+
+    **战略客户排名与贡献：**
+    - 当月按货类贡献 → getCurStrategicCustomerContributionByCargoTypeThroughput（cargoType/strategicThroughput/contributionRate）
+    - 累计按货类贡献 → getSumStrategicCustomerContributionByCargoTypeThroughput（categoryName/num）
+    - 当月排名 → getCurContributionRankOfStrategicCustomer（rank/clientName/throughput/contributionRate）
+    - 累计排名 → getSumContributionRankOfStrategicCustomer（clientName/num，注意数据可能为零）
+
+    ### D2 市场商务分析策略（与客户分析结合）
+    - 重点企业排名 → getKeyEnterprise（throughput/companyName/dateMonth，需传 businessSegment）
+    - 累计重点企业 → getCumulativeKeyEnterprise（rank/enterpriseName/cumulativeThroughput）
+    - 月度趋势（按板块）→ getTrendChart（throughput/businessSegment/dateMonth，需 businessSegment+startDate+endDate）
+    - 累计趋势（按板块）→ getCumulativeTrendChart（throughput/businessSegment/dateYear）
+    - 各港区当月 → getMonthlyRegionalThroughputAreaBusinessDashboard（num/typeName/zoneName 透视格式）
+    - 注意：D2 的透视格式 API 需按 typeName/zoneName 分组
+
+    ### 图表选择
+    - 客户排名/贡献 → skill_chart_bar（横向排名柱状图）
+    - 客户类型/行业占比 → skill_chart_bar（堆叠或分组柱状图）
+    - 月度趋势分析 → skill_chart_line
+    - 客户洞察报告 → 优先使用 PPT 格式（skill_report_pptx）

@@ -1,0 +1,37 @@
+{
+  "api": "getProductEquipmentWorkingAmountByMonth",
+  "path": "/api/gateway/getProductEquipmentWorkingAmountByMonth",
+  "domain": "D7",
+  "intent": "查询生产设备当月作业量及同比",
+  "params_sent": {
+    "dateMonth": "2026-03"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 5,
+  "latency_ms": 344.8,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 18122461,
+      "ownerLgZoneName": "大连港区域"
+    },
+    {
+      "num": 1464872.0,
+      "ownerLgZoneName": "盘锦港区域"
+    },
+    {
+      "num": 8215529.0,
+      "ownerLgZoneName": "丹东港区域"
+    },
+    {
+      "num": 47339144,
+      "ownerLgZoneName": "营口港区域"
+    },
+    {
+      "num": 284501.0,
+      "ownerLgZoneName": "绥中港区域"
+    }
+  ]
+}

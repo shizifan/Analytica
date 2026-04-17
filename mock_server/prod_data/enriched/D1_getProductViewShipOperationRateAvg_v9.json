@@ -1,0 +1,39 @@
+{
+  "api": "getProductViewShipOperationRateAvg",
+  "path": "/api/gateway/getProductViewShipOperationRateAvg",
+  "domain": "D1",
+  "intent": "查询港口平均船舶作业效率（集装箱/散货/油品/滚装各业务类型）",
+  "variant": "v9",
+  "params_sent": {
+    "startDate": "2025-07-01",
+    "endDate": "2025-09-30"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 4,
+  "latency_ms": 687.4,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "statCargoKind": "煤炭",
+      "tonQ": 3690705.0,
+      "workTh": 2551.6
+    },
+    {
+      "statCargoKind": "油品",
+      "tonQ": 9004318.3,
+      "workTh": 1877.9
+    },
+    {
+      "statCargoKind": "矿石",
+      "tonQ": 12297522.3,
+      "workTh": 3531.2
+    },
+    {
+      "statCargoKind": "粮食",
+      "tonQ": 1533785.3,
+      "workTh": 2266.6
+    }
+  ]
+}

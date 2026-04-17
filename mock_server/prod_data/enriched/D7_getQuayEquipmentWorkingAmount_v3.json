@@ -1,0 +1,58 @@
+{
+  "api": "getQuayEquipmentWorkingAmount",
+  "path": "/api/gateway/getQuayEquipmentWorkingAmount",
+  "domain": "D7",
+  "intent": "查询岸边设备月度作业量及同比（集装箱台数）",
+  "variant": "v3",
+  "params_sent": {
+    "dateMonth": "2025-12"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 10,
+  "latency_ms": 809.8,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 0.0,
+      "typeName": "输油臂作业量同比"
+    },
+    {
+      "num": 0.0,
+      "typeName": "输油臂作业量"
+    },
+    {
+      "num": 12044760.0,
+      "typeName": "散杂货同比"
+    },
+    {
+      "num": 769261.0,
+      "typeName": "粮食同比"
+    },
+    {
+      "num": 9114010.0,
+      "typeName": "散杂货"
+    },
+    {
+      "num": 390952.0,
+      "typeName": "粮食"
+    },
+    {
+      "num": 1182839.0,
+      "typeName": "矿石"
+    },
+    {
+      "num": 402238.0,
+      "typeName": "集装箱"
+    },
+    {
+      "num": 2105015.0,
+      "typeName": "矿石同比"
+    },
+    {
+      "num": 796762.0,
+      "typeName": "同比集装箱"
+    }
+  ]
+}

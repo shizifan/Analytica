@@ -1,0 +1,139 @@
+{
+  "api": "getMachineDataDisplayEquipmentReliability",
+  "path": "/api/gateway/getMachineDataDisplayEquipmentReliability",
+  "domain": "D7",
+  "intent": "查询集装箱设备可靠性指标（MTBF/MTTR/故障次数，机种展示屏）",
+  "variant": "v2",
+  "params_sent": {
+    "secondLevelClassName": "岸桥",
+    "dateYear": "2024"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 24,
+  "latency_ms": 485.8,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "usageRate": 4871.761194029851,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-01"
+    },
+    {
+      "usageRate": 4702.2962962962965,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-02"
+    },
+    {
+      "usageRate": 4316.409090909091,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-03"
+    },
+    {
+      "usageRate": 4754.876712328767,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-04"
+    },
+    {
+      "usageRate": 5189.868852459016,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-05"
+    },
+    {
+      "usageRate": 4928.24,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-06"
+    },
+    {
+      "usageRate": 4458.742424242424,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-07"
+    },
+    {
+      "usageRate": 4948.677419354839,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-08"
+    },
+    {
+      "usageRate": 5634.892307692307,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-09"
+    },
+    {
+      "usageRate": 4891.192307692308,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-10"
+    },
+    {
+      "usageRate": 4776.138888888889,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-11"
+    },
+    {
+      "usageRate": 4685.924242424242,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-12"
+    },
+    {
+      "usageRate": 4783.811594202899,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-01"
+    },
+    {
+      "usageRate": 4817.62,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-02"
+    },
+    {
+      "usageRate": 5112.068493150685,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-03"
+    },
+    {
+      "usageRate": 5067.166666666667,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-04"
+    },
+    {
+      "usageRate": 4839.014705882353,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-05"
+    },
+    {
+      "usageRate": 4382.014925373134,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-06"
+    },
+    {
+      "usageRate": 5243.833333333333,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-07"
+    },
+    {
+      "usageRate": 5749.338461538461,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-08"
+    },
+    {
+      "usageRate": 4893.650793650793,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-09"
+    },
+    {
+      "usageRate": 4498.544117647059,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-10"
+    },
+    {
+      "usageRate": 4760.31884057971,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-11"
+    },
+    {
+      "usageRate": 3163.453703703704,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-12"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "api": "getMainAssetsInfo",
+  "path": "/api/gateway/getMainAssetsInfo",
+  "domain": "D5",
+  "intent": "查询港区主要资产类别数量（设备/设施/房屋/土地）",
+  "params_sent": {
+    "ownerZone": "全港"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 587.5,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

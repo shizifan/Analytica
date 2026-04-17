@@ -1,0 +1,318 @@
+{
+  "api": "getEquipmentFacilityAnalysis",
+  "path": "/api/gateway/getEquipmentFacilityAnalysis",
+  "domain": "D5",
+  "intent": "查询设备或设施分类分析（type=1设备/type=2设施）",
+  "params_sent": {
+    "dateYear": "2026",
+    "type": "1"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 60,
+  "latency_ms": 468.3,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 274.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "专用机械"
+    },
+    {
+      "num": 761.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "压力管道设备"
+    },
+    {
+      "num": 55.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "计量设备"
+    },
+    {
+      "num": 638.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "其他装卸机械设备"
+    },
+    {
+      "num": 22.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "锅炉设备"
+    },
+    {
+      "num": 10.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "专用车辆"
+    },
+    {
+      "num": 113.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "电梯设备"
+    },
+    {
+      "num": 112.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "辅助生产机械设备"
+    },
+    {
+      "num": 152.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "压力容器设备"
+    },
+    {
+      "num": 15647.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "其他设备"
+    },
+    {
+      "num": 4.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "其他车辆"
+    },
+    {
+      "num": 21.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "机车"
+    },
+    {
+      "num": 512.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "集装箱专用设备"
+    },
+    {
+      "num": 112.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "船舶"
+    },
+    {
+      "num": 700.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "装卸搬运机械"
+    },
+    {
+      "num": 639.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "办公车辆"
+    },
+    {
+      "num": 175.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "油运设备"
+    },
+    {
+      "num": 247.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "工属具"
+    },
+    {
+      "num": 602.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "起重机械"
+    },
+    {
+      "num": 552.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "连续输送机械"
+    },
+    {
+      "num": 28936480.0,
+      "typeName": "资产原值",
+      "assetTypeName": "压力容器设备"
+    },
+    {
+      "num": 1336608562,
+      "typeName": "资产原值",
+      "assetTypeName": "连续输送机械"
+    },
+    {
+      "num": 382393.0,
+      "typeName": "资产原值",
+      "assetTypeName": "专用车辆"
+    },
+    {
+      "num": 62534946,
+      "typeName": "资产原值",
+      "assetTypeName": "其他装卸机械设备"
+    },
+    {
+      "num": 3537571511,
+      "typeName": "资产原值",
+      "assetTypeName": "集装箱专用设备"
+    },
+    {
+      "num": 30786171,
+      "typeName": "资产原值",
+      "assetTypeName": "锅炉设备"
+    },
+    {
+      "num": 30174974,
+      "typeName": "资产原值",
+      "assetTypeName": "计量设备"
+    },
+    {
+      "num": 77833787,
+      "typeName": "资产原值",
+      "assetTypeName": "辅助生产机械设备"
+    },
+    {
+      "num": 3520773291,
+      "typeName": "资产原值",
+      "assetTypeName": "船舶"
+    },
+    {
+      "num": 199226376,
+      "typeName": "资产原值",
+      "assetTypeName": "电梯设备"
+    },
+    {
+      "num": 461275566,
+      "typeName": "资产原值",
+      "assetTypeName": "装卸搬运机械"
+    },
+    {
+      "num": 135698463,
+      "typeName": "资产原值",
+      "assetTypeName": "其他设备"
+    },
+    {
+      "num": 100336228,
+      "typeName": "资产原值",
+      "assetTypeName": "机车"
+    },
+    {
+      "num": 403709.0,
+      "typeName": "资产原值",
+      "assetTypeName": "其他车辆"
+    },
+    {
+      "num": 77484587,
+      "typeName": "资产原值",
+      "assetTypeName": "油运设备"
+    },
+    {
+      "num": 20110687,
+      "typeName": "资产原值",
+      "assetTypeName": "办公车辆"
+    },
+    {
+      "num": 29984818,
+      "typeName": "资产原值",
+      "assetTypeName": "工属具"
+    },
+    {
+      "num": 828827993,
+      "typeName": "资产原值",
+      "assetTypeName": "压力管道设备"
+    },
+    {
+      "num": 2445160803,
+      "typeName": "资产原值",
+      "assetTypeName": "专用机械"
+    },
+    {
+      "num": 3091246019,
+      "typeName": "资产原值",
+      "assetTypeName": "起重机械"
+    },
+    {
+      "num": 19501787,
+      "typeName": "资产净值",
+      "assetTypeName": "压力容器设备"
+    },
+    {
+      "num": 366643687,
+      "typeName": "资产净值",
+      "assetTypeName": "压力管道设备"
+    },
+    {
+      "num": 778992925,
+      "typeName": "资产净值",
+      "assetTypeName": "专用机械"
+    },
+    {
+      "num": 14282630.0,
+      "typeName": "资产净值",
+      "assetTypeName": "其他装卸机械设备"
+    },
+    {
+      "num": 5247871.0,
+      "typeName": "资产净值",
+      "assetTypeName": "计量设备"
+    },
+    {
+      "num": 3950982.0,
+      "typeName": "资产净值",
+      "assetTypeName": "锅炉设备"
+    },
+    {
+      "num": 1713505443,
+      "typeName": "资产净值",
+      "assetTypeName": "集装箱专用设备"
+    },
+    {
+      "num": 3179059.0,
+      "typeName": "资产净值",
+      "assetTypeName": "办公车辆"
+    },
+    {
+      "num": 19120.0,
+      "typeName": "资产净值",
+      "assetTypeName": "专用车辆"
+    },
+    {
+      "num": 74019095,
+      "typeName": "资产净值",
+      "assetTypeName": "装卸搬运机械"
+    },
+    {
+      "num": 16743783,
+      "typeName": "资产净值",
+      "assetTypeName": "辅助生产机械设备"
+    },
+    {
+      "num": 58839941,
+      "typeName": "资产净值",
+      "assetTypeName": "其他设备"
+    },
+    {
+      "num": 35599230.0,
+      "typeName": "资产净值",
+      "assetTypeName": "机车"
+    },
+    {
+      "num": 20186.0,
+      "typeName": "资产净值",
+      "assetTypeName": "其他车辆"
+    },
+    {
+      "num": 146867453,
+      "typeName": "资产净值",
+      "assetTypeName": "电梯设备"
+    },
+    {
+      "num": 1599113476,
+      "typeName": "资产净值",
+      "assetTypeName": "船舶"
+    },
+    {
+      "num": 3971167.0,
+      "typeName": "资产净值",
+      "assetTypeName": "工属具"
+    },
+    {
+      "num": 43008640.0,
+      "typeName": "资产净值",
+      "assetTypeName": "油运设备"
+    },
+    {
+      "num": 1262895250.0,
+      "typeName": "资产净值",
+      "assetTypeName": "起重机械"
+    },
+    {
+      "num": 566581508,
+      "typeName": "资产净值",
+      "assetTypeName": "连续输送机械"
+    }
+  ]
+}

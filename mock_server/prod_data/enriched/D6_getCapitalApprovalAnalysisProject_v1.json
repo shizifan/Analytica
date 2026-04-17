@@ -1,0 +1,34 @@
+{
+  "api": "getCapitalApprovalAnalysisProject",
+  "path": "/api/gateway/getCapitalApprovalAnalysisProject",
+  "domain": "D6",
+  "intent": "查询各项目类型资本性项目批复分析",
+  "variant": "v1",
+  "params_sent": {
+    "dateYear": "2025"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 4,
+  "latency_ms": 483.4,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 57.0,
+      "typeName": "当年交付项目数"
+    },
+    {
+      "num": 1348.0,
+      "typeName": "当年项目数"
+    },
+    {
+      "num": 126.0,
+      "typeName": "去年交付项目数"
+    },
+    {
+      "num": 1500.0,
+      "typeName": "去年项目数"
+    }
+  ]
+}

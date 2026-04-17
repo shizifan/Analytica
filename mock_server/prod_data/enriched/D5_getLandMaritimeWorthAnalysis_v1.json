@@ -1,0 +1,38 @@
+{
+  "api": "getLandMaritimeWorthAnalysis",
+  "path": "/api/gateway/getLandMaritimeWorthAnalysis",
+  "domain": "D5",
+  "intent": "查询土地海域资产类型价值分析（工业/港口/绿化/海域使用权）",
+  "variant": "v1",
+  "params_sent": {
+    "dateYear": "2025"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 4,
+  "latency_ms": 450.7,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 1,
+      "typeName": "资产原值",
+      "rate": "1000以上"
+    },
+    {
+      "num": 9,
+      "typeName": "资产净值",
+      "rate": "0-50"
+    },
+    {
+      "num": 9,
+      "typeName": "资产原值",
+      "rate": "0-50"
+    },
+    {
+      "num": 1,
+      "typeName": "资产净值",
+      "rate": "1000以上"
+    }
+  ]
+}

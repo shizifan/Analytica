@@ -1,0 +1,319 @@
+{
+  "api": "getMachineDataDisplaySingleUnitEnergyConsumption",
+  "path": "/api/gateway/getMachineDataDisplaySingleUnitEnergyConsumption",
+  "domain": "D7",
+  "intent": "查询指定机种下各单台设备月度能耗（机种展示屏）",
+  "variant": "v6",
+  "params_sent": {
+    "secondLevelClassName": "岸桥",
+    "date": "2025-03"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 75,
+  "latency_ms": 400.2,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "workingAmount": 142030.0,
+      "equipmentNo": "A02050120072102100056"
+    },
+    {
+      "workingAmount": 101170.0,
+      "equipmentNo": "A02050120082111100028"
+    },
+    {
+      "workingAmount": 51610.0,
+      "equipmentNo": "A02050120202106100035"
+    },
+    {
+      "workingAmount": 122382.0,
+      "equipmentNo": "A02050120232108100058"
+    },
+    {
+      "workingAmount": 278100.0,
+      "equipmentNo": "A02050120122108100034"
+    },
+    {
+      "workingAmount": 103880.0,
+      "equipmentNo": "A02050120052102100016"
+    },
+    {
+      "workingAmount": 187434.0,
+      "equipmentNo": "A02050120122108100113"
+    },
+    {
+      "workingAmount": 135840.0,
+      "equipmentNo": "A02050120072102100010"
+    },
+    {
+      "workingAmount": 149370.0,
+      "equipmentNo": "A02050120082102100026"
+    },
+    {
+      "workingAmount": 212166.0,
+      "equipmentNo": "A02050120162108100023"
+    },
+    {
+      "workingAmount": 115660.0,
+      "equipmentNo": "A02050120052102100025"
+    },
+    {
+      "workingAmount": 111520.0,
+      "equipmentNo": "A02050120062102100068"
+    },
+    {
+      "workingAmount": 173220.0,
+      "equipmentNo": "A02050120122102100014"
+    },
+    {
+      "workingAmount": 133810.0,
+      "equipmentNo": "A02050119982102100049"
+    },
+    {
+      "workingAmount": 70690.0,
+      "equipmentNo": "A02050120082111100019"
+    },
+    {
+      "workingAmount": 153040.0,
+      "equipmentNo": "A02050120042102100019"
+    },
+    {
+      "workingAmount": 176900.0,
+      "equipmentNo": "A02050120142102100018"
+    },
+    {
+      "workingAmount": 60228.0,
+      "equipmentNo": "A02050120232108100067"
+    },
+    {
+      "workingAmount": 303426.0,
+      "equipmentNo": "A02050120122108100070"
+    },
+    {
+      "workingAmount": 161110.0,
+      "equipmentNo": "A02050120032102100021"
+    },
+    {
+      "workingAmount": 163746.0,
+      "equipmentNo": "A02050120122108100016"
+    },
+    {
+      "workingAmount": 151002.0,
+      "equipmentNo": "A02050120232108100049"
+    },
+    {
+      "workingAmount": 141430.0,
+      "equipmentNo": "A02050119982102100030"
+    },
+    {
+      "workingAmount": 292464.0,
+      "equipmentNo": "A02050120122108100098"
+    },
+    {
+      "workingAmount": 156890.0,
+      "equipmentNo": "A02050120032102100012"
+    },
+    {
+      "workingAmount": 307278.0,
+      "equipmentNo": "A02050120122108100052"
+    },
+    {
+      "workingAmount": 289908.0,
+      "equipmentNo": "A02050120122108100043"
+    },
+    {
+      "workingAmount": 10710.0,
+      "equipmentNo": "A02050120042111100011"
+    },
+    {
+      "workingAmount": 165980.0,
+      "equipmentNo": "A02050120042102100037"
+    },
+    {
+      "workingAmount": 213966.0,
+      "equipmentNo": "A02050120142108100010"
+    },
+    {
+      "workingAmount": 219708.0,
+      "equipmentNo": "A02050120192108100015"
+    },
+    {
+      "workingAmount": 178578.0,
+      "equipmentNo": "A02050120122108100131"
+    },
+    {
+      "workingAmount": 133960.0,
+      "equipmentNo": "A02050120142102100027"
+    },
+    {
+      "workingAmount": 128350.0,
+      "equipmentNo": "A02050120052102100043"
+    },
+    {
+      "workingAmount": 46330.0,
+      "equipmentNo": "A02050120202106100017"
+    },
+    {
+      "workingAmount": 233208.0,
+      "equipmentNo": "A02050120232108100012"
+    },
+    {
+      "workingAmount": 312390.0,
+      "equipmentNo": "A02050120122108100061"
+    },
+    {
+      "workingAmount": 256374.0,
+      "equipmentNo": "A02050120192108100033"
+    },
+    {
+      "workingAmount": 166200.0,
+      "equipmentNo": "A02050120042102100028"
+    },
+    {
+      "workingAmount": 146380.0,
+      "equipmentNo": "A02050120082102100035"
+    },
+    {
+      "workingAmount": 135030.0,
+      "equipmentNo": "A02050120072102100038"
+    },
+    {
+      "workingAmount": 230508.0,
+      "equipmentNo": "A02050120192108100051"
+    },
+    {
+      "workingAmount": 109980.0,
+      "equipmentNo": "A02050120072102100047"
+    },
+    {
+      "workingAmount": 198684.0,
+      "equipmentNo": "A02050120142108100029"
+    },
+    {
+      "workingAmount": 147570.0,
+      "equipmentNo": "A02050120082102100017"
+    },
+    {
+      "workingAmount": 267588.0,
+      "equipmentNo": "A02050120122108100089"
+    },
+    {
+      "workingAmount": 143860.0,
+      "equipmentNo": "A02050120062102100013"
+    },
+    {
+      "workingAmount": 208890.0,
+      "equipmentNo": "A02050120162108100014"
+    },
+    {
+      "workingAmount": 92080.0,
+      "equipmentNo": "A02050120082111100037"
+    },
+    {
+      "workingAmount": 142720.0,
+      "equipmentNo": "A02050120032102100030"
+    },
+    {
+      "workingAmount": 272142.0,
+      "equipmentNo": "A02050120152108100017"
+    },
+    {
+      "workingAmount": 82500.0,
+      "equipmentNo": "A02050120202106100026"
+    },
+    {
+      "workingAmount": 101376.0,
+      "equipmentNo": "A02050120222108100015"
+    },
+    {
+      "workingAmount": 217026.0,
+      "equipmentNo": "A02050120232108100030"
+    },
+    {
+      "workingAmount": 72870.0,
+      "equipmentNo": "A02050120082111100046"
+    },
+    {
+      "workingAmount": 156780.0,
+      "equipmentNo": "A02050120062102100031"
+    },
+    {
+      "workingAmount": 112280.0,
+      "equipmentNo": "A02050119982102100012"
+    },
+    {
+      "workingAmount": 144800.0,
+      "equipmentNo": "A02050120052102100034"
+    },
+    {
+      "workingAmount": 319068.0,
+      "equipmentNo": "A02050120122108100104"
+    },
+    {
+      "workingAmount": 123830.0,
+      "equipmentNo": "A02050120072102100029"
+    },
+    {
+      "workingAmount": 122580.0,
+      "equipmentNo": "A02050119982102100021"
+    },
+    {
+      "workingAmount": 185166.0,
+      "equipmentNo": "A02050120122108100122"
+    },
+    {
+      "workingAmount": 141610.0,
+      "equipmentNo": "A02050120062102100059"
+    },
+    {
+      "workingAmount": 168630.0,
+      "equipmentNo": "A02050120122102100023"
+    },
+    {
+      "workingAmount": 227952.0,
+      "equipmentNo": "A02050120192108100024"
+    },
+    {
+      "workingAmount": 195012.0,
+      "equipmentNo": "A02050120162108100032"
+    },
+    {
+      "workingAmount": 256446.0,
+      "equipmentNo": "A02050120192108100042"
+    },
+    {
+      "workingAmount": 217026.0,
+      "equipmentNo": "A02050120122108100025"
+    },
+    {
+      "workingAmount": 0.0,
+      "equipmentNo": "A02050120032102100049"
+    },
+    {
+      "workingAmount": 107424.0,
+      "equipmentNo": "A02050120222108100024"
+    },
+    {
+      "workingAmount": 19910.0,
+      "equipmentNo": "A02050120202106100080"
+    },
+    {
+      "workingAmount": 138310.0,
+      "equipmentNo": "A02050120062102100022"
+    },
+    {
+      "workingAmount": 225540.0,
+      "equipmentNo": "A02050120232108100021"
+    },
+    {
+      "workingAmount": 163860.0,
+      "equipmentNo": "A02050120062102100040"
+    },
+    {
+      "workingAmount": 39980.0,
+      "equipmentNo": "A02050120042111100020"
+    }
+  ]
+}

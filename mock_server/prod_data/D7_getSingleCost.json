@@ -1,0 +1,16 @@
+{
+  "api": "getSingleCost",
+  "path": "/api/gateway/getSingleCost",
+  "domain": "D7",
+  "intent": "查询单台设备年度成本（燃油/电力/维修/其他及单位成本）",
+  "params_sent": {
+    "equipmentNo": "EQ001"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 282.0,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

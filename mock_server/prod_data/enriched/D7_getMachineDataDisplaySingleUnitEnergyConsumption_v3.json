@@ -1,0 +1,17 @@
+{
+  "api": "getMachineDataDisplaySingleUnitEnergyConsumption",
+  "path": "/api/gateway/getMachineDataDisplaySingleUnitEnergyConsumption",
+  "domain": "D7",
+  "intent": "查询指定机种下各单台设备月度能耗（机种展示屏）",
+  "variant": "v3",
+  "params_sent": {
+    "secondLevelClassName": "岸桥",
+    "date": "2025-12"
+  },
+  "status": "OK_UNKNOWN_FORMAT",
+  "error": null,
+  "latency_ms": 31.7,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

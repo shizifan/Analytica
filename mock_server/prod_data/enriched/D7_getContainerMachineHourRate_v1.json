@@ -1,0 +1,66 @@
+{
+  "api": "getContainerMachineHourRate",
+  "path": "/api/gateway/getContainerMachineHourRate",
+  "domain": "D7",
+  "intent": "查询集装箱装卸设备台时效率（岸桥/RTG分项，月度曲线）",
+  "variant": "v1",
+  "params_sent": {
+    "dateYear": "2025"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 12,
+  "latency_ms": 389.2,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "machineHourRate": 8.3,
+      "dateMonth": "2025-01"
+    },
+    {
+      "machineHourRate": 7.6,
+      "dateMonth": "2025-02"
+    },
+    {
+      "machineHourRate": 9.5,
+      "dateMonth": "2025-03"
+    },
+    {
+      "machineHourRate": 9.2,
+      "dateMonth": "2025-04"
+    },
+    {
+      "machineHourRate": 9.7,
+      "dateMonth": "2025-05"
+    },
+    {
+      "machineHourRate": 9.2,
+      "dateMonth": "2025-06"
+    },
+    {
+      "machineHourRate": 9.3,
+      "dateMonth": "2025-07"
+    },
+    {
+      "machineHourRate": 9.3,
+      "dateMonth": "2025-08"
+    },
+    {
+      "machineHourRate": 9.5,
+      "dateMonth": "2025-09"
+    },
+    {
+      "machineHourRate": 10.1,
+      "dateMonth": "2025-10"
+    },
+    {
+      "machineHourRate": 6.9,
+      "dateMonth": "2025-11"
+    },
+    {
+      "machineHourRate": 7.3,
+      "dateMonth": "2025-12"
+    }
+  ]
+}

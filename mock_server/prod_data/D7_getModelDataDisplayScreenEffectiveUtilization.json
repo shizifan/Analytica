@@ -1,0 +1,30 @@
+{
+  "api": "getModelDataDisplayScreenEffectiveUtilization",
+  "path": "/api/gateway/getModelDataDisplayScreenEffectiveUtilization",
+  "domain": "D7",
+  "intent": "查询指定机种年度有效利用率（机种展示屏）",
+  "params_sent": {
+    "secondLevelClassName": "岸桥",
+    "dateYear": "2026"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 3,
+  "latency_ms": 359.9,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "usageRate": 0.3703148148148148,
+      "dateMonth": "2026-01"
+    },
+    {
+      "usageRate": 0.31693415637860084,
+      "dateMonth": "2026-02"
+    },
+    {
+      "usageRate": 0.3559074074074074,
+      "dateMonth": "2026-03"
+    }
+  ]
+}

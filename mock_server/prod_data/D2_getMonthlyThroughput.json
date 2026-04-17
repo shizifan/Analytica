@@ -1,0 +1,28 @@
+{
+  "api": "getMonthlyThroughput",
+  "path": "/api/gateway/getMonthlyThroughput",
+  "domain": "D2",
+  "intent": "查询当月吞吐量及与去年同期对比（市场商务驾驶舱，可按港区筛选）",
+  "params_sent": {
+    "curDateMonth": "2026-03",
+    "yearDateMonth": "2025-03"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 2,
+  "latency_ms": 337.6,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "ioTrade": "外贸",
+      "throughput": 1903.45,
+      "dateMonth": "2025-03"
+    },
+    {
+      "ioTrade": "内贸",
+      "throughput": 2559.65,
+      "dateMonth": "2025-03"
+    }
+  ]
+}

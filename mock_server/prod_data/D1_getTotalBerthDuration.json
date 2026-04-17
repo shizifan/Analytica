@@ -1,0 +1,27 @@
+{
+  "api": "getTotalBerthDuration",
+  "path": "/api/gateway/getTotalBerthDuration",
+  "domain": "D1",
+  "intent": "查询机构靠泊总时长和占用率（指定时间段）",
+  "params_sent": {
+    "statDate": "2026-03-01",
+    "endDate": "2026-03-31"
+  },
+  "status": "BIZ_ERROR",
+  "http_status": 200,
+  "error": "success=false, errorCode=103",
+  "response_pattern": "PATTERN_B",
+  "data_sample": {
+    "success": false,
+    "errorCode": 103,
+    "errorInfo": "参数解析异常参数orgName为必填项",
+    "data": null,
+    "space": 37,
+    "jdbcQuerySpace": 0,
+    "__more__": "...(3 more keys)"
+  },
+  "latency_ms": 51.2,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

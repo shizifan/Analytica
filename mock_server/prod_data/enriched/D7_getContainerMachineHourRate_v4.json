@@ -1,0 +1,17 @@
+{
+  "api": "getContainerMachineHourRate",
+  "path": "/api/gateway/getContainerMachineHourRate",
+  "domain": "D7",
+  "intent": "查询集装箱装卸设备台时效率（岸桥/RTG分项，月度曲线）",
+  "variant": "v4",
+  "params_sent": {
+    "dateYear": "2026",
+    "ownerZone": "全港"
+  },
+  "status": "OK_UNKNOWN_FORMAT",
+  "error": null,
+  "latency_ms": 24.2,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

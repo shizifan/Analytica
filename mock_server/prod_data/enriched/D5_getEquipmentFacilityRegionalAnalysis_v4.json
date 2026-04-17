@@ -1,0 +1,79 @@
+{
+  "api": "getEquipmentFacilityRegionalAnalysis",
+  "path": "/api/gateway/getEquipmentFacilityRegionalAnalysis",
+  "domain": "D5",
+  "intent": "查询各港区设备/设施数量和净值分布",
+  "variant": "v4",
+  "params_sent": {
+    "dateYear": "2026",
+    "type": "2"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 12,
+  "latency_ms": 607.6,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 531.0,
+      "typeName": "实物资产数",
+      "ownerZone": "丹东"
+    },
+    {
+      "num": 316.0,
+      "typeName": "实物资产数",
+      "ownerZone": "盘锦"
+    },
+    {
+      "num": 1004.0,
+      "typeName": "实物资产数",
+      "ownerZone": "大连"
+    },
+    {
+      "num": 845.0,
+      "typeName": "实物资产数",
+      "ownerZone": "营口"
+    },
+    {
+      "num": 12200036768,
+      "typeName": "资产原值",
+      "ownerZone": "大连"
+    },
+    {
+      "num": 6098850463,
+      "typeName": "资产原值",
+      "ownerZone": "盘锦"
+    },
+    {
+      "num": 12330670793,
+      "typeName": "资产原值",
+      "ownerZone": "营口"
+    },
+    {
+      "num": 184238838,
+      "typeName": "资产原值",
+      "ownerZone": "丹东"
+    },
+    {
+      "num": 4523838239,
+      "typeName": "资产净值",
+      "ownerZone": "盘锦"
+    },
+    {
+      "num": 8113210158,
+      "typeName": "资产净值",
+      "ownerZone": "大连"
+    },
+    {
+      "num": 8132271040.0,
+      "typeName": "资产净值",
+      "ownerZone": "营口"
+    },
+    {
+      "num": 125311533,
+      "typeName": "资产净值",
+      "ownerZone": "丹东"
+    }
+  ]
+}

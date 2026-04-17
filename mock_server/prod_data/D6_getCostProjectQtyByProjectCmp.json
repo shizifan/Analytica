@@ -1,0 +1,515 @@
+{
+  "api": "getCostProjectQtyByProjectCmp",
+  "path": "/api/gateway/getCostProjectQtyByProjectCmp",
+  "domain": "D6",
+  "intent": "查询各公司成本性项目数量和完成情况",
+  "params_sent": {
+    "dateYear": "2026"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 83,
+  "latency_ms": 509.8,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "projectCmp": "辽港控股（营口）有限公司应急保障中心",
+      "projectQty": 1,
+      "investAmt": 60.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽港控股（营口）有限公司第四分公司",
+      "projectQty": 15,
+      "investAmt": 1524.0,
+      "finishPayAmt": 1798498.5
+    },
+    {
+      "projectCmp": "营口港对外经济合作发展有限公司",
+      "projectQty": 7,
+      "investAmt": 74.6,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽港控股（营口）有限公司集装箱码头分公司",
+      "projectQty": 7,
+      "investAmt": 398.9,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽港股份（含代管）",
+      "projectQty": 40,
+      "investAmt": 5862.6,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连外轮理货有限公司",
+      "projectQty": 23,
+      "investAmt": 357.1,
+      "finishPayAmt": 77034.8
+    },
+    {
+      "projectCmp": "营口港务集团有限公司客运分公司",
+      "projectQty": 3,
+      "investAmt": 29.8,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连长兴岛港口投资发展有限公司",
+      "projectQty": 17,
+      "investAmt": 1204.5,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "营口中理外轮理货有限责任公司",
+      "projectQty": 5,
+      "investAmt": 263.6,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽港控股（营口）有限公司实业发展分公司",
+      "projectQty": 12,
+      "investAmt": 639.4,
+      "finishPayAmt": 105525.7
+    },
+    {
+      "projectCmp": "秦皇岛集港船舶代理有限公司",
+      "projectQty": 2,
+      "investAmt": 14.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连港口建设监理咨询有限公司",
+      "projectQty": 21,
+      "investAmt": 97.1,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "营口红运港口集装箱发展有限公司",
+      "projectQty": 5,
+      "investAmt": 15.5,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连海嘉汽车码头有限公司",
+      "projectQty": 24,
+      "investAmt": 225.1,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽宁港口股份有限公司",
+      "projectQty": 4,
+      "investAmt": 42.4,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连港通信工程有限公司",
+      "projectQty": 6,
+      "investAmt": 138.7,
+      "finishPayAmt": 9430.0
+    },
+    {
+      "projectCmp": "盘锦港集团有限公司集装箱分公司",
+      "projectQty": 8,
+      "investAmt": 145.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽港控股（营口）有限公司水电分公司",
+      "projectQty": 11,
+      "investAmt": 551.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连港旅顺港务有限公司",
+      "projectQty": 3,
+      "investAmt": 98.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连港保安公司",
+      "projectQty": 2,
+      "investAmt": 1.8,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽港控股（营口）有限公司机械分公司",
+      "projectQty": 9,
+      "investAmt": 424.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连国际物流园发展有限公司",
+      "projectQty": 4,
+      "investAmt": 10.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "营口新港矿石码头有限公司",
+      "projectQty": 6,
+      "investAmt": 720.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽港控股（营口）有限公司第六分公司",
+      "projectQty": 10,
+      "investAmt": 808.5,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽港控股（营口）有限公司汽车运输分公司",
+      "projectQty": 8,
+      "investAmt": 185.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽港控股（营口）有限公司",
+      "projectQty": 27,
+      "investAmt": 4682.6,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "营口港务集团有限公司",
+      "projectQty": 3,
+      "investAmt": 210.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽宁港口股份有限公司大连港电力分公司",
+      "projectQty": 26,
+      "investAmt": 639.5,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽港控股（营口）有限公司第一分公司",
+      "projectQty": 9,
+      "investAmt": 1079.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "盘锦港集团有限公司",
+      "projectQty": 7,
+      "investAmt": 320.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连集发南岸国际物流有限公司",
+      "projectQty": 25,
+      "investAmt": 385.7,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "丹东港口集团有限公司",
+      "projectQty": 20,
+      "investAmt": 1787.2,
+      "finishPayAmt": 1034261.5
+    },
+    {
+      "projectCmp": "营口港仙人岛码头有限公司",
+      "projectQty": 14,
+      "investAmt": 996.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连港散杂货码头分公司（矿石）",
+      "projectQty": 11,
+      "investAmt": 252.4,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "营口港通电子商务有限公司",
+      "projectQty": 8,
+      "investAmt": 1330.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连港资产经营管理公司",
+      "projectQty": 72,
+      "investAmt": 2062.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "盘锦港物流发展有限公司",
+      "projectQty": 17,
+      "investAmt": 472.4,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "营口新世纪集装箱码头有限公司",
+      "projectQty": 9,
+      "investAmt": 336.5,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连集装箱码头有限公司",
+      "projectQty": 17,
+      "investAmt": 4089.7,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽宁港口股份有限公司大连港轮驳分公司",
+      "projectQty": 38,
+      "investAmt": 1610.7,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "丹东港口集团铁路分公司",
+      "projectQty": 3,
+      "investAmt": 41.5,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽港控股（营口）有限公司第三分公司",
+      "projectQty": 2,
+      "investAmt": 16.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽宁港口股份有限公司大连港客运分公司",
+      "projectQty": 33,
+      "investAmt": 653.5,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "丹东港口集团轮驳分公司",
+      "projectQty": 9,
+      "investAmt": 388.0,
+      "finishPayAmt": 362200.3
+    },
+    {
+      "projectCmp": "辽宁集铁国际物流有限公司",
+      "projectQty": 3,
+      "investAmt": 96.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽宁港口股份有限公司大连港铁路分公司",
+      "projectQty": 10,
+      "investAmt": 184.9,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽港控股（营口）有限公司粮食分公司",
+      "projectQty": 11,
+      "investAmt": 687.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连集发环渤海集装箱运输有限公司",
+      "projectQty": 33,
+      "investAmt": 249.2,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连港石化有限公司",
+      "projectQty": 21,
+      "investAmt": 581.4,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连港油码头有限公司",
+      "projectQty": 42,
+      "investAmt": 3521.6,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连港教育培训中心",
+      "projectQty": 15,
+      "investAmt": 159.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "盘锦港集团有限公司第二分公司",
+      "projectQty": 22,
+      "investAmt": 499.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连长兴岛港口有限公司",
+      "projectQty": 20,
+      "investAmt": 170.4,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "绥中港集团有限公司",
+      "projectQty": 23,
+      "investAmt": 1239.2,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连港散杂货码头分公司",
+      "projectQty": 27,
+      "investAmt": 705.3,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连港湾东车物流有限公司",
+      "projectQty": 7,
+      "investAmt": 68.2,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽宁港口股份有限公司广鹿客运分公司",
+      "projectQty": 4,
+      "investAmt": 21.5,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连口岸物流网股份有限公司",
+      "projectQty": 37,
+      "investAmt": 1064.1,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "招商港融大数据股份有限公司",
+      "projectQty": 18,
+      "investAmt": 1251.8,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连港集团有限公司",
+      "projectQty": 5,
+      "investAmt": 147.4,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连集发船舶代理有限公司",
+      "projectQty": 11,
+      "investAmt": 176.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "绥中港集团有限公司港口服务分公司",
+      "projectQty": 5,
+      "investAmt": 290.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连港集发物流有限责任公司",
+      "projectQty": 25,
+      "investAmt": 407.1,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连港引航站",
+      "projectQty": 16,
+      "investAmt": 141.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "营口港船货代理有限责任公司",
+      "projectQty": 6,
+      "investAmt": 282.0,
+      "finishPayAmt": 605968.2
+    },
+    {
+      "projectCmp": "丹东港口集团杂货码头分公司",
+      "projectQty": 1,
+      "investAmt": 3.5,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "内蒙古陆港保税物流园有限公司",
+      "projectQty": 1,
+      "investAmt": 14.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "丹东港口集团有限公司港口服务分公司",
+      "projectQty": 2,
+      "investAmt": 173.8,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "营口港务集团有限公司港口服务分公司",
+      "projectQty": 23,
+      "investAmt": 728.2,
+      "finishPayAmt": 173982.6
+    },
+    {
+      "projectCmp": "大连汽车码头有限公司",
+      "projectQty": 13,
+      "investAmt": 178.7,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "盘锦港集团有限公司轮驳分公司",
+      "projectQty": 4,
+      "investAmt": 165.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "招商港航数字科技（辽宁）有限公司",
+      "projectQty": 131,
+      "investAmt": 3929.5,
+      "finishPayAmt": 545576.3
+    },
+    {
+      "projectCmp": "大连集发船舶管理有限公司",
+      "projectQty": 11,
+      "investAmt": 85.6,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽港控股（营口）有限公司第二分公司",
+      "projectQty": 6,
+      "investAmt": 614.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连港电力有限公司",
+      "projectQty": 5,
+      "investAmt": 24.9,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "盘锦港集团有限公司第一分公司",
+      "projectQty": 6,
+      "investAmt": 212.3,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽宁港口股份有限公司大连港散粮码头分公司",
+      "projectQty": 26,
+      "investAmt": 681.9,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "营口港务集团有限公司物流分公司",
+      "projectQty": 4,
+      "investAmt": 186.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "辽港控股（营口）有限公司轮驳分公司",
+      "projectQty": 14,
+      "investAmt": 883.9,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "营口港保税货物储运有限公司",
+      "projectQty": 4,
+      "investAmt": 48.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "盘锦中理外轮理货有限公司",
+      "projectQty": 2,
+      "investAmt": 11.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "盘锦港集团有限公司港口服务分公司",
+      "projectQty": 7,
+      "investAmt": 49.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "projectCmp": "大连集发船舶代理有限公司烟台分公司",
+      "projectQty": 2,
+      "investAmt": 12.5,
+      "finishPayAmt": 0.0
+    }
+  ]
+}

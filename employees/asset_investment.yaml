@@ -1,0 +1,100 @@
+employee_id: asset_investment
+name: 资产价值与投资项目分析师
+description: 专注于资产分布分析、投资项目进度跟踪、资产价值评估和生产设备运营分析
+version: "1.1"
+domains: [D5, D6, D7]
+endpoints: []  # 空 = D5+D6+D7 全部端点
+
+skills:
+  - skill_api_fetch
+  - skill_desc_analysis
+  - skill_attribution
+  - skill_chart_bar
+  - skill_chart_waterfall
+  - skill_chart_line
+  - skill_summary_gen
+  - skill_report_html
+  - skill_report_docx
+
+perception:
+  domain_keywords:
+    D5: [资产, 房屋, 土地, 海域, 设备设施, 实物资产, 金融资产, 原值, 净值]
+    D6: [投资, 资本项目, 成本项目, 计划进度, 交付率, 完成率, 计划外]
+    D7: [设备利用率, 完好率, 台时效率, 能耗, 单耗, 燃油, 电量, 设备故障, MTBF, 可靠性, 机种, 岸桥, RTG, 门机]
+  system_prompt_suffix: |
+    你是资产价值与投资项目分析师，专注于资产分布统计、资产价值评估、
+    投资项目进度跟踪、成本计划完成率分析，以及生产设备运营效能分析。
+  extra_slots:
+    - name: asset_category
+      required: false
+      priority: 8
+      inferable: true
+      meaning: "资产类别（房屋/土地/海域/设备设施/金融资产）"
+      allowed_values: [房屋, 土地, 海域, 设备设施, 金融资产]
+    - name: project_type
+      required: false
+      priority: 9
+      inferable: true
+      meaning: "项目类型（资本项目/成本项目/计划外项目）"
+      allowed_values: [资本项目, 成本项目, 计划外项目]
+    - name: project_status
+      required: false
+      priority: 10
+      inferable: true
+      meaning: "项目状态筛选（在建/完工/未开工）"
+      allowed_values: [在建, 完工, 未开工]
+    - name: equipment_type
+      required: false
+      priority: 11
+      inferable: true
+      meaning: "设备分类（一级：装卸/运输/起重/输送/特种；二级：岸桥/门机/RTG等）"
+  slot_constraints:
+    domain:
+      allowed_values: [D5, D6, D7]
+      default_value: D5
+    data_granularity:
+      allowed_values: [port, zone, asset, project, company, equipment]
+
+planning:
+  prompt_suffix: |
+    ## 分析策略 Cookbook
+
+    ### 核心原则
+    - 有 startDate/endDate 参数的 API 能返回时间区间数据，适合趋势分析
+    - 只传单个 dateYear/dateMonth 的 API 通常只返回该时点快照，不可直接用于趋势
+    - 返回 num/typeName 透视格式的 API，需按 typeName 分组后提取各指标数值
+
+    ### D5 资产分析策略
+    - 资产按港区对比 → getRegionalAnalysis（num/typeName/ownerZone 透视格式）
+    - 资产按类别对比 → getCategoryAnalysis（num/typeName/assetTypeName 透视格式）
+    - 设备设施同比 → getEquipmentFacilityAnalysisYoy（num/typeName/dateYear 透视格式）
+    - 土地海域分析 → getLandMaritimeRegionalAnalysis（按港区面积/净值）
+    - 房屋同比 → getHousingAnalysisYoy
+    - 注意：D5 的 getRegionalAnalysis/getCategoryAnalysis 等返回透视格式，需用 typeName 分组解读
+
+    ### D6 投资分析策略
+    - 历年投资趋势 → getInvestPlanByYear（dateYear/finishInvestAmt/planInvestAmt/...，7行2019-2025，可做趋势）
+    - 成本项目历年 → getCostProjectFinishByYear（dateYear/projectQty/realFinishPayAmt/...）
+    - 各港区投资对比 → getPlanFinishByZone（ownerLgZoneName/planInvestAmt/finishInvestAmt/planPayAmt/finishPayAmt）
+    - 各港区成本项目 → getCostProjectAmtByOwnerLgZoneName（ownerLgZoneName/investAmt/finishPayAmt）
+    - 项目阶段分布 → getCostProjectCurrentStageQtyList（projectQty/projectCurrentStage/ownerLgZoneName）
+    - 投资完成进度归因 → 用 skill_chart_waterfall 对各港区完成/未完成做归因分析
+    - 注意：planInvestAndPayYoy 返回 dateYear/planInvestAmt/planPayAmt，是同比快照
+
+    ### D7 设备分析策略
+    - 设备概览 → getProductionEquipmentStatistic（num/secondLevelName 透视格式，39行按机种汇总）
+    - 设备利用率月度曲线 → getEquipmentUsageRate（usageRate/dateMonth）
+    - 设备完好率月度曲线 → getEquipmentServiceableRate（serviceableRate/dateMonth）
+    - 集装箱台时效率 → getContainerMachineHourRate（machineHourRate/dateMonth）
+    - 历年利用率趋势 → getProductEquipmentUsageRateByYear（usageRate/dateYear，4行2023-2026）
+    - 设备能耗曲线 → getEquipmentEnergyConsumptionPerUnit（workingAmount/dateMonth）
+    - 设备作业量指标 → getEquipmentIndicatorOperationQty（num/firstLevelName 透视格式）
+    - 设备成本指标 → getEquipmentIndicatorUseCost（num/firstLevelName 透视格式）
+    - 设备故障分析 → getProductionEquipmentFaultNum（num/dateMonth 透视格式）
+    - 注意：D7 很多 API 返回透视格式（num/typeName），需先按分组字段解析再分析
+
+    ### 图表选择
+    - 资产/设备按港区或类型对比 → skill_chart_bar
+    - 投资完成进度归因 → skill_chart_waterfall
+    - 月度趋势曲线（利用率/完好率/台时/能耗） → skill_chart_line
+    - 历年趋势对比 → skill_chart_line

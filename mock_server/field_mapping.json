@@ -1,0 +1,1796 @@
+{
+  "getBerthOccupancyRateByBusinessType": {
+    "domain": "D1",
+    "fields": [
+      "businessType",
+      "dateMonth",
+      "rate"
+    ],
+    "count": 12,
+    "sample": {
+      "businessType": "滚装",
+      "dateMonth": "2026-01",
+      "rate": 0.096
+    }
+  },
+  "getBerthOccupancyRateByRegion": {
+    "domain": "D1",
+    "fields": [
+      "dateMonth",
+      "rate",
+      "regionName"
+    ],
+    "count": 15,
+    "sample": {
+      "regionName": "大连港",
+      "dateMonth": "2026-01",
+      "rate": 0.3258
+    }
+  },
+  "getContainerAnalysisYoyMomByYear": {
+    "domain": "D1",
+    "fields": [
+      "dateType",
+      "qty",
+      "regionName",
+      "statType"
+    ],
+    "count": 45,
+    "sample": {
+      "regionName": "大连港",
+      "qty": 1.8,
+      "statType": "当期",
+      "dateType": "年"
+    }
+  },
+  "getContainerByBusinessType": {
+    "domain": "D1",
+    "fields": [
+      "finishQty",
+      "regionName",
+      "targetQty"
+    ],
+    "count": 5,
+    "sample": {
+      "regionName": "大连港",
+      "targetQty": 45.1,
+      "finishQty": 50.0
+    }
+  },
+  "getContainerThroughputAnalysisByYear": {
+    "domain": "D1",
+    "fields": [
+      "dateMonth",
+      "qty"
+    ],
+    "count": 16,
+    "sample": {
+      "dateMonth": "2025-01",
+      "qty": 92.5
+    }
+  },
+  "getOilsChemBreakBulkByBusinessType": {
+    "domain": "D1",
+    "fields": [
+      "finishQty",
+      "regionName",
+      "targetQty"
+    ],
+    "count": 5,
+    "sample": {
+      "regionName": "大连港",
+      "targetQty": 557.1,
+      "finishQty": 501.1
+    }
+  },
+  "getPersonalCenterCargoThroughput": {
+    "domain": "D1",
+    "fields": [
+      "curTeuQ",
+      "curTonQ",
+      "momTeuQ",
+      "momTonQ",
+      "regionName",
+      "yoyTeuQ",
+      "yoyTonQ"
+    ],
+    "count": 5,
+    "sample": {
+      "regionName": "绥中",
+      "curTonQ": 2.4,
+      "curTeuQ": 340,
+      "momTonQ": 2.4,
+      "momTeuQ": 0,
+      "yoyTonQ": 5.4,
+      "yoyTeuQ": 214
+    }
+  },
+  "getPersonalCenterMonthCargoThroughput": {
+    "domain": "D1",
+    "fields": [
+      "curTeuQ",
+      "curTonQ",
+      "momTeuQ",
+      "momTonQ",
+      "regionName",
+      "yoyTeuQ",
+      "yoyTonQ"
+    ],
+    "count": 5,
+    "sample": {
+      "regionName": "丹东",
+      "curTonQ": 222.4,
+      "curTeuQ": 2.4,
+      "momTonQ": 179.1,
+      "momTeuQ": 1.4,
+      "yoyTonQ": 307.1,
+      "yoyTeuQ": 2.5
+    }
+  },
+  "getPersonalCenterYearCargoThroughput": {
+    "domain": "D1",
+    "fields": [
+      "curTeuQ",
+      "curTonQ",
+      "regionName",
+      "yoyTeuQ",
+      "yoyTonQ"
+    ],
+    "count": 5,
+    "sample": {
+      "regionName": "大连",
+      "curTonQ": 4939.4,
+      "curTeuQ": 130.5,
+      "yoyTonQ": 4933.5,
+      "yoyTeuQ": 127.3
+    }
+  },
+  "getPersonalCenterYearCargoThroughputTrend": {
+    "domain": "D1",
+    "fields": [
+      "monthId",
+      "regionName",
+      "teuQ",
+      "tonQ",
+      "yearId"
+    ],
+    "count": 15,
+    "sample": {
+      "regionName": "盘锦",
+      "yearId": "2026",
+      "monthId": "01月",
+      "tonQ": 204.7,
+      "teuQ": 4.4
+    }
+  },
+  "getPortCompanyThroughput": {
+    "domain": "D1",
+    "fields": [
+      "businessType",
+      "dateYear",
+      "num"
+    ],
+    "count": 2,
+    "sample": {
+      "num": 0.0,
+      "businessType": "集装箱",
+      "dateYear": 2026
+    }
+  },
+  "getProdShipDesc": {
+    "domain": "D1",
+    "fields": [
+      "anchorageVesselDesc",
+      "orgType",
+      "portVesselDesc"
+    ],
+    "count": 5,
+    "sample": {
+      "portVesselDesc": "%3Cp%3E1.20%E4%B8%87%E5%90%A8%E6%B3%8A%E4%BD%8D%E2%80%9C%E7%9B%9B%E5%AE%89%E6%B4%8B%E2%80%9D%E8%BD%AE%E5%8D%B8%E9%93%81%E7%9F%BF7.5%E4%B8%87%E5%90%A8%EF%BC%88%E6%9C%AC%E9%92%A2%E3%80%81225%E7%B1%B3%E3%80%81%E5%90%83%E6%B0%B414.3%EF%BC%89%EF%BC%8C4%E6%9C%8812%E6%97%A504:25%E7%9B%B4%E9%9D%A0%EF%BC%8C%E7%AD%89%E6%B5%B7%E5%85%B3%E6%89%8B%E7%BB%AD%EF%BC%8C11:00%E5%BC%80%E5%B7%A5%EF%BC%8C%E6%9C%AC%E7%8F%AD%E6%AC%A1%E4%BD%9C%E4%B8%9A0.4%E4%B8%87%E5%90%A8%EF%BC%8C%E4%BD%994.3%E4%B8%87%E5%90%A8%E7%BB%A7%E7%BB%AD%EF%BC%88%E7%8E%B0%E4%BD%9C%E4%B8%9A%E5%8D%8A%E8%88%B1%E4%BB%A5%E4%B8%8B%E8%B4%A7%E7%89%A9%EF%BC%8C%E6%96%99%E6%B9%BF%E7%B2%98%E7%A8%8B%E5%BA%A6%E4%B8%A5%E9%87%8D%EF%BC%8C%E6%B8%85%E6%96%99%E9%A2%91%E7%B9%81%E5%BD%B1%E5%93%8D%E5%8D%B8%E8%88%B9%E6%95%88%E7%8E%87%EF%BC%89%E3%80%82%3C/p%3E",
+      "anchorageVesselDesc": "%3Cp%3E%EF%BC%88%E4%B8%80%EF%BC%89%E7%B2%AE%E8%88%B9%3C/p%3E%3Cp%3E1.%E2%80%9C%E6%98%8E%E4%B9%902%E2%80%9D%E8%BD%AE%E8%A3%85%E7%8E%89%E7%B1%B34.3%E4%B8%87%E5%90%A8%EF%BC%88%E5%BB%BA%E5%8F%91%E3%80%81186%E7%B1%B3%E3%80%81%E5%90%83%E6%B0%B411.40%EF%BC%89%EF%BC%8C4%E6%9C%8815%E6%97%A523:33%E6%8A%B5%E9%94%9A%EF%BC%88%E6%AD%A3%E5%9C%A8%E9%9D%A0%E6%B3%8A%EF%BC%89%E3%80%82%3C/p%3E",
+      "orgType": "丹东区域"
+    }
+  },
+  "getProdShipDynNum": {
+    "domain": "D1",
+    "fields": [
+      "num",
+      "orgType",
+      "typeName"
+    ],
+    "count": 16,
+    "sample": {
+      "typeName": "离泊船",
+      "num": 26,
+      "orgType": "营口区域"
+    }
+  },
+  "getProductViewShipOperationRateAvg": {
+    "domain": "D1",
+    "fields": [
+      "statCargoKind",
+      "tonQ",
+      "workTh"
+    ],
+    "count": 4,
+    "sample": {
+      "statCargoKind": "油品",
+      "tonQ": 6190829.0,
+      "workTh": 1451.7
+    }
+  },
+  "getProductViewShipOperationRateTrend": {
+    "domain": "D1",
+    "fields": [
+      "monthId",
+      "monthStr",
+      "statCargoKind",
+      "tonQ",
+      "workTh"
+    ],
+    "count": 12,
+    "sample": {
+      "monthId": "2026-01",
+      "monthStr": "01月",
+      "statCargoKind": "矿石",
+      "tonQ": 4108393.9,
+      "workTh": 1061.6
+    }
+  },
+  "getRealTimeWeather": {
+    "domain": "D1",
+    "fields": [
+      "createTime",
+      "regionName",
+      "stationId",
+      "stationName",
+      "weather"
+    ],
+    "count": 140,
+    "sample": {
+      "regionName": "大连",
+      "stationId": "L2413",
+      "stationName": "大连湾港区",
+      "weather": "当前温度15.0℃,东风2级",
+      "createTime": "2026-04-16 10:00:02"
+    }
+  },
+  "getRoroByBusinessType": {
+    "domain": "D1",
+    "fields": [
+      "finishQty",
+      "regionName",
+      "targetQty"
+    ],
+    "count": 1,
+    "sample": {
+      "regionName": "大连港",
+      "targetQty": 13.0,
+      "finishQty": 12.0
+    }
+  },
+  "getShipStatisticsByBusinessType": {
+    "domain": "D1",
+    "fields": [
+      "anchorageQty",
+      "berthQty",
+      "businessType",
+      "planQty"
+    ],
+    "count": 4,
+    "sample": {
+      "planQty": 18,
+      "berthQty": 12,
+      "anchorageQty": 2,
+      "businessType": "货船"
+    }
+  },
+  "getThroughputAnalysisByYear": {
+    "domain": "D1",
+    "fields": [
+      "dateMonth",
+      "qty"
+    ],
+    "count": 16,
+    "sample": {
+      "dateMonth": "2025-01",
+      "qty": 4177.1
+    }
+  },
+  "getThroughputAnalysisContainer": {
+    "domain": "D1",
+    "fields": [
+      "finishQty",
+      "regionName",
+      "targetQty"
+    ],
+    "count": 5,
+    "sample": {
+      "regionName": "大连港",
+      "targetQty": 541.0,
+      "finishQty": 153.9
+    }
+  },
+  "getThroughputAnalysisNonContainer": {
+    "domain": "D1",
+    "fields": [
+      "finishQty",
+      "regionName",
+      "targetQty"
+    ],
+    "count": 5,
+    "sample": {
+      "regionName": "大连港",
+      "finishQty": 5697.5,
+      "targetQty": 20215.0
+    }
+  },
+  "getThroughputAnalysisYoyMomByDay": {
+    "domain": "D1",
+    "fields": [
+      "momQty",
+      "qty",
+      "regionName",
+      "yoyQty"
+    ],
+    "count": 6,
+    "sample": {
+      "regionName": "辽港",
+      "qty": 48.49,
+      "yoyQty": 51.03,
+      "momQty": 70.43
+    }
+  },
+  "getThroughputAnalysisYoyMomByMonth": {
+    "domain": "D1",
+    "fields": [
+      "momQty",
+      "qty",
+      "regionName",
+      "yoyQty"
+    ],
+    "count": 6,
+    "sample": {
+      "regionName": "营口港",
+      "qty": 941.1,
+      "yoyQty": 935.86,
+      "momQty": 951.54
+    }
+  },
+  "getThroughputAnalysisYoyMomByYear": {
+    "domain": "D1",
+    "fields": [
+      "dateType",
+      "qty",
+      "regionName",
+      "statType"
+    ],
+    "count": 47,
+    "sample": {
+      "regionName": "大连港",
+      "qty": 80.6,
+      "statType": "同比",
+      "dateType": "年"
+    }
+  },
+  "getThroughputAndTargetThroughputTeu": {
+    "domain": "D1",
+    "fields": [
+      "finishQty",
+      "targetQty"
+    ],
+    "count": 1,
+    "sample": {
+      "targetQty": 1200.0,
+      "finishQty": 338.89
+    }
+  },
+  "getThroughputAndTargetThroughputTon": {
+    "domain": "D1",
+    "fields": [
+      "finishQty",
+      "targetQty"
+    ],
+    "count": 1,
+    "sample": {
+      "targetQty": 48000.0,
+      "finishQty": 13320.63
+    }
+  },
+  "getVesselOperationEfficiency": {
+    "domain": "D1",
+    "fields": [
+      "curEfficiency",
+      "lastEfficiency"
+    ],
+    "count": 1,
+    "sample": {
+      "curEfficiency": null,
+      "lastEfficiency": null
+    }
+  },
+  "getWeatherForecast": {
+    "domain": "D1",
+    "fields": [
+      "furtherDate",
+      "regionCode",
+      "regionName",
+      "weather"
+    ],
+    "count": 15,
+    "sample": {
+      "regionCode": "DL",
+      "regionName": "大连",
+      "furtherDate": "2026-04-17",
+      "weather": "晴,偏南风4到5级,10℃~18℃"
+    }
+  },
+  "getCumulativeKeyEnterprise": {
+    "domain": "D2",
+    "fields": [
+      "companyName",
+      "dateYear",
+      "throughput"
+    ],
+    "count": 14,
+    "sample": {
+      "throughput": 395.82,
+      "companyName": "集装箱码头公司",
+      "dateYear": "2025"
+    }
+  },
+  "getCumulativeRegionalThroughput": {
+    "domain": "D2",
+    "fields": [
+      "num",
+      "typeName",
+      "zoneName"
+    ],
+    "count": 6,
+    "sample": {
+      "num": 8656.3,
+      "typeName": "计划吞吐量",
+      "zoneName": "辽港"
+    }
+  },
+  "getCumulativeThroughput": {
+    "domain": "D2",
+    "fields": [
+      "dateYear",
+      "ioTrade",
+      "throughput"
+    ],
+    "count": 4,
+    "sample": {
+      "ioTrade": "外贸",
+      "throughput": 3612.12,
+      "dateYear": "2026"
+    }
+  },
+  "getCumulativeTrendChart": {
+    "domain": "D2",
+    "fields": [
+      "businessSegment",
+      "dateYear",
+      "throughput"
+    ],
+    "count": 2,
+    "sample": {
+      "throughput": 2535.2,
+      "businessSegment": "集装箱",
+      "dateYear": "2026"
+    }
+  },
+  "getCurBusinessDashboardThroughput": {
+    "domain": "D2",
+    "fields": [
+      "num",
+      "typeName"
+    ],
+    "count": 8,
+    "sample": {
+      "num": null,
+      "typeName": "当期吞吐量"
+    }
+  },
+  "getKeyEnterprise": {
+    "domain": "D2",
+    "fields": [
+      "companyName",
+      "dateMonth",
+      "throughput"
+    ],
+    "count": 7,
+    "sample": {
+      "throughput": 485.62,
+      "companyName": "股份集码",
+      "dateMonth": "2025-03"
+    }
+  },
+  "getMonthlyRegionalThroughputAreaBusinessDashboard": {
+    "domain": "D2",
+    "fields": [
+      "num",
+      "typeName",
+      "zoneName"
+    ],
+    "count": 6,
+    "sample": {
+      "num": 993.5,
+      "typeName": "计划吞吐量",
+      "zoneName": "营口港"
+    }
+  },
+  "getSumBusinessDashboardThroughput": {
+    "domain": "D2",
+    "fields": [
+      "num",
+      "typeName"
+    ],
+    "count": 8,
+    "sample": {
+      "num": null,
+      "typeName": "当期吞吐量"
+    }
+  },
+  "getTrendChart": {
+    "domain": "D2",
+    "fields": [
+      "businessSegment",
+      "dateMonth",
+      "throughput"
+    ],
+    "count": 1,
+    "sample": {
+      "throughput": 1064.4,
+      "businessSegment": "集装箱",
+      "dateMonth": "2026-02"
+    }
+  },
+  "getCurContributionRankOfStrategicCustomer": {
+    "domain": "D3",
+    "fields": [
+      "clientName",
+      "num"
+    ],
+    "count": 37,
+    "sample": {
+      "num": 0.0,
+      "clientName": "广州汽车集团股份有限公司"
+    }
+  },
+  "getCurStrategicCustomerContributionByCargoTypeThroughput": {
+    "domain": "D3",
+    "fields": [
+      "categoryName",
+      "num"
+    ],
+    "count": 4,
+    "sample": {
+      "num": 0.0,
+      "categoryName": "散杂货"
+    }
+  },
+  "getCurStrategyCustomerTrendAnalysis": {
+    "domain": "D3",
+    "fields": [
+      "dateMonth",
+      "num",
+      "typeName"
+    ],
+    "count": 13,
+    "sample": {
+      "num": 0.0,
+      "dateMonth": "2026-03",
+      "typeName": "当年吞吐量"
+    }
+  },
+  "getCustomerFieldAnalysis": {
+    "domain": "D3",
+    "fields": [
+      "indstryFieldName",
+      "qty"
+    ],
+    "count": 17,
+    "sample": {
+      "indstryFieldName": "煤炭",
+      "qty": 176
+    }
+  },
+  "getCustomerQty": {
+    "domain": "D3",
+    "fields": [
+      "customerFilesNumber",
+      "outPortQty",
+      "strategyClientQty",
+      "totalQty"
+    ],
+    "count": 1,
+    "sample": {
+      "totalQty": 6411,
+      "outPortQty": 6272,
+      "strategyClientQty": 37,
+      "customerFilesNumber": 9048
+    }
+  },
+  "getCustomerTypeAnalysis": {
+    "domain": "D3",
+    "fields": [
+      "clientType",
+      "qty"
+    ],
+    "count": 13,
+    "sample": {
+      "clientType": "自然人",
+      "qty": 1
+    }
+  },
+  "getStrategicCustomers": {
+    "domain": "D3",
+    "fields": [
+      "displayCode",
+      "displayName"
+    ],
+    "count": 37,
+    "sample": {
+      "displayCode": "68c7d73b7cfb65000157bfad",
+      "displayName": "中国远洋海运集团有限公司"
+    }
+  },
+  "getSumContributionRankOfStrategicCustomer": {
+    "domain": "D3",
+    "fields": [
+      "clientName",
+      "num"
+    ],
+    "count": 37,
+    "sample": {
+      "num": 0.0,
+      "clientName": "吉林省吉电国际贸易有限公司"
+    }
+  },
+  "getSumStrategicCustomerContributionByCargoTypeThroughput": {
+    "domain": "D3",
+    "fields": [
+      "categoryName",
+      "num"
+    ],
+    "count": 4,
+    "sample": {
+      "num": 0.0,
+      "categoryName": "油化品"
+    }
+  },
+  "getSumStrategyCustomerTrendAnalysis": {
+    "domain": "D3",
+    "fields": [
+      "dateYear",
+      "num"
+    ],
+    "count": 2,
+    "sample": {
+      "num": 0.0,
+      "dateYear": 2026
+    }
+  },
+  "investCorpShareholdingProp": {
+    "domain": "D4",
+    "fields": [
+      "num",
+      "ratio",
+      "ratioName"
+    ],
+    "count": 9,
+    "sample": {
+      "num": 149,
+      "ratioName": "绝对控制线",
+      "ratio": "67%"
+    }
+  },
+  "getAssetValue": {
+    "domain": "D5",
+    "fields": [
+      "netlValue",
+      "originalValue",
+      "periodNetlValue",
+      "periodOriginalValue"
+    ],
+    "count": 1,
+    "sample": {
+      "originalValue": null,
+      "periodOriginalValue": null,
+      "netlValue": null,
+      "periodNetlValue": null
+    }
+  },
+  "getCategoryAnalysis": {
+    "domain": "D5",
+    "fields": [
+      "assetTypeName",
+      "num",
+      "typeName"
+    ],
+    "count": 24,
+    "sample": {
+      "num": 5315.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "设施"
+    }
+  },
+  "getCategoryAnalysisTransparentTransmission": {
+    "domain": "D5",
+    "fields": [
+      "num",
+      "ownerUnitName",
+      "typeName"
+    ],
+    "count": 306,
+    "sample": {
+      "num": 4197.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "荣海丰集装箱有限公司"
+    }
+  },
+  "getEquipmentFacilityAnalysis": {
+    "domain": "D5",
+    "fields": [
+      "assetTypeName",
+      "num",
+      "typeName"
+    ],
+    "count": 60,
+    "sample": {
+      "num": 22.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "锅炉设备"
+    }
+  },
+  "getEquipmentFacilityAnalysisYoy": {
+    "domain": "D5",
+    "fields": [
+      "dateYear",
+      "num",
+      "typeName"
+    ],
+    "count": 6,
+    "sample": {
+      "num": 26371.0,
+      "typeName": "实物资产数",
+      "dateYear": 2025.0
+    }
+  },
+  "getEquipmentFacilityRegionalAnalysis": {
+    "domain": "D5",
+    "fields": [
+      "num",
+      "ownerZone",
+      "typeName"
+    ],
+    "count": 12,
+    "sample": {
+      "num": 1791.0,
+      "typeName": "实物资产数",
+      "ownerZone": "营口"
+    }
+  },
+  "getEquipmentFacilityStatusAnalysis": {
+    "domain": "D5",
+    "fields": [
+      "assetStatus",
+      "num",
+      "typeName"
+    ],
+    "count": 24,
+    "sample": {
+      "num": 9.0,
+      "typeName": "实物资产数",
+      "assetStatus": "报废"
+    }
+  },
+  "getEquipmentFacilityWorthAnalysis": {
+    "domain": "D5",
+    "fields": [
+      "num",
+      "rate",
+      "typeName"
+    ],
+    "count": 10,
+    "sample": {
+      "num": 3,
+      "typeName": "资产净值",
+      "rate": "100-500"
+    }
+  },
+  "getHousingAnalysisYoy": {
+    "domain": "D5",
+    "fields": [
+      "dateYear",
+      "num",
+      "typeName"
+    ],
+    "count": 8,
+    "sample": {
+      "num": 0.0,
+      "typeName": "面积",
+      "dateYear": 2025.0
+    }
+  },
+  "getImportAssertAnalysisList": {
+    "domain": "D5",
+    "fields": [
+      "assetCode",
+      "assetFirstname",
+      "assetName",
+      "assetStatus",
+      "assetStatusName",
+      "assetTypeName",
+      "buyDate",
+      "cardId",
+      "netValue",
+      "originalValue",
+      "ownerZone",
+      "propertyUnit",
+      "realAssetTypeName",
+      "specModel",
+      "useUnit"
+    ],
+    "count": 5,
+    "sample": {
+      "assetFirstname": "应用系统",
+      "assetStatusName": "启用",
+      "cardId": "70444",
+      "realAssetTypeName": "软件",
+      "assetTypeName": "生产操作系统",
+      "assetName": "危险货物场站系统信创项目",
+      "assetCode": "A51020220262102000016",
+      "ownerZone": null,
+      "propertyUnit": "大连集发南岸国际物流有限公司",
+      "useUnit": "大连集发南岸国际物流有限公司",
+      "originalValue": null,
+      "netValue": null,
+      "specModel": null,
+      "buyDate": "2026-01-01",
+      "assetStatus": "新增"
+    }
+  },
+  "getLandMaritimeAnalysisTransparentTransmission": {
+    "domain": "D5",
+    "fields": [
+      "num",
+      "ownerUnitName",
+      "typeName"
+    ],
+    "count": 129,
+    "sample": {
+      "num": 1.0,
+      "typeName": "实物资产数",
+      "ownerUnitName": "辽港控股（营口）有限公司集装箱码头分公司"
+    }
+  },
+  "getLandMaritimeAnalysisYoy": {
+    "domain": "D5",
+    "fields": [
+      "dateYear",
+      "num",
+      "typeName"
+    ],
+    "count": 6,
+    "sample": {
+      "num": 637463554,
+      "typeName": "资产原值",
+      "dateYear": 2026.0
+    }
+  },
+  "getLandMaritimeRegionalAnalysis": {
+    "domain": "D5",
+    "fields": [
+      "num",
+      "ownerZone",
+      "typeName"
+    ],
+    "count": 6,
+    "sample": {
+      "num": 8.0,
+      "typeName": "实物资产数",
+      "ownerZone": "营口"
+    }
+  },
+  "getLandMaritimeWorthAnalysis": {
+    "domain": "D5",
+    "fields": [
+      "num",
+      "rate",
+      "typeName"
+    ],
+    "count": 4,
+    "sample": {
+      "num": 9,
+      "typeName": "资产净值",
+      "rate": "0-50"
+    }
+  },
+  "getPhysicalAssets": {
+    "domain": "D5",
+    "fields": [
+      "dateYear",
+      "num",
+      "typeName"
+    ],
+    "count": 6,
+    "sample": {
+      "num": 71624.0,
+      "typeName": "实物资产数",
+      "dateYear": 2026.0
+    }
+  },
+  "getRegionalAnalysis": {
+    "domain": "D5",
+    "fields": [
+      "num",
+      "ownerZone",
+      "typeName"
+    ],
+    "count": 12,
+    "sample": {
+      "num": 11152.0,
+      "typeName": "实物资产数",
+      "ownerZone": "丹东"
+    }
+  },
+  "getTotalssets": {
+    "domain": "D5",
+    "fields": [
+      "assetQty",
+      "realAssetQty"
+    ],
+    "count": 1,
+    "sample": {
+      "assetQty": 0.0,
+      "realAssetQty": 0.0
+    }
+  },
+  "getCapitalApprovalAnalysisLimitInquiry": {
+    "domain": "D6",
+    "fields": [
+      "num",
+      "typeName"
+    ],
+    "count": 6,
+    "sample": {
+      "num": null,
+      "typeName": "当年实际完成支付额"
+    }
+  },
+  "getCapitalApprovalAnalysisProject": {
+    "domain": "D6",
+    "fields": [
+      "num",
+      "typeName"
+    ],
+    "count": 4,
+    "sample": {
+      "num": null,
+      "typeName": "当年交付项目数"
+    }
+  },
+  "getCapitalProjectsList": {
+    "domain": "D6",
+    "fields": [
+      "captProjectPayProgress",
+      "captProjectPhysicalProgress",
+      "dateMonth",
+      "finishInvestAmt",
+      "finishPayAmt",
+      "investProjectStatus",
+      "investProjectStatusName",
+      "investProjectType",
+      "ownerDept",
+      "ownerLgZoneName",
+      "planInvestAmt",
+      "planPayAmt",
+      "planYear",
+      "proAmt",
+      "projectCurrentStage",
+      "projectName",
+      "projectNo"
+    ],
+    "count": 20,
+    "sample": {
+      "dateMonth": "2025-08",
+      "projectName": "EAM设备管理系统",
+      "projectNo": "PGYGS-2025-N-4-4",
+      "investProjectType": "IT",
+      "investProjectStatus": "3",
+      "investProjectStatusName": "在建",
+      "projectCurrentStage": "已关闭",
+      "captProjectPhysicalProgress": 100.0,
+      "captProjectPayProgress": 1.0,
+      "ownerLgZoneName": "盘锦港",
+      "ownerDept": "无归口部门",
+      "planYear": "2025",
+      "proAmt": 0.01,
+      "planInvestAmt": 0.01,
+      "planPayAmt": 0.01,
+      "finishInvestAmt": 0.0,
+      "finishPayAmt": 0.0
+    }
+  },
+  "getCostProjectAmtByOwnerLgZoneName": {
+    "domain": "D6",
+    "fields": [
+      "finishPayAmt",
+      "investAmt",
+      "ownerLgZoneName"
+    ],
+    "count": 7,
+    "sample": {
+      "ownerLgZoneName": "营口港",
+      "investAmt": 17695.7,
+      "finishPayAmt": 2683975.0
+    }
+  },
+  "getCostProjectCurrentStageQtyList": {
+    "domain": "D6",
+    "fields": [
+      "ownerLgZoneName",
+      "projectCurrentStage",
+      "projectQty"
+    ],
+    "count": 16,
+    "sample": {
+      "projectQty": 197,
+      "projectCurrentStage": "配置",
+      "ownerLgZoneName": "营口港"
+    }
+  },
+  "getCostProjectFinishByYear": {
+    "domain": "D6",
+    "fields": [
+      "costApplyInvestAmt",
+      "dateYear",
+      "projectQty",
+      "realFinishPayAmt"
+    ],
+    "count": 2,
+    "sample": {
+      "dateYear": 2026,
+      "projectQty": 1226,
+      "realFinishPayAmt": 4712477.9,
+      "costApplyInvestAmt": 55187.2
+    }
+  },
+  "getCostProjectQtyByProjectCmp": {
+    "domain": "D6",
+    "fields": [
+      "finishPayAmt",
+      "investAmt",
+      "projectCmp",
+      "projectQty"
+    ],
+    "count": 83,
+    "sample": {
+      "projectCmp": "大连港保安公司",
+      "projectQty": 2,
+      "investAmt": 1.8,
+      "finishPayAmt": 0.0
+    }
+  },
+  "getCostProjectQtyList": {
+    "domain": "D6",
+    "fields": [
+      "ownerLgZoneName",
+      "projectQty"
+    ],
+    "count": 7,
+    "sample": {
+      "projectQty": 16.0,
+      "ownerLgZoneName": null
+    }
+  },
+  "getCostProjectYoyList": {
+    "domain": "D6",
+    "fields": [
+      "currYear",
+      "deliveryRate",
+      "finishPayAmt",
+      "investAmt",
+      "projectQty"
+    ],
+    "count": 2,
+    "sample": {
+      "currYear": 2026,
+      "projectQty": 1226,
+      "investAmt": 55187.2,
+      "finishPayAmt": 4712477.9,
+      "deliveryRate": 0.0
+    }
+  },
+  "getDeliveryRate": {
+    "domain": "D6",
+    "fields": [
+      "dateYear",
+      "rate"
+    ],
+    "count": 6,
+    "sample": {
+      "dateYear": 2024,
+      "rate": 88.0
+    }
+  },
+  "getFinishProgressAndDeliveryRate": {
+    "domain": "D6",
+    "fields": [
+      "captProjectQty",
+      "deliveryCaptProjectQty",
+      "planInvestAmt",
+      "planPayAmt",
+      "realFinishInvestAmt",
+      "realFinishPayAmt"
+    ],
+    "count": 1,
+    "sample": {
+      "realFinishInvestAmt": 0,
+      "planInvestAmt": 0.0,
+      "realFinishPayAmt": 0.0,
+      "planPayAmt": 0.0,
+      "deliveryCaptProjectQty": 0,
+      "captProjectQty": 1
+    }
+  },
+  "getInvestAmtList": {
+    "domain": "D6",
+    "fields": [
+      "adminName",
+      "investAmt",
+      "ownerDept",
+      "phaseCode",
+      "phaseName",
+      "projectCmp",
+      "projectName",
+      "projectNo",
+      "requestingDept",
+      "startDate",
+      "winnerPrice"
+    ],
+    "count": 20,
+    "sample": {
+      "projectNo": "DD-SBWB-2025-001",
+      "projectName": "丹东港口集团有限公司轮驳分公司2025年船舶航修服务项目",
+      "adminName": "张仁介",
+      "projectCmp": "丹东港口集团轮驳分公司",
+      "requestingDept": "丹东港口集团轮驳分公司",
+      "ownerDept": "丹东港口集团有限公司",
+      "investAmt": 40.0,
+      "startDate": "2025-03-18 00:00:00",
+      "winnerPrice": 40.0,
+      "phaseName": "实施",
+      "phaseCode": 4
+    }
+  },
+  "getInvestPlanByYear": {
+    "domain": "D6",
+    "fields": [
+      "captPlanPayAmt",
+      "dateYear",
+      "finishInvestAmt",
+      "planInvestAmt",
+      "realFinishPayAmt"
+    ],
+    "count": 7,
+    "sample": {
+      "dateYear": 2019,
+      "finishInvestAmt": 101982,
+      "planInvestAmt": 120438.4,
+      "realFinishPayAmt": 0.0,
+      "captPlanPayAmt": 0.0
+    }
+  },
+  "getInvestPlanTypeProjectList": {
+    "domain": "D6",
+    "fields": [
+      "engineeringQty",
+      "importantQty",
+      "investProjectType",
+      "planInvestAmt",
+      "planPayAmt",
+      "total"
+    ],
+    "count": 1,
+    "sample": {
+      "investProjectType": "仓库码头",
+      "total": 1,
+      "engineeringQty": 1,
+      "importantQty": 1,
+      "planInvestAmt": 2000.0,
+      "planPayAmt": 2000.0
+    }
+  },
+  "getOutOfPlanFinishProgressList": {
+    "domain": "D6",
+    "fields": [
+      "finishInvestAmt",
+      "finishPayAmt",
+      "planInvestAmt",
+      "planPayAmt"
+    ],
+    "count": 1,
+    "sample": {
+      "planInvestAmt": 348490.9,
+      "finishInvestAmt": 195316.0,
+      "planPayAmt": 160470.9,
+      "finishPayAmt": 84840.0
+    }
+  },
+  "getOutOfPlanProjectInvestFinishList": {
+    "domain": "D6",
+    "fields": [
+      "dateYear",
+      "finishInvestAmt",
+      "planInvestAmt"
+    ],
+    "count": 5,
+    "sample": {
+      "dateYear": 2022,
+      "planInvestAmt": 7492.9,
+      "finishInvestAmt": 0.0
+    }
+  },
+  "getOutOfPlanProjectPayFinishList": {
+    "domain": "D6",
+    "fields": [
+      "dateYear",
+      "finishPayAmt",
+      "planPayAmt"
+    ],
+    "count": 5,
+    "sample": {
+      "dateYear": 2022,
+      "planPayAmt": 7492.9,
+      "finishPayAmt": 0.0
+    }
+  },
+  "getOutOfPlanProjectQtyYoy": {
+    "domain": "D6",
+    "fields": [
+      "dateYear",
+      "projectDeliveryRate",
+      "projectQty"
+    ],
+    "count": 2,
+    "sample": {
+      "dateYear": 2026,
+      "projectQty": 1,
+      "projectDeliveryRate": 0.0
+    }
+  },
+  "getPlanExcludedProjectPenetrationAnalysis": {
+    "domain": "D6",
+    "fields": [
+      "projectCmp",
+      "qty",
+      "typeName"
+    ],
+    "count": 250,
+    "sample": {
+      "qty": 36.0,
+      "projectCmp": "辽宁港口股份有限公司大连港铁路分公司",
+      "typeName": "支付计划额"
+    }
+  },
+  "getPlanFinishByProjectType": {
+    "domain": "D6",
+    "fields": [
+      "finishInvestAmt",
+      "finishPayAmt",
+      "investProjectType",
+      "planInvestAmt",
+      "planPayAmt"
+    ],
+    "count": 7,
+    "sample": {
+      "investProjectType": "行政办公",
+      "planInvestAmt": 182570.7,
+      "finishInvestAmt": 61475.0,
+      "planPayAmt": 170068.9,
+      "finishPayAmt": 51176.0
+    }
+  },
+  "getPlanFinishByZone": {
+    "domain": "D6",
+    "fields": [
+      "finishInvestAmt",
+      "finishPayAmt",
+      "ownerLgZoneName",
+      "planInvestAmt",
+      "planPayAmt"
+    ],
+    "count": 5,
+    "sample": {
+      "ownerLgZoneName": "大连港",
+      "planInvestAmt": 0.0,
+      "finishInvestAmt": 0.0,
+      "planPayAmt": 0.0,
+      "finishPayAmt": 0.0
+    }
+  },
+  "getUnplannedProjectsInquiry": {
+    "domain": "D6",
+    "fields": [
+      "chkStatus",
+      "deptName",
+      "foreignLoans",
+      "onstructionTime",
+      "ownFunds",
+      "planYear",
+      "proMainTypeName",
+      "proName",
+      "proNo",
+      "theYearInvestAmt",
+      "theYearInvestPlanNums",
+      "theYearPayAmt",
+      "theYearPayPlanNums"
+    ],
+    "count": 20,
+    "sample": {
+      "planYear": "2026",
+      "proName": "大连港太平湾港区散粮作业区301#-302#泊位一期工程",
+      "proNo": "LGTPW-2013-N-1-1-003",
+      "proMainTypeName": "仓库码头",
+      "chkStatus": "待审",
+      "onstructionTime": "2013-08-30 / 2028-12-31",
+      "deptName": "大连太平湾港口有限公司",
+      "ownFunds": 0.0,
+      "foreignLoans": 1.79,
+      "theYearInvestPlanNums": 5.97,
+      "theYearPayPlanNums": 6.77,
+      "theYearInvestAmt": 10.68,
+      "theYearPayAmt": 7.41
+    }
+  },
+  "planInvestAndPayYoy": {
+    "domain": "D6",
+    "fields": [
+      "dateYear",
+      "planInvestAmt",
+      "planPayAmt"
+    ],
+    "count": 2,
+    "sample": {
+      "dateYear": 2026,
+      "planInvestAmt": 2000.0,
+      "planPayAmt": 2000.0
+    }
+  },
+  "getContainerMachineHourRate": {
+    "domain": "D7",
+    "fields": [
+      "dateMonth",
+      "machineHourRate"
+    ],
+    "count": 3,
+    "sample": {
+      "machineHourRate": 10.7,
+      "dateMonth": "2026-01"
+    }
+  },
+  "getEquipmentElectricityTonCost": {
+    "domain": "D7",
+    "fields": [
+      "dateMonth",
+      "tonCost"
+    ],
+    "count": 3,
+    "sample": {
+      "tonCost": 0.0,
+      "dateMonth": "2026-01"
+    }
+  },
+  "getEquipmentEnergyConsumptionPerUnit": {
+    "domain": "D7",
+    "fields": [
+      "dateMonth",
+      "workingAmount"
+    ],
+    "count": 3,
+    "sample": {
+      "workingAmount": 108573605,
+      "dateMonth": "2026-01"
+    }
+  },
+  "getEquipmentFirstLevelClassNameList": {
+    "domain": "D7",
+    "fields": [
+      "firstLevelClassName",
+      "num"
+    ],
+    "count": 10,
+    "sample": {
+      "firstLevelClassName": "油运设备",
+      "num": 47.0
+    }
+  },
+  "getEquipmentFuelOilTonCost": {
+    "domain": "D7",
+    "fields": [
+      "dateMonth",
+      "tonCost"
+    ],
+    "count": 3,
+    "sample": {
+      "tonCost": 0.1,
+      "dateMonth": "2026-01"
+    }
+  },
+  "getEquipmentIndicatorOperationQty": {
+    "domain": "D7",
+    "fields": [
+      "firstLevelName",
+      "num"
+    ],
+    "count": 10,
+    "sample": {
+      "num": 11855118,
+      "firstLevelName": "专用机械"
+    }
+  },
+  "getEquipmentIndicatorUseCost": {
+    "domain": "D7",
+    "fields": [
+      "firstLevelName",
+      "num"
+    ],
+    "count": 10,
+    "sample": {
+      "num": 16113.0,
+      "firstLevelName": "机车"
+    }
+  },
+  "getEquipmentServiceableRate": {
+    "domain": "D7",
+    "fields": [
+      "dateMonth",
+      "serviceableRate"
+    ],
+    "count": 3,
+    "sample": {
+      "serviceableRate": 1.0,
+      "dateMonth": "2026-01"
+    }
+  },
+  "getEquipmentUsageRate": {
+    "domain": "D7",
+    "fields": [
+      "dateMonth",
+      "usageRate"
+    ],
+    "count": 3,
+    "sample": {
+      "usageRate": 4.3,
+      "dateMonth": "2026-01"
+    }
+  },
+  "getMachineDataDisplayEquipmentReliability": {
+    "domain": "D7",
+    "fields": [
+      "dateMonth",
+      "dateYear",
+      "usageRate"
+    ],
+    "count": 15,
+    "sample": {
+      "usageRate": 1665.242774566474,
+      "dateYear": 2025.0,
+      "dateMonth": "2025-01"
+    }
+  },
+  "getMachineDataDisplayScreenEquipmentIntegrityRate": {
+    "domain": "D7",
+    "fields": [
+      "dateMonth",
+      "usageRate"
+    ],
+    "count": 3,
+    "sample": {
+      "usageRate": 0.9838333333333333,
+      "dateMonth": "2026-01"
+    }
+  },
+  "getMachineDataDisplayScreenHourlyEfficiency": {
+    "domain": "D7",
+    "fields": [
+      "ownerLgZoneName",
+      "usageRate"
+    ],
+    "count": 4,
+    "sample": {
+      "usageRate": 330.0589535740604,
+      "ownerLgZoneName": "盘锦港区域"
+    }
+  },
+  "getMachineDataDisplaySingleUnitEnergyConsumption": {
+    "domain": "D7",
+    "fields": [
+      "equipmentNo",
+      "workingAmount"
+    ],
+    "count": 75,
+    "sample": {
+      "workingAmount": 206262.0,
+      "equipmentNo": "A02050120122108100025"
+    }
+  },
+  "getModelDataDisplayScreenEffectiveUtilization": {
+    "domain": "D7",
+    "fields": [
+      "dateMonth",
+      "usageRate"
+    ],
+    "count": 3,
+    "sample": {
+      "usageRate": 0.3703148148148148,
+      "dateMonth": "2026-01"
+    }
+  },
+  "getModelDataDisplayScreenEnergyConsumptionPerUnit": {
+    "domain": "D7",
+    "fields": [
+      "ownerLgZoneName",
+      "workingAmount"
+    ],
+    "count": 5,
+    "sample": {
+      "workingAmount": 268655.0,
+      "ownerLgZoneName": "绥中港区域"
+    }
+  },
+  "getModelDataDisplayScreenHierarchyRelation": {
+    "domain": "D7",
+    "fields": [
+      "firstLevelClassName",
+      "secondLevelClassName"
+    ],
+    "count": 1,
+    "sample": {
+      "firstLevelClassName": "集装箱专用设备",
+      "secondLevelClassName": "岸桥"
+    }
+  },
+  "getModelDataDisplayScreenUtilization": {
+    "domain": "D7",
+    "fields": [
+      "dateMonth",
+      "usageRate"
+    ],
+    "count": 3,
+    "sample": {
+      "usageRate": 0.38981481481481484,
+      "dateMonth": "2026-01"
+    }
+  },
+  "getNonContainerProductionEquipmentReliability": {
+    "domain": "D7",
+    "fields": [
+      "dateMonth",
+      "dateYear",
+      "usageRate"
+    ],
+    "count": 15,
+    "sample": {
+      "usageRate": 21838.43930635838,
+      "dateYear": 2025.0,
+      "dateMonth": "2025-01"
+    }
+  },
+  "getOverviewQuery": {
+    "domain": "D7",
+    "fields": [
+      "num",
+      "typeName"
+    ],
+    "count": 8,
+    "sample": {
+      "num": null,
+      "typeName": "作业台时"
+    }
+  },
+  "getProductEquipmentDataAnalysisList": {
+    "domain": "D7",
+    "fields": [
+      "containerElec",
+      "containerOil",
+      "deptName",
+      "elecCostTeu",
+      "fee",
+      "maintenanceFee",
+      "oilCostTeul",
+      "ownerLgZoneName"
+    ],
+    "count": 20,
+    "sample": {
+      "ownerLgZoneName": "丹东港区域",
+      "deptName": "丹东港口集团杂货码头分公司",
+      "maintenanceFee": 0.0,
+      "fee": 0.0,
+      "oilCostTeul": 0.0,
+      "elecCostTeu": 0.12,
+      "containerElec": 0.0,
+      "containerOil": 0.0
+    }
+  },
+  "getProductEquipmentIntegrityRateByMonth": {
+    "domain": "D7",
+    "fields": [
+      "dateMonth",
+      "ownerZone",
+      "usageRate"
+    ],
+    "count": 10,
+    "sample": {
+      "usageRate": 0.9945,
+      "ownerZone": "盘锦港区域",
+      "dateMonth": "2025-03"
+    }
+  },
+  "getProductEquipmentIntegrityRateByYear": {
+    "domain": "D7",
+    "fields": [
+      "dateYear",
+      "ownerZone",
+      "usageRate"
+    ],
+    "count": 10,
+    "sample": {
+      "usageRate": 0.9919,
+      "ownerZone": "营口港区域",
+      "dateYear": 2026
+    }
+  },
+  "getProductEquipmentRateByYear": {
+    "domain": "D7",
+    "fields": [
+      "dateYear",
+      "usageRate"
+    ],
+    "count": 4,
+    "sample": {
+      "usageRate": 5.9,
+      "dateYear": 2023
+    }
+  },
+  "getProductEquipmentReliabilityByMonth": {
+    "domain": "D7",
+    "fields": [
+      "dateMonth",
+      "ownerLgZoneName",
+      "usageRate"
+    ],
+    "count": 14,
+    "sample": {
+      "usageRate": 3750609.0,
+      "dateMonth": "2026-01",
+      "ownerLgZoneName": "营口港区域"
+    }
+  },
+  "getProductEquipmentReliabilityByYear": {
+    "domain": "D7",
+    "fields": [
+      "dateYear",
+      "ownerLgZoneName",
+      "usageRate"
+    ],
+    "count": 20,
+    "sample": {
+      "usageRate": 419.0,
+      "dateYear": 2023,
+      "ownerLgZoneName": "绥中港区域"
+    }
+  },
+  "getProductEquipmentUnitConsumptionByMonth": {
+    "domain": "D7",
+    "fields": [
+      "secondLevelClassName",
+      "unitConsumption"
+    ],
+    "count": 39,
+    "sample": {
+      "unitConsumption": 0.0,
+      "secondLevelClassName": "工程技术船"
+    }
+  },
+  "getProductEquipmentUnitConsumptionByYear": {
+    "domain": "D7",
+    "fields": [
+      "secondLevelClassName",
+      "unitConsumption"
+    ],
+    "count": 41,
+    "sample": {
+      "unitConsumption": 0.0,
+      "secondLevelClassName": "公铁车"
+    }
+  },
+  "getProductEquipmentUsageRateByMonth": {
+    "domain": "D7",
+    "fields": [
+      "dateMonth",
+      "usageRate"
+    ],
+    "count": 3,
+    "sample": {
+      "usageRate": 0.194,
+      "dateMonth": "2026-01"
+    }
+  },
+  "getProductEquipmentUsageRateByYear": {
+    "domain": "D7",
+    "fields": [
+      "dateYear",
+      "usageRate"
+    ],
+    "count": 4,
+    "sample": {
+      "usageRate": 0.168,
+      "dateYear": 2023
+    }
+  },
+  "getProductEquipmentWorkingAmountByMonth": {
+    "domain": "D7",
+    "fields": [
+      "num",
+      "ownerLgZoneName"
+    ],
+    "count": 5,
+    "sample": {
+      "num": 1464872.0,
+      "ownerLgZoneName": "盘锦港区域"
+    }
+  },
+  "getProductEquipmentWorkingAmountByYear": {
+    "domain": "D7",
+    "fields": [
+      "num",
+      "ownerLgZoneName"
+    ],
+    "count": 5,
+    "sample": {
+      "num": 128118214,
+      "ownerLgZoneName": "营口港区域"
+    }
+  },
+  "getProductionEquipmentFaultNum": {
+    "domain": "D7",
+    "fields": [
+      "dateMonth",
+      "num"
+    ],
+    "count": 3,
+    "sample": {
+      "num": 859,
+      "dateMonth": "2026-01"
+    }
+  },
+  "getProductionEquipmentStatistic": {
+    "domain": "D7",
+    "fields": [
+      "num",
+      "secondLevelName"
+    ],
+    "count": 39,
+    "sample": {
+      "num": 34,
+      "secondLevelName": "斗轮堆取料机"
+    }
+  },
+  "getQuayEquipmentWorkingAmount": {
+    "domain": "D7",
+    "fields": [
+      "num",
+      "typeName"
+    ],
+    "count": 10,
+    "sample": {
+      "num": 0.0,
+      "typeName": "输油臂作业量同比"
+    }
+  }
+}

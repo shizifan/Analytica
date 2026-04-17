@@ -1,0 +1,68 @@
+{
+  "api": "getProductEquipmentIntegrityRateByMonth",
+  "path": "/api/gateway/getProductEquipmentIntegrityRateByMonth",
+  "domain": "D7",
+  "intent": "查询生产设备月度完好率（当月vs去年同月同比）",
+  "params_sent": {
+    "dateMonth": "2026-03",
+    "preDateMonth": "2025-03"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 10,
+  "latency_ms": 558.7,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "usageRate": 0.9899,
+      "ownerZone": "丹东港区域",
+      "dateMonth": "2026-03"
+    },
+    {
+      "usageRate": 0.9955,
+      "ownerZone": "大连港区域",
+      "dateMonth": "2026-03"
+    },
+    {
+      "usageRate": 0.9882,
+      "ownerZone": "营口港区域",
+      "dateMonth": "2026-03"
+    },
+    {
+      "usageRate": 0.9946,
+      "ownerZone": "绥中港区域",
+      "dateMonth": "2026-03"
+    },
+    {
+      "usageRate": 0.9988,
+      "ownerZone": "盘锦港区域",
+      "dateMonth": "2026-03"
+    },
+    {
+      "usageRate": 0.9904,
+      "ownerZone": "营口港区域",
+      "dateMonth": "2025-03"
+    },
+    {
+      "usageRate": 0.9709,
+      "ownerZone": "绥中港区域",
+      "dateMonth": "2025-03"
+    },
+    {
+      "usageRate": 0.9935,
+      "ownerZone": "丹东港区域",
+      "dateMonth": "2025-03"
+    },
+    {
+      "usageRate": 0.9934,
+      "ownerZone": "大连港区域",
+      "dateMonth": "2025-03"
+    },
+    {
+      "usageRate": 0.9945,
+      "ownerZone": "盘锦港区域",
+      "dateMonth": "2025-03"
+    }
+  ]
+}

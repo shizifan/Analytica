@@ -1,0 +1,124 @@
+{
+  "api": "getPersonalCenterYearCargoThroughputTrend",
+  "path": "/api/gateway/getPersonalCenterYearCargoThroughputTrend",
+  "domain": "D1",
+  "intent": "查询年度各月吞吐量趋势（含累计）",
+  "variant": "v9",
+  "params_sent": {
+    "startDate": "2025-07-01",
+    "endDate": "2025-09-30"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 15,
+  "latency_ms": 528.9,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "regionName": "丹东",
+      "yearId": "2025",
+      "monthId": "07月",
+      "tonQ": 280.4,
+      "teuQ": 2.3
+    },
+    {
+      "regionName": "营口",
+      "yearId": "2025",
+      "monthId": "07月",
+      "tonQ": 1812.6,
+      "teuQ": 49.1
+    },
+    {
+      "regionName": "大连",
+      "yearId": "2025",
+      "monthId": "07月",
+      "tonQ": 1793.5,
+      "teuQ": 44.5
+    },
+    {
+      "regionName": "绥中",
+      "yearId": "2025",
+      "monthId": "07月",
+      "tonQ": 35.4,
+      "teuQ": 0.1
+    },
+    {
+      "regionName": "盘锦",
+      "yearId": "2025",
+      "monthId": "07月",
+      "tonQ": 198.4,
+      "teuQ": 4.2
+    },
+    {
+      "regionName": "盘锦",
+      "yearId": "2025",
+      "monthId": "08月",
+      "tonQ": 208.3,
+      "teuQ": 4.2
+    },
+    {
+      "regionName": "大连",
+      "yearId": "2025",
+      "monthId": "08月",
+      "tonQ": 1748.5,
+      "teuQ": 46.6
+    },
+    {
+      "regionName": "营口",
+      "yearId": "2025",
+      "monthId": "08月",
+      "tonQ": 1663.9,
+      "teuQ": 49.3
+    },
+    {
+      "regionName": "绥中",
+      "yearId": "2025",
+      "monthId": "08月",
+      "tonQ": 36.8,
+      "teuQ": 0.1
+    },
+    {
+      "regionName": "丹东",
+      "yearId": "2025",
+      "monthId": "08月",
+      "tonQ": 209.3,
+      "teuQ": 1.6
+    },
+    {
+      "regionName": "盘锦",
+      "yearId": "2025",
+      "monthId": "09月",
+      "tonQ": 219.3,
+      "teuQ": 4.2
+    },
+    {
+      "regionName": "营口",
+      "yearId": "2025",
+      "monthId": "09月",
+      "tonQ": 2001.7,
+      "teuQ": 49.0
+    },
+    {
+      "regionName": "丹东",
+      "yearId": "2025",
+      "monthId": "09月",
+      "tonQ": 239.7,
+      "teuQ": 2.4
+    },
+    {
+      "regionName": "大连",
+      "yearId": "2025",
+      "monthId": "09月",
+      "tonQ": 1695.3,
+      "teuQ": 46.6
+    },
+    {
+      "regionName": "绥中",
+      "yearId": "2025",
+      "monthId": "09月",
+      "tonQ": 77.9,
+      "teuQ": 0.1
+    }
+  ]
+}

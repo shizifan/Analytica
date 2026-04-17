@@ -1,0 +1,74 @@
+{
+  "api": "getEquipmentFirstLevelClassNameList",
+  "path": "/api/gateway/getEquipmentFirstLevelClassNameList",
+  "domain": "D7",
+  "intent": "查询设备一级分类列表及数量（装卸/运输/起重/输送/特种）",
+  "variant": "v3",
+  "params_sent": {
+    "dateMonth": "2025-12"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 14,
+  "latency_ms": 363.6,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "firstLevelClassName": "油运设备",
+      "num": 164.0
+    },
+    {
+      "firstLevelClassName": "压力容器设备",
+      "num": 4.0
+    },
+    {
+      "firstLevelClassName": "起重机械",
+      "num": 480.0
+    },
+    {
+      "firstLevelClassName": "连续输送机械",
+      "num": 382.0
+    },
+    {
+      "firstLevelClassName": "其他装卸机械设备",
+      "num": 56.0
+    },
+    {
+      "firstLevelClassName": "集装箱专用设备",
+      "num": 296.0
+    },
+    {
+      "firstLevelClassName": "专用机械",
+      "num": 197.0
+    },
+    {
+      "firstLevelClassName": "压力管道设备",
+      "num": 29.0
+    },
+    {
+      "firstLevelClassName": "装卸搬运机械",
+      "num": 424.0
+    },
+    {
+      "firstLevelClassName": "电梯设备",
+      "num": 6.0
+    },
+    {
+      "firstLevelClassName": "辅助生产机械设备",
+      "num": 2.0
+    },
+    {
+      "firstLevelClassName": "船舶",
+      "num": 94.0
+    },
+    {
+      "firstLevelClassName": "机车",
+      "num": 21.0
+    },
+    {
+      "firstLevelClassName": "工属具",
+      "num": 8.0
+    }
+  ]
+}

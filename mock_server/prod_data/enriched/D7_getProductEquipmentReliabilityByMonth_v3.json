@@ -1,0 +1,308 @@
+{
+  "api": "getProductEquipmentReliabilityByMonth",
+  "path": "/api/gateway/getProductEquipmentReliabilityByMonth",
+  "domain": "D7",
+  "intent": "查询年度生产设备可靠性月度趋势",
+  "variant": "v3",
+  "params_sent": {
+    "dateYear": "2023"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 58,
+  "latency_ms": 547.2,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-01",
+      "ownerLgZoneName": "营口港区域"
+    },
+    {
+      "usageRate": 330146.0,
+      "dateMonth": "2023-01",
+      "ownerLgZoneName": "盘锦港区域"
+    },
+    {
+      "usageRate": 9417075.0,
+      "dateMonth": "2023-01",
+      "ownerLgZoneName": "大连港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-01",
+      "ownerLgZoneName": "丹东港区域"
+    },
+    {
+      "usageRate": 7955529.0,
+      "dateMonth": "2023-02",
+      "ownerLgZoneName": "大连港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-02",
+      "ownerLgZoneName": "营口港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-02",
+      "ownerLgZoneName": "丹东港区域"
+    },
+    {
+      "usageRate": 243267.0,
+      "dateMonth": "2023-02",
+      "ownerLgZoneName": "盘锦港区域"
+    },
+    {
+      "usageRate": 88.0,
+      "dateMonth": "2023-03",
+      "ownerLgZoneName": "绥中港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-03",
+      "ownerLgZoneName": "丹东港区域"
+    },
+    {
+      "usageRate": 290519.0,
+      "dateMonth": "2023-03",
+      "ownerLgZoneName": "盘锦港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-03",
+      "ownerLgZoneName": "营口港区域"
+    },
+    {
+      "usageRate": 5054784.0,
+      "dateMonth": "2023-03",
+      "ownerLgZoneName": "大连港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-04",
+      "ownerLgZoneName": "丹东港区域"
+    },
+    {
+      "usageRate": 321642.0,
+      "dateMonth": "2023-04",
+      "ownerLgZoneName": "盘锦港区域"
+    },
+    {
+      "usageRate": 8728165.0,
+      "dateMonth": "2023-04",
+      "ownerLgZoneName": "大连港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-04",
+      "ownerLgZoneName": "绥中港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-04",
+      "ownerLgZoneName": "营口港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-05",
+      "ownerLgZoneName": "营口港区域"
+    },
+    {
+      "usageRate": 11.0,
+      "dateMonth": "2023-05",
+      "ownerLgZoneName": "绥中港区域"
+    },
+    {
+      "usageRate": 517126.0,
+      "dateMonth": "2023-05",
+      "ownerLgZoneName": "盘锦港区域"
+    },
+    {
+      "usageRate": 9394962.0,
+      "dateMonth": "2023-05",
+      "ownerLgZoneName": "大连港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-05",
+      "ownerLgZoneName": "丹东港区域"
+    },
+    {
+      "usageRate": 28.0,
+      "dateMonth": "2023-06",
+      "ownerLgZoneName": "绥中港区域"
+    },
+    {
+      "usageRate": 9729001.0,
+      "dateMonth": "2023-06",
+      "ownerLgZoneName": "大连港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-06",
+      "ownerLgZoneName": "营口港区域"
+    },
+    {
+      "usageRate": 495263.0,
+      "dateMonth": "2023-06",
+      "ownerLgZoneName": "盘锦港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-06",
+      "ownerLgZoneName": "丹东港区域"
+    },
+    {
+      "usageRate": 66.0,
+      "dateMonth": "2023-07",
+      "ownerLgZoneName": "绥中港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-07",
+      "ownerLgZoneName": "营口港区域"
+    },
+    {
+      "usageRate": 408489.0,
+      "dateMonth": "2023-07",
+      "ownerLgZoneName": "盘锦港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-07",
+      "ownerLgZoneName": "丹东港区域"
+    },
+    {
+      "usageRate": 7329245.0,
+      "dateMonth": "2023-07",
+      "ownerLgZoneName": "大连港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-08",
+      "ownerLgZoneName": "丹东港区域"
+    },
+    {
+      "usageRate": 449718.0,
+      "dateMonth": "2023-08",
+      "ownerLgZoneName": "盘锦港区域"
+    },
+    {
+      "usageRate": 8525411.0,
+      "dateMonth": "2023-08",
+      "ownerLgZoneName": "大连港区域"
+    },
+    {
+      "usageRate": 44.0,
+      "dateMonth": "2023-08",
+      "ownerLgZoneName": "营口港区域"
+    },
+    {
+      "usageRate": 39.0,
+      "dateMonth": "2023-08",
+      "ownerLgZoneName": "绥中港区域"
+    },
+    {
+      "usageRate": 99.0,
+      "dateMonth": "2023-09",
+      "ownerLgZoneName": "绥中港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-09",
+      "ownerLgZoneName": "营口港区域"
+    },
+    {
+      "usageRate": 9797300.0,
+      "dateMonth": "2023-09",
+      "ownerLgZoneName": "大连港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-09",
+      "ownerLgZoneName": "丹东港区域"
+    },
+    {
+      "usageRate": 453475.0,
+      "dateMonth": "2023-09",
+      "ownerLgZoneName": "盘锦港区域"
+    },
+    {
+      "usageRate": 44.0,
+      "dateMonth": "2023-10",
+      "ownerLgZoneName": "绥中港区域"
+    },
+    {
+      "usageRate": 242840.0,
+      "dateMonth": "2023-10",
+      "ownerLgZoneName": "盘锦港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-10",
+      "ownerLgZoneName": "营口港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-10",
+      "ownerLgZoneName": "丹东港区域"
+    },
+    {
+      "usageRate": 9751748.0,
+      "dateMonth": "2023-10",
+      "ownerLgZoneName": "大连港区域"
+    },
+    {
+      "usageRate": 8686944.0,
+      "dateMonth": "2023-11",
+      "ownerLgZoneName": "大连港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-11",
+      "ownerLgZoneName": "丹东港区域"
+    },
+    {
+      "usageRate": 370354.0,
+      "dateMonth": "2023-11",
+      "ownerLgZoneName": "盘锦港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-11",
+      "ownerLgZoneName": "营口港区域"
+    },
+    {
+      "usageRate": 22.0,
+      "dateMonth": "2023-11",
+      "ownerLgZoneName": "绥中港区域"
+    },
+    {
+      "usageRate": 22.0,
+      "dateMonth": "2023-12",
+      "ownerLgZoneName": "营口港区域"
+    },
+    {
+      "usageRate": 0.0,
+      "dateMonth": "2023-12",
+      "ownerLgZoneName": "丹东港区域"
+    },
+    {
+      "usageRate": 399043.0,
+      "dateMonth": "2023-12",
+      "ownerLgZoneName": "盘锦港区域"
+    },
+    {
+      "usageRate": 9392082.0,
+      "dateMonth": "2023-12",
+      "ownerLgZoneName": "大连港区域"
+    },
+    {
+      "usageRate": 22.0,
+      "dateMonth": "2023-12",
+      "ownerLgZoneName": "绥中港区域"
+    }
+  ]
+}

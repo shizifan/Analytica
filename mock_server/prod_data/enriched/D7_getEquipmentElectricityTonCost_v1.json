@@ -1,0 +1,66 @@
+{
+  "api": "getEquipmentElectricityTonCost",
+  "path": "/api/gateway/getEquipmentElectricityTonCost",
+  "domain": "D7",
+  "intent": "查询各港区年度电量吨成本（元/自然箱，月度趋势）",
+  "variant": "v1",
+  "params_sent": {
+    "dateYear": "2025"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 12,
+  "latency_ms": 324.1,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "tonCost": 0.0,
+      "dateMonth": "2025-01"
+    },
+    {
+      "tonCost": 1.0,
+      "dateMonth": "2025-02"
+    },
+    {
+      "tonCost": 1.0,
+      "dateMonth": "2025-03"
+    },
+    {
+      "tonCost": 0.0,
+      "dateMonth": "2025-04"
+    },
+    {
+      "tonCost": 1.0,
+      "dateMonth": "2025-05"
+    },
+    {
+      "tonCost": 0.0,
+      "dateMonth": "2025-06"
+    },
+    {
+      "tonCost": 1.0,
+      "dateMonth": "2025-07"
+    },
+    {
+      "tonCost": 1.0,
+      "dateMonth": "2025-08"
+    },
+    {
+      "tonCost": 1.0,
+      "dateMonth": "2025-09"
+    },
+    {
+      "tonCost": 0.0,
+      "dateMonth": "2025-10"
+    },
+    {
+      "tonCost": 1.0,
+      "dateMonth": "2025-11"
+    },
+    {
+      "tonCost": 0.0,
+      "dateMonth": "2025-12"
+    }
+  ]
+}

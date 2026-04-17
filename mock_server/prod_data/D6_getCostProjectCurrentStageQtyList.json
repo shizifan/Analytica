@@ -1,0 +1,97 @@
+{
+  "api": "getCostProjectCurrentStageQtyList",
+  "path": "/api/gateway/getCostProjectCurrentStageQtyList",
+  "domain": "D6",
+  "intent": "查询成本性项目当前阶段数量（立项/招标/施工/竣工等）",
+  "params_sent": {
+    "currYear": 2026
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 16,
+  "latency_ms": 356.5,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "projectQty": 32,
+      "projectCurrentStage": "实施",
+      "ownerLgZoneName": "大连港"
+    },
+    {
+      "projectQty": 1,
+      "projectCurrentStage": "采购",
+      "ownerLgZoneName": "丹东港"
+    },
+    {
+      "projectQty": 21,
+      "projectCurrentStage": "实施",
+      "ownerLgZoneName": "营口港"
+    },
+    {
+      "projectQty": 1,
+      "projectCurrentStage": "待关闭",
+      "ownerLgZoneName": "大连港"
+    },
+    {
+      "projectQty": 719,
+      "projectCurrentStage": "配置",
+      "ownerLgZoneName": "大连港"
+    },
+    {
+      "projectQty": 16,
+      "projectCurrentStage": "配置",
+      "ownerLgZoneName": null
+    },
+    {
+      "projectQty": 73,
+      "projectCurrentStage": "配置",
+      "ownerLgZoneName": "盘锦港"
+    },
+    {
+      "projectQty": 7,
+      "projectCurrentStage": "实施",
+      "ownerLgZoneName": "丹东港"
+    },
+    {
+      "projectQty": 2,
+      "projectCurrentStage": "合同",
+      "ownerLgZoneName": "营口港"
+    },
+    {
+      "projectQty": 14,
+      "projectCurrentStage": "合同",
+      "ownerLgZoneName": "大连港"
+    },
+    {
+      "projectQty": 27,
+      "projectCurrentStage": "配置",
+      "ownerLgZoneName": "丹东港"
+    },
+    {
+      "projectQty": 37,
+      "projectCurrentStage": "采购",
+      "ownerLgZoneName": "大连港"
+    },
+    {
+      "projectQty": 23,
+      "projectCurrentStage": "配置",
+      "ownerLgZoneName": "绥中港"
+    },
+    {
+      "projectQty": 197,
+      "projectCurrentStage": "配置",
+      "ownerLgZoneName": "营口港"
+    },
+    {
+      "projectQty": 12,
+      "projectCurrentStage": "采购",
+      "ownerLgZoneName": "营口港"
+    },
+    {
+      "projectQty": 44,
+      "projectCurrentStage": "配置",
+      "ownerLgZoneName": "辽港集团本部"
+    }
+  ]
+}

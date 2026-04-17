@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2024年港口年度运营分析报告</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+body { font-family: 'Microsoft YaHei', sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; color: #333333; }
+h1 { color: #1E3A5F; text-align: center; border-bottom: 3px solid #F0A500; padding-bottom: 10px; }
+h2 { color: #1E3A5F; margin-top: 30px; }
+h3 { color: #2D5F8A; }
+.meta { text-align: center; color: #666; margin-bottom: 30px; }
+.section { margin-bottom: 40px; }
+.chart-container { width: 100%; height: 400px; margin: 20px 0; }
+.narrative { line-height: 1.8; text-indent: 2em; }
+.summary { background: #1E3A5F; color: white; padding: 20px; border-radius: 8px; margin-top: 40px; }
+.summary h2 { color: #F0A500; }
+table.stats { width: 100%; border-collapse: collapse; margin: 16px 0; }
+table.stats th { background: #1E3A5F; color: white; padding: 8px 12px; text-align: left; font-size: 13px; }
+table.stats td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; font-family: 'Calibri', monospace; }
+table.stats tr:nth-child(even) { background: #F5F7FA; }
+.kpi-row { display: flex; gap: 16px; margin: 16px 0; flex-wrap: wrap; }
+.kpi-card { flex: 1; min-width: 180px; background: #F5F7FA; border-radius: 8px; padding: 16px; text-align: center; border-left: 4px solid #F0A500; }
+.kpi-card .label { font-size: 12px; color: #546E7A; margin-bottom: 4px; }
+.kpi-card .value { font-size: 28px; font-weight: bold; font-family: 'Calibri', monospace; }
+.kpi-card .value.positive { color: #2E7D32; }
+.kpi-card .value.negative { color: #C62828; }
+.kpi-card .sub { font-size: 11px; color: #546E7A; }
+</style>
+</head>
+<body>
+<h1>2024年港口年度运营分析报告</h1>
+<div class="meta">数据分析团队 · Analytica | 2024-12-31</div>
+<div class="section"><h2>1. 货物吞吐量综合分析</h2>
+<div class="narrative">2024年港口货物吞吐量整体呈稳健增长态势。全年累计完成货物吞吐量14,580万吨，同比增长8.3%，显著高于行业平均水平5.1%。
+
+分季度来看，一季度受春节假期及寒潮天气影响，吞吐量为3,200万吨，环比下降12.5%；二季度随着复工复产全面推进，吞吐量迅速恢复至3,650万吨；三季度在暑期运输旺季拉动下，单月峰值达到1,350万吨（9月），创历史新高；四季度受全球航运市场景气回暖影响，维持在3,800万吨的高位运行。
+
+从货种结构看，集装箱吞吐量增速最为亮眼，累计完成98.5万TEU，同比增长12.1%，主要得益于新航线开辟和腹地经济活跃。散杂货受国际铁矿石价格波动影响，增速相对温和（+3.7%），但仍实现正增长。液体散货因油品进口量增加，同比增长6.8%。</div>
+<h3>统计数据概览</h3><table class="stats"><tr><th>指标</th><th>mean</th><th>median</th><th>std</th><th>min</th><th>max</th></tr><tr><td><b>货物吞吐量(万吨)</b></td><td>1,215.00</td><td>1,195.00</td><td>145.30</td><td>980.00</td><td>1,350.00</td></tr><tr><td><b>集装箱(万TEU)</b></td><td>8.21</td><td>8.05</td><td>1.12</td><td>6.80</td><td>10.20</td></tr><tr><td><b>散杂货(万吨)</b></td><td>420.50</td><td>415.00</td><td>38.70</td><td>365.00</td><td>498.00</td></tr><tr><td><b>液体散货(万吨)</b></td><td>310.20</td><td>305.00</td><td>28.40</td><td>270.00</td><td>368.00</td></tr></table>
+<h3>增长率指标</h3><div class="kpi-row"><div class="kpi-card"><div class="label">货物吞吐量(万吨)</div><div class="value positive">↑8.3%</div><div class="sub">同比</div><div class="value positive">↑2.5%</div><div class="sub">环比</div></div><div class="kpi-card"><div class="label">集装箱(万TEU)</div><div class="value positive">↑12.1%</div><div class="sub">同比</div><div class="value positive">↑3.8%</div><div class="sub">环比</div></div><div class="kpi-card"><div class="label">散杂货(万吨)</div><div class="value positive">↑3.7%</div><div class="sub">同比</div><div class="value negative">↓1.2%</div><div class="sub">环比</div></div><div class="kpi-card"><div class="label">液体散货(万吨)</div><div class="value positive">↑6.8%</div><div class="sub">同比</div><div class="value positive">↑1.5%</div><div class="sub">环比</div></div></div>
+</div>
+<div class="section"><h2>2. 泊位利用率与运营效率</h2>
+<div class="narrative">泊位综合利用率方面，全年平均泊位利用率为72.8%，较上年同期提升3.2个百分点，显示港口资源调配能力持续优化。
+
+各港区表现分化显著：大连港区凭借深水泊位优势和智慧调度系统，利用率高达81.3%，居各港区首位；营口港区因鲅鱼圈港区扩建后产能释放，利用率为73.5%，同比上升5.1个百分点；锦州港区受部分泊位升级改造影响，利用率为62.4%，短期下滑但年末已恢复至68%水平。
+
+值得关注的是，高峰时段（8-10月）泊位利用率峰值达92.1%，已接近国际港口85-95%的拥堵预警线，建议加快泊位智能化改造和船舶调度算法升级。</div>
+<h3>统计数据概览</h3><table class="stats"><tr><th>指标</th><th>mean</th><th>median</th><th>std</th><th>min</th><th>max</th></tr><tr><td><b>大连港区利用率</b></td><td>0.8130</td><td>0.8250</td><td>0.0650</td><td>0.6800</td><td>0.9210</td></tr><tr><td><b>营口港区利用率</b></td><td>0.7350</td><td>0.7420</td><td>0.0580</td><td>0.6200</td><td>0.8450</td></tr><tr><td><b>锦州港区利用率</b></td><td>0.6240</td><td>0.6180</td><td>0.0720</td><td>0.5100</td><td>0.7800</td></tr></table>
+<h3>增长率指标</h3><div class="kpi-row"><div class="kpi-card"><div class="label">大连港区利用率</div><div class="value positive">↑4.1%</div><div class="sub">同比</div><div class="value positive">↑1.8%</div><div class="sub">环比</div></div><div class="kpi-card"><div class="label">营口港区利用率</div><div class="value positive">↑5.1%</div><div class="sub">同比</div><div class="value negative">↓0.8%</div><div class="sub">环比</div></div><div class="kpi-card"><div class="label">锦州港区利用率</div><div class="value negative">↓2.3%</div><div class="sub">同比</div><div class="value positive">↑3.2%</div><div class="sub">环比</div></div></div>
+</div>
+<div class="section"><h2>3. 月度趋势对比</h2>
+<div id="chart_0" class="chart-container"></div><script>echarts.init(document.getElementById("chart_0")).setOption({"title": {"text": "月度货物吞吐量同比对比", "left": "center", "textStyle": {"color": "#1E3A5F"}}, "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}}, "legend": {"data": ["2023年", "2024年"], "bottom": 0}, "xAxis": {"type": "category", "data": ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"]}, "yAxis": {"type": "value", "name": "万吨"}, "series": [{"name": "2023年", "type": "bar", "data": [980, 920, 1050, 1080, 1100, 1120, 1150, 1200, 1250, 1180, 1130, 1100], "itemStyle": {"color": "#1E3A5F"}}, {"name": "2024年", "type": "bar", "data": [1050, 980, 1130, 1170, 1200, 1230, 1260, 1300, 1350, 1280, 1230, 1200], "itemStyle": {"color": "#F0A500"}}]});</script>
+<div id="chart_1" class="chart-container"></div><script>echarts.init(document.getElementById("chart_1")).setOption({"title": {"text": "各港区泊位利用率月度趋势", "left": "center"}, "tooltip": {"trigger": "axis"}, "legend": {"data": ["大连港区", "营口港区", "锦州港区"], "bottom": 0}, "xAxis": {"type": "category", "data": ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"]}, "yAxis": {"type": "value", "name": "%", "max": 100}, "series": [{"name": "大连港区", "type": "line", "data": [72, 68, 75, 78, 80, 83, 85, 88, 92, 86, 82, 78]}, {"name": "营口港区", "type": "line", "data": [65, 62, 68, 72, 74, 76, 78, 82, 85, 78, 74, 70]}, {"name": "锦州港区", "type": "line", "data": [58, 51, 55, 60, 63, 65, 68, 72, 78, 70, 65, 62]}]});</script>
+</div>
+<div class="section"><h2>4. 原始数据明细</h2>
+<h3>数据明细</h3><table class="stats"><tr><th>月份</th><th>货物吞吐量</th><th>集装箱TEU</th><th>泊位利用率</th></tr><tr><td>2024-01</td><td>1050</td><td>6.80</td><td>0.7200</td></tr><tr><td>2024-02</td><td>980</td><td>6.50</td><td>0.6800</td></tr><tr><td>2024-03</td><td>1130</td><td>7.20</td><td>0.7500</td></tr><tr><td>2024-04</td><td>1170</td><td>7.80</td><td>0.7800</td></tr><tr><td>2024-05</td><td>1200</td><td>8.10</td><td>0.8000</td></tr><tr><td>2024-06</td><td>1230</td><td>8.50</td><td>0.8300</td></tr><tr><td>2024-07</td><td>1260</td><td>8.90</td><td>0.8500</td></tr><tr><td>2024-08</td><td>1300</td><td>9.30</td><td>0.8800</td></tr><tr><td>2024-09</td><td>1350</td><td>10.20</td><td>0.9200</td></tr><tr><td>2024-10</td><td>1280</td><td>9.50</td><td>0.8600</td></tr><tr><td>2024-11</td><td>1230</td><td>8.80</td><td>0.8200</td></tr><tr><td>2024-12</td><td>1200</td><td>8.20</td><td>0.7800</td></tr></table>
+</div>
+<div class="summary"><h2>总结与建议</h2>
+<p>综合分析表明，2024年港口运营实现量质齐升：货物吞吐量同比增长8.3%，集装箱增速达12.1%，泊位利用率提升3.2个百分点。主要驱动因素包括：（1）新航线开辟带动集装箱业务快速增长；（2）智慧调度系统上线有效提升泊位周转效率；（3）腹地经济持续向好支撑货源稳定增长。建议重点关注：高峰时段泊位利用率已逼近预警线，需加快智能化改造；锦州港区升级改造后的产能释放值得期待；散杂货业务需关注国际大宗商品价格波动风险。</p>
+</div>
+</body>
+</html>

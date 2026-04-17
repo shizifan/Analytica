@@ -1,0 +1,163 @@
+{
+  "api": "getStrategicCustomers",
+  "path": "/api/gateway/getStrategicCustomers",
+  "domain": "D3",
+  "intent": "查询战略客户名单及合作信息（级别/年份/合同状态）",
+  "params_sent": {},
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 37,
+  "latency_ms": 377.3,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "displayCode": "68c7d73b7cfb65000157bfad",
+      "displayName": "中国远洋海运集团有限公司"
+    },
+    {
+      "displayCode": "68ca10367cfb650001cfb8c3",
+      "displayName": "中国第一汽车集团有限公司"
+    },
+    {
+      "displayCode": "68cb6e685539b4000185e00b",
+      "displayName": "马士基（中国）航运有限公司"
+    },
+    {
+      "displayCode": "68cb752f12553700017c82fb",
+      "displayName": "泉州安通物流有限公司"
+    },
+    {
+      "displayCode": "68cb75ed7cfb6500010495dc",
+      "displayName": "大连西太平洋石油化工有限公司"
+    },
+    {
+      "displayCode": "68cb77c45539b400018805f5",
+      "displayName": "信风（宁波）海运物流有限公司"
+    },
+    {
+      "displayCode": "68cb77fc125537000180d8e7",
+      "displayName": "上海中谷物流股份有限公司"
+    },
+    {
+      "displayCode": "68cb7909125537000180e28a",
+      "displayName": "盘锦北方沥青燃料有限公司"
+    },
+    {
+      "displayCode": "68cb79b61255370001826ab5",
+      "displayName": "北方华锦化学工业股份有限公司"
+    },
+    {
+      "displayCode": "68cb7a655539b400018e79a6",
+      "displayName": "中国石油国际事业有限公司"
+    },
+    {
+      "displayCode": "68cb9c967cfb65000111d93d",
+      "displayName": "振华石油控股有限公司"
+    },
+    {
+      "displayCode": "68cb9cc05539b4000190facd",
+      "displayName": "中国石油天然气股份有限公司大连石化分公司"
+    },
+    {
+      "displayCode": "68cb9ce64dd0b80001dab59d",
+      "displayName": "中国石油天然气股份有限公司东北销售分公司"
+    },
+    {
+      "displayCode": "68cb9d35125537000183f480",
+      "displayName": "达飞轮船（中国）有限公司"
+    },
+    {
+      "displayCode": "68cb9dc34dd0b80001db2ed6",
+      "displayName": "吉林鑫达钢铁有限公司"
+    },
+    {
+      "displayCode": "68cb9e3b4dd0b80001db32a3",
+      "displayName": "吉林省吉电国际贸易有限公司"
+    },
+    {
+      "displayCode": "68cb9e625539b40001935798",
+      "displayName": "厦门建发股份有限公司"
+    },
+    {
+      "displayCode": "68cb9e884dd0b80001db3816",
+      "displayName": "河南智瑞供应链管理有限公司"
+    },
+    {
+      "displayCode": "68cb9ee44dd0b80001db3caa",
+      "displayName": "华晨宝马汽车有限公司"
+    },
+    {
+      "displayCode": "68cba5097cfb6500011de85f",
+      "displayName": "敬业（营口）中板有限公司"
+    },
+    {
+      "displayCode": "68cba7e212553700018a86b1",
+      "displayName": "北京建龙重工集团有限公司"
+    },
+    {
+      "displayCode": "68cbaffb5539b40001d12157",
+      "displayName": "嘉晨集团有限公司"
+    },
+    {
+      "displayCode": "68cbb1774dd0b800012d08da",
+      "displayName": "力拓矿业商贸（上海）有限公司"
+    },
+    {
+      "displayCode": "68cbb3454dd0b80001379b8e",
+      "displayName": "中粮集团有限公司"
+    },
+    {
+      "displayCode": "68cbb4465539b40001f952b7",
+      "displayName": "北大荒粮食集团有限公司"
+    },
+    {
+      "displayCode": "68cbb84d125537000104fbb1",
+      "displayName": "厦门象屿集团有限公司"
+    },
+    {
+      "displayCode": "68cbba105539b400013f21d5",
+      "displayName": "九三粮油工业集团有限公司"
+    },
+    {
+      "displayCode": "68cbbb425539b400014ae1da",
+      "displayName": "大连世茂玺美国际贸易有限公司"
+    },
+    {
+      "displayCode": "68cbbdff4dd0b80001948df6",
+      "displayName": "厦门国贸集团股份有限公司"
+    },
+    {
+      "displayCode": "68cbbe345539b400016c7adb",
+      "displayName": "冀东发展集团国际贸易有限公司"
+    },
+    {
+      "displayCode": "68cbbf837cfb650001d0a832",
+      "displayName": "广州汽车集团股份有限公司"
+    },
+    {
+      "displayCode": "68cbc2c24dd0b80001c28288",
+      "displayName": "上海汽车集团股份有限公司"
+    },
+    {
+      "displayCode": "68cbcce61255370001b88e57",
+      "displayName": "通化钢铁集团有限责任公司"
+    },
+    {
+      "displayCode": "68ccbf98125537000132ebba",
+      "displayName": "本钢集团有限公司"
+    },
+    {
+      "displayCode": "68ccc60f4dd0b80001ce960b",
+      "displayName": "鞍山钢铁集团有限公司"
+    },
+    {
+      "displayCode": "693140cf0001e60001e4c5a6",
+      "displayName": "地中海航运有限公司"
+    },
+    {
+      "displayCode": "693141070001e60001e4dbd5",
+      "displayName": "VALE INTERNATIONAL SA"
+    }
+  ]
+}

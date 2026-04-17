@@ -1,0 +1,54 @@
+{
+  "api": "getThroughputAnalysisYoyMomByMonth",
+  "path": "/api/gateway/getThroughputAnalysisYoyMomByMonth",
+  "domain": "D1",
+  "intent": "查询指定月份吞吐量同比/环比（月度层面）",
+  "variant": "v1",
+  "params_sent": {
+    "dateMonth": "2026-01"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 6,
+  "latency_ms": 805.6,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "regionName": "大连港",
+      "qty": 674.42,
+      "yoyQty": 654.14,
+      "momQty": 541.55
+    },
+    {
+      "regionName": "丹东港",
+      "qty": 19.24,
+      "yoyQty": 18.68,
+      "momQty": 19.05
+    },
+    {
+      "regionName": "盘锦港",
+      "qty": 104.66,
+      "yoyQty": 90.65,
+      "momQty": 103.64
+    },
+    {
+      "regionName": "营口港",
+      "qty": 967.36,
+      "yoyQty": 885.8,
+      "momQty": 979.58
+    },
+    {
+      "regionName": "绥中港",
+      "qty": 9.43,
+      "yoyQty": 15.72,
+      "momQty": 8.81
+    },
+    {
+      "regionName": "辽港",
+      "qty": 1775.11,
+      "yoyQty": 1664.99,
+      "momQty": 1652.63
+    }
+  ]
+}

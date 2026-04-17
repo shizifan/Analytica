@@ -9,11 +9,15 @@ dependencies = [
     "alembic>=1.18.4",
     "fastapi>=0.135.3",
     "httpx>=0.28.1",
+    "jinja2>=3.1.6",
     "langchain-openai>=0.3",
     "langgraph>=0.3",
+    "pandas>=3.0.2",
     "pydantic-settings>=2.0",
     "pymysql>=1.1.2",
+    "python-docx>=1.2.0",
     "python-dotenv>=1.2.2",
+    "python-pptx>=1.0.2",
     "sqlalchemy[asyncio]>=2.0",
     "uvicorn[standard]>=0.44.0",
 ]
@@ -29,8 +33,11 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
 testpaths = ["tests"]
+pythonpath = ["."]
 markers = [
     "llm_real: tests that call real LLM API",
+    "integration: integration tests (real LLM + mock server)",
     "probe: boundary probe tests (always pass, output report)",
 ]

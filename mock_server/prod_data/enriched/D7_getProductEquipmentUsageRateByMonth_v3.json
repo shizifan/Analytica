@@ -1,0 +1,66 @@
+{
+  "api": "getProductEquipmentUsageRateByMonth",
+  "path": "/api/gateway/getProductEquipmentUsageRateByMonth",
+  "domain": "D7",
+  "intent": "查询年度生产设备有效利用率月度分布",
+  "variant": "v3",
+  "params_sent": {
+    "dateYear": "2023"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 12,
+  "latency_ms": 414.0,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "usageRate": 0.149,
+      "dateMonth": "2023-01"
+    },
+    {
+      "usageRate": 0.19,
+      "dateMonth": "2023-02"
+    },
+    {
+      "usageRate": 0.16,
+      "dateMonth": "2023-03"
+    },
+    {
+      "usageRate": 0.166,
+      "dateMonth": "2023-04"
+    },
+    {
+      "usageRate": 0.151,
+      "dateMonth": "2023-05"
+    },
+    {
+      "usageRate": 0.161,
+      "dateMonth": "2023-06"
+    },
+    {
+      "usageRate": 0.156,
+      "dateMonth": "2023-07"
+    },
+    {
+      "usageRate": 0.17,
+      "dateMonth": "2023-08"
+    },
+    {
+      "usageRate": 0.181,
+      "dateMonth": "2023-09"
+    },
+    {
+      "usageRate": 0.165,
+      "dateMonth": "2023-10"
+    },
+    {
+      "usageRate": 0.186,
+      "dateMonth": "2023-11"
+    },
+    {
+      "usageRate": 0.184,
+      "dateMonth": "2023-12"
+    }
+  ]
+}

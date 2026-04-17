@@ -1,0 +1,29 @@
+{
+  "api": "getOutOfPlanProjectQtyYoy",
+  "path": "/api/gateway/getOutOfPlanProjectQtyYoy",
+  "domain": "D6",
+  "intent": "查询计划外项目数量和金额同比",
+  "variant": "v2",
+  "params_sent": {
+    "currYear": "2024",
+    "preYear": "2023"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 2,
+  "latency_ms": 687.8,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "dateYear": 2023,
+      "projectQty": 182,
+      "projectDeliveryRate": 0.0
+    },
+    {
+      "dateYear": 2024,
+      "projectQty": 104,
+      "projectDeliveryRate": 0.0
+    }
+  ]
+}

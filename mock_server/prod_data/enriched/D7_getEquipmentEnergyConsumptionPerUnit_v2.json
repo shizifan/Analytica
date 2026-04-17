@@ -1,0 +1,66 @@
+{
+  "api": "getEquipmentEnergyConsumptionPerUnit",
+  "path": "/api/gateway/getEquipmentEnergyConsumptionPerUnit",
+  "domain": "D7",
+  "intent": "查询各港区年度设备能源单耗（含月度趋势）",
+  "variant": "v2",
+  "params_sent": {
+    "dateYear": "2024"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 12,
+  "latency_ms": 320.0,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "workingAmount": 100402690.0,
+      "dateMonth": "2024-01"
+    },
+    {
+      "workingAmount": 82981775,
+      "dateMonth": "2024-02"
+    },
+    {
+      "workingAmount": 100364417,
+      "dateMonth": "2024-03"
+    },
+    {
+      "workingAmount": 91251520.0,
+      "dateMonth": "2024-04"
+    },
+    {
+      "workingAmount": 92658408,
+      "dateMonth": "2024-05"
+    },
+    {
+      "workingAmount": 95201478,
+      "dateMonth": "2024-06"
+    },
+    {
+      "workingAmount": 92132999,
+      "dateMonth": "2024-07"
+    },
+    {
+      "workingAmount": 101551330.0,
+      "dateMonth": "2024-08"
+    },
+    {
+      "workingAmount": 81501147,
+      "dateMonth": "2024-09"
+    },
+    {
+      "workingAmount": 92132852,
+      "dateMonth": "2024-10"
+    },
+    {
+      "workingAmount": 90500063,
+      "dateMonth": "2024-11"
+    },
+    {
+      "workingAmount": 135385353,
+      "dateMonth": "2024-12"
+    }
+  ]
+}

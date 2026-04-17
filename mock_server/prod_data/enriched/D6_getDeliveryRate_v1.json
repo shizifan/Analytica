@@ -1,0 +1,42 @@
+{
+  "api": "getDeliveryRate",
+  "path": "/api/gateway/getDeliveryRate",
+  "domain": "D6",
+  "intent": "查询资本性项目交付率（已交付/按时交付）",
+  "variant": "v1",
+  "params_sent": {
+    "dateYear": "2025"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 6,
+  "latency_ms": 259.7,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "dateYear": 2024,
+      "rate": 88.0
+    },
+    {
+      "dateYear": 2022,
+      "rate": 9.0
+    },
+    {
+      "dateYear": 2021,
+      "rate": 7.0
+    },
+    {
+      "dateYear": 2025,
+      "rate": 33.0
+    },
+    {
+      "dateYear": 2020,
+      "rate": 7.0
+    },
+    {
+      "dateYear": 2023,
+      "rate": 38.0
+    }
+  ]
+}

@@ -46,7 +46,7 @@ class MemoryStore:
                 "id": str(uuid4()),
                 "sid": session_id,
                 "name": slot_name,
-                "val": json.dumps(value, ensure_ascii=False) if not isinstance(value, str) else value,
+                "val": json.dumps(value, ensure_ascii=False, default=str),
                 "src": source,
                 "corrected": 1 if was_corrected else 0,
                 "round": round_num,
@@ -83,27 +83,29 @@ class MemoryStore:
         )
         await self.session.commit()
 
-    async def create_session(self, session_id: str, user_id: str) -> None:
+    async def create_session(
+        self, session_id: str, user_id: str, employee_id: str | None = None,
+    ) -> None:
         """Create a new session record."""
         await self.session.execute(
             text("""
-                INSERT INTO sessions (session_id, user_id, state_json)
-                VALUES (:sid, :uid, :state)
+                INSERT INTO sessions (session_id, user_id, employee_id, state_json)
+                VALUES (:sid, :uid, :eid, :state)
             """),
-            {"sid": session_id, "uid": user_id, "state": "{}"},
+            {"sid": session_id, "uid": user_id, "eid": employee_id, "state": "{}"},
         )
         await self.session.commit()
 
     async def get_session(self, session_id: str) -> dict | None:
         """Get session record."""
         result = await self.session.execute(
-            text("SELECT session_id, user_id, state_json, created_at FROM sessions WHERE session_id = :sid"),
+            text("SELECT session_id, user_id, employee_id, state_json, created_at FROM sessions WHERE session_id = :sid"),
             {"sid": session_id},
         )
         row = result.first()
         if row is None:
             return None
-        state = row[2]
+        state = row[3]
         if isinstance(state, str):
             try:
                 state = json.loads(state)
@@ -112,6 +114,7 @@ class MemoryStore:
         return {
             "session_id": row[0],
             "user_id": row[1],
+            "employee_id": row[2],
             "state_json": state,
-            "created_at": str(row[3]) if row[3] else None,
+            "created_at": str(row[4]) if row[4] else None,
         }

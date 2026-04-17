@@ -1,0 +1,56 @@
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-analytica_2026}
+      MYSQL_DATABASE: analytica
+      TZ: Asia/Shanghai
+    command: >-
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--password=${MYSQL_ROOT_PASSWORD:-analytica_2026}", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - analytica-net
+    restart: unless-stopped
+
+  app:
+    image: analytica:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: mysql+aiomysql://root:${MYSQL_ROOT_PASSWORD:-analytica_2026}@db:3306/analytica
+      DATABASE_URL_SYNC: mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-analytica_2026}@db:3306/analytica
+      TZ: Asia/Shanghai
+    ports:
+      - "${ANALYTICA_PORT:-8000}:8000"
+    volumes:
+      - ./reports:/app/reports
+      - ./.env:/app/.env:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - analytica-net
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+
+networks:
+  analytica-net:

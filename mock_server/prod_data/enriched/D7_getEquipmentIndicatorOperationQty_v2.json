@@ -1,0 +1,58 @@
+{
+  "api": "getEquipmentIndicatorOperationQty",
+  "path": "/api/gateway/getEquipmentIndicatorOperationQty",
+  "domain": "D7",
+  "intent": "查询各港区设备作业量指标（集装箱/散货，月度）",
+  "variant": "v2",
+  "params_sent": {
+    "dateMonth": "2026-02"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 10,
+  "latency_ms": 365.6,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 11124116,
+      "firstLevelName": "专用机械"
+    },
+    {
+      "num": 1362408.0,
+      "firstLevelName": "油运设备"
+    },
+    {
+      "num": 1491.0,
+      "firstLevelName": "辅助生产机械设备"
+    },
+    {
+      "num": 0.0,
+      "firstLevelName": "机车"
+    },
+    {
+      "num": 5854616.0,
+      "firstLevelName": "装卸搬运机械"
+    },
+    {
+      "num": 0.0,
+      "firstLevelName": "船舶"
+    },
+    {
+      "num": 134274.0,
+      "firstLevelName": "其他装卸机械设备"
+    },
+    {
+      "num": 28151801,
+      "firstLevelName": "连续输送机械"
+    },
+    {
+      "num": 7146104.0,
+      "firstLevelName": "起重机械"
+    },
+    {
+      "num": 7082464.0,
+      "firstLevelName": "集装箱专用设备"
+    }
+  ]
+}

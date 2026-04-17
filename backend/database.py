@@ -15,6 +15,7 @@ class SessionModel(Base):
 
     session_id = Column(String(36), primary_key=True)
     user_id = Column(String(36), nullable=False, index=True)
+    employee_id = Column(String(100), nullable=True, index=True)
     state_json = Column(JSON, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

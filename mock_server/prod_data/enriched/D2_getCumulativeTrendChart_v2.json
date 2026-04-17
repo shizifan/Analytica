@@ -1,0 +1,30 @@
+{
+  "api": "getCumulativeTrendChart",
+  "path": "/api/gateway/getCumulativeTrendChart",
+  "domain": "D2",
+  "intent": "查询业务板块年累计吞吐量趋势（含月度/累计双序列）",
+  "variant": "v2",
+  "params_sent": {
+    "businessSegment": "集装箱",
+    "curDateYear": "2024",
+    "yearDateYear": "2023"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 2,
+  "latency_ms": 371.1,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "throughput": 16046.7,
+      "businessSegment": "集装箱",
+      "dateYear": "2024"
+    },
+    {
+      "throughput": 15103.16,
+      "businessSegment": "集装箱",
+      "dateYear": "2023"
+    }
+  ]
+}

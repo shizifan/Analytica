@@ -56,6 +56,17 @@ SLOT_EXTRACTION_PROMPT = """你是一个数据分析意图槽位提取专家。
 - output_complexity 判断：查数字→simple_table，看趋势/原因→chart_text，要完整报告/PPT→full_report
 - analysis_subject 提取为列表形式，如 ["集装箱吞吐量"]
 - 不推测用户未表达的内容
+- comparison_type 对比方式提取：识别关键词映射——"同比"→yoy, "环比"→mom, "累计"→cumulative, "趋势"/"走势"/"变化"→trend, "实时"/"当前"→snapshot, "历年"/"历史"→historical。无对比关键词时输出 null
+- region 区域提取：识别港区/区域名称（如"大连港区""营口港""全港"等）。未指定时输出 null
+- data_granularity 数据粒度提取："各港区"/"按港区"/"分港区"→zone, "全港"→port, "各公司"/"按公司"→company, "客户"/"企业"→customer, "设备"/"单台"/"机种"→equipment, "项目"→project, "货类"→cargo, "资产"→asset, "业务板块"/"业务类型"→business。提及具体区域名则推断为 zone；未指定时输出 null
+- domain 业务领域推断（参考关键词映射）：
+  吞吐量/TEU/集装箱/散货/泊位/船舶/商品车/港存/装卸效率 → D1
+  商务驾驶舱/市场/重点企业/业务板块 → D2
+  客户/战略客户/客户贡献/客户信用 → D3
+  投企/持股/董监事 → D4
+  资产/房屋/土地/海域/设备设施(资产) → D5
+  投资/资本项目/成本项目/计划进度/交付率 → D6
+  设备利用率/完好率/台时效率/能耗/故障/可靠性 → D7
 """
 
 CLARIFICATION_PROMPT = """你是一个友好的数据分析助手，正在帮助用户澄清分析需求。
@@ -99,8 +110,11 @@ SLOT_MEANINGS = {
     "attribution_needed": "是否需要归因分析",
     "predictive_needed": "是否需要预测分析",
     "time_granularity": "数据粒度（日/月/季/年）",
-    "domain": "业务领域",
+    "domain": "业务领域（D1生产运营/D2市场商务/D3客户管理/D4投企管理/D5资产管理/D6投资管理/D7设备子屏）",
     "domain_glossary": "用户自定义业务术语映射",
+    "comparison_type": "对比方式（同比yoy/环比mom/累计cumulative/趋势trend/实时snapshot/历史historical）",
+    "region": "分析涉及的港区或区域名称",
+    "data_granularity": "数据分组维度（全港port/港区zone/公司company/客户customer/设备equipment/项目project/货类cargo/资产asset/业务板块business）",
 }
 
 # Source priority: higher number = higher priority, cannot be overwritten by lower
@@ -125,6 +139,9 @@ SLOT_DEFAULTS = {
     "predictive_needed": False,
     "domain": None,
     "domain_glossary": None,
+    "comparison_type": None,
+    "region": None,
+    "data_granularity": None,
 }
 
 # Condition activation rules
@@ -170,20 +187,37 @@ class SlotFillingEngine:
         memory_store: Any = None,
         max_clarification_rounds: int = 3,
         llm_timeout: float = 30.0,
+        extra_slot_defs: list[Any] | None = None,
+        slot_constraints: dict[str, Any] | None = None,
+        prompt_suffix: str = "",
     ):
         self.llm = llm
         self.memory_store = memory_store
         self.max_clarification_rounds = max_clarification_rounds
         self.llm_timeout = llm_timeout
+        # 员工域扩展
+        self.extra_slot_defs = extra_slot_defs or []
+        self.slot_constraints = slot_constraints or {}
+        self.prompt_suffix = prompt_suffix
+        # 派生：额外槽位名 + 含义
+        self._extra_slot_names = [s.name for s in self.extra_slot_defs]
+        self._extra_slot_meanings = {
+            s.name: s.meaning for s in self.extra_slot_defs if s.meaning
+        }
+        self._all_slot_names = list(ALL_SLOT_NAMES) + self._extra_slot_names
 
     def initialize_slots(self, user_memory: dict[str, Any]) -> dict[str, SlotValue]:
         """Initialize all slots, pre-filling inferable slots from user memory.
 
         Required slots with inferable=False are NOT pre-filled from memory.
+        Also initializes extra_slots and applies slot_constraints defaults.
         """
         slots: dict[str, SlotValue] = {}
         for slot_def in SLOT_SCHEMA:
             name = slot_def.name
+            # 检查 slot_constraints 中是否有默认值覆盖
+            constraint = self.slot_constraints.get(name)
+            constraint_default = getattr(constraint, "default_value", None) if constraint else None
             # Only inferable slots can be pre-filled from memory
             if slot_def.inferable and name in user_memory and user_memory[name] is not None:
                 slots[name] = SlotValue(
@@ -191,8 +225,19 @@ class SlotFillingEngine:
                     source="memory",
                     confirmed=False,
                 )
+            elif constraint_default is not None:
+                slots[name] = SlotValue(
+                    value=constraint_default,
+                    source="default",
+                    confirmed=False,
+                )
             else:
                 slots[name] = SlotValue(value=None, source="default", confirmed=False)
+
+        # 初始化额外槽位
+        for es in self.extra_slot_defs:
+            slots[es.name] = SlotValue(value=None, source="default", confirmed=False)
+
         return slots
 
     async def apply_correction_rate_check(
@@ -238,7 +283,25 @@ class SlotFillingEngine:
         if not history_text:
             history_text = "（无历史对话）"
 
-        target_slots = ", ".join(ALL_SLOT_NAMES)
+        target_slots = ", ".join(self._all_slot_names)
+
+        # 构建额外规则（extra_slots 含义 + slot_constraints 约束）
+        extra_rules = ""
+        if self.extra_slot_defs or self.slot_constraints:
+            rule_lines = []
+            for es in self.extra_slot_defs:
+                rule = f"- {es.name}: {es.meaning}"
+                if es.allowed_values:
+                    rule += f"，可选值：{'|'.join(es.allowed_values)}"
+                rule_lines.append(rule)
+            for slot_name, constraint in self.slot_constraints.items():
+                av = getattr(constraint, "allowed_values", [])
+                if av:
+                    rule_lines.append(
+                        f"- {slot_name} 值域限定为：{'|'.join(str(v) for v in av)}"
+                    )
+            if rule_lines:
+                extra_rules = "\n【额外槽位与约束规则】\n" + "\n".join(rule_lines)
 
         prompt = SLOT_EXTRACTION_PROMPT.format(
             current_slots_json=json.dumps(current_slots_json, ensure_ascii=False, indent=2),
@@ -246,6 +309,10 @@ class SlotFillingEngine:
             latest_user_message=text,
             target_slots_list=target_slots,
         )
+        if self.prompt_suffix:
+            prompt += f"\n\n{self.prompt_suffix}"
+        if extra_rules:
+            prompt += extra_rules
 
         # Call LLM with retry
         raw_output = await self._call_llm_with_retry(prompt)
@@ -265,8 +332,9 @@ class SlotFillingEngine:
             return updated_slots
 
         # Apply extracted values
+        known_slot_names = set(SLOT_SCHEMA_MAP) | set(self._extra_slot_names)
         for slot_name, extraction in extracted.items():
-            if slot_name not in SLOT_SCHEMA_MAP:
+            if slot_name not in known_slot_names:
                 logger.debug("Ignoring unknown slot name from LLM: %s", slot_name)
                 continue
 
@@ -332,6 +400,13 @@ class SlotFillingEngine:
             if slot_val is None or slot_val.value is None:
                 empty_slots.append((slot_def.priority, name))
 
+        # 检查额外槽位中 required=True 的
+        for es in self.extra_slot_defs:
+            if es.required:
+                slot_val = slots.get(es.name)
+                if slot_val is None or slot_val.value is None:
+                    empty_slots.append((es.priority, es.name))
+
         empty_slots.sort(key=lambda x: x[0])
         return [name for _, name in empty_slots]
 
@@ -348,7 +423,7 @@ class SlotFillingEngine:
                     "confirmed": sv.confirmed,
                 }
 
-        slot_meaning = SLOT_MEANINGS.get(target_slot, target_slot)
+        slot_meaning = SLOT_MEANINGS.get(target_slot) or self._extra_slot_meanings.get(target_slot, target_slot)
 
         prompt = CLARIFICATION_PROMPT.format(
             current_slots_json=json.dumps(slots_json, ensure_ascii=False, indent=2),
@@ -380,8 +455,9 @@ class SlotFillingEngine:
                 }
 
         target_info_lines = []
+        all_meanings = {**SLOT_MEANINGS, **self._extra_slot_meanings}
         for slot_name in target_slots:
-            meaning = SLOT_MEANINGS.get(slot_name, slot_name)
+            meaning = all_meanings.get(slot_name, slot_name)
             target_info_lines.append(f"- {slot_name}: {meaning}")
         target_slots_info = "\n".join(target_info_lines)
 
@@ -392,7 +468,7 @@ class SlotFillingEngine:
 
         raw_output = await self._call_llm_with_retry(prompt)
         if raw_output is None:
-            fallback_parts = [SLOT_MEANINGS.get(s, s) for s in target_slots]
+            fallback_parts = [all_meanings.get(s, s) for s in target_slots]
             return f"请问您希望的{'、'.join(fallback_parts)}分别是什么？"
 
         cleaned = _strip_think_tags(raw_output).strip()
@@ -423,7 +499,33 @@ class SlotFillingEngine:
             else:
                 time_text = str(time_range.value)
 
-        analysis_goal = f"分析{time_text}{subject_text}的数据" if subject_text else raw_query
+        # Enrich goal with region and comparison_type if available
+        region_slot = slots.get("region")
+        region_text = ""
+        if region_slot and region_slot.value:
+            region_text = str(region_slot.value)
+
+        comp_type_slot = slots.get("comparison_type")
+        comp_type_text = ""
+        if comp_type_slot and comp_type_slot.value:
+            ct_map = {"yoy": "同比", "mom": "环比", "cumulative": "累计",
+                      "trend": "趋势", "snapshot": "实时", "historical": "历史"}
+            comp_type_text = ct_map.get(comp_type_slot.value, comp_type_slot.value)
+
+        if subject_text:
+            goal_parts = ["分析"]
+            if time_text:
+                goal_parts.append(time_text)
+            if region_text:
+                goal_parts.append(region_text)
+            goal_parts.append(subject_text)
+            if comp_type_text:
+                goal_parts.append(f"的{comp_type_text}数据")
+            else:
+                goal_parts.append("的数据")
+            analysis_goal = "".join(goal_parts)
+        else:
+            analysis_goal = raw_query
 
         # Calculate empty required slots
         complexity = None
@@ -481,6 +583,15 @@ class SlotFillingEngine:
                         value=["综合运营数据"], source="inferred", confirmed=False
                     )
 
+        # 填充额外槽位的默认值（slot_constraints 中的 default_value）
+        for es in self.extra_slot_defs:
+            slot = slots.get(es.name)
+            if slot is None or slot.value is None:
+                constraint = self.slot_constraints.get(es.name)
+                cd = getattr(constraint, "default_value", None) if constraint else None
+                if cd is not None:
+                    slots[es.name] = SlotValue(value=cd, source="inferred", confirmed=False)
+
         return {"bypass_triggered": True}
 
     def handle_max_rounds_reached(
@@ -518,6 +629,15 @@ class SlotFillingEngine:
                     slots[name] = SlotValue(
                         value=["综合运营数据"], source="default", confirmed=False
                     )
+
+        # 填充额外槽位的默认值
+        for es in self.extra_slot_defs:
+            slot = slots.get(es.name)
+            if slot is None or slot.value is None:
+                constraint = self.slot_constraints.get(es.name)
+                cd = getattr(constraint, "default_value", None) if constraint else None
+                if cd is not None:
+                    slots[es.name] = SlotValue(value=cd, source="default", confirmed=False)
 
         return {"should_proceed_with_defaults": True}
 
@@ -577,10 +697,11 @@ class SlotFillingEngine:
         return str(response)
 
 
-async def run_perception(state: dict) -> dict:
+async def run_perception(state: dict, profile: Any = None) -> dict:
     """LangGraph perception node implementation.
 
     Orchestrates the SlotFillingEngine within the agent graph.
+    当 profile (EmployeeProfile) 提供时，注入员工域配置（extra_slots、slot_constraints、prompt_suffix）。
     """
     from backend.config import get_settings
     from backend.database import get_session_factory
@@ -596,6 +717,15 @@ async def run_perception(state: dict) -> dict:
         temperature=0.1,
     )
 
+    # 从 profile 提取员工域扩展参数
+    extra_slot_defs = []
+    slot_constraints: dict[str, Any] = {}
+    prompt_suffix = ""
+    if profile is not None:
+        extra_slot_defs = profile.perception.extra_slots
+        slot_constraints = profile.perception.slot_constraints
+        prompt_suffix = profile.perception.system_prompt_suffix or ""
+
     # Get DB session for memory
     from backend.memory.store import MemoryStore
 
@@ -603,7 +733,12 @@ async def run_perception(state: dict) -> dict:
     async with factory() as db_session:
         memory_store = MemoryStore(session=db_session)
         engine = SlotFillingEngine(
-            llm=llm, memory_store=memory_store, max_clarification_rounds=3
+            llm=llm,
+            memory_store=memory_store,
+            max_clarification_rounds=3,
+            extra_slot_defs=extra_slot_defs,
+            slot_constraints=slot_constraints,
+            prompt_suffix=prompt_suffix,
         )
 
         user_id = state.get("user_id", "anonymous")

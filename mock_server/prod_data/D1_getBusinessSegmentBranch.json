@@ -1,0 +1,231 @@
+{
+  "api": "getBusinessSegmentBranch",
+  "path": "/api/gateway/getBusinessSegmentBranch",
+  "domain": "D1",
+  "intent": "查询港区下各公司的业务分支组织关系",
+  "params_sent": {},
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 27,
+  "latency_ms": 318.2,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "mainOrgCode": "10002254",
+      "orgName": "大连港散杂货码头公司",
+      "bsCargoKind": "散杂货",
+      "sndStatName": "散杂货码头",
+      "snOrgName": "大连港散杂货码头公司",
+      "shortName": "散杂货码头"
+    },
+    {
+      "mainOrgCode": "90002254",
+      "orgName": "大连港散杂货码头公司（矿石）",
+      "bsCargoKind": "散杂货",
+      "sndStatName": "散杂货码头",
+      "snOrgName": "大连港散杂货码头公司",
+      "shortName": "散杂货码头"
+    },
+    {
+      "mainOrgCode": "20002815",
+      "orgName": "大连港散粮码头公司",
+      "bsCargoKind": "散杂货",
+      "sndStatName": "散粮码头",
+      "snOrgName": "大连港散粮码头公司",
+      "shortName": "散粮码头"
+    },
+    {
+      "mainOrgCode": "10022330",
+      "orgName": "大连长兴岛港口有限公司",
+      "bsCargoKind": "散杂货",
+      "sndStatName": "长兴岛港口",
+      "snOrgName": "大连长兴岛港口有限公司",
+      "shortName": "长兴岛港口"
+    },
+    {
+      "mainOrgCode": "10002253",
+      "orgName": "大连港油品码头公司",
+      "bsCargoKind": "油品",
+      "sndStatName": "油品码头",
+      "snOrgName": "大连港油品码头公司",
+      "shortName": "新港"
+    },
+    {
+      "mainOrgCode": "10000334",
+      "orgName": "大连港石化有限公司",
+      "bsCargoKind": "油品",
+      "sndStatName": "大港石化",
+      "snOrgName": "大连港石化有限公司",
+      "shortName": "大港石化"
+    },
+    {
+      "mainOrgCode": "82162429",
+      "orgName": "大连长兴岛港口投资发展有限公司",
+      "bsCargoKind": "油品",
+      "sndStatName": "长油品",
+      "snOrgName": "大连长兴岛港口投资发展有限公司",
+      "shortName": "长油品"
+    },
+    {
+      "mainOrgCode": "20047044",
+      "orgName": "大连集装箱码头有限公司",
+      "bsCargoKind": "集装箱",
+      "sndStatName": "DCT",
+      "snOrgName": "大连集装箱码头有限公司",
+      "shortName": "DCT"
+    },
+    {
+      "mainOrgCode": "20051380",
+      "orgName": "大连汽车码头有限公司",
+      "bsCargoKind": "滚装",
+      "sndStatName": "汽车码头",
+      "snOrgName": "大连汽车码头有限公司",
+      "shortName": "汽车码头"
+    },
+    {
+      "mainOrgCode": "10000040",
+      "orgName": "大连海嘉汽车码头有限公司",
+      "bsCargoKind": "滚装",
+      "sndStatName": "汽车码头",
+      "snOrgName": "大连汽车码头有限公司",
+      "shortName": "海嘉码头"
+    },
+    {
+      "mainOrgCode": "20047038",
+      "orgName": "辽港控股（营口）有限公司第一分公司",
+      "bsCargoKind": "散杂货",
+      "sndStatName": "股份一公司",
+      "snOrgName": "辽港控股（营口）有限公司第一分公司",
+      "shortName": "股份一公司"
+    },
+    {
+      "mainOrgCode": "82162085",
+      "orgName": "辽港控股（营口）有限公司第二分公司",
+      "bsCargoKind": "散杂货",
+      "sndStatName": "股份二公司",
+      "snOrgName": "辽港控股（营口）有限公司第二分公司",
+      "shortName": "股份二公司"
+    },
+    {
+      "mainOrgCode": "20047036",
+      "orgName": "辽港控股（营口）有限公司第三分公司",
+      "bsCargoKind": "散杂货",
+      "sndStatName": "股份三公司",
+      "snOrgName": "辽港控股（营口）有限公司第三分公司",
+      "shortName": "股份三公司"
+    },
+    {
+      "mainOrgCode": "20047040",
+      "orgName": "辽港控股（营口）有限公司第六分公司",
+      "bsCargoKind": "散杂货",
+      "sndStatName": "股份六公司",
+      "snOrgName": "辽港控股（营口）有限公司第六分公司",
+      "shortName": "股份六公司"
+    },
+    {
+      "mainOrgCode": "20047043",
+      "orgName": "辽港控股（营口）有限公司粮食分公司",
+      "bsCargoKind": "散杂货",
+      "sndStatName": "股份粮食公司",
+      "snOrgName": "辽港控股（营口）有限公司粮食分公司",
+      "shortName": "股份粮食公司"
+    },
+    {
+      "mainOrgCode": "20051366",
+      "orgName": "辽港控股（营口）有限公司第四分公司",
+      "bsCargoKind": "油品",
+      "sndStatName": "股份四公司",
+      "snOrgName": "辽港控股（营口）有限公司第四分公司",
+      "shortName": "股份四公司"
+    },
+    {
+      "mainOrgCode": "10000513",
+      "orgName": "营口港仙人岛码头有限公司",
+      "bsCargoKind": "油品",
+      "sndStatName": "仙人岛码头",
+      "snOrgName": "营口港仙人岛码头有限公司",
+      "shortName": "仙人岛码头"
+    },
+    {
+      "mainOrgCode": "20047072",
+      "orgName": "营口有限新世纪集装箱码头有限公司",
+      "bsCargoKind": "集装箱",
+      "sndStatName": "中远海",
+      "snOrgName": "营口有限新世纪集装箱码头有限公司",
+      "shortName": "中远海"
+    },
+    {
+      "mainOrgCode": "20047041",
+      "orgName": "营口有限集装箱码头分公司",
+      "bsCargoKind": "集装箱",
+      "sndStatName": "股份集码",
+      "snOrgName": "营口有限集装箱码头分公司",
+      "shortName": "股份集码"
+    },
+    {
+      "mainOrgCode": "20047066",
+      "orgName": "丹东港口集团有限公司煤矿码头分公司",
+      "bsCargoKind": "散杂货",
+      "sndStatName": "煤矿公司",
+      "snOrgName": "丹东港口集团有限公司煤矿码头分公司",
+      "shortName": "煤矿公司"
+    },
+    {
+      "mainOrgCode": "20047065",
+      "orgName": "丹东港口集团有限公司杂货码头分公司",
+      "bsCargoKind": "散杂货",
+      "sndStatName": "杂货公司",
+      "snOrgName": "丹东港口集团有限公司杂货码头分公司",
+      "shortName": "杂货公司"
+    },
+    {
+      "mainOrgCode": "20047067",
+      "orgName": "丹东港口集团有限公司散粮码头分公司",
+      "bsCargoKind": "散杂货",
+      "sndStatName": "散粮公司",
+      "snOrgName": "丹东港口集团有限公司散粮码头分公司",
+      "shortName": "散粮公司"
+    },
+    {
+      "mainOrgCode": "20047068",
+      "orgName": "丹东港口集团有限公司集装箱码头分公司",
+      "bsCargoKind": "集装箱",
+      "sndStatName": "集装箱公司",
+      "snOrgName": "丹东港口集团有限公司集装箱码头分公司",
+      "shortName": "集装箱公司"
+    },
+    {
+      "mainOrgCode": "10002941",
+      "orgName": "盘锦港集团有限公司第一分公司",
+      "bsCargoKind": "散杂货",
+      "sndStatName": "盘锦一公司",
+      "snOrgName": "盘锦港集团有限公司第一分公司",
+      "shortName": "一公司"
+    },
+    {
+      "mainOrgCode": "10002938",
+      "orgName": "盘锦港集团有限公司第二分公司",
+      "bsCargoKind": "油品",
+      "sndStatName": "盘锦二公司",
+      "snOrgName": "盘锦港集团有限公司第二分公司",
+      "shortName": "二公司"
+    },
+    {
+      "mainOrgCode": "10002943",
+      "orgName": "盘锦港集团有限公司集装箱分公司",
+      "bsCargoKind": "集装箱",
+      "sndStatName": "盘锦集装箱",
+      "snOrgName": "盘锦港集团有限公司集装箱分公司",
+      "shortName": "盘锦集装箱"
+    },
+    {
+      "mainOrgCode": "10000274",
+      "orgName": "绥中港集团有限公司",
+      "bsCargoKind": "散杂货",
+      "sndStatName": "绥中港集团",
+      "snOrgName": "绥中港集团有限公司",
+      "shortName": "绥中港集团"
+    }
+  ]
+}

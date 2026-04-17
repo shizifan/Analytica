@@ -1,0 +1,33 @@
+{
+  "api": "getCostProjectYoyList",
+  "path": "/api/gateway/getCostProjectYoyList",
+  "domain": "D6",
+  "intent": "查询成本性项目数量和金额同比",
+  "variant": "v1",
+  "params_sent": {
+    "currYear": "2025",
+    "preYear": "2024"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 2,
+  "latency_ms": 756.6,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "currYear": 2024,
+      "projectQty": 0,
+      "investAmt": 0.0,
+      "finishPayAmt": 0.0,
+      "deliveryRate": 0.0
+    },
+    {
+      "currYear": 2025,
+      "projectQty": 2749,
+      "investAmt": 386877.6,
+      "finishPayAmt": 250359364.8,
+      "deliveryRate": 0.1
+    }
+  ]
+}
