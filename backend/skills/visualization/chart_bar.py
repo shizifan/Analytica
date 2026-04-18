@@ -58,10 +58,20 @@ class BarChartSkill(BaseSkill):
 
         # Auto-detect category_column if not specified or not found
         if not category_column or category_column not in df.columns:
-            for col in df.columns:
-                if not pd.api.types.is_numeric_dtype(df[col]):
-                    category_column = col
-                    break
+            # Prefer columns whose name contains date/time keywords
+            _DATE_KEYWORDS = ("date", "month", "year", "time", "day", "period", "quarter")
+            date_cols = [
+                c for c in df.columns
+                if any(kw in c.lower() for kw in _DATE_KEYWORDS) and not pd.api.types.is_numeric_dtype(df[c])
+            ]
+            if date_cols:
+                category_column = date_cols[0]
+            else:
+                # Fallback: first non-numeric column
+                for col in df.columns:
+                    if not pd.api.types.is_numeric_dtype(df[col]):
+                        category_column = col
+                        break
         if not category_column or category_column not in df.columns:
             return self._fail(f"分类列 '{category_column}' 不存在")
 

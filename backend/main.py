@@ -356,10 +356,16 @@ async def websocket_chat(ws: WebSocket, session_id: str):
 
             try:
                 prev_task_statuses: dict[str, str] = {}
+                prev_msg_count = 0
 
                 async for event in run_stream(
                     session_id, user_id, user_message, employee_id=employee_id,
                 ):
+                    # 处理 run_stream 发出的初始元信息（消息基线）
+                    if "__meta__" in event:
+                        prev_msg_count = event["__meta__"].get("initial_msg_count", 0)
+                        continue
+
                     for node_name, node_state in event.items():
                         # Push slot updates
                         if "slots" in node_state:
@@ -369,16 +375,18 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                                 "current_asking": node_state.get("current_target_slot"),
                             })
 
-                        # Push messages
+                        # Push messages — only send NEW messages (skip already-sent)
                         messages = node_state.get("messages", [])
-                        if messages:
-                            last_msg = messages[-1]
-                            if last_msg.get("role") == "assistant":
-                                await ws.send_json({
-                                    "event": "message",
-                                    "content": last_msg["content"],
-                                    "phase": node_state.get("current_phase", "unknown"),
-                                })
+                        cur_msg_count = len(messages)
+                        if cur_msg_count > prev_msg_count:
+                            for msg in messages[prev_msg_count:]:
+                                if msg.get("role") == "assistant":
+                                    await ws.send_json({
+                                        "event": "message",
+                                        "content": msg["content"],
+                                        "phase": node_state.get("current_phase", "unknown"),
+                                    })
+                            prev_msg_count = cur_msg_count
 
                         # Push structured intent if ready
                         if node_state.get("structured_intent"):

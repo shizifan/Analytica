@@ -59,6 +59,19 @@ function App() {
     [sendMessage, userId],
   );
 
+  const handlePlanAction = useCallback(
+    (action: 'confirm' | 'modify' | 'regenerate') => {
+      if (!sessionId || wsStatus !== 'connected') return;
+      const actionMessages: Record<string, string> = {
+        confirm: '确认执行',
+        modify: '修改方案',
+        regenerate: '重新规划',
+      };
+      handleSend(actionMessages[action]);
+    },
+    [sessionId, wsStatus, handleSend],
+  );
+
   // Phase label for header
   const phaseLabel: Record<string, string> = {
     idle: '等待输入',
@@ -122,9 +135,32 @@ function App() {
           <div className="flex-1 overflow-y-auto px-4 py-3">
             {messages.length === 0 && (
               <div className="flex h-full items-center justify-center">
-                <div className="text-center text-gray-400">
-                  <p className="text-lg font-medium">Analytica</p>
-                  <p className="mt-1 text-sm">输入您的港口数据分析需求开始对话</p>
+                <div className="flex flex-col items-center gap-6">
+                  {/* Title */}
+                  <div className="text-center">
+                    <h2 className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-2xl font-bold text-transparent">
+                      多维能动决策智能体
+                    </h2>
+                    <p className="mt-2 text-sm text-gray-400">我是你的专属数据分析师</p>
+                  </div>
+
+                  {/* Example questions */}
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                      <svg className="h-4 w-4 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2L9.19 8.63L2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2z" />
+                      </svg>
+                      <span>试着问</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSend('2026年1-4月吞吐量，以图文形式返回，不需要归因')}
+                      disabled={!sessionId || wsStatus !== 'connected'}
+                      className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-left text-sm text-gray-600 shadow-sm transition hover:border-blue-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      2026年1-4月吞吐量，以图文形式返回，不需要归因
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -142,7 +178,7 @@ function App() {
               if (msg.type === 'execution_progress') {
                 return <ExecutionProgress key={msg.id} />;
               }
-              return <ChatMessage key={msg.id} message={msg} />;
+              return <ChatMessage key={msg.id} message={msg} onPlanAction={handlePlanAction} />;
             })}
 
             {/* Inline execution progress when executing */}

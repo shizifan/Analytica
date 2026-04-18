@@ -54,7 +54,7 @@ SLOT_EXTRACTION_PROMPT = """你是一个数据分析意图槽位提取专家。
 - 只输出有依据的槽位，无依据的不输出（宁缺毋滥）
 - time_range 解析为 {{"start": "YYYY-MM-DD", "end": "YYYY-MM-DD", "description": "自然语言"}}
 - output_complexity 判断：查数字→simple_table，看趋势/原因→chart_text，要完整报告/PPT→full_report
-- analysis_subject 提取为列表形式，如 ["集装箱吞吐量"]
+- analysis_subject 提取为列表形式，如 ["吞吐量"]。注意：用户未明确指定具体货类（集装箱、散杂货等）时，不要自行补充货类限定词
 - 不推测用户未表达的内容
 - comparison_type 对比方式提取：识别关键词映射——"同比"→yoy, "环比"→mom, "累计"→cumulative, "趋势"/"走势"/"变化"→trend, "实时"/"当前"→snapshot, "历年"/"历史"→historical。无对比关键词时输出 null
 - region 区域提取：识别港区/区域名称（如"大连港区""营口港""全港"等）。未指定时输出 null

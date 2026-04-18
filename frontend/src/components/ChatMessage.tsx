@@ -1,14 +1,43 @@
+import { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { EChartsViewer } from './EChartsViewer';
 import type { ChatMessage as ChatMessageType } from '../types';
+
+const PLAN_ACTION_LINE = '[确认执行] [修改方案] [重新规划]';
 
 interface Props {
   message: ChatMessageType;
+  onPlanAction?: (action: 'confirm' | 'modify' | 'regenerate') => void;
 }
 
-export function ChatMessage({ message }: Props) {
+export function ChatMessage({ message, onPlanAction }: Props) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
+
+  // Custom markdown components: render ```echarts code blocks with EChartsViewer
+  const markdownComponents = useMemo(
+    () => ({
+      code(props: Record<string, unknown>) {
+        const { children, className } = props;
+        if (/language-echarts/.test(String(className || ''))) {
+          const raw = String(children).replace(/\n$/, '');
+          try {
+            const option = JSON.parse(raw) as Record<string, unknown>;
+            return <EChartsViewer option={option} height={360} />;
+          } catch {
+            return <code className={String(className)}>{children as React.ReactNode}</code>;
+          }
+        }
+        return <code className={String(className || '')}>{children as React.ReactNode}</code>;
+      },
+      // Unwrap <pre> so EChartsViewer renders without monospace wrapper
+      pre(props: Record<string, unknown>) {
+        return <>{(props.children) as React.ReactNode}</>;
+      },
+    }),
+    [],
+  );
 
   if (isSystem) {
     return (
@@ -20,6 +49,12 @@ export function ChatMessage({ message }: Props) {
       </div>
     );
   }
+
+  // 检查消息是否包含规划操作行
+  const hasPlanActions = !isUser && message.content.includes(PLAN_ACTION_LINE);
+  const contentWithoutActions = hasPlanActions
+    ? message.content.replace(PLAN_ACTION_LINE, '').trimEnd()
+    : message.content;
 
   return (
     <div
@@ -37,9 +72,34 @@ export function ChatMessage({ message }: Props) {
           <p className="whitespace-pre-wrap">{message.content}</p>
         ) : (
           <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-headings:my-2 prose-pre:my-2 prose-code:text-xs">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {message.content}
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {contentWithoutActions}
             </ReactMarkdown>
+          </div>
+        )}
+        {hasPlanActions && onPlanAction && (
+          <div className="mt-2 flex gap-2 border-t border-gray-100 pt-2">
+            <button
+              type="button"
+              onClick={() => onPlanAction('confirm')}
+              className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+            >
+              确认执行
+            </button>
+            <button
+              type="button"
+              onClick={() => onPlanAction('modify')}
+              className="rounded border border-gray-300 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            >
+              修改方案
+            </button>
+            <button
+              type="button"
+              onClick={() => onPlanAction('regenerate')}
+              className="rounded border border-gray-300 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            >
+              重新规划
+            </button>
           </div>
         )}
         {message.phase && !isUser && (

@@ -86,7 +86,7 @@ class ApiDataFetchSkill(BaseSkill):
         verify_ssl = not _is_prod_mode()  # prod uses self-signed cert
 
         try:
-            async with httpx.AsyncClient(timeout=30.0, verify=verify_ssl) as client:
+            async with httpx.AsyncClient(timeout=30.0, verify=verify_ssl, trust_env=False) as client:
                 resp = await client.get(
                     url,
                     params=query_params,

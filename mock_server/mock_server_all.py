@@ -3886,7 +3886,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="港口司南 Mock API Server")
     parser.add_argument("--host", default="0.0.0.0")
-    parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument("--port", type=int, default=18080)
     parser.add_argument("--reload", action="store_true")
     args = parser.parse_args()
     print(f"\n=== 港口司南 Mock API Server v1.0 ===")

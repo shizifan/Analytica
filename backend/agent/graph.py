@@ -94,11 +94,18 @@ async def planning_node(state: AgentState) -> AgentState:
     """Planning node: generate analysis plan from structured intent.
 
     If plan_confirmed is True (resuming after confirmation), skip generation.
+    If analysis_plan already exists from a previous turn (loaded from DB),
+    auto-confirm and proceed to execution without regenerating.
     """
     state["current_phase"] = "planning"
 
     # If plan already confirmed, pass through to execution
     if state.get("plan_confirmed"):
+        return state
+
+    # Auto-confirm existing plan from previous turn (loaded from DB)
+    if state.get("analysis_plan"):
+        state["plan_confirmed"] = True
         return state
 
     intent = state.get("structured_intent")
@@ -180,13 +187,17 @@ def route_after_planning(state: AgentState) -> str:
 
 
 def route_after_execution(state: AgentState) -> str:
-    """Route after execution: replan, continue, or reflect."""
+    """Route after execution: replan, continue, or end."""
     if state.get("needs_replan"):
         return "planning"
     task_statuses = state.get("task_statuses", {})
-    all_done = task_statuses and all(v == "done" for v in task_statuses.values())
-    if all_done:
-        return "reflection"
+    if not task_statuses:
+        return END
+    # Exit when all tasks reached a terminal state (done/failed/error/skipped)
+    terminal_states = {"done", "failed", "error", "skipped"}
+    all_terminal = all(v in terminal_states for v in task_statuses.values())
+    if all_terminal:
+        return END
     return "execution"
 
 
@@ -220,8 +231,9 @@ def build_graph() -> StateGraph:
     graph.add_conditional_edges(
         "execution",
         route_after_execution,
-        {"planning": "planning", "execution": "execution", "reflection": "reflection"},
+        {"planning": "planning", "execution": "execution", END: END},
     )
+    # 反思节点暂时禁用，保留节点定义供后续启用
     graph.add_edge("reflection", END)
 
     return graph
@@ -246,21 +258,67 @@ async def run_stream(
 ) -> AsyncGenerator[dict, None]:
     """Run the agent graph and stream state updates.
 
-    当 employee_id 提供时，委托给 EmployeeManager 使用员工专属图；
-    否则使用通用单例图（向后兼容）。
+    多轮对话支持：从数据库加载上一轮状态（保留已填充的槽位、对话历史、
+    追问轮次），追加新用户消息后继续图执行。图执行结束后将最终状态
+    持久化回数据库，供下一轮使用。
+
+    当 employee_id 提供时，使用员工专属图；否则使用通用单例图。
     """
+    from backend.database import get_session_factory
+    from backend.memory.store import MemoryStore
+
+    factory = get_session_factory()
+
+    # 1. 从数据库加载上一轮会话状态
+    async with factory() as db_session:
+        store = MemoryStore(db_session)
+        session_data = await store.get_session(session_id)
+
+    prev_state = (session_data.get("state_json") if session_data else None) or {}
+
+    # 2. 构建本轮状态：有历史槽位则续接，否则全新开始
+    if prev_state.get("slots"):
+        state: dict[str, Any] = dict(prev_state)
+        state.setdefault("messages", [])
+        state["messages"].append({"role": "user", "content": user_message})
+        # 重置每轮控制字段，让 perception 重新评估
+        state["structured_intent"] = None
+        state["current_target_slot"] = None
+        state["current_phase"] = "perception"
+        state["error"] = None
+    else:
+        state = dict(
+            make_initial_state(session_id, user_id, user_message, employee_id=employee_id)
+        )
+
+    # 3. 获取对应的编译图
     if employee_id:
         from backend.employees.manager import EmployeeManager
         manager = EmployeeManager.get_instance()
-        async for event in manager.run_employee_stream(
-            employee_id, session_id, user_id, user_message,
-        ):
-            yield event
+        graph = manager.get_graph(employee_id)
     else:
         graph = get_compiled_graph()
-        initial = make_initial_state(session_id, user_id, user_message)
-        async for event in graph.astream(initial):
-            yield event
+
+    # 4. 通知调用方当前消息基线（避免重发历史消息）
+    yield {"__meta__": {"initial_msg_count": len(state.get("messages", []))}}
+
+    # 5. 执行图并流式返回事件，同时捕获最终状态
+    final_state = dict(state)
+    async for event in graph.astream(state):
+        for _node_name, node_state in event.items():
+            final_state.update(node_state)
+        yield event
+
+    # 6. 将最终状态持久化到数据库，供下一轮加载
+    try:
+        safe_state = json.loads(
+            json.dumps(final_state, ensure_ascii=False, default=str)
+        )
+        async with factory() as db_session:
+            store = MemoryStore(db_session)
+            await store.save_session_state(session_id, safe_state)
+    except Exception:
+        logger.exception("Failed to save session state for %s", session_id)
 
 
 # ── MySQL Checkpoint Saver ───────────────────────────────────

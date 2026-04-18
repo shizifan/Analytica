@@ -36,6 +36,11 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
         if state.get("plan_confirmed"):
             return state
 
+        # Auto-confirm existing plan from previous turn (loaded from DB)
+        if state.get("analysis_plan"):
+            state["plan_confirmed"] = True
+            return state
+
         intent = state.get("structured_intent")
         if intent is None:
             state["error"] = "No structured intent available for planning"
@@ -122,8 +127,9 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
     graph.add_conditional_edges(
         "execution",
         route_after_execution,
-        {"planning": "planning", "execution": "execution", "reflection": "reflection"},
+        {"planning": "planning", "execution": "execution", END: END},
     )
+    # 反思节点暂时禁用
     graph.add_edge("reflection", END)
 
     logger.info(

@@ -35,7 +35,7 @@ load_all_skills()
 logger = logging.getLogger("test.employee_e2e")
 
 EMPLOYEES_DIR = Path(__file__).parent.parent / "employees"
-TIMEOUT_PHASE1 = 120  # seconds for perception + planning (real LLM)
+TIMEOUT_PHASE1 = 180  # seconds for perception + planning (real LLM)
 TIMEOUT_PHASE2 = 120  # seconds for execution
 
 # ════════════════════════════════════════════════════════════════

@@ -11,6 +11,7 @@ Features:
 from __future__ import annotations
 
 import asyncio
+import json as _json
 import logging
 import math
 import time
@@ -368,6 +369,80 @@ async def execute_plan(
     return task_statuses, execution_context, needs_replan
 
 
+# ── 结果格式化 ───────────────────────────────────────────────
+
+MAX_TABLE_ROWS = 20
+
+
+def _format_execution_results(
+    tasks: list[TaskItem],
+    execution_context: dict[str, SkillOutput],
+    task_statuses: dict[str, str],
+) -> list[str]:
+    """将 execution_context 中的成功结果格式化为 markdown 内容块。
+
+    返回内容块列表，每个块对应一个成功任务的格式化输出。
+    - dataframe → markdown 表格（截断到 MAX_TABLE_ROWS 行）
+    - chart     → ```echarts JSON``` 代码块（前端检测并用 EChartsViewer 渲染）
+    - text      → 直接文本
+    - json      → 提取 narrative 字段；若无则格式化为 JSON 代码块
+    - file      → 提示已生成文件
+    """
+    import pandas as pd
+
+    parts: list[str] = []
+
+    for task in tasks:
+        tid = task.task_id
+        if task_statuses.get(tid) != "done":
+            continue
+
+        output = execution_context.get(tid)
+        if output is None or output.status not in ("success", "partial"):
+            continue
+
+        task_name = task.name or task.skill
+
+        try:
+            if output.output_type == "dataframe" and output.data is not None:
+                df = output.data
+                if isinstance(df, pd.DataFrame):
+                    row_count = len(df)
+                    if row_count == 0:
+                        parts.append(f"**{task_name}**\n\n*（查询结果为空）*")
+                    else:
+                        display_df = df.head(MAX_TABLE_ROWS) if row_count > MAX_TABLE_ROWS else df
+                        table_md = display_df.to_markdown(index=False)
+                        if row_count > MAX_TABLE_ROWS:
+                            table_md += f"\n\n*（仅展示前 {MAX_TABLE_ROWS} 行，共 {row_count} 行）*"
+                        parts.append(f"**{task_name}**\n\n{table_md}")
+
+            elif output.output_type == "chart" and output.data is not None:
+                chart_json = _json.dumps(output.data, ensure_ascii=False)
+                parts.append(f"**{task_name}**\n\n```echarts\n{chart_json}\n```")
+
+            elif output.output_type == "text" and output.data:
+                parts.append(f"**{task_name}**\n\n{output.data}")
+
+            elif output.output_type == "json" and isinstance(output.data, dict):
+                narrative = output.data.get("narrative", "")
+                if narrative:
+                    parts.append(f"**{task_name}**\n\n{narrative}")
+                else:
+                    formatted = _json.dumps(output.data, ensure_ascii=False, indent=2)
+                    parts.append(f"**{task_name}**\n\n```json\n{formatted}\n```")
+
+            elif output.output_type == "file":
+                fmt = output.metadata.get("format", "file").upper()
+                parts.append(f"**{task_name}**\n\n*已生成 {fmt} 报告。*")
+
+        except Exception as exc:
+            logger.warning("格式化任务 %s 结果失败: %s", tid, exc)
+            parts.append(f"**{task_name}**\n\n*（结果格式化失败）*")
+
+    return parts
+
+
 async def execution_node(
     state: dict[str, Any],
     allowed_skills: frozenset[str] | None = None,
@@ -413,11 +488,19 @@ async def execution_node(
     # Determine next action
     all_done = all(v == "done" for v in task_statuses.values())
     if all_done and not needs_replan:
+        # Format and append execution result content
+        result_parts = _format_execution_results(tasks, execution_context, task_statuses)
         state["messages"] = state.get("messages", [])
-        state["messages"].append({
-            "role": "assistant",
-            "content": f"[Execution] 所有 {len(tasks)} 个任务执行完成。",
-        })
+        if result_parts:
+            state["messages"].append({
+                "role": "assistant",
+                "content": "\n\n---\n\n".join(result_parts),
+            })
+        else:
+            state["messages"].append({
+                "role": "assistant",
+                "content": f"[Execution] 所有 {len(tasks)} 个任务执行完成。",
+            })
         # Signal to graph: proceed to reflection
         state.setdefault("next_action", "reflection")
     elif needs_replan:
@@ -428,10 +511,26 @@ async def execution_node(
         })
     else:
         failed_count = sum(1 for v in task_statuses.values() if v == "failed")
+        # 收集失败任务的错误信息，方便排查
+        error_details = []
+        for t in tasks:
+            if task_statuses.get(t.task_id) == "failed":
+                ctx = execution_context.get(t.task_id)
+                err_msg = ctx.error_message if ctx and ctx.error_message else "未知错误"
+                error_details.append(f"  - {t.name or t.task_id} ({t.skill}): {err_msg}")
+        detail_text = "\n".join(error_details) if error_details else ""
         state["messages"] = state.get("messages", [])
+        # Append status message
         state["messages"].append({
             "role": "assistant",
-            "content": f"[Execution] 完成 {len(tasks) - failed_count}/{len(tasks)} 个任务，{failed_count} 个失败。",
+            "content": f"[Execution] 完成 {len(tasks) - failed_count}/{len(tasks)} 个任务，{failed_count} 个失败。\n{detail_text}".strip(),
         })
+        # Still format and send results from successful tasks
+        result_parts = _format_execution_results(tasks, execution_context, task_statuses)
+        if result_parts:
+            state["messages"].append({
+                "role": "assistant",
+                "content": "\n\n---\n\n".join(result_parts),
+            })
 
     return state
