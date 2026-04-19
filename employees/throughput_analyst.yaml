@@ -1,21 +1,30 @@
 employee_id: throughput_analyst
-name: 吞吐量绩效分析师
+name: 生产运营专家
 description: 专注于港口生产运营指标和市场商务吞吐量的数据分析
 version: "1.1"
 domains: [D1, D2]
 endpoints: []  # 空 = D1+D2 全部端点
 
 skills:
+  # 数据获取
   - skill_api_fetch
+  - skill_file_parse
+  - skill_web_search
+  # 分析
   - skill_desc_analysis
+  - skill_anomaly
   - skill_attribution
   - skill_prediction
+  # 可视化
   - skill_chart_line
   - skill_chart_bar
   - skill_chart_waterfall
+  - skill_dashboard
+  # 报告
   - skill_summary_gen
   - skill_report_html
   - skill_report_docx
+  - skill_report_pptx
 
 perception:
   domain_keywords:

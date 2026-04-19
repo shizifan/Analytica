@@ -1,20 +1,30 @@
 employee_id: asset_investment
-name: 资产价值与投资项目分析师
+name: 资产设备专家
 description: 专注于资产分布分析、投资项目进度跟踪、资产价值评估和生产设备运营分析
 version: "1.1"
 domains: [D5, D6, D7]
 endpoints: []  # 空 = D5+D6+D7 全部端点
 
 skills:
+  # 数据获取
   - skill_api_fetch
+  - skill_file_parse
+  - skill_web_search
+  # 分析
   - skill_desc_analysis
+  - skill_anomaly
   - skill_attribution
+  - skill_prediction
+  # 可视化
+  - skill_chart_line
   - skill_chart_bar
   - skill_chart_waterfall
-  - skill_chart_line
+  - skill_dashboard
+  # 报告
   - skill_summary_gen
   - skill_report_html
   - skill_report_docx
+  - skill_report_pptx
 
 perception:
   domain_keywords:
