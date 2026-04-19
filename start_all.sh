@@ -27,9 +27,9 @@ print_success() {
 
 # 启动函数
 start_mock_server() {
-    print_step "启动 Mock API Server (端口 118080)..."
+    print_step "启动 Mock API Server (端口 18080)..."
     cd "$PROJECT_ROOT"
-    uv run python -m mock_server.mock_server_all --port 118080 --host 0.0.0.0 &
+    uv run python -m mock_server.mock_server_all --port 18080 --host 0.0.0.0 &
     echo $! > /tmp/analytica_mock_server.pid
     print_success "Mock API Server 已启动 (PID: $(cat /tmp/analytica_mock_server.pid))"
 }

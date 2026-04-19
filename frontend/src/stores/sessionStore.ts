@@ -13,6 +13,7 @@ interface SessionState {
   setPhase: (phase: AgentPhase) => void;
   addMessage: (msg: ChatMessage) => void;
   setSending: (v: boolean) => void;
+  clearConversation: () => void;
   reset: () => void;
 }
 
@@ -38,6 +39,15 @@ export const useSessionStore = create<SessionState>((set) => ({
     set((s) => ({ messages: [...s.messages, msg] })),
 
   setSending: (sending) => set({ sending }),
+
+  clearConversation: () =>
+    set(() => ({
+      sessionId: null,
+      phase: 'idle',
+      messages: [],
+      sending: false,
+      // Keep userId and employeeId
+    })),
 
   reset: () =>
     set({

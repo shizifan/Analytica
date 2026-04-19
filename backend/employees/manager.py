@@ -105,3 +105,19 @@ class EmployeeManager:
 
         async for event in graph.astream(initial):
             yield event
+
+    def update_employee(self, employee_id: str, **kwargs) -> EmployeeProfile | None:
+        """更新员工配置（仅内存，重启后从 YAML 重新加载）。"""
+        profile = self._profiles.get(employee_id)
+        if profile is None:
+            return None
+        # Filter out None values
+        updates = {k: v for k, v in kwargs.items() if v is not None}
+        if not updates:
+            return profile
+        updated = profile.model_copy(update=updates)
+        self._profiles[employee_id] = updated
+        # Invalidate cached graph
+        self._graphs.pop(employee_id, None)
+        logger.info("Updated employee %s: %s", employee_id, list(updates.keys()))
+        return updated

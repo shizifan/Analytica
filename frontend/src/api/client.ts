@@ -1,5 +1,7 @@
 /** Lightweight API client — no Axios, uses native fetch. */
 
+import type { EmployeeSummary, EmployeeDetail } from '../types';
+
 const BASE = '';
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -49,4 +51,13 @@ export const api = {
         save_skill_notes: opts.save_skill_notes ?? true,
       },
     ),
+
+  listEmployees: () =>
+    request<EmployeeSummary[]>('GET', '/api/employees'),
+
+  getEmployee: (id: string) =>
+    request<EmployeeDetail>('GET', `/api/employees/${id}`),
+
+  updateEmployee: (id: string, payload: Record<string, string>) =>
+    request<EmployeeDetail>('PUT', `/api/employees/${id}`, payload),
 };

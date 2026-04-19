@@ -60,6 +60,11 @@ async def health():
 
 # ── Employee APIs ────────────────────────────────────────────
 
+class UpdateEmployeeRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+
 @app.get("/api/employees")
 async def list_employees():
     """List all available employees."""
@@ -94,6 +99,29 @@ async def get_employee(employee_id: str):
         "skills": profile.skills,
         "perception": profile.perception.model_dump(),
         "planning": profile.planning.model_dump(),
+    }
+
+
+@app.put("/api/employees/{employee_id}")
+async def update_employee(employee_id: str, req: UpdateEmployeeRequest):
+    """Update employee (only name and description)."""
+    from backend.employees.manager import EmployeeManager
+    manager = EmployeeManager.get_instance()
+    updated = manager.update_employee(
+        employee_id,
+        **req.model_dump(exclude_none=True),
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail=f"Employee not found: {employee_id}")
+    return {
+        "employee_id": updated.employee_id,
+        "name": updated.name,
+        "description": updated.description,
+        "version": updated.version,
+        "domains": updated.domains,
+        "skills": updated.skills,
+        "perception": updated.perception.model_dump(),
+        "planning": updated.planning.model_dump(),
     }
 
 

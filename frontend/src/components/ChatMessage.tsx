@@ -17,25 +17,25 @@ export function ChatMessage({ message, onPlanAction }: Props) {
 
   // Custom markdown components: render ```echarts code blocks with EChartsViewer
   const markdownComponents = useMemo(
-    () => ({
-      code(props: Record<string, unknown>) {
-        const { children, className } = props;
-        if (/language-echarts/.test(String(className || ''))) {
-          const raw = String(children).replace(/\n$/, '');
-          try {
-            const option = JSON.parse(raw) as Record<string, unknown>;
-            return <EChartsViewer option={option} height={360} />;
-          } catch {
-            return <code className={String(className)}>{children as React.ReactNode}</code>;
+    () =>
+      ({
+        code({ children, className }: { children?: React.ReactNode; className?: string }) {
+          if (/language-echarts/.test(String(className || ''))) {
+            const raw = String(children).replace(/\n$/, '');
+            try {
+              const option = JSON.parse(raw) as Record<string, unknown>;
+              return <EChartsViewer option={option} height={360} />;
+            } catch {
+              return <code className={String(className)}>{children}</code>;
+            }
           }
-        }
-        return <code className={String(className || '')}>{children as React.ReactNode}</code>;
-      },
-      // Unwrap <pre> so EChartsViewer renders without monospace wrapper
-      pre(props: Record<string, unknown>) {
-        return <>{(props.children) as React.ReactNode}</>;
-      },
-    }),
+          return <code className={className}>{children}</code>;
+        },
+        // Unwrap <pre> so EChartsViewer renders without monospace wrapper
+        pre({ children }: { children?: React.ReactNode }) {
+          return <>{children}</>;
+        },
+      }) as Record<string, (props: Record<string, unknown>) => React.ReactElement>,
     [],
   );
 

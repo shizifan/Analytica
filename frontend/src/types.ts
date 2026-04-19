@@ -112,3 +112,24 @@ export type WsIncomingEvent =
   | WsTaskUpdateEvent
   | WsReflectionEvent
   | WsTurnCompleteEvent;
+
+// ── Digital Employee types ────────────────────────────────────
+
+export interface EmployeeSummary {
+  employee_id: string;
+  name: string;
+  description: string;
+  domains: string[];
+  version: string;
+}
+
+export interface EmployeeDetail extends EmployeeSummary {
+  skills: string[];
+  perception: Record<string, unknown>;
+  planning: Record<string, unknown>;
+}
+
+export interface EmployeeUpdatePayload {
+  name?: string;
+  description?: string;
+}
