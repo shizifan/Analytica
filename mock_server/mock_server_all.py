@@ -2943,17 +2943,6 @@ async def health():
     return {"status": "healthy", "timestamp": "2026-04-15T10:00:00+08:00"}
 
 
-    import argparse
-    parser = argparse.ArgumentParser(description="港口司南 Mock API Server")
-    parser.add_argument("--host", default="0.0.0.0")
-    parser.add_argument("--port", type=int, default=8080)
-    parser.add_argument("--reload", action="store_true")
-    args = parser.parse_args()
-    print(f"\n=== 港口司南 Mock API Server v1.0 ===")
-    print(f"=== 监听: http://{args.host}:{args.port}  |  接口数: 160  |  文档: /docs ===\n")
-    uvicorn.run("__main__:app", host=args.host, port=args.port, reload=args.reload, log_level="info")
-
-
 # ─────────────────────────────────────────────
 # 资产子屏（44个）+ 司南商务驾驶舱（16个）
 # ─────────────────────────────────────────────
