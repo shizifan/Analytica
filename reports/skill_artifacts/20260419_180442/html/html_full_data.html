@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大连港区2026年吞吐量分析报告</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+body { font-family: 'Microsoft YaHei', sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; color: #333333; }
+h1 { color: #1E3A5F; text-align: center; border-bottom: 3px solid #F0A500; padding-bottom: 10px; }
+h2 { color: #1E3A5F; margin-top: 30px; }
+h3 { color: #2D5F8A; }
+.meta { text-align: center; color: #666; margin-bottom: 30px; }
+.section { margin-bottom: 40px; }
+.chart-container { width: 100%; height: 400px; margin: 20px 0; }
+.narrative { line-height: 1.8; text-indent: 2em; }
+.summary { background: #1E3A5F; color: white; padding: 20px; border-radius: 8px; margin-top: 40px; }
+.summary h2 { color: #F0A500; }
+table.stats { width: 100%; border-collapse: collapse; margin: 16px 0; }
+table.stats th { background: #1E3A5F; color: white; padding: 8px 12px; text-align: left; font-size: 13px; }
+table.stats td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; font-family: 'Calibri', monospace; }
+table.stats tr:nth-child(even) { background: #F5F7FA; }
+.kpi-row { display: flex; gap: 16px; margin: 16px 0; flex-wrap: wrap; }
+.kpi-card { flex: 1; min-width: 180px; background: #F5F7FA; border-radius: 8px; padding: 16px; text-align: center; border-left: 4px solid #F0A500; }
+.kpi-card .label { font-size: 12px; color: #546E7A; margin-bottom: 4px; }
+.kpi-card .value { font-size: 28px; font-weight: bold; font-family: 'Calibri', monospace; }
+.kpi-card .value.positive { color: #2E7D32; }
+.kpi-card .value.negative { color: #C62828; }
+.kpi-card .sub { font-size: 11px; color: #546E7A; }
+</style>
+</head>
+<body>
+<h1>大连港区2026年吞吐量分析报告</h1>
+<div class="meta">Analytica | 2026-04-19</div>
+<div class="section"><h2>0. 数据概览</h2>
+<h3>数据明细</h3><table class="stats"><tr><th>dateMonth</th><th>qty</th></tr><tr><td>2026-01</td><td>2,665.10</td></tr><tr><td>2026-02</td><td>2,354.20</td></tr><tr><td>2026-03</td><td>3,229.20</td></tr><tr><td>2026-04</td><td>3,367.60</td></tr><tr><td>2026-05</td><td>3,521.50</td></tr><tr><td>2026-06</td><td>3,259.70</td></tr><tr><td>2026-07</td><td>3,177.10</td></tr><tr><td>2026-08</td><td>3,234.80</td></tr><tr><td>2026-09</td><td>3,348.00</td></tr><tr><td>2026-10</td><td>3,321.80</td></tr><tr><td>2026-11</td><td>3,016.80</td></tr><tr><td>2026-12</td><td>2,913.40</td></tr><tr><td>2027-01</td><td>2,836.80</td></tr><tr><td>2027-02</td><td>2,570.70</td></tr><tr><td>2027-03</td><td>3,539.00</td></tr><tr><td>2027-04</td><td>3,615.10</td></tr></table>
+</div>
+<div class="section"><h2>1. 趋势分析</h2>
+<div class="narrative">该数据集中数量（qty）的分布较为集中，均值为3123.18，中位数为3232.0，二者接近，表明数据整体呈对称分布，无明显偏态。标准差为366.27，相对均值较小，说明各观测值围绕均值波动较小，数据稳定性较高。
+
+数据完整无缺失，最小值为2354.2，最大值为3615.1，极差约1260.9。尽管整体分布均匀，但最小值明显低于均值与中位数，可能存在偏低的异常值或边界情况，建议进一步核查该区域数据采集或业务背景，排除异常干扰。</div>
+<h3>统计数据概览</h3><table class="stats"><tr><th>指标</th><th>mean</th><th>median</th><th>std</th><th>min</th><th>max</th></tr><tr><td><b>qty</b></td><td>3,123.18</td><td>3,232.00</td><td>366.27</td><td>2,354.20</td><td>3,615.10</td></tr></table>
+<div id="chart_0" class="chart-container"></div><script>echarts.init(document.getElementById("chart_0")).setOption({"title": {"text": "大连港区吞吐量趋势", "left": "center", "textStyle": {"color": "#1E3A5F"}}, "tooltip": {"trigger": "axis"}, "legend": {"data": ["qty"], "bottom": 0}, "xAxis": {"type": "category", "data": ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12", "2027-01", "2027-02", "2027-03", "2027-04"]}, "yAxis": {"type": "value"}, "series": [{"name": "qty", "type": "line", "data": [2665.1, 2354.2, 3229.2, 3367.6, 3521.5, 3259.7, 3177.1, 3234.8, 3348.0, 3321.8, 3016.8, 2913.4, 2836.8, 2570.7, 3539.0, 3615.1], "smooth": true, "lineStyle": {"color": "#1E3A5F"}, "itemStyle": {"color": "#1E3A5F"}}], "color": ["#1E3A5F"]});</script>
+</div>
+<div class="summary"><h2>总结与建议</h2>
+<p>[摘要] 关于数据分析的分析已完成，详见各章节内容。</p>
+</div>
+</body>
+</html>
