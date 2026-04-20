@@ -1,24 +1,28 @@
 """Descriptive Analysis Skill — computes summary statistics and generates narrative.
 
 Uses pandas for statistics and LLM for narrative generation.
+Domain-aware prompt selection (throughput / customer / asset / generic) is
+driven by ``params._template_meta.template_id`` so narratives focus on the
+business signal (完成率 / 同比 / 结构) instead of generic statistics lingo
+(缺失率 / 标准差 / 偏度) that dominated pre-batch-3 output.
 """
 from __future__ import annotations
 
+import json as _json
 import logging
-import re
 from typing import Any
 
 import pandas as pd
 
+from backend.skills._llm import (
+    compact_stats_dict,
+    infer_domain,
+    invoke_llm,
+)
 from backend.skills.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
 from backend.skills.registry import register_skill
 
 logger = logging.getLogger("analytica.skills.descriptive")
-
-
-def _strip_think_tags(text: str) -> str:
-    """Remove <think>...</think> blocks from LLM output."""
-    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
 
 def _compute_summary_stats(df: pd.DataFrame, target_columns: list[str], group_by: str | None = None) -> dict:
@@ -100,41 +104,94 @@ def _compute_growth_rates(
     return growth
 
 
+_DOMAIN_PROMPTS: dict[str, str] = {
+    "throughput": (
+        "你是港口生产运营分析师。基于以下统计数据写 2-3 段业务洞察（中文，每段一个主题）。\n\n"
+        "统计概况: {stats}\n"
+        "增长率: {growth}\n"
+        "分析目标: {goal}\n"
+        "聚焦点:\n{focus}\n\n"
+        "要求:\n"
+        "- 优先讨论: 完成率 / 同比 / 环比 / 板块结构 / 港区对比\n"
+        "- 禁止提及: 缺失率、标准差、偏度、数据完整性、分布对称性、异常值检测\n"
+        "- 数字保留 1-2 位小数, 大数用万/亿计\n"
+        "- 如果数据覆盖多个时段, 点出拐点月份\n"
+        "- 不要复述所有数字, 提炼 2-3 个最关键信号\n"
+    ),
+    "customer": (
+        "你是客户战略分析师。基于以下统计数据写 2-3 段业务洞察（中文）。\n\n"
+        "统计概况: {stats}\n"
+        "增长率: {growth}\n"
+        "分析目标: {goal}\n"
+        "聚焦点:\n{focus}\n\n"
+        "要求:\n"
+        "- 优先讨论: 客户结构 / TOP 客户贡献 / 行业分布 / 集中度\n"
+        "- 禁止提及: 缺失率、标准差、偏度、数据完整性、分布对称性\n"
+        "- 数字保留 1-2 位小数, 大数用万/亿计\n"
+        "- 点出最值得关注的 1-2 个客户/行业信号\n"
+    ),
+    "asset": (
+        "你是资产投资分析师。基于以下统计数据写 2-3 段业务洞察（中文）。\n\n"
+        "统计概况: {stats}\n"
+        "增长率: {growth}\n"
+        "分析目标: {goal}\n"
+        "聚焦点:\n{focus}\n\n"
+        "要求:\n"
+        "- 优先讨论: 投资完成率 / 资产周转 / 设备产能利用 / 折旧结构\n"
+        "- 禁止提及: 缺失率、标准差、偏度、数据完整性、分布对称性\n"
+        "- 数字保留 1-2 位小数\n"
+        "- 区分资本性投入与日常运营开销带来的差异\n"
+    ),
+    "generic": (
+        "你是数据分析师，基于以下统计数据写简洁描述性分析（2-3 段, 中文）。\n\n"
+        "统计概况: {stats}\n"
+        "增长率: {growth}\n"
+        "分析背景: {goal}\n"
+        "聚焦点:\n{focus}\n\n"
+        "要求: 突出最重要的 2-3 个发现, 语言简洁专业, 不要复述所有数字。"
+    ),
+}
+
+
 async def _generate_narrative(
     summary_stats: dict,
     growth_rates: dict,
     analysis_goal: str,
-) -> str:
-    """Generate narrative using LLM."""
-    try:
-        from backend.config import get_settings
-        from langchain_openai import ChatOpenAI
+    focus_points: list[str],
+    template_id: str,
+) -> dict[str, Any]:
+    """Generate narrative via unified LLM wrapper. Returns dict with
+    ``text / tokens / error_category / error``; never raises.
+    """
+    domain = infer_domain(template_id)
+    trimmed_stats = compact_stats_dict(summary_stats)
+    focus_block = "\n".join(f"- {p}" for p in focus_points) if focus_points else "（无）"
 
-        settings = get_settings()
-        llm = ChatOpenAI(
-            base_url=settings.QWEN_API_BASE,
-            api_key=settings.QWEN_API_KEY,
-            model=settings.QWEN_MODEL,
-            temperature=0.3,
-            request_timeout=90,
-            extra_body={"enable_thinking": False},
-        )
+    prompt = _DOMAIN_PROMPTS[domain].format(
+        stats=_json.dumps(trimmed_stats, ensure_ascii=False, default=str),
+        growth=_json.dumps(growth_rates, ensure_ascii=False, default=str),
+        goal=analysis_goal,
+        focus=focus_block,
+    )
 
-        prompt = (
-            "你是数据分析师，基于以下统计数据写简洁描述性分析（2-3段，中文）：\n"
-            f"数据概况：{summary_stats}\n"
-            f"增长率：{growth_rates}\n"
-            f"分析背景：{analysis_goal}\n"
-            "要求：突出最重要的2-3个发现，指出异常值，语言简洁专业，避免重复数字"
-        )
-
-        response = await llm.ainvoke(prompt)
-        raw = response.content if hasattr(response, "content") else str(response)
-        return _strip_think_tags(raw)
-
-    except Exception as e:
-        logger.warning("Narrative generation failed, using fallback: %s", e)
-        return f"[自动生成失败] 统计概况：{summary_stats}"
+    result = await invoke_llm(prompt, temperature=0.3, timeout=90)
+    if result["error"]:
+        # Explicit category tag so upstream (summary_gen) can filter precisely
+        # instead of the old opaque "[自动生成失败]".
+        return {
+            "text": f"[narrative_failed:{result['error_category']}]",
+            "tokens": result["tokens"],
+            "error_category": result["error_category"],
+            "error": result["error"],
+            "domain": domain,
+        }
+    return {
+        "text": result["text"],
+        "tokens": result["tokens"],
+        "error_category": None,
+        "error": None,
+        "domain": domain,
+    }
 
 
 @register_skill("skill_desc_analysis", SkillCategory.ANALYSIS, "描述性统计分析（均值、同比、环比、占比）",
@@ -150,6 +207,9 @@ class DescriptiveAnalysisSkill(BaseSkill):
         time_column = params.get("time_column")
         calc_growth = params.get("calc_growth", False)
         analysis_goal = params.get("analysis_goal", "数据分析")
+        focus_points = params.get("focus_points", []) or []
+        tmpl_meta = params.get("_template_meta", {}) or {}
+        template_id = tmpl_meta.get("template_id", "")
 
         # Normalize: LLM sometimes passes list instead of str
         if isinstance(data_ref, list):
@@ -210,21 +270,35 @@ class DescriptiveAnalysisSkill(BaseSkill):
         if calc_growth:
             growth_rates = _compute_growth_rates(df, target_columns, time_column)
 
-        # Generate narrative
-        narrative = await _generate_narrative(summary_stats, growth_rates, analysis_goal)
+        # Generate narrative (never raises; returns structured dict)
+        nar = await _generate_narrative(
+            summary_stats, growth_rates, analysis_goal,
+            focus_points, template_id,
+        )
+
+        # Partial status when the LLM narrative failed but stats were still
+        # computed — lets downstream (_content_collector, summary_gen) decide
+        # whether to fall back to stats tables.
+        status = "partial" if nar["error_category"] else "success"
 
         return SkillOutput(
             skill_id=self.skill_id,
-            status="success",
+            status=status,
             output_type="json",
             data={
                 "summary_stats": summary_stats,
                 "growth_rates": growth_rates,
-                "narrative": narrative,
+                "narrative": nar["text"],
             },
             metadata={
                 "rows_analyzed": len(df),
                 "columns_analyzed": target_columns,
                 "group_by": group_by,
+                "narrative_domain": nar["domain"],
+                "narrative_error_category": nar["error_category"],
+                "focus_points_count": len(focus_points),
             },
+            llm_tokens=nar["tokens"],
+            error_category=nar["error_category"],
+            error_message=nar["error"] if nar["error_category"] else None,
         )

@@ -2,10 +2,13 @@
 
 Features:
 - Topological sort of task DAG
-- Parallel execution (max 3 concurrent) via asyncio.gather
-- Per-task timeout (estimated_seconds * 3)
+- Per-type concurrency (data_fetch=8, analysis=2, viz=4, report=1) via asyncio.Semaphore
+- Per-type timeout profile (no longer blindly estimated_seconds*3)
+- Retry with exponential backoff for transient errors (5xx / 429 / timeout)
+- Data gate: viz/analysis tasks skip when all deps yield empty data
+- Typed dependency policy: data_fetch=all, analysis=majority, viz=any
 - Single task failure does not block others
-- Dynamic re-planning on low data volume
+- Dynamic re-planning on zero-row results
 - WebSocket push support (optional callback)
 """
 from __future__ import annotations
@@ -15,16 +18,200 @@ import json as _json
 import logging
 import math
 import time
+from collections import Counter
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable, Coroutine
 
+import pandas as pd
+
 from backend.models.schemas import TaskItem
-from backend.skills.base import SkillInput, SkillOutput, skill_executor
+from backend.skills.base import ErrorCategory, SkillInput, SkillOutput, skill_executor
 from backend.skills.registry import SkillRegistry
 
 logger = logging.getLogger("analytica.execution")
 
+# ── 并发 / 超时 / 重试配置 ─────────────────────────────────
+#
+# 不同类型任务的特性差异显著：data_fetch 是 IO 密集，可高并发；analysis 调用
+# LLM，必须压低并发以防限流；visualization 轻量；report_gen 汇总，不并发。
+# 旧的 MAX_CONCURRENT=3 一刀切导致 LLM 任务 429/超时频发，data_fetch 又跑不快。
+
+# Per-type concurrency limits (Semaphore 在 execute_plan 第一次调用时惰性初始化，
+# 避免模块 import 时绑定到错误的事件循环)。
+_CONCURRENCY_LIMITS: dict[str, int] = {
+    "data_fetch":    8,
+    "analysis":      2,
+    "visualization": 4,
+    "report_gen":    1,
+    "_default":      3,
+}
+_SEMAPHORES: dict[str, asyncio.Semaphore] = {}
+
+# 兼容旧引用；语义已被 _CONCURRENCY_LIMITS 取代
 MAX_CONCURRENT = 3
+
+# Per-type timeout profile: (lower_bound, upper_bound, multiplier_on_estimated)
+# resolved_timeout = clip(estimated_seconds * multiplier, lower, upper)
+_TIMEOUT_PROFILE: dict[str, tuple[int, int, float]] = {
+    "data_fetch":    (15, 45,  2.0),
+    "analysis":      (60, 150, 2.5),   # LLM 调用通常 30-90s, 留足余量
+    "visualization": (5,  20,  2.0),
+    "report_gen":    (30, 120, 2.0),
+    "_default":      (15, 90,  3.0),
+}
+
+# Retry policy: (max_attempts, retriable_error_categories)
+_RETRY_POLICY: dict[str, tuple[int, frozenset[str]]] = {
+    "data_fetch":    (3, frozenset({"TIMEOUT", "SERVER_ERROR", "RATE_LIMIT"})),
+    "analysis":      (2, frozenset({"RATE_LIMIT", "TIMEOUT"})),
+    "visualization": (1, frozenset()),
+    "report_gen":    (2, frozenset({"TIMEOUT", "RATE_LIMIT"})),
+    "_default":      (1, frozenset()),
+}
+
+# Dependency satisfaction policy by task type.
+# "all"        — 所有依赖都必须 done（data_fetch/默认）
+# "majority"   — 至少半数依赖 done（analysis，容忍部分 API 失败）
+# "any"        — 任一依赖 done 即可（visualization，单源数据也可出图）
+# "any_global" — 全局任一 done（report_gen，已有逻辑，下沉到此表以便统一）
+_DEP_POLICY: dict[str, str] = {
+    "data_fetch":    "all",
+    "analysis":      "majority",
+    "visualization": "any",
+    "report_gen":    "any_global",
+    "_default":      "all",
+}
+
+
+def _get_semaphore(task_type: str) -> asyncio.Semaphore:
+    """Lazy-initialize semaphores on current event loop."""
+    key = task_type if task_type in _CONCURRENCY_LIMITS else "_default"
+    if key not in _SEMAPHORES:
+        _SEMAPHORES[key] = asyncio.Semaphore(_CONCURRENCY_LIMITS[key])
+    return _SEMAPHORES[key]
+
+
+def _reset_semaphores() -> None:
+    """Called at the start of each execute_plan to rebind semaphores to the
+    current event loop. Without this, running the same process across multiple
+    loops (e.g. pytest parametrized async tests) would reuse stale locks.
+    """
+    _SEMAPHORES.clear()
+
+
+def _resolve_timeout(task: TaskItem) -> float:
+    """Resolve per-task timeout. Prefers task.estimated_seconds when set,
+    but clamps to per-type bounds."""
+    profile = _TIMEOUT_PROFILE.get(task.type, _TIMEOUT_PROFILE["_default"])
+    lo, hi, mult = profile
+    est = task.estimated_seconds or lo
+    return float(max(lo, min(est * mult, hi)))
+
+
+def _classify_error_for_retry(error_message: str | None) -> str:
+    """Minimal error classifier used for retry decisions.
+
+    Returns one of: TIMEOUT / RATE_LIMIT / SERVER_ERROR / CLIENT_ERROR /
+    AUTH / DEP_FAILED / UNKNOWN.
+
+    NOTE: This is intentionally a string-matching classifier — batch 2 will
+    replace it with exception-type classification at skill_executor level.
+    """
+    if not error_message:
+        return "UNKNOWN"
+    text = error_message.lower()
+    if "timeout" in text or "超时" in text or "timed out" in text:
+        return "TIMEOUT"
+    if "rate" in text and "limit" in text:
+        return "RATE_LIMIT"
+    if "429" in text:
+        return "RATE_LIMIT"
+    if "401" in text or "认证失败" in text or "unauthorized" in text:
+        return "AUTH"
+    if any(c in text for c in ("500", "502", "503", "504")):
+        return "SERVER_ERROR"
+    if "服务端错误" in text:
+        return "SERVER_ERROR"
+    if any(c in text for c in ("400", "404")):
+        return "CLIENT_ERROR"
+    if "客户端错误" in text:
+        return "CLIENT_ERROR"
+    if "依赖任务失败" in text or "dependency" in text:
+        return "DEP_FAILED"
+    return "UNKNOWN"
+
+
+def _deps_have_data(
+    task: TaskItem,
+    context: dict[str, SkillOutput],
+) -> tuple[bool, str]:
+    """Check whether upstream deps contain usable data for this task.
+
+    Only enforced for analysis / visualization — these consume data and
+    will produce garbage (or crash) when handed empty frames.
+
+    Returns (has_data, reason). reason is empty when has_data=True.
+    """
+    if task.type not in ("analysis", "visualization"):
+        return True, ""
+
+    if not task.depends_on:
+        # No deps means the skill itself fetches/produces data (or uses full context)
+        return True, ""
+
+    checked = 0
+    for dep in task.depends_on:
+        out = context.get(dep)
+        if out is None:
+            continue
+        checked += 1
+        if out.status not in ("success", "partial"):
+            continue
+        data = out.data
+        if isinstance(data, pd.DataFrame) and not data.empty:
+            return True, ""
+        if isinstance(data, dict) and data:
+            # analysis output dict (summary_stats / narrative / growth_rates)
+            return True, ""
+        if isinstance(data, (list, tuple)) and data:
+            return True, ""
+        if isinstance(data, str) and data.strip():
+            return True, ""
+
+    if checked == 0:
+        # None of the declared deps are in context yet — treat as OK (topological
+        # order should normally prevent this; defer to the regular dep check).
+        return True, ""
+    return False, f"所有 {checked} 个上游依赖均为空数据"
+
+
+def _deps_satisfied(
+    task: TaskItem,
+    task_statuses: dict[str, str],
+) -> bool:
+    """Apply per-type dependency policy."""
+    tracked = [d for d in task.depends_on if d in task_statuses]
+    policy = _DEP_POLICY.get(task.type, _DEP_POLICY["_default"])
+
+    if policy == "any_global":
+        if tracked:
+            if any(task_statuses.get(d) == "done" for d in tracked):
+                return True
+        return any(v == "done" for v in task_statuses.values())
+
+    if not tracked:
+        return True
+
+    done = sum(1 for d in tracked if task_statuses.get(d) == "done")
+
+    if policy == "all":
+        return done == len(tracked)
+    if policy == "majority":
+        return done * 2 >= len(tracked) and done >= 1
+    if policy == "any":
+        return done >= 1
+    return done == len(tracked)  # fail-safe
 
 
 # ── data_fetch 错误诊断 ─────────────────────────────────────
@@ -196,12 +383,53 @@ async def _execute_single_task(
     ws_callback: Callable | None = None,
     allowed_skills: frozenset[str] | None = None,
 ) -> tuple[str, SkillOutput]:
-    """Execute a single task, return (task_id, output)."""
+    """Execute a single task with concurrency limit, timeout, retry, and data gate.
+
+    Returns (task_id, output). Output.status may be one of:
+      - "success" / "partial"  — skill succeeded
+      - "failed"               — skill failed (after retries exhausted)
+      - "skipped"              — pre-flight check determined task cannot run
+    """
     task_id = task.task_id
     skill_id = task.skill
-    timeout = max(task.estimated_seconds * 3, 30)
 
-    # Notify running
+    # ── Pre-flight 1: skill whitelist ─────────────────────
+    if allowed_skills is not None and skill_id not in allowed_skills:
+        return task_id, SkillOutput(
+            skill_id=skill_id, status="failed", output_type="json",
+            error_message=f"技能 {skill_id} 不在当前员工范围内",
+        )
+
+    # ── Pre-flight 2: skill registration ──────────────────
+    registry = SkillRegistry.get_instance()
+    skill = registry.get_skill(skill_id)
+    if skill is None:
+        return task_id, SkillOutput(
+            skill_id=skill_id, status="failed", output_type="json",
+            error_message=f"技能 {skill_id} 未注册",
+        )
+
+    # ── Pre-flight 3: data gate (viz/analysis only) ────────
+    has_data, reason = _deps_have_data(task, context)
+    if not has_data:
+        logger.info("Task %s skipped: %s", task_id, reason)
+        if ws_callback:
+            try:
+                await ws_callback({
+                    "event": "task_update",
+                    "task_id": task_id,
+                    "status": "skipped",
+                    "message": f"跳过 {task.name or skill_id}: {reason}",
+                })
+            except Exception:
+                pass
+        return task_id, SkillOutput(
+            skill_id=skill_id, status="skipped", output_type="json",
+            error_message=reason,
+            metadata={"skip_reason": "EMPTY_DEPS"},
+        )
+
+    # ── Notify running ────────────────────────────────────
     if ws_callback:
         try:
             await ws_callback({
@@ -213,160 +441,282 @@ async def _execute_single_task(
         except Exception:
             pass
 
-    # 白名单检查
-    if allowed_skills is not None and skill_id not in allowed_skills:
-        output = SkillOutput(
-            skill_id=skill_id,
-            status="failed",
-            output_type="json",
-            error_message=f"技能 {skill_id} 不在当前员工范围内",
-        )
-        return task_id, output
+    # ── Semaphore-bounded execution with retry ────────────
+    timeout = _resolve_timeout(task)
+    max_attempts, retriable = _RETRY_POLICY.get(
+        task.type, _RETRY_POLICY["_default"],
+    )
+    sem = _get_semaphore(task.type)
 
-    registry = SkillRegistry.get_instance()
-    skill = registry.get_skill(skill_id)
+    output: SkillOutput | None = None
+    for attempt in range(1, max_attempts + 1):
+        inp = SkillInput(params=task.params, context_refs=task.depends_on)
+        async with sem:
+            output = await skill_executor(skill, inp, context, timeout_seconds=timeout)
 
-    if skill is None:
-        output = SkillOutput(
-            skill_id=skill_id,
-            status="failed",
-            output_type="json",
-            error_message=f"技能 {skill_id} 未注册",
-        )
-    else:
-        inp = SkillInput(
-            params=task.params,
-            context_refs=task.depends_on,
-        )
-        output = await skill_executor(skill, inp, context, timeout_seconds=timeout)
+        output.attempt_count = attempt
 
-    return task_id, output
+        if output.status in ("success", "partial"):
+            break
+
+        # Prefer the exception-based classification from skill_executor; fall
+        # back to string matching for errors bubbled up without a category
+        # (e.g. skills that emit self._fail("...") with no exception context).
+        category = output.error_category or _classify_error_for_retry(
+            output.error_message,
+        )
+        output.error_category = category
+
+        if attempt >= max_attempts or category not in retriable:
+            break
+
+        # Exponential backoff: 1s, 2s, 4s
+        backoff = 2 ** (attempt - 1)
+        logger.info(
+            "Task %s attempt %d/%d failed (%s: %s) — retrying in %ds",
+            task_id, attempt, max_attempts, category,
+            (output.error_message or "")[:80], backoff,
+        )
+        await asyncio.sleep(backoff)
+
+    return task_id, output  # type: ignore[return-value]
 
 
 async def execute_plan(
     tasks: list[TaskItem],
     ws_callback: Callable | None = None,
     allowed_skills: frozenset[str] | None = None,
+    report_dir: Path | str | None = None,
 ) -> tuple[dict[str, str], dict[str, SkillOutput], bool]:
     """Execute an analysis plan.
 
+    Args:
+        tasks: topologically ordered TaskItem list
+        ws_callback: optional websocket notifier
+        allowed_skills: per-employee skill whitelist
+        report_dir: if provided, dump execution_report.json here after execution
+
     Returns:
-        task_statuses: dict mapping task_id → "done"/"failed"
+        task_statuses: dict mapping task_id → "done"/"failed"/"skipped"
         execution_context: dict mapping task_id → SkillOutput
         needs_replan: whether dynamic re-planning is needed
     """
     import backend.skills.loader  # noqa: F401 — ensure all skills are registered
+
+    _reset_semaphores()  # rebind to current event loop
 
     layers = _topological_layers(tasks)
     task_statuses: dict[str, str] = {}
     execution_context: dict[str, SkillOutput] = {}
     needs_replan = False
 
-    for layer in layers:
-        # Execute tasks in batches of MAX_CONCURRENT
-        for batch_start in range(0, len(layer), MAX_CONCURRENT):
-            batch = layer[batch_start:batch_start + MAX_CONCURRENT]
+    for layer_idx, layer in enumerate(layers):
+        runnable: list[TaskItem] = []
 
-            # Skip tasks whose dependencies failed
-            runnable = []
-            for task in batch:
-                tracked_deps = [
-                    dep for dep in task.depends_on if dep in task_statuses
-                ]
-                if task.type == "report_gen":
-                    # Gate report_gen on data_fetch success threshold
-                    df_check = check_data_fetch_threshold(
-                        tasks, task_statuses, execution_context,
-                    )
-                    if not df_check.passed:
-                        task_statuses[task.task_id] = "failed"
-                        execution_context[task.task_id] = SkillOutput(
-                            skill_id=task.skill,
-                            status="failed",
-                            output_type="json",
-                            error_message=format_data_fetch_error(df_check),
-                        )
-                        logger.warning(
-                            "Skipping report_gen %s: data_fetch threshold not met "
-                            "(%d/%d, need >=%d)",
-                            task.task_id, df_check.success_count,
-                            df_check.total_count, df_check.required_count,
-                        )
-                        continue
-                    # Threshold passed — lenient dep check: run if ANY dep or
-                    # ANY global task succeeded (report skills scan full context)
-                    deps_ok = any(
-                        task_statuses.get(dep) == "done"
-                        for dep in tracked_deps
-                    ) if tracked_deps else True
-                    if not deps_ok:
-                        deps_ok = any(
-                            v == "done" for v in task_statuses.values()
-                        )
-                else:
-                    deps_ok = all(
-                        task_statuses.get(dep) == "done"
-                        for dep in tracked_deps
-                    )
-                if deps_ok:
-                    runnable.append(task)
-                else:
+        # ── Per-task pre-flight: dep policy + report_gen threshold ──
+        for task in layer:
+            # report_gen retains the data_fetch threshold gate (stricter than dep policy)
+            if task.type == "report_gen":
+                df_check = check_data_fetch_threshold(
+                    tasks, task_statuses, execution_context,
+                )
+                if not df_check.passed:
                     task_statuses[task.task_id] = "failed"
                     execution_context[task.task_id] = SkillOutput(
-                        skill_id=task.skill,
-                        status="failed",
-                        output_type="json",
-                        error_message="依赖任务失败",
+                        skill_id=task.skill, status="failed", output_type="json",
+                        error_message=format_data_fetch_error(df_check),
                     )
-
-            if not runnable:
-                continue
-
-            results = await asyncio.gather(
-                *[_execute_single_task(t, execution_context, ws_callback, allowed_skills) for t in runnable],
-                return_exceptions=True,
-            )
-
-            for i, result in enumerate(results):
-                task = runnable[i]
-                if isinstance(result, Exception):
-                    task_statuses[task.task_id] = "failed"
-                    execution_context[task.task_id] = SkillOutput(
-                        skill_id=task.skill,
-                        status="failed",
-                        output_type="json",
-                        error_message=str(result),
+                    logger.warning(
+                        "Skipping report_gen %s: data_fetch threshold not met "
+                        "(%d/%d, need >=%d)",
+                        task.task_id, df_check.success_count,
+                        df_check.total_count, df_check.required_count,
                     )
+                    continue
+
+            if _deps_satisfied(task, task_statuses):
+                runnable.append(task)
+            else:
+                task_statuses[task.task_id] = "failed"
+                execution_context[task.task_id] = SkillOutput(
+                    skill_id=task.skill, status="failed", output_type="json",
+                    error_message="依赖任务失败",
+                    metadata={"error_category": "DEP_FAILED"},
+                )
+
+        if not runnable:
+            continue
+
+        # ── Execute full layer in parallel; semaphores cap per-type concurrency ──
+        layer_start = time.monotonic()
+        results = await asyncio.gather(
+            *[
+                _execute_single_task(t, execution_context, ws_callback, allowed_skills)
+                for t in runnable
+            ],
+            return_exceptions=True,
+        )
+
+        for i, result in enumerate(results):
+            task = runnable[i]
+            if isinstance(result, Exception):
+                task_statuses[task.task_id] = "failed"
+                execution_context[task.task_id] = SkillOutput(
+                    skill_id=task.skill, status="failed", output_type="json",
+                    error_message=str(result),
+                )
+            else:
+                tid, output = result
+                # Preserve partial / skipped in the bucket so downstream
+                # content_collector / report skills can filter on it.
+                if output.status in ("success", "partial"):
+                    task_statuses[tid] = "done"
+                elif output.status == "skipped":
+                    task_statuses[tid] = "skipped"
                 else:
-                    tid, output = result
-                    status = "done" if output.status in ("success", "partial") else "failed"
-                    task_statuses[tid] = status
-                    execution_context[tid] = output
+                    task_statuses[tid] = "failed"
+                execution_context[tid] = output
 
-                    # Check dynamic re-plan triggers — only for truly empty results.
-                    # Small row counts (2-7) are normal for aggregate/summary APIs.
-                    if output.status == "success" and output.output_type == "dataframe":
-                        row_count = output.metadata.get("rows", -1)
-                        if row_count == 0:
-                            needs_replan = True
-                            logger.info(
-                                "Task %s returned 0 rows — triggering re-plan",
-                                tid,
-                            )
+                # Re-plan trigger — only for truly empty results.
+                if (output.status == "success"
+                        and output.output_type == "dataframe"):
+                    row_count = output.metadata.get("rows", -1)
+                    if row_count == 0:
+                        needs_replan = True
+                        logger.info(
+                            "Task %s returned 0 rows — triggering re-plan", tid,
+                        )
 
-                # Notify done/failed
-                if ws_callback:
-                    try:
-                        await ws_callback({
-                            "event": "task_update",
-                            "task_id": task.task_id,
-                            "status": task_statuses[task.task_id],
-                            "message": f"{'完成' if task_statuses[task.task_id] == 'done' else '失败'}: {task.name or task.skill}",
-                        })
-                    except Exception:
-                        pass
+            # WebSocket notify
+            if ws_callback:
+                try:
+                    st = task_statuses[task.task_id]
+                    label = {"done": "完成", "failed": "失败", "skipped": "跳过"}.get(st, st)
+                    await ws_callback({
+                        "event": "task_update",
+                        "task_id": task.task_id,
+                        "status": st,
+                        "message": f"{label}: {task.name or task.skill}",
+                    })
+                except Exception:
+                    pass
+
+        # ── Layer summary log ──────────────────────────────────
+        elapsed = time.monotonic() - layer_start
+        done = sum(1 for t in runnable if task_statuses.get(t.task_id) == "done")
+        failed = sum(1 for t in runnable if task_statuses.get(t.task_id) == "failed")
+        skipped = sum(1 for t in runnable if task_statuses.get(t.task_id) == "skipped")
+        err_counter: Counter[str] = Counter()
+        retried = 0
+        for t in runnable:
+            out = execution_context.get(t.task_id)
+            if out and out.error_category:
+                err_counter[out.error_category] += 1
+            if out and out.attempt_count and out.attempt_count > 1:
+                retried += 1
+        err_frag = f" errors={dict(err_counter)}" if err_counter else ""
+        retry_frag = f" retried={retried}" if retried else ""
+        logger.info(
+            "[Layer %d] tasks=%d elapsed=%.2fs done=%d failed=%d skipped=%d%s%s",
+            layer_idx, len(runnable), elapsed, done, failed, skipped,
+            retry_frag, err_frag,
+        )
+
+    # ── Dump execution_report.json when report_dir is provided ──
+    if report_dir is not None:
+        try:
+            _dump_execution_report(tasks, task_statuses, execution_context, Path(report_dir))
+        except Exception as e:  # never let the dump break the pipeline
+            logger.warning("Failed to dump execution report: %s", e)
 
     return task_statuses, execution_context, needs_replan
+
+
+# ── Execution report helpers ─────────────────────────────────
+
+def build_execution_report(
+    tasks: list[TaskItem],
+    task_statuses: dict[str, str],
+    execution_context: dict[str, SkillOutput],
+) -> dict[str, Any]:
+    """Build a structured execution report for observability / regression diffs.
+
+    Structure:
+        {
+          "summary": {total, done, failed, skipped, total_elapsed_seconds,
+                      errors_by_category, retried_count, llm_tokens_total},
+          "tasks":   [ per-task record … ]
+        }
+    """
+    records: list[dict[str, Any]] = []
+    errors_by_category: Counter[str] = Counter()
+    retried = 0
+    llm_prompt = 0
+    llm_completion = 0
+    total_elapsed = 0.0
+
+    for t in tasks:
+        out = execution_context.get(t.task_id)
+        status = task_statuses.get(t.task_id, "unknown")
+        elapsed = round(out.elapsed_seconds, 3) if out else 0.0
+        attempt = out.attempt_count if out else 1
+        rec = {
+            "task_id": t.task_id,
+            "type": t.type,
+            "skill": t.skill,
+            "name": t.name or "",
+            "status": status,
+            "elapsed_seconds": elapsed,
+            "attempt_count": attempt,
+            "error_category": out.error_category if out else None,
+            "error_message": (
+                (out.error_message or "")[:500] if out and out.error_message else None
+            ),
+            "rows": (out.metadata.get("rows") if out else None),
+            "skip_reason": (out.metadata.get("skip_reason") if out else None),
+            "llm_tokens": (out.llm_tokens if out else {}),
+        }
+        records.append(rec)
+        if out:
+            total_elapsed += out.elapsed_seconds
+            if out.error_category:
+                errors_by_category[out.error_category] += 1
+            if attempt > 1:
+                retried += 1
+            toks = out.llm_tokens or {}
+            llm_prompt += int(toks.get("prompt", 0) or 0)
+            llm_completion += int(toks.get("completion", 0) or 0)
+
+    status_counts = Counter(task_statuses.values())
+    summary = {
+        "total": len(tasks),
+        "done": status_counts.get("done", 0),
+        "failed": status_counts.get("failed", 0),
+        "skipped": status_counts.get("skipped", 0),
+        "total_elapsed_seconds": round(total_elapsed, 3),
+        "retried_count": retried,
+        "errors_by_category": dict(errors_by_category),
+        "llm_tokens_total": {"prompt": llm_prompt, "completion": llm_completion},
+    }
+    return {"summary": summary, "tasks": records}
+
+
+def _dump_execution_report(
+    tasks: list[TaskItem],
+    task_statuses: dict[str, str],
+    execution_context: dict[str, SkillOutput],
+    report_dir: Path,
+) -> Path:
+    """Persist the execution report to ``report_dir / execution_report.json``."""
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report = build_execution_report(tasks, task_statuses, execution_context)
+    path = report_dir / "execution_report.json"
+    path.write_text(
+        _json.dumps(report, ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
+    logger.info("Execution report saved: %s", path)
+    return path
 
 
 # ── 结果格式化 ───────────────────────────────────────────────
@@ -485,8 +835,9 @@ async def execution_node(
     state["execution_context"] = execution_context
     state["needs_replan"] = needs_replan
 
-    # Determine next action
-    all_done = all(v == "done" for v in task_statuses.values())
+    # Determine next action — skipped tasks are terminal but not failures
+    terminal_ok = {"done", "skipped"}
+    all_done = all(v in terminal_ok for v in task_statuses.values())
     if all_done and not needs_replan:
         # Format and append execution result content
         result_parts = _format_execution_results(tasks, execution_context, task_statuses)
@@ -511,6 +862,8 @@ async def execution_node(
         })
     else:
         failed_count = sum(1 for v in task_statuses.values() if v == "failed")
+        skipped_count = sum(1 for v in task_statuses.values() if v == "skipped")
+        done_count = sum(1 for v in task_statuses.values() if v == "done")
         # 收集失败任务的错误信息，方便排查
         error_details = []
         for t in tasks:
@@ -520,10 +873,13 @@ async def execution_node(
                 error_details.append(f"  - {t.name or t.task_id} ({t.skill}): {err_msg}")
         detail_text = "\n".join(error_details) if error_details else ""
         state["messages"] = state.get("messages", [])
-        # Append status message
+        skipped_suffix = f"，{skipped_count} 个跳过" if skipped_count else ""
         state["messages"].append({
             "role": "assistant",
-            "content": f"[Execution] 完成 {len(tasks) - failed_count}/{len(tasks)} 个任务，{failed_count} 个失败。\n{detail_text}".strip(),
+            "content": (
+                f"[Execution] 完成 {done_count}/{len(tasks)} 个任务，"
+                f"{failed_count} 个失败{skipped_suffix}。\n{detail_text}"
+            ).strip(),
         })
         # Still format and send results from successful tasks
         result_parts = _format_execution_results(tasks, execution_context, task_statuses)

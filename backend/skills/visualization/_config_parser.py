@@ -1,0 +1,151 @@
+"""Shared chart-parameter normaliser.
+
+The JSON templates describe rich chart intents in ``params.config`` — e.g.
+``{"chart_type": "grouped_bar", "series": [...], "show_completion_rate_label": true}``.
+Before batch 3 the chart skills read only flat fields (``title``,
+``category_column``, ``value_columns``) and discarded ``config`` entirely,
+so templated ``grouped_bar`` / ``dual_y_line`` / ``filter`` / ``horizontal``
+requests silently fell back to default bar/line rendering — which is how
+the null-filled bar chart in the 20260420_170234 report appeared.
+
+This parser is the single place every chart skill reads its config from,
+with graceful fallbacks to the legacy flat keys.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+import pandas as pd
+
+
+def parse_chart_params(params: dict[str, Any], task_name: str = "") -> dict[str, Any]:
+    """Normalise template-style params into a single dict.
+
+    Returns keys:
+        title, chart_subtype, x_field, y_fields, series_by,
+        left_y, right_y, filter, sort, orientation, series,
+        show_completion_rate_label, data_refs, source
+    """
+    cfg = params.get("config") or {}
+
+    # Title: config.title > params.title > task.name > None
+    title = cfg.get("title") or params.get("title") or task_name or None
+
+    # Fields: config.* wins, fall back to legacy flat keys
+    x_field = (
+        cfg.get("x_field")
+        or cfg.get("category_field")
+        or params.get("category_column")
+        or params.get("time_column")
+    )
+    y_fields = (
+        cfg.get("y_fields")
+        or cfg.get("value_field") and [cfg["value_field"]]
+        or params.get("value_columns")
+        or []
+    )
+    if isinstance(y_fields, str):
+        y_fields = [y_fields]
+
+    return {
+        "title": title,
+        "chart_subtype": cfg.get("chart_type"),           # e.g. "grouped_bar", "dual_y_line"
+        "x_field": x_field,
+        "y_fields": y_fields,
+        "series_by": cfg.get("series_by"),                # field to split series by
+        "left_y": cfg.get("left_y"),                      # dual_y_line: left-axis spec
+        "right_y": cfg.get("right_y"),                    # dual_y_line: right-axis spec
+        "filter": cfg.get("filter") or {},                # row filter on DataFrame
+        "sort": cfg.get("sort"),                          # "asc" / "desc" / None
+        "orientation": cfg.get("orientation", "vertical"),
+        "series": cfg.get("series") or [],                # grouped_bar: series descriptors
+        "show_completion_rate_label": cfg.get("show_completion_rate_label", False),
+        "data_refs": params.get("data_refs") or [],
+        "source": cfg.get("source"),
+    }
+
+
+def apply_row_filter(df: pd.DataFrame, filter_dict: dict[str, Any]) -> pd.DataFrame:
+    """Filter a DataFrame by equality on the given columns.
+
+    Only applies filters whose column exists; unknown columns are ignored
+    (templates sometimes reference fields that the underlying API didn't
+    return — falling back to the unfiltered frame beats crashing).
+    """
+    if not filter_dict:
+        return df
+    for k, v in filter_dict.items():
+        if k in df.columns:
+            df = df[df[k] == v]
+    return df
+
+
+def sort_df(df: pd.DataFrame, sort: str | None, by_col: str | None) -> pd.DataFrame:
+    """Sort a DataFrame by a numeric column if ``sort`` is ``asc``/``desc``."""
+    if not sort or sort not in ("asc", "desc") or not by_col or by_col not in df.columns:
+        return df
+    try:
+        return df.sort_values(by_col, ascending=(sort == "asc"), kind="stable")
+    except Exception:
+        return df
+
+
+def has_valid_series_data(series: list[dict[str, Any]]) -> bool:
+    """True if any series has at least one non-null, non-zero numeric value.
+
+    Used to gate chart output: a chart whose every series is entirely null
+    is worse than no chart at all (the 20260420_170234 bar chart had this).
+    """
+    for s in series or []:
+        data = s.get("data", [])
+        for v in data:
+            if v is None:
+                continue
+            if isinstance(v, dict):
+                # echarts richer value item — treat as valid if any numeric present
+                if "value" in v and v["value"] not in (None, 0):
+                    return True
+                continue
+            if isinstance(v, (int, float)) and v != 0:
+                return True
+    return False
+
+
+def get_df_from_context(
+    source: str | None,
+    context: dict[str, Any],
+    data_refs: list[str] | None = None,
+    fallback_context_refs: list[str] | None = None,
+) -> pd.DataFrame | None:
+    """Resolve a DataFrame from a source ref, with cascading fallbacks.
+
+    Resolution order:
+      1. ``source`` (when the config names an explicit task_id)
+      2. each ``data_refs`` entry in order
+      3. each ``fallback_context_refs`` entry in order
+    Returns the first non-empty DataFrame, or None.
+    """
+    candidates: list[str] = []
+    if source:
+        candidates.append(source)
+    candidates.extend(data_refs or [])
+    candidates.extend(fallback_context_refs or [])
+
+    for ref in candidates:
+        if ref not in context:
+            continue
+        ctx_out = context[ref]
+        data = ctx_out.data if hasattr(ctx_out, "data") else ctx_out
+        if isinstance(data, pd.DataFrame) and not data.empty:
+            return data
+    return None
+
+
+def format_label_as_percentage(actual: float, target: float) -> str:
+    """Render ``actual/target`` as a percentage string for bar labels."""
+    if target in (None, 0) or actual is None:
+        return "-"
+    try:
+        return f"{actual / target * 100:.1f}%"
+    except Exception:
+        return "-"

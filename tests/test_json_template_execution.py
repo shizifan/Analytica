@@ -127,15 +127,29 @@ def load_template(template_name: str) -> dict[str, Any]:
 
 
 def json_to_task_items(template: dict[str, Any]) -> list[TaskItem]:
-    """将 JSON 模板转换为 TaskItem 列表。"""
+    """将 JSON 模板转换为 TaskItem 列表。
+
+    将 ``template._meta`` 注入到每个任务的 params._template_meta，以便下游技能
+    （descriptive/summary_gen/attribution）据此切换业务域 prompt、识别时间窗、
+    读取 comparison_type 等业务上下文。生产环境的 planning 层会做同样的事。
+    """
+    tmpl_meta = template.get("_meta", {}) or {}
+    meta_inject = {
+        "template_id": tmpl_meta.get("template_id") or "",
+        "employee_id": tmpl_meta.get("employee_id") or "",
+        "slot_values": tmpl_meta.get("slot_values") or {},
+        "title": template.get("title") or "",
+    }
     tasks = []
     for task_def in template.get("tasks", []):
+        params = dict(task_def.get("params", {}))
+        params.setdefault("_template_meta", meta_inject)
         task = TaskItem(
             task_id=task_def["task_id"],
             type=task_def["type"],
             name=task_def["name"],
             skill=task_def["skill"],
-            params=task_def.get("params", {}),
+            params=params,
             depends_on=task_def.get("depends_on", []),
             estimated_seconds=task_def.get("estimated_seconds", 10),
         )
@@ -248,6 +262,7 @@ async def execute_template_plan(
     template: dict[str, Any],
     allowed_skills: frozenset[str],
     max_tasks: int | None = None,
+    template_name: str | None = None,
 ) -> tuple[dict[str, str], dict[str, Any]]:
     """执行模板计划，返回状态和上下文。
 
@@ -255,6 +270,7 @@ async def execute_template_plan(
         template: JSON 模板字典
         allowed_skills: 技能白名单
         max_tasks: 最大执行任务数（用于测试部分执行）
+        template_name: 模板名（若提供，触发 execution_report.json 落盘）
 
     Returns:
         (statuses, context) 元组
@@ -265,9 +281,14 @@ async def execute_template_plan(
     if max_tasks is not None:
         task_items = task_items[:max_tasks]
 
+    # 让执行器把 execution_report.json 落到本次运行目录，便于事后排查
+    report_dir = None
+    if template_name:
+        report_dir = REPORTS_BASE / _RUN_TIMESTAMP / template_name
+
     with mock_api_gateway():
         statuses, context, _ = await execute_plan(
-            task_items, allowed_skills=allowed_skills,
+            task_items, allowed_skills=allowed_skills, report_dir=report_dir,
         )
 
     return statuses, context
@@ -413,7 +434,7 @@ class TestTemplateDataFetch:
         max_fetch = min(5, len(data_fetch_tasks))  # 执行前5个数据获取任务
 
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=max_fetch
+            template, skills, max_tasks=max_fetch, template_name=template_name
         )
 
         # 验证数据获取任务都成功
@@ -437,7 +458,8 @@ class TestTemplateAnalysis:
 
         # 执行前10个任务（覆盖数据获取到分析）
         statuses, context = await execute_template_plan(
-            template, THROUGHPUT_ANALYST_SKILLS, max_tasks=10
+            template, THROUGHPUT_ANALYST_SKILLS, max_tasks=10,
+            template_name="throughput_analyst_monthly_review",
         )
 
         # 验证关键分析任务
@@ -453,7 +475,8 @@ class TestTemplateAnalysis:
 
         # 执行前15个任务
         statuses, context = await execute_template_plan(
-            template, ASSET_INVESTMENT_SKILLS, max_tasks=15
+            template, ASSET_INVESTMENT_SKILLS, max_tasks=15,
+            template_name="asset_investment_equipment_ops",
         )
 
         # 验证分析任务
@@ -530,7 +553,7 @@ class TestReportGenerationHTML:
 
         # 执行完整计划
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=18
+            template, skills, max_tasks=18, template_name=template_name
         )
 
         # 生成 HTML 报告
@@ -575,7 +598,7 @@ class TestReportGenerationDOCX:
 
         # 执行完整计划
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=18
+            template, skills, max_tasks=18, template_name=template_name
         )
 
         # 生成 DOCX 报告
@@ -620,7 +643,7 @@ class TestReportGenerationPPTX:
 
         # 执行完整计划
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=18
+            template, skills, max_tasks=18, template_name=template_name
         )
 
         # 生成 PPTX 报告
@@ -673,7 +696,7 @@ class TestFullReportPipeline:
 
         # 执行完整计划
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=18
+            template, skills, max_tasks=18, template_name=template_name
         )
 
         report_formats = ["markdown", "html", "docx", "pptx"]
@@ -719,7 +742,8 @@ class TestReportGenerationPerformance:
 
         start = time.time()
         statuses, context = await execute_template_plan(
-            template, THROUGHPUT_ANALYST_SKILLS, max_tasks=10
+            template, THROUGHPUT_ANALYST_SKILLS, max_tasks=10,
+            template_name="throughput_analyst_monthly_review",
         )
         execution_time = time.time() - start
 

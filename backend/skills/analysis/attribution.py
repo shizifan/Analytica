@@ -1,7 +1,9 @@
 """Attribution Analysis Skill — identifies causal factors for metric changes.
 
-Uses LLM for causal reasoning, combining internal data with optional external context.
-"""
+Batch 3 rewrite: routes through ``backend.skills._llm.invoke_llm`` to share
+truncation, semaphore, and ErrorCategory classification. Reads the template's
+``target_kpi`` and ``drivers`` fields so the prompt carries the model's
+expected decomposition (previously ignored)."""
 from __future__ import annotations
 
 import json
@@ -9,19 +11,15 @@ import logging
 import re
 from typing import Any
 
+from backend.skills._llm import infer_domain, invoke_llm, truncate
 from backend.skills.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
 from backend.skills.registry import register_skill
 
 logger = logging.getLogger("analytica.skills.attribution")
 
 
-def _strip_think_tags(text: str) -> str:
-    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
-
-
 def _extract_json(text: str) -> dict | None:
     """Extract JSON from LLM output that may be wrapped in markdown code blocks."""
-    text = _strip_think_tags(text)
     # Try direct parse
     try:
         return json.loads(text)
@@ -72,6 +70,12 @@ class AttributionAnalysisSkill(BaseSkill):
         external_context_ref = params.get("external_context_ref")
         target_metric = params.get("target_metric", "指标变化")
         time_period = params.get("time_period", "")
+        # New (batch 3): consume template-provided decomposition hints.
+        target_kpi = params.get("target_kpi") or []        # ["T001.finishQty/T001.targetQty", ...]
+        drivers = params.get("drivers") or []              # ["港区贡献(T005)", "货种贡献(T006)"]
+        focus_points = params.get("focus_points") or []
+        tmpl_meta = params.get("_template_meta", {}) or {}
+        domain = infer_domain(tmpl_meta.get("template_id"))
 
         # Get internal data from context — fallback to context_refs
         internal_data = None
@@ -82,13 +86,16 @@ class AttributionAnalysisSkill(BaseSkill):
             elif isinstance(ctx_out, dict):
                 internal_data = ctx_out.get("data")
         elif inp.context_refs:
+            # Collect all non-empty upstream data (attribution benefits from
+            # richer context when the template lists multiple drivers).
+            collected: list[Any] = []
             for ref in inp.context_refs:
                 if ref in context:
                     ctx_out = context[ref]
                     ref_data = ctx_out.data if hasattr(ctx_out, "data") else ctx_out
                     if ref_data is not None:
-                        internal_data = ref_data
-                        break
+                        collected.append({"ref": ref, "data": ref_data})
+            internal_data = collected if collected else None
 
         # Get external context
         external_data = None
@@ -99,74 +106,105 @@ class AttributionAnalysisSkill(BaseSkill):
             elif isinstance(ctx_out, dict):
                 external_data = ctx_out.get("data")
 
-        # Build user prompt
+        # Build user prompt ─ includes template-specified drivers/KPIs so the
+        # LLM is guided toward the exact decomposition the template wants.
         user_prompt_parts = [
-            f"目标指标：{target_metric}",
-            f"分析时段：{time_period}",
+            f"业务域: {domain}",
+            f"目标指标: {target_metric}",
+            f"分析时段: {time_period}",
         ]
+        if target_kpi:
+            user_prompt_parts.append(
+                "关键 KPI 公式:\n" + "\n".join(f"- {k}" for k in target_kpi)
+            )
+        if drivers:
+            user_prompt_parts.append(
+                "候选驱动因素（模板指定）:\n" + "\n".join(f"- {d}" for d in drivers)
+            )
+        if focus_points:
+            user_prompt_parts.append(
+                "分析重点:\n" + "\n".join(f"- {p}" for p in focus_points)
+            )
         if internal_data is not None:
-            user_prompt_parts.append(f"内部数据统计：{json.dumps(internal_data, ensure_ascii=False, default=str)[:2000]}")
+            user_prompt_parts.append(
+                "内部数据统计: " + truncate(
+                    json.dumps(internal_data, ensure_ascii=False, default=str),
+                    max_chars=3000,
+                )
+            )
         if external_data is not None:
-            user_prompt_parts.append(f"外部检索结果：{json.dumps(external_data, ensure_ascii=False, default=str)[:2000]}")
+            user_prompt_parts.append(
+                "外部检索结果: " + truncate(
+                    json.dumps(external_data, ensure_ascii=False, default=str),
+                    max_chars=2000,
+                )
+            )
         else:
-            user_prompt_parts.append("注意：无外部检索数据，请仅基于内部数据进行归因，并在 uncertainty_note 中说明数据局限性。")
+            user_prompt_parts.append(
+                "注意：无外部检索数据，请仅基于内部数据进行归因，"
+                "并在 uncertainty_note 中说明数据局限性。"
+            )
 
         user_prompt = "\n".join(user_prompt_parts)
 
-        try:
-            from backend.config import get_settings
-            from langchain_openai import ChatOpenAI
+        result = await invoke_llm(
+            user_prompt,
+            system_prompt=ATTRIBUTION_SYSTEM_PROMPT,
+            temperature=0.2,
+            timeout=90,
+        )
 
-            settings = get_settings()
-            llm = ChatOpenAI(
-                base_url=settings.QWEN_API_BASE,
-                api_key=settings.QWEN_API_KEY,
-                model=settings.QWEN_MODEL,
-                temperature=0.2,
-                request_timeout=90,
-                extra_body={"enable_thinking": False},
-            )
-
-            response = await llm.ainvoke([
-                {"role": "system", "content": ATTRIBUTION_SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ])
-
-            raw = response.content if hasattr(response, "content") else str(response)
-            parsed = _extract_json(raw)
-
-            if parsed is None:
-                return SkillOutput(
-                    skill_id=self.skill_id,
-                    status="partial",
-                    output_type="json",
-                    data={
-                        "primary_drivers": [],
-                        "secondary_factors": [],
-                        "uncertainty_note": "LLM 输出无法解析为 JSON",
-                        "narrative": _strip_think_tags(raw),
-                        "waterfall_data": [],
-                    },
-                    metadata={"raw_response_length": len(raw)},
-                )
-
-            # Ensure required keys
-            result = {
-                "primary_drivers": parsed.get("primary_drivers", []),
-                "secondary_factors": parsed.get("secondary_factors", []),
-                "uncertainty_note": parsed.get("uncertainty_note", ""),
-                "narrative": parsed.get("narrative", ""),
-                "waterfall_data": parsed.get("waterfall_data", []),
-            }
-
+        if result["error"]:
             return SkillOutput(
                 skill_id=self.skill_id,
-                status="success",
+                status="failed",
                 output_type="json",
-                data=result,
-                metadata={"has_external_context": external_data is not None},
+                data=None,
+                error_message=result["error"],
+                error_category=result["error_category"],
+                llm_tokens=result["tokens"],
             )
 
-        except Exception as e:
-            logger.exception("Attribution analysis failed: %s", e)
-            return self._fail(str(e))
+        raw = result["text"]
+        parsed = _extract_json(raw)
+
+        if parsed is None:
+            return SkillOutput(
+                skill_id=self.skill_id,
+                status="partial",
+                output_type="json",
+                data={
+                    "primary_drivers": [],
+                    "secondary_factors": [],
+                    "uncertainty_note": "LLM 输出无法解析为 JSON",
+                    "narrative": raw,
+                    "waterfall_data": [],
+                },
+                metadata={
+                    "raw_response_length": len(raw),
+                    "domain": domain,
+                },
+                llm_tokens=result["tokens"],
+                error_category="PARSE_ERROR",
+            )
+
+        ready = {
+            "primary_drivers": parsed.get("primary_drivers", []),
+            "secondary_factors": parsed.get("secondary_factors", []),
+            "uncertainty_note": parsed.get("uncertainty_note", ""),
+            "narrative": parsed.get("narrative", ""),
+            "waterfall_data": parsed.get("waterfall_data", []),
+        }
+
+        return SkillOutput(
+            skill_id=self.skill_id,
+            status="success",
+            output_type="json",
+            data=ready,
+            metadata={
+                "has_external_context": external_data is not None,
+                "drivers_count": len(drivers),
+                "domain": domain,
+            },
+            llm_tokens=result["tokens"],
+        )

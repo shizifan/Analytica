@@ -1,82 +1,191 @@
-"""Waterfall Chart Skill — generates ECharts waterfall chart for attribution visualization."""
+"""Waterfall Chart Skill — generates ECharts waterfall chart for attribution visualization.
+
+Batch 3 rewrite: adds two new derivation paths beyond the legacy
+``params.waterfall_data`` explicit list:
+
+1. ``config.filter + config.category_field + config.value_field`` — template
+   T016 in the throughput template uses this to derive a waterfall from the
+   port-region YoY table by filtering statType="同比变化".
+2. Automatic extraction from upstream attribution output's ``waterfall_data``.
+
+Before this rewrite the skill returned ``"缺少 waterfall_data 参数"`` whenever
+the template's ``config.filter`` form was used (observed in the 20260420
+report).
+"""
 from __future__ import annotations
 
 from typing import Any
 
+import pandas as pd
+
 from backend.skills.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
 from backend.skills.registry import register_skill
+from backend.skills.visualization._config_parser import (
+    apply_row_filter,
+    get_df_from_context,
+    has_valid_series_data,
+    parse_chart_params,
+)
 
-COLOR_BASE = "#1E3A5F"     # deep blue for base/total
+COLOR_BASE = "#1E3A5F"      # deep blue for base/total
 COLOR_POSITIVE = "#F0A500"  # amber for positive
 COLOR_NEGATIVE = "#E85454"  # red for negative
 
 
+def _derive_waterfall_from_df(
+    df: pd.DataFrame,
+    category_field: str,
+    value_field: str,
+    filter_dict: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Convert a filtered DataFrame into the waterfall_data list shape.
+
+    Produces: [baseline=0, item_1, item_2, ..., net_total]
+
+    If the filter removes all rows (template filter fields don't match what
+    the API actually returned), retry once without the filter so the chart
+    can still render — better than the hard fail we had in batch 2.
+    """
+    if category_field not in df.columns or value_field not in df.columns:
+        return []
+
+    filtered = apply_row_filter(df, filter_dict) if filter_dict else df
+    if filtered.empty and filter_dict:
+        # Fall back to the unfiltered frame with a diagnostic prefix row
+        filtered = df
+        fallback_note = True
+    else:
+        fallback_note = False
+
+    if filtered.empty:
+        return []
+
+    rows: list[dict[str, Any]] = [{"name": "起始", "value": 0}]
+    total = 0.0
+    for _, r in filtered.iterrows():
+        try:
+            v = float(r[value_field])
+        except Exception:
+            continue
+        rows.append({"name": str(r[category_field]), "value": v})
+        total += v
+    rows.append({"name": "合计", "value": total})
+    if fallback_note:
+        rows[0] = {"name": "起始(filter无匹配)", "value": 0}
+    return rows
+
+
+def _extract_waterfall_from_context(
+    context: dict[str, Any],
+    refs: list[str],
+) -> list[dict[str, Any]]:
+    """Look for upstream attribution output carrying ``waterfall_data``."""
+    for ref in refs:
+        if ref not in context:
+            continue
+        ctx_out = context[ref]
+        data = ctx_out.data if hasattr(ctx_out, "data") else ctx_out
+        if isinstance(data, dict):
+            wf = data.get("waterfall_data")
+            if isinstance(wf, list) and wf:
+                return wf
+    return []
+
+
 @register_skill("skill_chart_waterfall", SkillCategory.VISUALIZATION, "瀑布图生成（归因可视化）",
-                input_spec="waterfall_data + title",
+                input_spec="waterfall_data OR config{category_field,value_field,filter}",
                 output_spec="ECharts option JSON")
 class WaterfallChartSkill(BaseSkill):
 
     async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
         params = inp.params
-        waterfall_data = params.get("waterfall_data", [])
-        title = params.get("title", "归因瀑布图")
+        task_name = params.get("_task_name", "")
+        parsed = parse_chart_params(params, task_name)
 
-        # If waterfall_data not in params, try to find it in context_refs or full context
+        # Resolution order:
+        # 1) explicit params.waterfall_data (legacy)
+        # 2) derive from a DataFrame using config.category_field/value_field/filter
+        # 3) extract from an upstream attribution's waterfall_data
+        waterfall_data = params.get("waterfall_data") or []
+
+        cfg = params.get("config") or {}
+        category_field = cfg.get("category_field") or parsed["x_field"]
+        value_field = cfg.get("value_field")
+
+        if not waterfall_data and category_field and value_field:
+            df = get_df_from_context(
+                source=parsed["source"],
+                context=context,
+                data_refs=parsed["data_refs"],
+                fallback_context_refs=inp.context_refs or [],
+            )
+            if df is not None:
+                waterfall_data = _derive_waterfall_from_df(
+                    df, category_field, value_field, parsed["filter"],
+                )
+
         if not waterfall_data:
-            refs_to_check = inp.context_refs if inp.context_refs else list(context.keys())
-            for ref in refs_to_check:
-                if ref in context:
-                    ctx_out = context[ref]
-                    data = ctx_out.data if hasattr(ctx_out, "data") else ctx_out
-                    if isinstance(data, dict) and "waterfall_data" in data:
-                        waterfall_data = data["waterfall_data"]
-                        break
+            waterfall_data = _extract_waterfall_from_context(
+                context, inp.context_refs or [],
+            )
 
         if not waterfall_data:
-            return self._fail("缺少 waterfall_data 参数")
+            return self._fail("缺少 waterfall_data 参数，且无法从 config 或上游归因结果推导")
 
-        categories = []
-        base_series = []   # invisible base (stack)
-        value_series = []  # visible bar
-        running = 0
+        categories: list[str] = []
+        base_series: list[float] = []    # invisible base (stack)
+        value_series: list[dict[str, Any]] = []  # visible bar
+        running = 0.0
 
         for i, item in enumerate(waterfall_data):
             name = item.get("name", f"项{i}")
-            value = item.get("value", 0)
-            direction = item.get("direction", "")
+            try:
+                value = float(item.get("value", 0))
+            except Exception:
+                value = 0.0
             categories.append(name)
 
             is_first = i == 0
             is_last = i == len(waterfall_data) - 1
 
             if is_first or is_last:
-                # Base or total: full bar from 0
                 base_series.append(0)
                 value_series.append({
-                    "value": abs(value),
+                    "value": round(abs(value), 2),
                     "itemStyle": {"color": COLOR_BASE},
                 })
                 if is_first:
                     running = value
             else:
-                # Incremental bar
                 if value >= 0:
-                    base_series.append(running)
+                    base_series.append(round(running, 2))
                     value_series.append({
-                        "value": value,
+                        "value": round(value, 2),
                         "itemStyle": {"color": COLOR_POSITIVE},
                     })
                     running += value
                 else:
                     running += value
-                    base_series.append(max(running, 0))
+                    base_series.append(round(max(running, 0), 2))
                     value_series.append({
-                        "value": abs(value),
+                        "value": round(abs(value), 2),
                         "itemStyle": {"color": COLOR_NEGATIVE},
                     })
 
+        # Skip gate: if every incremental value rounds to 0, the chart is noise
+        check_series = [
+            {"data": [v["value"] for v in value_series]},
+        ]
+        if not has_valid_series_data(check_series):
+            return SkillOutput(
+                skill_id=self.skill_id, status="skipped", output_type="chart",
+                error_message="waterfall: 所有增量值均为 0",
+                metadata={"skip_reason": "ALL_ZERO", "chart_subtype": "waterfall"},
+            )
+
         option = {
-            "title": {"text": title, "left": "center", "textStyle": {"color": COLOR_BASE}},
+            "title": {"text": parsed["title"] or "归因瀑布图", "left": "center",
+                      "textStyle": {"color": COLOR_BASE}},
             "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
             "xAxis": {"type": "category", "data": categories},
             "yAxis": {"type": "value"},
@@ -104,5 +213,8 @@ class WaterfallChartSkill(BaseSkill):
             status="success",
             output_type="chart",
             data=option,
-            metadata={"chart_type": "waterfall", "item_count": len(waterfall_data)},
+            metadata={
+                "chart_type": "waterfall",
+                "item_count": len(waterfall_data),
+            },
         )
