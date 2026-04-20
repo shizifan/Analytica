@@ -1530,6 +1530,15 @@ def get_endpoints_description(
             return True
         return False
 
+    def _semantic_score(ep: ApiEndpoint) -> int:
+        """语义完整度评分：field_schema(4) > analysis_note(3) > use_cases(2) > chain_with(1)"""
+        return (
+            bool(ep.field_schema) * 4 +
+            bool(ep.analysis_note) * 3 +
+            bool(ep.use_cases) * 2 +
+            bool(ep.chain_with) * 1
+        )
+
     has_hints = bool(time_hint or granularity_hint)
 
     def _format_ep_detail(ep: ApiEndpoint, mark: bool = False) -> str:
@@ -1539,6 +1548,10 @@ def get_endpoints_description(
             line += f"\n    必填参数: {', '.join(ep.required)}"
         if ep.optional:
             line += f"\n    可选参数: {', '.join(ep.optional)}"
+        if ep.param_note:
+            line += f"\n    参数说明: {ep.param_note}"
+        if ep.returns:
+            line += f"\n    返回字段: {ep.returns}"
         if ep.field_schema:
             schema_str = " | ".join(f"{f}({t})" for f, t, _ in ep.field_schema)
             line += f"\n    字段结构: {schema_str}"
@@ -1583,17 +1596,18 @@ def get_endpoints_description(
         domain_name = di.name if di else code
 
         if domain_hint and code == domain_hint:
-            # Full detail for hinted domain — with soft filtering
+            # Full detail for hinted domain — with soft filtering + semantic sort
             sections.append(f"【{domain_name}域 ({code}, {len(eps)}个API) — 详细】")
+            eps_sorted = sorted(eps, key=_semantic_score, reverse=True)
             if has_hints:
-                matched = [ep for ep in eps if _ep_matches(ep)]
-                unmatched = [ep for ep in eps if not _ep_matches(ep)]
+                matched = [ep for ep in eps_sorted if _ep_matches(ep)]
+                unmatched = [ep for ep in eps_sorted if not _ep_matches(ep)]
                 for ep in matched:
                     sections.append(_format_ep_detail(ep, mark=True))
                 for ep in unmatched:
                     sections.append(_format_ep_detail(ep, mark=False))
             else:
-                for ep in eps:
+                for ep in eps_sorted:
                     sections.append(_format_ep_detail(ep))
 
         elif domain_hint:
@@ -1607,11 +1621,12 @@ def get_endpoints_description(
             sections.append(summary)
 
         else:
-            # No domain hint
+            # No domain hint — sort by semantic completeness
             sections.append(f"【{domain_name}域 ({code}, {len(eps)}个API)】")
+            eps_sorted = sorted(eps, key=_semantic_score, reverse=True)
             if has_hints:
-                matched = [ep for ep in eps if _ep_matches(ep)]
-                unmatched = [ep for ep in eps if not _ep_matches(ep)]
+                matched = [ep for ep in eps_sorted if _ep_matches(ep)]
+                unmatched = [ep for ep in eps_sorted if not _ep_matches(ep)]
                 # Show all matched in full detail
                 for ep in matched:
                     sections.append(_format_ep_detail(ep, mark=True))
@@ -1623,7 +1638,7 @@ def get_endpoints_description(
                 if remaining > 0:
                     sections.append(f"  ... 还有 {remaining} 个API")
             else:
-                show_eps = eps[:max_per_domain] if max_per_domain else eps
+                show_eps = eps_sorted[:max_per_domain] if max_per_domain else eps_sorted
                 for ep in show_eps:
                     line = f"  - {ep.name}: {ep.intent}"
                     if ep.required:
