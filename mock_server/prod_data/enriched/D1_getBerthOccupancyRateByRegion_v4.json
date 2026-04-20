@@ -1,0 +1,319 @@
+{
+  "api": "getBerthOccupancyRateByRegion",
+  "path": "/api/gateway/getBerthOccupancyRateByRegion",
+  "domain": "D1",
+  "intent": "按港区查询泊位占用率及在泊时间统计",
+  "variant": "v4",
+  "params_sent": {
+    "startDate": "2025-01-01",
+    "endDate": "2025-12-31"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 60,
+  "latency_ms": 1546.2,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "regionName": "大连港",
+      "dateMonth": "2025-01",
+      "rate": 0.3005
+    },
+    {
+      "regionName": "大连港",
+      "dateMonth": "2025-02",
+      "rate": 0.2351
+    },
+    {
+      "regionName": "大连港",
+      "dateMonth": "2025-03",
+      "rate": 0.3062
+    },
+    {
+      "regionName": "大连港",
+      "dateMonth": "2025-04",
+      "rate": 0.281
+    },
+    {
+      "regionName": "大连港",
+      "dateMonth": "2025-05",
+      "rate": 0.3025
+    },
+    {
+      "regionName": "大连港",
+      "dateMonth": "2025-06",
+      "rate": 0.2757
+    },
+    {
+      "regionName": "大连港",
+      "dateMonth": "2025-07",
+      "rate": 0.3075
+    },
+    {
+      "regionName": "大连港",
+      "dateMonth": "2025-08",
+      "rate": 0.2784
+    },
+    {
+      "regionName": "大连港",
+      "dateMonth": "2025-09",
+      "rate": 0.2962
+    },
+    {
+      "regionName": "大连港",
+      "dateMonth": "2025-10",
+      "rate": 0.2801
+    },
+    {
+      "regionName": "大连港",
+      "dateMonth": "2025-11",
+      "rate": 0.2931
+    },
+    {
+      "regionName": "大连港",
+      "dateMonth": "2025-12",
+      "rate": 0.3245
+    },
+    {
+      "regionName": "营口港",
+      "dateMonth": "2025-01",
+      "rate": 0.4358
+    },
+    {
+      "regionName": "营口港",
+      "dateMonth": "2025-02",
+      "rate": 0.4419
+    },
+    {
+      "regionName": "营口港",
+      "dateMonth": "2025-03",
+      "rate": 0.4373
+    },
+    {
+      "regionName": "营口港",
+      "dateMonth": "2025-04",
+      "rate": 0.39
+    },
+    {
+      "regionName": "营口港",
+      "dateMonth": "2025-05",
+      "rate": 0.3919
+    },
+    {
+      "regionName": "营口港",
+      "dateMonth": "2025-06",
+      "rate": 0.3844
+    },
+    {
+      "regionName": "营口港",
+      "dateMonth": "2025-07",
+      "rate": 0.4541
+    },
+    {
+      "regionName": "营口港",
+      "dateMonth": "2025-08",
+      "rate": 0.4799
+    },
+    {
+      "regionName": "营口港",
+      "dateMonth": "2025-09",
+      "rate": 0.4594
+    },
+    {
+      "regionName": "营口港",
+      "dateMonth": "2025-10",
+      "rate": 0.4002
+    },
+    {
+      "regionName": "营口港",
+      "dateMonth": "2025-11",
+      "rate": 0.4759
+    },
+    {
+      "regionName": "营口港",
+      "dateMonth": "2025-12",
+      "rate": 0.5481
+    },
+    {
+      "regionName": "丹东港",
+      "dateMonth": "2025-01",
+      "rate": 0.3335
+    },
+    {
+      "regionName": "丹东港",
+      "dateMonth": "2025-02",
+      "rate": 0.3277
+    },
+    {
+      "regionName": "丹东港",
+      "dateMonth": "2025-03",
+      "rate": 0.4672
+    },
+    {
+      "regionName": "丹东港",
+      "dateMonth": "2025-04",
+      "rate": 0.4104
+    },
+    {
+      "regionName": "丹东港",
+      "dateMonth": "2025-05",
+      "rate": 0.3763
+    },
+    {
+      "regionName": "丹东港",
+      "dateMonth": "2025-06",
+      "rate": 0.3651
+    },
+    {
+      "regionName": "丹东港",
+      "dateMonth": "2025-07",
+      "rate": 0.4563
+    },
+    {
+      "regionName": "丹东港",
+      "dateMonth": "2025-08",
+      "rate": 0.3006
+    },
+    {
+      "regionName": "丹东港",
+      "dateMonth": "2025-09",
+      "rate": 0.2768
+    },
+    {
+      "regionName": "丹东港",
+      "dateMonth": "2025-10",
+      "rate": 0.3006
+    },
+    {
+      "regionName": "丹东港",
+      "dateMonth": "2025-11",
+      "rate": 0.4567
+    },
+    {
+      "regionName": "丹东港",
+      "dateMonth": "2025-12",
+      "rate": 0.5692
+    },
+    {
+      "regionName": "盘锦港",
+      "dateMonth": "2025-01",
+      "rate": 0.4123
+    },
+    {
+      "regionName": "盘锦港",
+      "dateMonth": "2025-02",
+      "rate": 0.4361
+    },
+    {
+      "regionName": "盘锦港",
+      "dateMonth": "2025-03",
+      "rate": 0.3842
+    },
+    {
+      "regionName": "盘锦港",
+      "dateMonth": "2025-04",
+      "rate": 0.5551
+    },
+    {
+      "regionName": "盘锦港",
+      "dateMonth": "2025-05",
+      "rate": 0.461
+    },
+    {
+      "regionName": "盘锦港",
+      "dateMonth": "2025-06",
+      "rate": 0.4558
+    },
+    {
+      "regionName": "盘锦港",
+      "dateMonth": "2025-07",
+      "rate": 0.5398
+    },
+    {
+      "regionName": "盘锦港",
+      "dateMonth": "2025-08",
+      "rate": 0.4193
+    },
+    {
+      "regionName": "盘锦港",
+      "dateMonth": "2025-09",
+      "rate": 0.4894
+    },
+    {
+      "regionName": "盘锦港",
+      "dateMonth": "2025-10",
+      "rate": 0.4906
+    },
+    {
+      "regionName": "盘锦港",
+      "dateMonth": "2025-11",
+      "rate": 0.5926
+    },
+    {
+      "regionName": "盘锦港",
+      "dateMonth": "2025-12",
+      "rate": 0.5013
+    },
+    {
+      "regionName": "绥中港",
+      "dateMonth": "2025-01",
+      "rate": 0.4143
+    },
+    {
+      "regionName": "绥中港",
+      "dateMonth": "2025-02",
+      "rate": 0.7068
+    },
+    {
+      "regionName": "绥中港",
+      "dateMonth": "2025-03",
+      "rate": 0.6466
+    },
+    {
+      "regionName": "绥中港",
+      "dateMonth": "2025-04",
+      "rate": 0.7675
+    },
+    {
+      "regionName": "绥中港",
+      "dateMonth": "2025-05",
+      "rate": 0.4076
+    },
+    {
+      "regionName": "绥中港",
+      "dateMonth": "2025-06",
+      "rate": 0.3423
+    },
+    {
+      "regionName": "绥中港",
+      "dateMonth": "2025-07",
+      "rate": 0.4125
+    },
+    {
+      "regionName": "绥中港",
+      "dateMonth": "2025-08",
+      "rate": 0.1929
+    },
+    {
+      "regionName": "绥中港",
+      "dateMonth": "2025-09",
+      "rate": 0.5552
+    },
+    {
+      "regionName": "绥中港",
+      "dateMonth": "2025-10",
+      "rate": 0.4259
+    },
+    {
+      "regionName": "绥中港",
+      "dateMonth": "2025-11",
+      "rate": 0.6096
+    },
+    {
+      "regionName": "绥中港",
+      "dateMonth": "2025-12",
+      "rate": 0.7909
+    }
+  ]
+}

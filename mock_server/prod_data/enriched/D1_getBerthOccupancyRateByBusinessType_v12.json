@@ -1,0 +1,139 @@
+{
+  "api": "getBerthOccupancyRateByBusinessType",
+  "path": "/api/gateway/getBerthOccupancyRateByBusinessType",
+  "domain": "D1",
+  "intent": "按业务类型查询泊位占用率",
+  "variant": "v12",
+  "params_sent": {
+    "startDate": "2024-01-01",
+    "endDate": "2024-06-30"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 24,
+  "latency_ms": 1419.4,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "businessType": "滚装",
+      "dateMonth": "2024-01",
+      "rate": 0.2719
+    },
+    {
+      "businessType": "油品",
+      "dateMonth": "2024-01",
+      "rate": 0.3525
+    },
+    {
+      "businessType": "集装箱",
+      "dateMonth": "2024-01",
+      "rate": 0.5136
+    },
+    {
+      "businessType": "散杂货",
+      "dateMonth": "2024-01",
+      "rate": 0.4572
+    },
+    {
+      "businessType": "油品",
+      "dateMonth": "2024-02",
+      "rate": 0.3179
+    },
+    {
+      "businessType": "滚装",
+      "dateMonth": "2024-02",
+      "rate": 0.2472
+    },
+    {
+      "businessType": "集装箱",
+      "dateMonth": "2024-02",
+      "rate": 0.3459
+    },
+    {
+      "businessType": "散杂货",
+      "dateMonth": "2024-02",
+      "rate": 0.388
+    },
+    {
+      "businessType": "散杂货",
+      "dateMonth": "2024-03",
+      "rate": 0.3917
+    },
+    {
+      "businessType": "集装箱",
+      "dateMonth": "2024-03",
+      "rate": 0.4647
+    },
+    {
+      "businessType": "滚装",
+      "dateMonth": "2024-03",
+      "rate": 0.308
+    },
+    {
+      "businessType": "油品",
+      "dateMonth": "2024-03",
+      "rate": 0.3218
+    },
+    {
+      "businessType": "散杂货",
+      "dateMonth": "2024-04",
+      "rate": 0.3072
+    },
+    {
+      "businessType": "油品",
+      "dateMonth": "2024-04",
+      "rate": 0.6581
+    },
+    {
+      "businessType": "滚装",
+      "dateMonth": "2024-04",
+      "rate": 0.2511
+    },
+    {
+      "businessType": "集装箱",
+      "dateMonth": "2024-04",
+      "rate": 0.4425
+    },
+    {
+      "businessType": "散杂货",
+      "dateMonth": "2024-05",
+      "rate": 0.3314
+    },
+    {
+      "businessType": "油品",
+      "dateMonth": "2024-05",
+      "rate": 0.3721
+    },
+    {
+      "businessType": "集装箱",
+      "dateMonth": "2024-05",
+      "rate": 0.4617
+    },
+    {
+      "businessType": "滚装",
+      "dateMonth": "2024-05",
+      "rate": 0.3716
+    },
+    {
+      "businessType": "散杂货",
+      "dateMonth": "2024-06",
+      "rate": 0.3333
+    },
+    {
+      "businessType": "滚装",
+      "dateMonth": "2024-06",
+      "rate": 0.3444
+    },
+    {
+      "businessType": "集装箱",
+      "dateMonth": "2024-06",
+      "rate": 0.4281
+    },
+    {
+      "businessType": "油品",
+      "dateMonth": "2024-06",
+      "rate": 0.3057
+    }
+  ]
+}

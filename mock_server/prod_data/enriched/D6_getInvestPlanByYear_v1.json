@@ -1,0 +1,17 @@
+{
+  "api": "getInvestPlanByYear",
+  "path": "/api/gateway/getInvestPlanByYear",
+  "domain": "D6",
+  "intent": "查询近5年投资计划和完成情况历年对比",
+  "variant": "v1",
+  "params_sent": {
+    "ownerLgZoneName": "全港"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 576.4,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

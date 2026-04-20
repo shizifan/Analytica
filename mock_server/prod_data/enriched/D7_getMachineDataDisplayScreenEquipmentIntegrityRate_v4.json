@@ -1,0 +1,31 @@
+{
+  "api": "getMachineDataDisplayScreenEquipmentIntegrityRate",
+  "path": "/api/gateway/getMachineDataDisplayScreenEquipmentIntegrityRate",
+  "domain": "D7",
+  "intent": "查询指定机种年度完好率（机种展示屏）",
+  "variant": "v4",
+  "params_sent": {
+    "secondLevelClassName": "门机",
+    "dateYear": "2026"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 3,
+  "latency_ms": 415.1,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "usageRate": 0.9881405070118663,
+      "dateMonth": "2026-01"
+    },
+    {
+      "usageRate": 0.9920741939350354,
+      "dateMonth": "2026-02"
+    },
+    {
+      "usageRate": 0.99375,
+      "dateMonth": "2026-03"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "api": "getlnportDispatchPort",
+  "path": "/api/gateway/getlnportDispatchPort",
+  "domain": "D1",
+  "intent": "查询指定日期各港区日班/夜班吞吐量调度数据",
+  "params_sent": {
+    "dispatchDate": "2026-04-15"
+  },
+  "status": "OK_UNKNOWN_FORMAT",
+  "http_status": 200,
+  "error": null,
+  "response_pattern": "UNKNOWN",
+  "data_sample": {
+    "success": false,
+    "errorCode": 5,
+    "errorInfo": "Gateway error : token不合法",
+    "space": 71
+  },
+  "latency_ms": 85.5,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

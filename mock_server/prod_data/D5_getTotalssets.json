@@ -1,0 +1,21 @@
+{
+  "api": "getTotalssets",
+  "path": "/api/gateway/getTotalssets",
+  "domain": "D5",
+  "intent": "查询指定港区资产总数量（实物资产+金融资产）",
+  "params_sent": {
+    "assetOwnerZone": "全港"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 1,
+  "latency_ms": 388.9,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "assetQty": 0.0,
+      "realAssetQty": 0.0
+    }
+  ]
+}

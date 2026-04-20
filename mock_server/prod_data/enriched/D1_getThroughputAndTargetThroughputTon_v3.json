@@ -1,0 +1,22 @@
+{
+  "api": "getThroughputAndTargetThroughputTon",
+  "path": "/api/gateway/getThroughputAndTargetThroughputTon",
+  "domain": "D1",
+  "intent": "查询年度吞吐量实际完成值与目标值对比（万吨，含完成率）",
+  "variant": "v3",
+  "params_sent": {
+    "dateYear": "2023"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 1,
+  "latency_ms": 299.5,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "targetQty": 0.0,
+      "finishQty": 0.0
+    }
+  ]
+}

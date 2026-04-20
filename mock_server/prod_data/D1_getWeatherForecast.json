@@ -1,0 +1,105 @@
+{
+  "api": "getWeatherForecast",
+  "path": "/api/gateway/getWeatherForecast",
+  "domain": "D1",
+  "intent": "查询各港区未来5天天气预报（天气/温度/风速/湿度）",
+  "params_sent": {},
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 15,
+  "latency_ms": 676.2,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "regionCode": "DL",
+      "regionName": "大连",
+      "furtherDate": "2026-04-17",
+      "weather": "晴,偏南风4到5级,10℃~18℃"
+    },
+    {
+      "regionCode": "DL",
+      "regionName": "大连",
+      "furtherDate": "2026-04-18",
+      "weather": "晴间多云,偏南风4到5级增强到5到6级,11℃~19℃"
+    },
+    {
+      "regionCode": "DL",
+      "regionName": "大连",
+      "furtherDate": "2026-04-19",
+      "weather": "晴转阴局部有小雨,偏南风5级转偏北风6到7级,8℃~21℃"
+    },
+    {
+      "regionCode": "YK",
+      "regionName": "营口",
+      "furtherDate": "2026-04-17",
+      "weather": "晴间多云,西南风5到6级阵风7级,11℃~18℃"
+    },
+    {
+      "regionCode": "YK",
+      "regionName": "营口",
+      "furtherDate": "2026-04-18",
+      "weather": "晴,南风5到6级20时前后转5到6级阵风7级,13℃~19℃"
+    },
+    {
+      "regionCode": "YK",
+      "regionName": "营口",
+      "furtherDate": "2026-04-19",
+      "weather": "多云夜间转小雨,西南风02时前后转北风5到6级阵风7级,9℃~20℃"
+    },
+    {
+      "regionCode": "DD",
+      "regionName": "丹东",
+      "furtherDate": "2026-04-17",
+      "weather": "多云转晴,偏南风3到4级,6℃~17℃"
+    },
+    {
+      "regionCode": "DD",
+      "regionName": "丹东",
+      "furtherDate": "2026-04-18",
+      "weather": "晴,偏南风3到4级,7℃~19℃"
+    },
+    {
+      "regionCode": "DD",
+      "regionName": "丹东",
+      "furtherDate": "2026-04-19",
+      "weather": "晴转多云,偏南风4到5级转4到6级、阵风7级,7℃~19℃"
+    },
+    {
+      "regionCode": "PJ",
+      "regionName": "盘锦",
+      "furtherDate": "2026-04-17",
+      "weather": "多云转晴,偏南风5级到6级,10℃~17℃"
+    },
+    {
+      "regionCode": "PJ",
+      "regionName": "盘锦",
+      "furtherDate": "2026-04-18",
+      "weather": "晴,西南风6级到7级,13℃~21℃"
+    },
+    {
+      "regionCode": "PJ",
+      "regionName": "盘锦",
+      "furtherDate": "2026-04-19",
+      "weather": "多云转小雨,西南风转北风5级到6级,8℃~19℃"
+    },
+    {
+      "regionCode": "SZ",
+      "regionName": "绥中",
+      "furtherDate": "2026-04-17",
+      "weather": "晴,西南风4-5级,8℃~20℃"
+    },
+    {
+      "regionCode": "SZ",
+      "regionName": "绥中",
+      "furtherDate": "2026-04-18",
+      "weather": "晴,西南风3-5级,11℃~20℃"
+    },
+    {
+      "regionCode": "SZ",
+      "regionName": "绥中",
+      "furtherDate": "2026-04-19",
+      "weather": "多云转阵雨,西南风4-5级,9℃~19℃"
+    }
+  ]
+}

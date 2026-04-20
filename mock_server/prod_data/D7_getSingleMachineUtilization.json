@@ -1,0 +1,16 @@
+{
+  "api": "getSingleMachineUtilization",
+  "path": "/api/gateway/getSingleMachineUtilization",
+  "domain": "D7",
+  "intent": "查询单台设备利用率及有效利用率月度趋势",
+  "params_sent": {
+    "equipmentNo": "EQ001"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 307.6,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

@@ -1,0 +1,17 @@
+{
+  "api": "getThroughputMonthlyTrend",
+  "path": "/api/gateway/getThroughputMonthlyTrend",
+  "domain": "D1",
+  "intent": "查询公司全年月度吞吐量趋势（含同比）",
+  "params_sent": {
+    "dateYear": "2026",
+    "cmpName": "全部"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 920.4,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

@@ -1,0 +1,18 @@
+{
+  "api": "getPlanProgressByMonth",
+  "path": "/api/gateway/getPlanProgressByMonth",
+  "domain": "D6",
+  "intent": "查询年度投资计划月度进度（累计计划vs实际完成）",
+  "params_sent": {
+    "ownerLgZoneName": "全港",
+    "startMonth": "2026-01",
+    "endMonth": "2026-03"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 514.4,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

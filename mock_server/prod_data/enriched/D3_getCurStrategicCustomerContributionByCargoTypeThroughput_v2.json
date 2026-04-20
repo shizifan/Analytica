@@ -1,0 +1,17 @@
+{
+  "api": "getCurStrategicCustomerContributionByCargoTypeThroughput",
+  "path": "/api/gateway/getCurStrategicCustomerContributionByCargoTypeThroughput",
+  "domain": "D3",
+  "intent": "查询当月战略客户按货类贡献的吞吐量",
+  "variant": "v2",
+  "params_sent": {
+    "date": "2026-02"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 311.3,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

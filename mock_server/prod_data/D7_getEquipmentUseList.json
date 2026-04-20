@@ -1,0 +1,29 @@
+{
+  "api": "getEquipmentUseList",
+  "path": "/api/gateway/getEquipmentUseList",
+  "domain": "D7",
+  "intent": "查询设备使用清单",
+  "params_sent": {
+    "startDate": "2026-03-01",
+    "endDate": "2026-03-31",
+    "month": "2026-03",
+    "ownerLgZoneName": "全港"
+  },
+  "status": "BIZ_ERROR",
+  "http_status": 200,
+  "error": "success=false, errorCode=3",
+  "response_pattern": "PATTERN_B",
+  "data_sample": {
+    "success": false,
+    "errorCode": 3,
+    "errorInfo": "未定义异常SQL executed exception, Query failed (#20260416_132110_79451_jnucg): line 4:14: Cannot apply operator: integer * varchar(7)",
+    "data": null,
+    "space": 208,
+    "jdbcQuerySpace": 0,
+    "__more__": "...(3 more keys)"
+  },
+  "latency_ms": 221.6,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

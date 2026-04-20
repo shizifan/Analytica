@@ -1,0 +1,18 @@
+{
+  "api": "getTrendChart",
+  "path": "/api/gateway/getTrendChart",
+  "domain": "D2",
+  "intent": "查询指定业务板块月度吞吐量趋势图数据（市场商务版）",
+  "variant": "v12",
+  "params_sent": {
+    "businessSegment": "集装箱",
+    "startDate": "2024-01-01",
+    "endDate": "2024-06-30"
+  },
+  "status": "OK_UNKNOWN_FORMAT",
+  "error": null,
+  "latency_ms": 25.3,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

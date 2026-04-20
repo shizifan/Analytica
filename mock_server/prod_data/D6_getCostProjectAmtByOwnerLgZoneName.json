@@ -1,0 +1,52 @@
+{
+  "api": "getCostProjectAmtByOwnerLgZoneName",
+  "path": "/api/gateway/getCostProjectAmtByOwnerLgZoneName",
+  "domain": "D6",
+  "intent": "查询各港区成本性项目金额（批复/完成/招标）",
+  "params_sent": {
+    "currYear": 2026
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 7,
+  "latency_ms": 434.9,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "ownerLgZoneName": "大连港",
+      "investAmt": 25685.3,
+      "finishPayAmt": 632041.1
+    },
+    {
+      "ownerLgZoneName": "营口港",
+      "investAmt": 17695.7,
+      "finishPayAmt": 2683975.0
+    },
+    {
+      "ownerLgZoneName": "绥中港",
+      "investAmt": 1239.2,
+      "finishPayAmt": 0.0
+    },
+    {
+      "ownerLgZoneName": null,
+      "investAmt": 394.3,
+      "finishPayAmt": 0.0
+    },
+    {
+      "ownerLgZoneName": "盘锦港",
+      "investAmt": 1873.7,
+      "finishPayAmt": 0.0
+    },
+    {
+      "ownerLgZoneName": "辽港集团本部",
+      "investAmt": 5905.0,
+      "finishPayAmt": 0.0
+    },
+    {
+      "ownerLgZoneName": "丹东港",
+      "investAmt": 2394.0,
+      "finishPayAmt": 1396461.8
+    }
+  ]
+}

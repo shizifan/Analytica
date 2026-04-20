@@ -1,0 +1,44 @@
+{
+  "api": "getContainerByBusinessType",
+  "path": "/api/gateway/getContainerByBusinessType",
+  "domain": "D1",
+  "intent": "查询各港区集装箱吞吐量（TEU，按月）",
+  "variant": "v3",
+  "params_sent": {
+    "flag": "0",
+    "dateMonth": "2025-12"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 5,
+  "latency_ms": 1069.9,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "regionName": "大连港",
+      "targetQty": 45.1,
+      "finishQty": 46.6
+    },
+    {
+      "regionName": "营口港",
+      "targetQty": 48.7,
+      "finishQty": 48.8
+    },
+    {
+      "regionName": "丹东港",
+      "targetQty": 2.0,
+      "finishQty": 1.7
+    },
+    {
+      "regionName": "盘锦港",
+      "targetQty": 4.2,
+      "finishQty": 4.1
+    },
+    {
+      "regionName": "绥中港",
+      "targetQty": 0.0,
+      "finishQty": 0.5
+    }
+  ]
+}

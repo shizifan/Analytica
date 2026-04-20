@@ -18,9 +18,6 @@ wheels/
 # Qoder
 .qoder/
 
-# Production data (not for version control)
-mock_server/prod_data/
-
 # E2E test artifacts (generated per run)
 reports/e2e_artifacts/
 

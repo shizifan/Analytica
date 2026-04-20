@@ -1,0 +1,19 @@
+{
+  "api": "getImportAssertAnalysisList",
+  "path": "/api/gateway/getImportAssertAnalysisList",
+  "domain": "D5",
+  "intent": "查询重要资产明细列表（支持多条件筛选，分页）",
+  "variant": "v5",
+  "params_sent": {
+    "dateYear": "2026",
+    "pageNo": "2",
+    "pageSize": 20
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 646.3,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

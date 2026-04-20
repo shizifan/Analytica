@@ -1,0 +1,26 @@
+{
+  "api": "getFinishProgressAndDeliveryRate",
+  "path": "/api/gateway/getFinishProgressAndDeliveryRate",
+  "domain": "D6",
+  "intent": "查询年度投资完成进度和资本项目交付率",
+  "variant": "v2",
+  "params_sent": {
+    "currYear": "2024"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 1,
+  "latency_ms": 546.1,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "realFinishInvestAmt": 323325,
+      "planInvestAmt": 419843.3,
+      "realFinishPayAmt": 248140.0,
+      "planPayAmt": 403038.9,
+      "deliveryCaptProjectQty": 126,
+      "captProjectQty": 1500
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "api": "getEquipmentIndicatorUseCost",
+  "path": "/api/gateway/getEquipmentIndicatorUseCost",
+  "domain": "D7",
+  "intent": "查询各港区设备使用成本指标（燃油/电力/维修，月度）",
+  "variant": "v1",
+  "params_sent": {
+    "dateMonth": "2026-01"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 10,
+  "latency_ms": 285.6,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 888247.0,
+      "firstLevelName": "起重机械"
+    },
+    {
+      "num": 0.0,
+      "firstLevelName": "船舶"
+    },
+    {
+      "num": 452.0,
+      "firstLevelName": "其他装卸机械设备"
+    },
+    {
+      "num": 0.0,
+      "firstLevelName": "油运设备"
+    },
+    {
+      "num": 182140.0,
+      "firstLevelName": "连续输送机械"
+    },
+    {
+      "num": 169610.0,
+      "firstLevelName": "专用机械"
+    },
+    {
+      "num": 983.0,
+      "firstLevelName": "辅助生产机械设备"
+    },
+    {
+      "num": 682687.0,
+      "firstLevelName": "装卸搬运机械"
+    },
+    {
+      "num": 443945.0,
+      "firstLevelName": "机车"
+    },
+    {
+      "num": 3189696.0,
+      "firstLevelName": "集装箱专用设备"
+    }
+  ]
+}

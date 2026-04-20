@@ -1,0 +1,38 @@
+{
+  "api": "getProductEquipmentWorkingAmountByYear",
+  "path": "/api/gateway/getProductEquipmentWorkingAmountByYear",
+  "domain": "D7",
+  "intent": "查询近5年生产设备作业量历年对比",
+  "variant": "v3",
+  "params_sent": {
+    "dateYear": "2023"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 5,
+  "latency_ms": 302.8,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 403305384,
+      "ownerLgZoneName": "大连港区域"
+    },
+    {
+      "num": 210280509,
+      "ownerLgZoneName": "营口港区域"
+    },
+    {
+      "num": 5000795.0,
+      "ownerLgZoneName": "绥中港区域"
+    },
+    {
+      "num": 197447388,
+      "ownerLgZoneName": "丹东港区域"
+    },
+    {
+      "num": 17734349,
+      "ownerLgZoneName": "盘锦港区域"
+    }
+  ]
+}

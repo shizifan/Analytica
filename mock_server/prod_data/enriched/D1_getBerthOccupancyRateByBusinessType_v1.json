@@ -1,0 +1,39 @@
+{
+  "api": "getBerthOccupancyRateByBusinessType",
+  "path": "/api/gateway/getBerthOccupancyRateByBusinessType",
+  "domain": "D1",
+  "intent": "按业务类型查询泊位占用率",
+  "variant": "v1",
+  "params_sent": {
+    "startDate": "2026-01-01",
+    "endDate": "2026-01-31"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 4,
+  "latency_ms": 1507.2,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "businessType": "集装箱",
+      "dateMonth": "2026-01",
+      "rate": 0.5998
+    },
+    {
+      "businessType": "散杂货",
+      "dateMonth": "2026-01",
+      "rate": 0.4126
+    },
+    {
+      "businessType": "油品",
+      "dateMonth": "2026-01",
+      "rate": 0.3513
+    },
+    {
+      "businessType": "滚装",
+      "dateMonth": "2026-01",
+      "rate": 0.096
+    }
+  ]
+}

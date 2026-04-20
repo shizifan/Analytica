@@ -1,0 +1,16 @@
+{
+  "api": "getCurContributionRankOfStrategicCustomer",
+  "path": "/api/gateway/getCurContributionRankOfStrategicCustomer",
+  "domain": "D3",
+  "intent": "查询当月战略客户贡献排名（商务驾驶舱版）",
+  "variant": "v5",
+  "params_sent": {
+    "date": "2025-06"
+  },
+  "status": "OK_UNKNOWN_FORMAT",
+  "error": null,
+  "latency_ms": 26.0,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

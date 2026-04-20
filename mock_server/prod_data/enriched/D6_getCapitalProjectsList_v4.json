@@ -1,0 +1,19 @@
+{
+  "api": "getCapitalProjectsList",
+  "path": "/api/gateway/getCapitalProjectsList",
+  "domain": "D6",
+  "intent": "查询资本性项目明细列表（分页，支持多维度筛选）",
+  "variant": "v4",
+  "params_sent": {
+    "dateMonth": "2026-01",
+    "pageNo": 1,
+    "pageSize": 20
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 964.9,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

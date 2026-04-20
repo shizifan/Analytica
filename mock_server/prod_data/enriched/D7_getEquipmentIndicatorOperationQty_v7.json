@@ -1,0 +1,17 @@
+{
+  "api": "getEquipmentIndicatorOperationQty",
+  "path": "/api/gateway/getEquipmentIndicatorOperationQty",
+  "domain": "D7",
+  "intent": "查询各港区设备作业量指标（集装箱/散货，月度）",
+  "variant": "v7",
+  "params_sent": {
+    "dateMonth": "2026-03",
+    "ownerZone": "全港"
+  },
+  "status": "OK_UNKNOWN_FORMAT",
+  "error": null,
+  "latency_ms": 23.6,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

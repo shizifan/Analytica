@@ -1,0 +1,95 @@
+{
+  "api": "getProdShipDynNum",
+  "path": "/api/gateway/getProdShipDynNum",
+  "domain": "D1",
+  "intent": "查询全港船舶动态数量汇总（在泊/锚地/进港/出港总数）",
+  "params_sent": {},
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 16,
+  "latency_ms": 576.9,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "typeName": "侯泊船",
+      "num": 3,
+      "orgType": "盘锦区域"
+    },
+    {
+      "typeName": "预到船",
+      "num": 13,
+      "orgType": "大连区域"
+    },
+    {
+      "typeName": "预到船",
+      "num": 1,
+      "orgType": "盘锦区域"
+    },
+    {
+      "typeName": "预到船",
+      "num": 2,
+      "orgType": "丹东区域"
+    },
+    {
+      "typeName": "侯泊船",
+      "num": 1,
+      "orgType": "丹东区域"
+    },
+    {
+      "typeName": "侯泊船",
+      "num": 8,
+      "orgType": "大连区域"
+    },
+    {
+      "typeName": "离泊船",
+      "num": 26,
+      "orgType": "营口区域"
+    },
+    {
+      "typeName": "在泊船",
+      "num": 26,
+      "orgType": "大连区域"
+    },
+    {
+      "typeName": "在泊船",
+      "num": 2,
+      "orgType": "绥中区域"
+    },
+    {
+      "typeName": "在泊船",
+      "num": 9,
+      "orgType": "盘锦区域"
+    },
+    {
+      "typeName": "离泊船",
+      "num": 4,
+      "orgType": "丹东区域"
+    },
+    {
+      "typeName": "离泊船",
+      "num": 43,
+      "orgType": "大连区域"
+    },
+    {
+      "typeName": "在泊船",
+      "num": 4,
+      "orgType": "丹东区域"
+    },
+    {
+      "typeName": "在泊船",
+      "num": 30,
+      "orgType": "营口区域"
+    },
+    {
+      "typeName": "离泊船",
+      "num": 0,
+      "orgType": "绥中区域"
+    },
+    {
+      "typeName": "离泊船",
+      "num": 3,
+      "orgType": "盘锦区域"
+    }
+  ]
+}

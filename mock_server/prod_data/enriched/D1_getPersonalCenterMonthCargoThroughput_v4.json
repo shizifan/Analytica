@@ -1,0 +1,68 @@
+{
+  "api": "getPersonalCenterMonthCargoThroughput",
+  "path": "/api/gateway/getPersonalCenterMonthCargoThroughput",
+  "domain": "D1",
+  "intent": "查询截至某日当月累计吞吐量及与环比月的对比",
+  "variant": "v4",
+  "params_sent": {
+    "endDate": "2025-06-30",
+    "momEndDate": "2025-05-31",
+    "yoyEndDate": "2024-06-30",
+    "momStartDate": "2025-05-01",
+    "startDate": "2025-06-01",
+    "yoyStartDate": "2024-06-01"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 5,
+  "latency_ms": 788.4,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "regionName": "营口",
+      "curTonQ": 1735.6,
+      "curTeuQ": 52.8,
+      "momTonQ": 1724.0,
+      "momTeuQ": 52.5,
+      "yoyTonQ": 1798.4,
+      "yoyTeuQ": 45.6
+    },
+    {
+      "regionName": "丹东",
+      "curTonQ": 276.5,
+      "curTeuQ": 2.0,
+      "momTonQ": 280.0,
+      "momTeuQ": 2.0,
+      "yoyTonQ": 235.5,
+      "yoyTeuQ": 2.3
+    },
+    {
+      "regionName": "绥中",
+      "curTonQ": 34.7,
+      "curTeuQ": 0.1,
+      "momTonQ": 33.2,
+      "momTeuQ": 0.2,
+      "yoyTonQ": 41.1,
+      "yoyTeuQ": 0.3
+    },
+    {
+      "regionName": "盘锦",
+      "curTonQ": 195.7,
+      "curTeuQ": 4.5,
+      "momTonQ": 202.6,
+      "momTeuQ": 4.2,
+      "yoyTonQ": 156.2,
+      "yoyTeuQ": 4.1
+    },
+    {
+      "regionName": "大连",
+      "curTonQ": 1693.2,
+      "curTeuQ": 43.2,
+      "momTonQ": 1747.0,
+      "momTeuQ": 43.7,
+      "yoyTonQ": 1659.4,
+      "yoyTeuQ": 42.3
+    }
+  ]
+}

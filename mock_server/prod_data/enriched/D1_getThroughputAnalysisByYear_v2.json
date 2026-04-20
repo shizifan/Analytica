@@ -1,0 +1,71 @@
+{
+  "api": "getThroughputAnalysisByYear",
+  "path": "/api/gateway/getThroughputAnalysisByYear",
+  "domain": "D1",
+  "intent": "查询年度各月吞吐量趋势（当年vs上年同期月度对比）",
+  "variant": "v2",
+  "params_sent": {
+    "dateYear": "2024",
+    "preYear": "2023"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 13,
+  "latency_ms": 391.0,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "dateMonth": "2023-12",
+      "qty": 201.4
+    },
+    {
+      "dateMonth": "2024-01",
+      "qty": 4050.1
+    },
+    {
+      "dateMonth": "2024-02",
+      "qty": 3021.6
+    },
+    {
+      "dateMonth": "2024-03",
+      "qty": 4136.4
+    },
+    {
+      "dateMonth": "2024-04",
+      "qty": 3821.8
+    },
+    {
+      "dateMonth": "2024-05",
+      "qty": 3858.2
+    },
+    {
+      "dateMonth": "2024-06",
+      "qty": 3890.5
+    },
+    {
+      "dateMonth": "2024-07",
+      "qty": 3335.7
+    },
+    {
+      "dateMonth": "2024-08",
+      "qty": 3984.6
+    },
+    {
+      "dateMonth": "2024-09",
+      "qty": 4137.6
+    },
+    {
+      "dateMonth": "2024-10",
+      "qty": 5053.2
+    },
+    {
+      "dateMonth": "2024-11",
+      "qty": 4589.6
+    },
+    {
+      "dateMonth": "2024-12",
+      "qty": 4328.7
+    }
+  ]
+}

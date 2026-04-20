@@ -1,0 +1,17 @@
+{
+  "api": "getMachineTypeDataDisplayScreenPowerConsumptionCostPerTon",
+  "path": "/api/gateway/getMachineTypeDataDisplayScreenPowerConsumptionCostPerTon",
+  "domain": "D7",
+  "intent": "查询指定机种电量吨成本（机种展示屏）",
+  "params_sent": {
+    "secondLevelClassName": "岸桥",
+    "date": "2026-03"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 454.8,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

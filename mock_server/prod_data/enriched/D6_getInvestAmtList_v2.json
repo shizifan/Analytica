@@ -1,0 +1,19 @@
+{
+  "api": "getInvestAmtList",
+  "path": "/api/gateway/getInvestAmtList",
+  "domain": "D6",
+  "intent": "查询投资项目金额明细列表（分页，支持多条件筛选）",
+  "variant": "v2",
+  "params_sent": {
+    "dateYear": "2024",
+    "pageNo": 1,
+    "pageSize": 20
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 1233.4,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

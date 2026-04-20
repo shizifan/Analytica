@@ -1,0 +1,300 @@
+{
+  "api": "getThroughputAnalysisYoyMomByYear",
+  "path": "/api/gateway/getThroughputAnalysisYoyMomByYear",
+  "domain": "D1",
+  "intent": "查询指定年份吞吐量同比/环比（年度层面）",
+  "variant": "v3",
+  "params_sent": {
+    "date": "2026-01-15"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 47,
+  "latency_ms": 2906.7,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "regionName": "大连港",
+      "qty": 34.1,
+      "statType": "当期",
+      "dateType": "日"
+    },
+    {
+      "regionName": "大连港",
+      "qty": 636.5,
+      "statType": "当期",
+      "dateType": "月"
+    },
+    {
+      "regionName": "大连港",
+      "qty": 782.6,
+      "statType": "环比",
+      "dateType": "月"
+    },
+    {
+      "regionName": "大连港",
+      "qty": 841.7,
+      "statType": "同比",
+      "dateType": "月"
+    },
+    {
+      "regionName": "大连港",
+      "qty": 841.7,
+      "statType": "同比",
+      "dateType": "年"
+    },
+    {
+      "regionName": "大连港",
+      "qty": 636.5,
+      "statType": "当期",
+      "dateType": "年"
+    },
+    {
+      "regionName": "大连港",
+      "qty": 51.9,
+      "statType": "同比",
+      "dateType": "日"
+    },
+    {
+      "regionName": "大连港",
+      "qty": 40.7,
+      "statType": "环比",
+      "dateType": "日"
+    },
+    {
+      "regionName": "营口港",
+      "qty": 67.9,
+      "statType": "环比",
+      "dateType": "日"
+    },
+    {
+      "regionName": "营口港",
+      "qty": 991.6,
+      "statType": "同比",
+      "dateType": "月"
+    },
+    {
+      "regionName": "营口港",
+      "qty": 893.1,
+      "statType": "环比",
+      "dateType": "月"
+    },
+    {
+      "regionName": "营口港",
+      "qty": 991.6,
+      "statType": "同比",
+      "dateType": "年"
+    },
+    {
+      "regionName": "营口港",
+      "qty": 956.2,
+      "statType": "当期",
+      "dateType": "年"
+    },
+    {
+      "regionName": "营口港",
+      "qty": 75.8,
+      "statType": "当期",
+      "dateType": "日"
+    },
+    {
+      "regionName": "营口港",
+      "qty": 956.2,
+      "statType": "当期",
+      "dateType": "月"
+    },
+    {
+      "regionName": "营口港",
+      "qty": 75.6,
+      "statType": "同比",
+      "dateType": "日"
+    },
+    {
+      "regionName": "丹东港",
+      "qty": 153.1,
+      "statType": "当期",
+      "dateType": "月"
+    },
+    {
+      "regionName": "丹东港",
+      "qty": 188.3,
+      "statType": "同比",
+      "dateType": "月"
+    },
+    {
+      "regionName": "丹东港",
+      "qty": 188.3,
+      "statType": "同比",
+      "dateType": "年"
+    },
+    {
+      "regionName": "丹东港",
+      "qty": 153.1,
+      "statType": "当期",
+      "dateType": "年"
+    },
+    {
+      "regionName": "丹东港",
+      "qty": 11.8,
+      "statType": "当期",
+      "dateType": "日"
+    },
+    {
+      "regionName": "丹东港",
+      "qty": 13.5,
+      "statType": "环比",
+      "dateType": "日"
+    },
+    {
+      "regionName": "丹东港",
+      "qty": 15.2,
+      "statType": "同比",
+      "dateType": "日"
+    },
+    {
+      "regionName": "丹东港",
+      "qty": 196.5,
+      "statType": "环比",
+      "dateType": "月"
+    },
+    {
+      "regionName": "盘锦港",
+      "qty": 94.6,
+      "statType": "当期",
+      "dateType": "年"
+    },
+    {
+      "regionName": "盘锦港",
+      "qty": 12.6,
+      "statType": "同比",
+      "dateType": "日"
+    },
+    {
+      "regionName": "盘锦港",
+      "qty": 102.3,
+      "statType": "同比",
+      "dateType": "年"
+    },
+    {
+      "regionName": "盘锦港",
+      "qty": 100.7,
+      "statType": "环比",
+      "dateType": "月"
+    },
+    {
+      "regionName": "盘锦港",
+      "qty": 6.3,
+      "statType": "环比",
+      "dateType": "日"
+    },
+    {
+      "regionName": "盘锦港",
+      "qty": 102.3,
+      "statType": "同比",
+      "dateType": "月"
+    },
+    {
+      "regionName": "盘锦港",
+      "qty": 2.0,
+      "statType": "当期",
+      "dateType": "日"
+    },
+    {
+      "regionName": "盘锦港",
+      "qty": 94.6,
+      "statType": "当期",
+      "dateType": "月"
+    },
+    {
+      "regionName": "绥中港",
+      "qty": 0.8,
+      "statType": "同比",
+      "dateType": "日"
+    },
+    {
+      "regionName": "绥中港",
+      "qty": 13.8,
+      "statType": "同比",
+      "dateType": "月"
+    },
+    {
+      "regionName": "绥中港",
+      "qty": 36.3,
+      "statType": "环比",
+      "dateType": "月"
+    },
+    {
+      "regionName": "绥中港",
+      "qty": 13.8,
+      "statType": "同比",
+      "dateType": "年"
+    },
+    {
+      "regionName": "绥中港",
+      "qty": 16.2,
+      "statType": "当期",
+      "dateType": "年"
+    },
+    {
+      "regionName": "绥中港",
+      "qty": 1.3,
+      "statType": "环比",
+      "dateType": "日"
+    },
+    {
+      "regionName": "绥中港",
+      "qty": 16.2,
+      "statType": "当期",
+      "dateType": "月"
+    },
+    {
+      "regionName": "辽港",
+      "qty": 123.7,
+      "statType": "当期",
+      "dateType": "日"
+    },
+    {
+      "regionName": "辽港",
+      "qty": 1856.6,
+      "statType": "当期",
+      "dateType": "年"
+    },
+    {
+      "regionName": "辽港",
+      "qty": 129.7,
+      "statType": "环比",
+      "dateType": "日"
+    },
+    {
+      "regionName": "辽港",
+      "qty": 156.1,
+      "statType": "同比",
+      "dateType": "日"
+    },
+    {
+      "regionName": "辽港",
+      "qty": 2137.7,
+      "statType": "同比",
+      "dateType": "月"
+    },
+    {
+      "regionName": "辽港",
+      "qty": 1856.6,
+      "statType": "当期",
+      "dateType": "月"
+    },
+    {
+      "regionName": "辽港",
+      "qty": 2009.2,
+      "statType": "环比",
+      "dateType": "月"
+    },
+    {
+      "regionName": "辽港",
+      "qty": 2137.7,
+      "statType": "同比",
+      "dateType": "年"
+    }
+  ]
+}

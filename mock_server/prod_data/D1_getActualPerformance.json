@@ -1,0 +1,24 @@
+{
+  "api": "getActualPerformance",
+  "path": "/api/gateway/getActualPerformance",
+  "domain": "D1",
+  "intent": "查询昨日吞吐量实际完成情况及环比（驾驶舱首页）",
+  "params_sent": {
+    "yesterday": "2026-04-15",
+    "lastMonthDay": "2026-03-15"
+  },
+  "status": "OK_UNKNOWN_FORMAT",
+  "http_status": 200,
+  "error": null,
+  "response_pattern": "UNKNOWN",
+  "data_sample": {
+    "success": false,
+    "errorCode": 5,
+    "errorInfo": "Gateway error : token不合法",
+    "space": 35
+  },
+  "latency_ms": 48.1,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

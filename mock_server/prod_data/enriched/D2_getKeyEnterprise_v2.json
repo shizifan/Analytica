@@ -1,0 +1,90 @@
+{
+  "api": "getKeyEnterprise",
+  "path": "/api/gateway/getKeyEnterprise",
+  "domain": "D2",
+  "intent": "查询当月重点企业吞吐量排名（Top10，按业务板块）",
+  "variant": "v2",
+  "params_sent": {
+    "businessSegment": "集装箱",
+    "curDateMonth": "2026-02",
+    "yearDateMonth": "2025-02"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 14,
+  "latency_ms": 517.5,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "throughput": 2.15,
+      "companyName": "散杂货码头",
+      "dateMonth": "2026-02"
+    },
+    {
+      "throughput": 355.15,
+      "companyName": "DCT",
+      "dateMonth": "2025-02"
+    },
+    {
+      "throughput": 1.02,
+      "companyName": "散杂货码头",
+      "dateMonth": "2025-02"
+    },
+    {
+      "throughput": 0.0,
+      "companyName": "绥中港集团",
+      "dateMonth": "2025-02"
+    },
+    {
+      "throughput": 21.39,
+      "companyName": "集装箱码头公司",
+      "dateMonth": "2026-02"
+    },
+    {
+      "throughput": 0.0,
+      "companyName": "散粮码头",
+      "dateMonth": "2025-02"
+    },
+    {
+      "throughput": 43.07,
+      "companyName": "盘锦集装箱",
+      "dateMonth": "2026-02"
+    },
+    {
+      "throughput": 0.0,
+      "companyName": "散粮码头",
+      "dateMonth": "2026-02"
+    },
+    {
+      "throughput": 32.22,
+      "companyName": "集装箱码头公司",
+      "dateMonth": "2025-02"
+    },
+    {
+      "throughput": 7.61,
+      "companyName": "绥中港集团",
+      "dateMonth": "2026-02"
+    },
+    {
+      "throughput": 325.1,
+      "companyName": "股份集码",
+      "dateMonth": "2026-02"
+    },
+    {
+      "throughput": 346.97,
+      "companyName": "股份集码",
+      "dateMonth": "2025-02"
+    },
+    {
+      "throughput": 386.04,
+      "companyName": "DCT",
+      "dateMonth": "2026-02"
+    },
+    {
+      "throughput": 42.79,
+      "companyName": "盘锦集装箱",
+      "dateMonth": "2025-02"
+    }
+  ]
+}

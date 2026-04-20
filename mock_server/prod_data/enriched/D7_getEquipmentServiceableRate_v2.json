@@ -1,0 +1,66 @@
+{
+  "api": "getEquipmentServiceableRate",
+  "path": "/api/gateway/getEquipmentServiceableRate",
+  "domain": "D7",
+  "intent": "查询各港区年度设备完好率（含月度分布）",
+  "variant": "v2",
+  "params_sent": {
+    "dateYear": "2024"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 12,
+  "latency_ms": 405.5,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "serviceableRate": 1.0,
+      "dateMonth": "2024-01"
+    },
+    {
+      "serviceableRate": 1.0,
+      "dateMonth": "2024-02"
+    },
+    {
+      "serviceableRate": 1.0,
+      "dateMonth": "2024-03"
+    },
+    {
+      "serviceableRate": 1.0,
+      "dateMonth": "2024-04"
+    },
+    {
+      "serviceableRate": 1.0,
+      "dateMonth": "2024-05"
+    },
+    {
+      "serviceableRate": 1.0,
+      "dateMonth": "2024-06"
+    },
+    {
+      "serviceableRate": 1.0,
+      "dateMonth": "2024-07"
+    },
+    {
+      "serviceableRate": 1.0,
+      "dateMonth": "2024-08"
+    },
+    {
+      "serviceableRate": 1.0,
+      "dateMonth": "2024-09"
+    },
+    {
+      "serviceableRate": 1.0,
+      "dateMonth": "2024-10"
+    },
+    {
+      "serviceableRate": 1.0,
+      "dateMonth": "2024-11"
+    },
+    {
+      "serviceableRate": 1.0,
+      "dateMonth": "2024-12"
+    }
+  ]
+}

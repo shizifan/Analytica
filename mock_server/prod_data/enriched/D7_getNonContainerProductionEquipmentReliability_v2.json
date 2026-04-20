@@ -1,0 +1,139 @@
+{
+  "api": "getNonContainerProductionEquipmentReliability",
+  "path": "/api/gateway/getNonContainerProductionEquipmentReliability",
+  "domain": "D7",
+  "intent": "查询非集装箱设备可靠性指标（散货/油化/滚装）",
+  "variant": "v2",
+  "params_sent": {
+    "secondLevelClassName": "岸桥",
+    "dateYear": "2024"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 24,
+  "latency_ms": 441.1,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "usageRate": 91877.14925373135,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-01"
+    },
+    {
+      "usageRate": 90180.4074074074,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-02"
+    },
+    {
+      "usageRate": 46927.393939393936,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-03"
+    },
+    {
+      "usageRate": 90855.68493150685,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-04"
+    },
+    {
+      "usageRate": 97636.08196721312,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-05"
+    },
+    {
+      "usageRate": 93550.65333333334,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-06"
+    },
+    {
+      "usageRate": 83884.80303030302,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-07"
+    },
+    {
+      "usageRate": 94217.37096774194,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-08"
+    },
+    {
+      "usageRate": 108704.4923076923,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-09"
+    },
+    {
+      "usageRate": 95064.21794871795,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-10"
+    },
+    {
+      "usageRate": 90930.72222222222,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-11"
+    },
+    {
+      "usageRate": 90587.93939393939,
+      "dateYear": 2023.0,
+      "dateMonth": "2023-12"
+    },
+    {
+      "usageRate": 94378.92753623189,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-01"
+    },
+    {
+      "usageRate": 90066.48,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-02"
+    },
+    {
+      "usageRate": 98398.35616438356,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-03"
+    },
+    {
+      "usageRate": 96404.63888888889,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-04"
+    },
+    {
+      "usageRate": 91846.19117647059,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-05"
+    },
+    {
+      "usageRate": 81684.01492537314,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-06"
+    },
+    {
+      "usageRate": 98697.05,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-07"
+    },
+    {
+      "usageRate": 109698.38461538461,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-08"
+    },
+    {
+      "usageRate": 48936.50793650794,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-09"
+    },
+    {
+      "usageRate": 44985.44117647059,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-10"
+    },
+    {
+      "usageRate": 47603.188405797104,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-11"
+    },
+    {
+      "usageRate": 31634.537037037036,
+      "dateYear": 2024.0,
+      "dateMonth": "2024-12"
+    }
+  ]
+}

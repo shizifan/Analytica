@@ -1,0 +1,69 @@
+{
+  "api": "getEquipmentFacilityWorthAnalysis",
+  "path": "/api/gateway/getEquipmentFacilityWorthAnalysis",
+  "domain": "D5",
+  "intent": "查询设备/设施净值区间分布",
+  "variant": "v2",
+  "params_sent": {
+    "dateYear": "2024",
+    "type": "设备"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 10,
+  "latency_ms": 552.3,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 13,
+      "typeName": "资产净值",
+      "rate": "0-50"
+    },
+    {
+      "num": 28,
+      "typeName": "资产净值",
+      "rate": "1000以上"
+    },
+    {
+      "num": 3,
+      "typeName": "资产净值",
+      "rate": "100-500"
+    },
+    {
+      "num": 1,
+      "typeName": "资产原值",
+      "rate": "100-500"
+    },
+    {
+      "num": 30,
+      "typeName": "资产原值",
+      "rate": "1000以上"
+    },
+    {
+      "num": 1,
+      "typeName": "资产净值",
+      "rate": "50-100"
+    },
+    {
+      "num": 11,
+      "typeName": "资产原值",
+      "rate": "0-50"
+    },
+    {
+      "num": 2,
+      "typeName": "资产原值",
+      "rate": "500-1000"
+    },
+    {
+      "num": 1,
+      "typeName": "资产净值",
+      "rate": "500-1000"
+    },
+    {
+      "num": 2,
+      "typeName": "资产原值",
+      "rate": "50-100"
+    }
+  ]
+}

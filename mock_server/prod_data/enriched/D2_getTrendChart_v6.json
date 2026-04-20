@@ -1,0 +1,45 @@
+{
+  "api": "getTrendChart",
+  "path": "/api/gateway/getTrendChart",
+  "domain": "D2",
+  "intent": "查询指定业务板块月度吞吐量趋势图数据（市场商务版）",
+  "variant": "v6",
+  "params_sent": {
+    "businessSegment": "集装箱",
+    "startDate": "2025-07-01",
+    "endDate": "2025-12-31"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 5,
+  "latency_ms": 386.8,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "throughput": 1415.7,
+      "businessSegment": "集装箱",
+      "dateMonth": "2025-08"
+    },
+    {
+      "throughput": 1353.74,
+      "businessSegment": "集装箱",
+      "dateMonth": "2025-12"
+    },
+    {
+      "throughput": 1481.33,
+      "businessSegment": "集装箱",
+      "dateMonth": "2025-10"
+    },
+    {
+      "throughput": 1454.91,
+      "businessSegment": "集装箱",
+      "dateMonth": "2025-09"
+    },
+    {
+      "throughput": 1466.04,
+      "businessSegment": "集装箱",
+      "dateMonth": "2025-11"
+    }
+  ]
+}

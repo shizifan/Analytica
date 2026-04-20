@@ -1,0 +1,17 @@
+{
+  "api": "getCostProjectAmtByOwnerLgZoneName",
+  "path": "/api/gateway/getCostProjectAmtByOwnerLgZoneName",
+  "domain": "D6",
+  "intent": "查询各港区成本性项目金额（批复/完成/招标）",
+  "variant": "v2",
+  "params_sent": {
+    "currYear": "2024"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 426.7,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

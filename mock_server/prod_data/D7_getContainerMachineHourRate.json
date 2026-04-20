@@ -1,0 +1,29 @@
+{
+  "api": "getContainerMachineHourRate",
+  "path": "/api/gateway/getContainerMachineHourRate",
+  "domain": "D7",
+  "intent": "查询集装箱装卸设备台时效率（岸桥/RTG分项，月度曲线）",
+  "params_sent": {
+    "dateYear": "2026"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 3,
+  "latency_ms": 392.6,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "machineHourRate": 10.7,
+      "dateMonth": "2026-01"
+    },
+    {
+      "machineHourRate": 9.2,
+      "dateMonth": "2026-02"
+    },
+    {
+      "machineHourRate": 13.3,
+      "dateMonth": "2026-03"
+    }
+  ]
+}

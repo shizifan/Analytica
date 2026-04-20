@@ -1,0 +1,28 @@
+{
+  "api": "planInvestAndPayYoy",
+  "path": "/api/gateway/planInvestAndPayYoy",
+  "domain": "D6",
+  "intent": "查询年度投资计划和付款额同比",
+  "params_sent": {
+    "currYear": 2026,
+    "preYear": 2025
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 2,
+  "latency_ms": 577.4,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "dateYear": 2026,
+      "planInvestAmt": 2000.0,
+      "planPayAmt": 2000.0
+    },
+    {
+      "dateYear": 2025,
+      "planInvestAmt": 606905.3,
+      "planPayAmt": 387905.9
+    }
+  ]
+}

@@ -1,0 +1,1802 @@
+{
+  "api": "getStrategicCustomerThroughput",
+  "path": "/api/gateway/getStrategicCustomerThroughput",
+  "domain": "D3",
+  "intent": "查询战略客户吞吐量贡献",
+  "params_sent": {
+    "curDate": "2026-03",
+    "cargoCategoryName": "集装箱",
+    "statisticType": "0",
+    "yearDate": "2025-03"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 297,
+  "latency_ms": 581.5,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0.0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0.0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0.0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0.0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "4.4898",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "4.4898",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "2.0524",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "2.2554",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "3.318",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "18.703",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "18.703",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "2.1939",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "1.7004",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0.0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0.0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "62.2448",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "46.3482",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "15.8966",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "60.9244",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "34.9922",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "29.8031",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0.0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "12.5318",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "13.0565",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "48.6393",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "48.6393",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "124.40353",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "119.34654",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "127.67176",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0.0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0.0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0.0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0.0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0.0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "159.7726",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "159.7726",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "23.4378",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0.0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "33.176",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2025-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0.0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0.0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "中国远洋海运集团有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "地中海航运有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "马士基航运（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "法国达飞轮船（中国）有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "信风（宁波）海运物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "上海中谷物流股份有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    },
+    {
+      "clientName": "泉州安通物流有限公司",
+      "ttlNum": "0",
+      "cargoCategoryName": "集装箱",
+      "ttlDate": "2026-03"
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "api": "getModelDataDisplayScreenEffectiveUtilization",
+  "path": "/api/gateway/getModelDataDisplayScreenEffectiveUtilization",
+  "domain": "D7",
+  "intent": "查询指定机种年度有效利用率（机种展示屏）",
+  "variant": "v1",
+  "params_sent": {
+    "secondLevelClassName": "岸桥",
+    "dateYear": "2025"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 12,
+  "latency_ms": 379.0,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "usageRate": 0.39745979532163744,
+      "dateMonth": "2025-01"
+    },
+    {
+      "usageRate": 0.39257201646090534,
+      "dateMonth": "2025-02"
+    },
+    {
+      "usageRate": 0.4165740740740741,
+      "dateMonth": "2025-03"
+    },
+    {
+      "usageRate": 0.3871647509578544,
+      "dateMonth": "2025-04"
+    },
+    {
+      "usageRate": 0.4093888888888889,
+      "dateMonth": "2025-05"
+    },
+    {
+      "usageRate": 0.40193486590038313,
+      "dateMonth": "2025-06"
+    },
+    {
+      "usageRate": 0.40784534534534533,
+      "dateMonth": "2025-07"
+    },
+    {
+      "usageRate": 0.3905780780780781,
+      "dateMonth": "2025-08"
+    },
+    {
+      "usageRate": 0.3839987900786449,
+      "dateMonth": "2025-09"
+    },
+    {
+      "usageRate": 0.3838213213213213,
+      "dateMonth": "2025-10"
+    },
+    {
+      "usageRate": 0.4570016820857864,
+      "dateMonth": "2025-11"
+    },
+    {
+      "usageRate": 0.46617063492063493,
+      "dateMonth": "2025-12"
+    }
+  ]
+}

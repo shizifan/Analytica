@@ -1,0 +1,48 @@
+{
+  "api": "getLandMaritimeAnalysisYoy",
+  "path": "/api/gateway/getLandMaritimeAnalysisYoy",
+  "domain": "D5",
+  "intent": "查询土地海域资产同比（面积/净值）",
+  "variant": "v3",
+  "params_sent": {
+    "dateYear": "2023"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 6,
+  "latency_ms": 640.3,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 456821076,
+      "typeName": "资产净值",
+      "dateYear": 2023.0
+    },
+    {
+      "num": 316.0,
+      "typeName": "实物资产数",
+      "dateYear": 2022.0
+    },
+    {
+      "num": 356.0,
+      "typeName": "实物资产数",
+      "dateYear": 2023.0
+    },
+    {
+      "num": 456821076,
+      "typeName": "资产净值",
+      "dateYear": 2022.0
+    },
+    {
+      "num": 540948841,
+      "typeName": "资产原值",
+      "dateYear": 2023.0
+    },
+    {
+      "num": 540948841,
+      "typeName": "资产原值",
+      "dateYear": 2022.0
+    }
+  ]
+}

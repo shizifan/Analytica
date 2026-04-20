@@ -1,0 +1,1265 @@
+{
+  "api": "getPlanExcludedProjectPenetrationAnalysis",
+  "path": "/api/gateway/getPlanExcludedProjectPenetrationAnalysis",
+  "domain": "D6",
+  "intent": "查询计划外项目按港区/类型的穿透分析",
+  "params_sent": {},
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 250,
+  "latency_ms": 526.8,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "qty": 1168.8,
+      "projectCmp": "辽港控股（营口）有限公司集装箱码头分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 102.7,
+      "projectCmp": "辽港控股（营口）有限公司第四分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 490.1,
+      "projectCmp": "营口港对外经济合作发展有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 109.3,
+      "projectCmp": "营口中理外轮理货有限责任公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 36.0,
+      "projectCmp": "辽宁港口股份有限公司大连港铁路分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 2.0,
+      "projectCmp": "盘锦港集团有限公司港口服务分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 318.4,
+      "projectCmp": "大连长兴岛港口有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 16.2,
+      "projectCmp": "盘锦港集团有限公司第二分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 104.0,
+      "projectCmp": "营口港公安局",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 110.0,
+      "projectCmp": "辽港控股（营口）有限公司第三分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 25.5,
+      "projectCmp": "大连长港拖轮服务有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "辽宁港口股份有限公司大连港轮驳分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 165.0,
+      "projectCmp": "辽港控股（营口）有限公司轮驳分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 59.8,
+      "projectCmp": "辽港控股（营口）有限公司实业发展分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 648.6,
+      "projectCmp": "营口港仙人岛码头有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 29130.6,
+      "projectCmp": "丹东港口集团有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 530.6,
+      "projectCmp": "大连港散杂货码头分公司（矿石）",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 13.5,
+      "projectCmp": "大连集发南岸国际物流有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 225.2,
+      "projectCmp": "营口港务集团有限公司港口服务分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 4445.0,
+      "projectCmp": "大连港北岸汽车码头有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 90.0,
+      "projectCmp": "辽宁集铁国际物流有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 63.0,
+      "projectCmp": "大连港北岸集装箱码头有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 25.0,
+      "projectCmp": "辽宁荟源光伏有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 14329.3,
+      "projectCmp": "大连太平湾港口有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 5963.7,
+      "projectCmp": "辽宁港口股份有限公司大连港客运分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 46.9,
+      "projectCmp": "集中采购中心",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 113.0,
+      "projectCmp": "大连集益物流有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 1802.3,
+      "projectCmp": "大连集装箱码头有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 0.6,
+      "projectCmp": "财务部",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 37.0,
+      "projectCmp": "大连长兴岛港口投资发展有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 13.0,
+      "projectCmp": "大连外轮理货有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 336.7,
+      "projectCmp": "辽港控股（营口）有限公司应急保障中心",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 632.3,
+      "projectCmp": "绥中港集团有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 3129.8,
+      "projectCmp": "大连港散杂货码头分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 1.0,
+      "projectCmp": "战略发展部",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 140.0,
+      "projectCmp": "辽港控股（营口）有限公司第二分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 232.20000000000002,
+      "projectCmp": "辽港控股（营口）有限公司水电分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 2543.5,
+      "projectCmp": "盘锦港集团有限公司集装箱分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 10457.0,
+      "projectCmp": "盘锦港集团有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 743.2,
+      "projectCmp": "辽港控股（营口）有限公司第一分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 83.9,
+      "projectCmp": "辽宁港口股份有限公司大连港电力分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 6084.900000000001,
+      "projectCmp": "大连港集团有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 319.0,
+      "projectCmp": "招商港融大数据股份有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 2.7,
+      "projectCmp": "党委",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 72.3,
+      "projectCmp": "大连港集发物流有限责任公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 1593.5,
+      "projectCmp": "辽港股份控股（大连）",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 4997.6,
+      "projectCmp": "大连港油码头有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 435.6,
+      "projectCmp": "大连港石化有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 721.2,
+      "projectCmp": "散杂货事业部",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 194.5,
+      "projectCmp": "辽港控股（营口）有限公司粮食分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 36.1,
+      "projectCmp": "办公室",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 1121.0,
+      "projectCmp": "辽宁港口股份有限公司大连港散粮码头分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 331.3,
+      "projectCmp": "盘锦港集团有限公司第一分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 46316.6,
+      "projectCmp": "营口港务集团有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 600.0,
+      "projectCmp": "辽港控股（营口）有限公司第六分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 496.5,
+      "projectCmp": "营口新港矿石码头有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 572.2,
+      "projectCmp": "大连港城综合开发有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 70.0,
+      "projectCmp": "集装箱事业部",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "沈阳营港陆港服务有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 60.0,
+      "projectCmp": "大连港北岸投资开发有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 1.9,
+      "projectCmp": "产融事业部",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 5368.5,
+      "projectCmp": "大连汽车码头有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 151.0,
+      "projectCmp": "丹东港口集团散粮码头分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 7.5,
+      "projectCmp": "丹东港口集团杂货码头分公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 24.0,
+      "projectCmp": "大连保税区永德信房地产开发建设有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 9746.5,
+      "projectCmp": "辽港股份控股（营口）",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 1293.7,
+      "projectCmp": "大连港旅顺港务有限公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 55.199999999999996,
+      "projectCmp": "风险管理部/法律合规部/审计部",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 570.0,
+      "projectCmp": "大连港资产经营管理公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 18.0,
+      "projectCmp": "大连港保安公司",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 724.9,
+      "projectCmp": "科技与数字化部",
+      "typeName": "支付计划额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "辽宁港口股份有限公司大连港铁路分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 547.6,
+      "projectCmp": "大连港城综合开发有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 244035.19999999998,
+      "projectCmp": "营口港务集团有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 70.0,
+      "projectCmp": "集装箱事业部",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 280.0,
+      "projectCmp": "营口新港矿石码头有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 1000.0,
+      "projectCmp": "辽港控股（营口）有限公司第六分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "沈阳营港陆港服务有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 46.9,
+      "projectCmp": "集中采购中心",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 113.0,
+      "projectCmp": "大连集益物流有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "盘锦港集团有限公司港口服务分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 225.2,
+      "projectCmp": "营口港务集团有限公司港口服务分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 700.0,
+      "projectCmp": "大连港北岸汽车码头有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 13.5,
+      "projectCmp": "大连集发南岸国际物流有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 27930.6,
+      "projectCmp": "丹东港口集团有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 223.0,
+      "projectCmp": "营口港仙人岛码头有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 595.6,
+      "projectCmp": "大连港散杂货码头分公司（矿石）",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 90.0,
+      "projectCmp": "辽宁集铁国际物流有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 25.0,
+      "projectCmp": "辽宁荟源光伏有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 63.0,
+      "projectCmp": "大连港北岸集装箱码头有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 235.2,
+      "projectCmp": "大连长兴岛港口有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 104.0,
+      "projectCmp": "营口港公安局",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 16.2,
+      "projectCmp": "盘锦港集团有限公司第二分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "辽宁港口股份有限公司大连港轮驳分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "辽港控股（营口）有限公司第三分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 25.5,
+      "projectCmp": "大连长港拖轮服务有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 165.0,
+      "projectCmp": "辽港控股（营口）有限公司轮驳分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 35.0,
+      "projectCmp": "辽港控股（营口）有限公司实业发展分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 1168.8,
+      "projectCmp": "辽港控股（营口）有限公司集装箱码头分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 102.7,
+      "projectCmp": "辽港控股（营口）有限公司第四分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 495.0,
+      "projectCmp": "营口港对外经济合作发展有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 37.0,
+      "projectCmp": "大连长兴岛港口投资发展有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 13.0,
+      "projectCmp": "大连外轮理货有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 12917.3,
+      "projectCmp": "大连太平湾港口有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 7120.7,
+      "projectCmp": "辽宁港口股份有限公司大连港客运分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 336.7,
+      "projectCmp": "辽港控股（营口）有限公司应急保障中心",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 1567.8,
+      "projectCmp": "大连集装箱码头有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 0.6,
+      "projectCmp": "财务部",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 1513.8,
+      "projectCmp": "辽港股份控股（大连）",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 72.3,
+      "projectCmp": "大连港集发物流有限责任公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 1980.0,
+      "projectCmp": "盘锦港集团有限公司集装箱分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 232.20000000000002,
+      "projectCmp": "辽港控股（营口）有限公司水电分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 7391.100000000001,
+      "projectCmp": "大连港集团有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "招商港融大数据股份有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 40.0,
+      "projectCmp": "营口中理外轮理货有限责任公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 3098.8,
+      "projectCmp": "大连港散杂货码头分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 1.0,
+      "projectCmp": "战略发展部",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 252.10000000000002,
+      "projectCmp": "绥中港集团有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 2.7,
+      "projectCmp": "党委",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 11157.0,
+      "projectCmp": "盘锦港集团有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 54.2,
+      "projectCmp": "辽宁港口股份有限公司大连港电力分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 743.2,
+      "projectCmp": "辽港控股（营口）有限公司第一分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 140.0,
+      "projectCmp": "辽港控股（营口）有限公司第二分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 60.0,
+      "projectCmp": "大连港北岸投资开发有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 839.0,
+      "projectCmp": "辽宁港口股份有限公司大连港散粮码头分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 331.3,
+      "projectCmp": "盘锦港集团有限公司第一分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 24.0,
+      "projectCmp": "大连保税区永德信房地产开发建设有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 151.0,
+      "projectCmp": "丹东港口集团散粮码头分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 7.5,
+      "projectCmp": "丹东港口集团杂货码头分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 84.8,
+      "projectCmp": "风险管理部/法律合规部/审计部",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "大连港资产经营管理公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 1.9,
+      "projectCmp": "产融事业部",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 9717.5,
+      "projectCmp": "辽港股份控股（营口）",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 178.7,
+      "projectCmp": "辽港控股（营口）有限公司粮食分公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 36.1,
+      "projectCmp": "办公室",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 724.9,
+      "projectCmp": "科技与数字化部",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 18.0,
+      "projectCmp": "大连港保安公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 1300.5,
+      "projectCmp": "大连港旅顺港务有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 1949.9,
+      "projectCmp": "大连港油码头有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 4.6,
+      "projectCmp": "大连港石化有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 721.2,
+      "projectCmp": "散杂货事业部",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 5362.5,
+      "projectCmp": "大连汽车码头有限公司",
+      "typeName": "投资计划额"
+    },
+    {
+      "qty": 10.0,
+      "projectCmp": "辽港控股（营口）有限公司集装箱码头分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 158.0,
+      "projectCmp": "营口港对外经济合作发展有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 78.0,
+      "projectCmp": "辽宁集铁国际物流有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 26343.0,
+      "projectCmp": "丹东港口集团有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 5.0,
+      "projectCmp": "营口港仙人岛码头有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 54.0,
+      "projectCmp": "大连港散杂货码头分公司（矿石）",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 1400.0,
+      "projectCmp": "大连港北岸汽车码头有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "辽宁荟源光伏有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 79.0,
+      "projectCmp": "大连长兴岛港口有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 16.0,
+      "projectCmp": "盘锦港集团有限公司第二分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 15.0,
+      "projectCmp": "营口港公安局",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "辽港控股（营口）有限公司实业发展分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "辽港控股（营口）有限公司轮驳分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "营口中理外轮理货有限责任公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "盘锦港集团有限公司港口服务分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "辽港控股（营口）有限公司第三分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 31.0,
+      "projectCmp": "大连港北岸集装箱码头有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "大连集益物流有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 140.0,
+      "projectCmp": "辽港控股（营口）有限公司第二分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 986.0,
+      "projectCmp": "大连集装箱码头有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 1.0,
+      "projectCmp": "财务部",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 2.0,
+      "projectCmp": "党委",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 304.0,
+      "projectCmp": "辽港控股（营口）有限公司应急保障中心",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 6088.0,
+      "projectCmp": "大连港集团有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "招商港融大数据股份有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 32.0,
+      "projectCmp": "大连长兴岛港口投资发展有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 893.0,
+      "projectCmp": "辽港股份控股（大连）",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 7159.0,
+      "projectCmp": "盘锦港集团有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "辽宁港口股份有限公司大连港电力分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 743.0,
+      "projectCmp": "辽港控股（营口）有限公司第一分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 3246.0,
+      "projectCmp": "大连太平湾港口有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 6807.0,
+      "projectCmp": "辽宁港口股份有限公司大连港客运分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 30.0,
+      "projectCmp": "绥中港集团有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 1712.0,
+      "projectCmp": "大连港散杂货码头分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "盘锦港集团有限公司集装箱分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "大连港北岸投资开发有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 134292.0,
+      "projectCmp": "营口港务集团有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 154.0,
+      "projectCmp": "大连港城综合开发有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "营口新港矿石码头有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "辽港控股（营口）有限公司第六分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 751.0,
+      "projectCmp": "辽宁港口股份有限公司大连港散粮码头分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 44.0,
+      "projectCmp": "盘锦港集团有限公司第一分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 9.0,
+      "projectCmp": "大连汽车码头有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 151.0,
+      "projectCmp": "丹东港口集团散粮码头分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "大连保税区永德信房地产开发建设有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 137.0,
+      "projectCmp": "辽港股份控股（营口）",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 1391.0,
+      "projectCmp": "大连港旅顺港务有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 1903.0,
+      "projectCmp": "大连港油码头有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 5.0,
+      "projectCmp": "大连港石化有限公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 76.0,
+      "projectCmp": "辽港控股（营口）有限公司粮食分公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 1.0,
+      "projectCmp": "办公室",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 2.0,
+      "projectCmp": "大连港资产经营管理公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 50.0,
+      "projectCmp": "风险管理部/法律合规部/审计部",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 18.0,
+      "projectCmp": "大连港保安公司",
+      "typeName": "投资完成额"
+    },
+    {
+      "qty": 165.0,
+      "projectCmp": "营口港对外经济合作发展有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 9.0,
+      "projectCmp": "辽港控股（营口）有限公司集装箱码头分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 78.0,
+      "projectCmp": "辽宁集铁国际物流有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 26639.0,
+      "projectCmp": "丹东港口集团有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 85.0,
+      "projectCmp": "营口港仙人岛码头有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 54.0,
+      "projectCmp": "大连港散杂货码头分公司（矿石）",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "辽宁荟源光伏有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 31.0,
+      "projectCmp": "大连港北岸集装箱码头有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 160.0,
+      "projectCmp": "辽港控股（营口）有限公司轮驳分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 24.0,
+      "projectCmp": "大连长兴岛港口有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "营口港公安局",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 16.0,
+      "projectCmp": "盘锦港集团有限公司第二分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 22.0,
+      "projectCmp": "辽港控股（营口）有限公司实业发展分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 1.0,
+      "projectCmp": "盘锦港集团有限公司港口服务分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 3689.0,
+      "projectCmp": "大连港北岸汽车码头有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 96.0,
+      "projectCmp": "辽港控股（营口）有限公司第三分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 25826.0,
+      "projectCmp": "营口港务集团有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "辽港控股（营口）有限公司第六分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 87.0,
+      "projectCmp": "营口新港矿石码头有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 183.0,
+      "projectCmp": "大连港城综合开发有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 2.0,
+      "projectCmp": "党委",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "大连港北岸投资开发有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 8.0,
+      "projectCmp": "大连汽车码头有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 139.0,
+      "projectCmp": "丹东港口集团散粮码头分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "大连保税区永德信房地产开发建设有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 123.0,
+      "projectCmp": "辽港股份控股（营口）",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 958.0,
+      "projectCmp": "大连港旅顺港务有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 210.0,
+      "projectCmp": "大连港石化有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 3005.0,
+      "projectCmp": "大连港油码头有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 18.0,
+      "projectCmp": "大连港保安公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 309.0,
+      "projectCmp": "大连港资产经营管理公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 50.0,
+      "projectCmp": "风险管理部/法律合规部/审计部",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 140.0,
+      "projectCmp": "辽港控股（营口）有限公司第二分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 1.0,
+      "projectCmp": "办公室",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 82.0,
+      "projectCmp": "辽港控股（营口）有限公司粮食分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 304.0,
+      "projectCmp": "辽港控股（营口）有限公司应急保障中心",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 4284.0,
+      "projectCmp": "大连港集团有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 202.0,
+      "projectCmp": "招商港融大数据股份有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 871.0,
+      "projectCmp": "辽港股份控股（大连）",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 500.0,
+      "projectCmp": "盘锦港集团有限公司集装箱分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 32.0,
+      "projectCmp": "大连长兴岛港口投资发展有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 2406.0,
+      "projectCmp": "盘锦港集团有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 50.0,
+      "projectCmp": "辽宁港口股份有限公司大连港电力分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 559.0,
+      "projectCmp": "辽港控股（营口）有限公司第一分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 1684.0,
+      "projectCmp": "大连港散杂货码头分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 0.0,
+      "projectCmp": "绥中港集团有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 58.0,
+      "projectCmp": "营口中理外轮理货有限责任公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 3081.0,
+      "projectCmp": "大连太平湾港口有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 6052.0,
+      "projectCmp": "辽宁港口股份有限公司大连港客运分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 113.0,
+      "projectCmp": "大连集益物流有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 1529.0,
+      "projectCmp": "大连集装箱码头有限公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 1.0,
+      "projectCmp": "财务部",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 881.0,
+      "projectCmp": "辽宁港口股份有限公司大连港散粮码头分公司",
+      "typeName": "支付完成额"
+    },
+    {
+      "qty": 23.0,
+      "projectCmp": "盘锦港集团有限公司第一分公司",
+      "typeName": "支付完成额"
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "api": "getProductEquipmentIntegrityRateByYear",
+  "path": "/api/gateway/getProductEquipmentIntegrityRateByYear",
+  "domain": "D7",
+  "intent": "查询生产设备年度完好率（当年vs上年同比）",
+  "variant": "v2",
+  "params_sent": {
+    "dateYear": "2024",
+    "preYear": "2023"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 10,
+  "latency_ms": 544.0,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "usageRate": 0.9968,
+      "ownerZone": "盘锦港区域",
+      "dateYear": 2023
+    },
+    {
+      "usageRate": 0.9749,
+      "ownerZone": "丹东港区域",
+      "dateYear": 2023
+    },
+    {
+      "usageRate": 0.996,
+      "ownerZone": "营口港区域",
+      "dateYear": 2023
+    },
+    {
+      "usageRate": 0.988,
+      "ownerZone": "大连港区域",
+      "dateYear": 2023
+    },
+    {
+      "usageRate": 0.9942,
+      "ownerZone": "绥中港区域",
+      "dateYear": 2023
+    },
+    {
+      "usageRate": 0.9906,
+      "ownerZone": "大连港区域",
+      "dateYear": 2024
+    },
+    {
+      "usageRate": 0.9909,
+      "ownerZone": "营口港区域",
+      "dateYear": 2024
+    },
+    {
+      "usageRate": 0.995,
+      "ownerZone": "绥中港区域",
+      "dateYear": 2024
+    },
+    {
+      "usageRate": 0.9959,
+      "ownerZone": "盘锦港区域",
+      "dateYear": 2024
+    },
+    {
+      "usageRate": 0.9826,
+      "ownerZone": "丹东港区域",
+      "dateYear": 2024
+    }
+  ]
+}

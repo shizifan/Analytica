@@ -1,0 +1,17 @@
+{
+  "api": "getEquipmentUsageRate",
+  "path": "/api/gateway/getEquipmentUsageRate",
+  "domain": "D7",
+  "intent": "查询各港区年度设备利用率（含月度分布曲线）",
+  "variant": "v4",
+  "params_sent": {
+    "dateYear": "2026",
+    "ownerZone": "全港"
+  },
+  "status": "OK_UNKNOWN_FORMAT",
+  "error": null,
+  "latency_ms": 28.3,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

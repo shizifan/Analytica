@@ -1,0 +1,68 @@
+{
+  "api": "getCumulativeZoneThroughput",
+  "path": "/api/gateway/getCumulativeZoneThroughput",
+  "domain": "D2",
+  "intent": "查询各港区年累计吞吐量及占比",
+  "params_sent": {
+    "curDateYear": "2026",
+    "yearDateYear": "2025"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 10,
+  "latency_ms": 369.0,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "throughput": 640.28,
+      "dateYear": "2026",
+      "zoneName": "丹东区域"
+    },
+    {
+      "throughput": 395.35,
+      "dateYear": "2026",
+      "zoneName": "盘锦区域"
+    },
+    {
+      "throughput": 4321.71,
+      "dateYear": "2025",
+      "zoneName": "丹东区域"
+    },
+    {
+      "throughput": 3654.95,
+      "dateYear": "2026",
+      "zoneName": "营口区域"
+    },
+    {
+      "throughput": 110.35,
+      "dateYear": "2026",
+      "zoneName": "绥中区域"
+    },
+    {
+      "throughput": 3531.82,
+      "dateYear": "2026",
+      "zoneName": "大连区域"
+    },
+    {
+      "throughput": 23848.51,
+      "dateYear": "2025",
+      "zoneName": "大连区域"
+    },
+    {
+      "throughput": 2696.11,
+      "dateYear": "2025",
+      "zoneName": "盘锦区域"
+    },
+    {
+      "throughput": 21660.04,
+      "dateYear": "2025",
+      "zoneName": "营口区域"
+    },
+    {
+      "throughput": 731.52,
+      "dateYear": "2025",
+      "zoneName": "绥中区域"
+    }
+  ]
+}

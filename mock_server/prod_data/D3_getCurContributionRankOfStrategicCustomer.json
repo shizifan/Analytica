@@ -1,0 +1,165 @@
+{
+  "api": "getCurContributionRankOfStrategicCustomer",
+  "path": "/api/gateway/getCurContributionRankOfStrategicCustomer",
+  "domain": "D3",
+  "intent": "查询当月战略客户贡献排名（商务驾驶舱版）",
+  "params_sent": {
+    "date": "2026-03"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 37,
+  "latency_ms": 343.1,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 0.0,
+      "clientName": "巴西淡水河谷公司（VALE）"
+    },
+    {
+      "num": 0.0,
+      "clientName": "滚装战略客户合计"
+    },
+    {
+      "num": 0.0,
+      "clientName": "华晨宝马汽车有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "本钢钢铁（集团）有限责任公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "北大荒粮食集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "嘉晨集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "法国达飞轮船（中国）有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "中粮集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "北京建龙重工集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "振华石油控股有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "泉州安通物流有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "大连俄贤国际贸易有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "上海中谷物流股份有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "地中海航运有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "中国石油天然气股份有限公司大连石化分公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "吉林省吉电国际贸易有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "盘锦北方沥青燃料有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "滚装吞吐量合计"
+    },
+    {
+      "num": 0.0,
+      "clientName": "通化钢铁集团股份有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "广州汽车集团股份有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "中国远洋海运集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "九三粮油工业集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "上海汽车集团股份有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "日钢营口中板有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "北方华锦化学工业股份有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "散杂货战略客户合计"
+    },
+    {
+      "num": 0.0,
+      "clientName": "散杂货吞吐量合计"
+    },
+    {
+      "num": 0.0,
+      "clientName": "力拓矿业商贸（上海）有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "马士基航运（中国）有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "中国第一汽车集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "鞍山钢铁集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "中国石油天然气股份有限公司东北销售分公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "信风（宁波）海运物流有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "大连西太平洋石油化工有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "厦门象屿集团有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "吉林鑫达钢铁有限公司"
+    },
+    {
+      "num": 0.0,
+      "clientName": "中国石油国际事业有限公司"
+    }
+  ]
+}

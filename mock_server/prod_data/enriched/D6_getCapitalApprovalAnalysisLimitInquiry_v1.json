@@ -1,0 +1,42 @@
+{
+  "api": "getCapitalApprovalAnalysisLimitInquiry",
+  "path": "/api/gateway/getCapitalApprovalAnalysisLimitInquiry",
+  "domain": "D6",
+  "intent": "查询资本性项目批复金额/完成/付款汇总分析",
+  "variant": "v1",
+  "params_sent": {
+    "dateYear": "2025"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 6,
+  "latency_ms": 508.7,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 454942.89999999997,
+      "typeName": "去年计划支付额"
+    },
+    {
+      "num": 387905.8999999999,
+      "typeName": "当年计划支付额"
+    },
+    {
+      "num": 377119.0,
+      "typeName": "当年实际完成投资额"
+    },
+    {
+      "num": 227485.0,
+      "typeName": "当年实际完成支付额"
+    },
+    {
+      "num": 470040.69999999995,
+      "typeName": "去年计划投资额"
+    },
+    {
+      "num": 606905.3000000005,
+      "typeName": "当年计划投资额"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "api": "getProductionEquipmentFaultNum",
+  "path": "/api/gateway/getProductionEquipmentFaultNum",
+  "domain": "D7",
+  "intent": "查询生产设备年度故障次数（重大/一般，含同比）",
+  "variant": "v3",
+  "params_sent": {
+    "dateYear": "2023"
+  },
+  "status": "OK_UNKNOWN_FORMAT",
+  "error": null,
+  "latency_ms": 23.4,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

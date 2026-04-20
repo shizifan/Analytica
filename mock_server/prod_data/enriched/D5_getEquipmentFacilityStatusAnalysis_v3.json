@@ -1,0 +1,139 @@
+{
+  "api": "getEquipmentFacilityStatusAnalysis",
+  "path": "/api/gateway/getEquipmentFacilityStatusAnalysis",
+  "domain": "D5",
+  "intent": "查询设备/设施按状态分布（正常/维修/超期/闲置等）",
+  "variant": "v3",
+  "params_sent": {
+    "dateYear": "2023",
+    "type": "1"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 24,
+  "latency_ms": 441.9,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 9.0,
+      "typeName": "实物资产数",
+      "assetStatus": "报废"
+    },
+    {
+      "num": 225.0,
+      "typeName": "实物资产数",
+      "assetStatus": "封存"
+    },
+    {
+      "num": 8.0,
+      "typeName": "实物资产数",
+      "assetStatus": "调拨"
+    },
+    {
+      "num": 199.0,
+      "typeName": "实物资产数",
+      "assetStatus": "出租"
+    },
+    {
+      "num": 545.0,
+      "typeName": "实物资产数",
+      "assetStatus": "出借"
+    },
+    {
+      "num": 5.0,
+      "typeName": "实物资产数",
+      "assetStatus": "转让"
+    },
+    {
+      "num": 99.0,
+      "typeName": "实物资产数",
+      "assetStatus": "外包再使用"
+    },
+    {
+      "num": 19877.0,
+      "typeName": "实物资产数",
+      "assetStatus": "启用"
+    },
+    {
+      "num": 156146644,
+      "typeName": "资产原值",
+      "assetStatus": "封存"
+    },
+    {
+      "num": 38980885,
+      "typeName": "资产原值",
+      "assetStatus": "调拨"
+    },
+    {
+      "num": 434772118,
+      "typeName": "资产原值",
+      "assetStatus": "出租"
+    },
+    {
+      "num": 4689249.0,
+      "typeName": "资产原值",
+      "assetStatus": "报废"
+    },
+    {
+      "num": 14621309961,
+      "typeName": "资产原值",
+      "assetStatus": "启用"
+    },
+    {
+      "num": 491196361,
+      "typeName": "资产原值",
+      "assetStatus": "出借"
+    },
+    {
+      "num": 62531704,
+      "typeName": "资产原值",
+      "assetStatus": "外包再使用"
+    },
+    {
+      "num": 34639823,
+      "typeName": "资产原值",
+      "assetStatus": "转让"
+    },
+    {
+      "num": 6012974681,
+      "typeName": "资产净值",
+      "assetStatus": "启用"
+    },
+    {
+      "num": 15780901,
+      "typeName": "资产净值",
+      "assetStatus": "外包再使用"
+    },
+    {
+      "num": 192202.0,
+      "typeName": "资产净值",
+      "assetStatus": "报废"
+    },
+    {
+      "num": 151214038,
+      "typeName": "资产净值",
+      "assetStatus": "出租"
+    },
+    {
+      "num": 326330396,
+      "typeName": "资产净值",
+      "assetStatus": "出借"
+    },
+    {
+      "num": 42851151,
+      "typeName": "资产净值",
+      "assetStatus": "封存"
+    },
+    {
+      "num": 12838903,
+      "typeName": "资产净值",
+      "assetStatus": "调拨"
+    },
+    {
+      "num": 9498225.0,
+      "typeName": "资产净值",
+      "assetStatus": "转让"
+    }
+  ]
+}

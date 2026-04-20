@@ -1,0 +1,48 @@
+{
+  "api": "getMonthlyRegionalThroughputAreaBusinessDashboard",
+  "path": "/api/gateway/getMonthlyRegionalThroughputAreaBusinessDashboard",
+  "domain": "D2",
+  "intent": "查询当月各港区吞吐量及占比（商务驾驶舱版）",
+  "variant": "v2",
+  "params_sent": {
+    "date": "2026-02"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 6,
+  "latency_ms": 382.6,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 135.0,
+      "typeName": "计划吞吐量",
+      "zoneName": "盘锦港"
+    },
+    {
+      "num": 2068.7,
+      "typeName": "计划吞吐量",
+      "zoneName": "辽港"
+    },
+    {
+      "num": 1030.8,
+      "typeName": "计划吞吐量",
+      "zoneName": "营口港"
+    },
+    {
+      "num": 28.0,
+      "typeName": "计划吞吐量",
+      "zoneName": "绥中港"
+    },
+    {
+      "num": 700.0,
+      "typeName": "计划吞吐量",
+      "zoneName": "大连港"
+    },
+    {
+      "num": 174.9,
+      "typeName": "计划吞吐量",
+      "zoneName": "丹东港"
+    }
+  ]
+}

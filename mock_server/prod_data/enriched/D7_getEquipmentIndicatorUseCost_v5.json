@@ -1,0 +1,16 @@
+{
+  "api": "getEquipmentIndicatorUseCost",
+  "path": "/api/gateway/getEquipmentIndicatorUseCost",
+  "domain": "D7",
+  "intent": "查询各港区设备使用成本指标（燃油/电力/维修，月度）",
+  "variant": "v5",
+  "params_sent": {
+    "dateMonth": "2025-03"
+  },
+  "status": "OK_UNKNOWN_FORMAT",
+  "error": null,
+  "latency_ms": 23.7,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

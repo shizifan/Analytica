@@ -1,0 +1,55 @@
+{
+  "api": "getPersonalCenterYearCargoThroughput",
+  "path": "/api/gateway/getPersonalCenterYearCargoThroughput",
+  "domain": "D1",
+  "intent": "查询截至某日年累计吞吐量及同比",
+  "params_sent": {
+    "endDate": "2026-03-31",
+    "yoyEndDate": "2025-03-31",
+    "startDate": "2026-01-01",
+    "yoyStartDate": "2025-01-01"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 5,
+  "latency_ms": 544.7,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "regionName": "盘锦",
+      "curTonQ": 566.3,
+      "curTeuQ": 12.7,
+      "yoyTonQ": 542.9,
+      "yoyTeuQ": 12.1
+    },
+    {
+      "regionName": "丹东",
+      "curTonQ": 749.0,
+      "curTeuQ": 6.0,
+      "yoyTonQ": 881.1,
+      "yoyTeuQ": 6.4
+    },
+    {
+      "regionName": "营口",
+      "curTonQ": 5233.8,
+      "curTeuQ": 145.6,
+      "yoyTonQ": 4980.0,
+      "yoyTeuQ": 135.0
+    },
+    {
+      "regionName": "大连",
+      "curTonQ": 4939.4,
+      "curTeuQ": 130.5,
+      "yoyTonQ": 4933.5,
+      "yoyTeuQ": 127.3
+    },
+    {
+      "regionName": "绥中",
+      "curTonQ": 106.8,
+      "curTeuQ": 1.1,
+      "yoyTonQ": 123.0,
+      "yoyTeuQ": 0.1
+    }
+  ]
+}

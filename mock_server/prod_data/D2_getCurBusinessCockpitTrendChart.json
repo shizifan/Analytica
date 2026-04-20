@@ -1,0 +1,16 @@
+{
+  "api": "getCurBusinessCockpitTrendChart",
+  "path": "/api/gateway/getCurBusinessCockpitTrendChart",
+  "domain": "D2",
+  "intent": "查询全港吞吐量月度趋势（当年各月，商务驾驶舱版）",
+  "params_sent": {
+    "date": "2026-03"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 0,
+  "latency_ms": 308.1,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": []
+}

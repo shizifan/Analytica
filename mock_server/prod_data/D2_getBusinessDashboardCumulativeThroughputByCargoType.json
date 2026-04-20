@@ -1,0 +1,26 @@
+{
+  "api": "getBusinessDashboardCumulativeThroughputByCargoType",
+  "path": "/api/gateway/getBusinessDashboardCumulativeThroughputByCargoType",
+  "domain": "D2",
+  "intent": "查询驾驶舱按货种累计吞吐量",
+  "params_sent": {
+    "date": "2026"
+  },
+  "status": "BIZ_ERROR",
+  "http_status": 200,
+  "error": "success=false, errorCode=3",
+  "response_pattern": "PATTERN_B",
+  "data_sample": {
+    "success": false,
+    "errorCode": 3,
+    "errorInfo": "未定义异常SQL executed exception, Query failed (#20260416_132111_79469_jnucg): line 23:84: Column 't0_cargo_category_name' cannot be resolved",
+    "data": null,
+    "space": 360,
+    "jdbcQuerySpace": 0,
+    "__more__": "...(3 more keys)"
+  },
+  "latency_ms": 379.2,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": null
+}

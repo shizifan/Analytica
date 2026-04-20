@@ -1,0 +1,47 @@
+{
+  "api": "getProductViewShipOperationRateTrend",
+  "path": "/api/gateway/getProductViewShipOperationRateTrend",
+  "domain": "D1",
+  "intent": "查询船舶作业效率月度趋势（集装箱/散货/油品曲线）",
+  "variant": "v1",
+  "params_sent": {
+    "startDate": "2026-01-01",
+    "endDate": "2026-01-31"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 4,
+  "latency_ms": 684.2,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "monthId": "2026-01",
+      "monthStr": "01月",
+      "statCargoKind": "油品",
+      "tonQ": 1241121.0,
+      "workTh": 279.7
+    },
+    {
+      "monthId": "2026-01",
+      "monthStr": "01月",
+      "statCargoKind": "粮食",
+      "tonQ": 500200.9,
+      "workTh": 828.0
+    },
+    {
+      "monthId": "2026-01",
+      "monthStr": "01月",
+      "statCargoKind": "煤炭",
+      "tonQ": 2020459.3,
+      "workTh": 1862.0
+    },
+    {
+      "monthId": "2026-01",
+      "monthStr": "01月",
+      "statCargoKind": "矿石",
+      "tonQ": 4108393.9,
+      "workTh": 1061.6
+    }
+  ]
+}

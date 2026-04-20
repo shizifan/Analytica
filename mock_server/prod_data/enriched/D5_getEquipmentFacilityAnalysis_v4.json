@@ -1,0 +1,124 @@
+{
+  "api": "getEquipmentFacilityAnalysis",
+  "path": "/api/gateway/getEquipmentFacilityAnalysis",
+  "domain": "D5",
+  "intent": "查询设备或设施分类分析（type=1设备/type=2设施）",
+  "variant": "v4",
+  "params_sent": {
+    "dateYear": "2026",
+    "type": "2"
+  },
+  "response_pattern": "PATTERN_B",
+  "data_type": "list",
+  "data_count": 21,
+  "latency_ms": 515.0,
+  "fetched_at": "20260416_211930",
+  "base_url": "https://10.29.212.24:81",
+  "data": [
+    {
+      "num": 963.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "辅助设施"
+    },
+    {
+      "num": 14.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "水域设施"
+    },
+    {
+      "num": 3007.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "其他设施"
+    },
+    {
+      "num": 804.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "仓储转运设施"
+    },
+    {
+      "num": 125.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "港口道路"
+    },
+    {
+      "num": 131.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "港口铁路"
+    },
+    {
+      "num": 271.0,
+      "typeName": "实物资产数",
+      "assetTypeName": "水工设施"
+    },
+    {
+      "num": 429973180.0,
+      "typeName": "资产净值",
+      "assetTypeName": "水域设施"
+    },
+    {
+      "num": 1628307903,
+      "typeName": "资产净值",
+      "assetTypeName": "辅助设施"
+    },
+    {
+      "num": 593602516,
+      "typeName": "资产净值",
+      "assetTypeName": "港口铁路"
+    },
+    {
+      "num": 15630634139,
+      "typeName": "资产净值",
+      "assetTypeName": "水工设施"
+    },
+    {
+      "num": 306875489,
+      "typeName": "资产净值",
+      "assetTypeName": "其他设施"
+    },
+    {
+      "num": 8086074670.0,
+      "typeName": "资产净值",
+      "assetTypeName": "仓储转运设施"
+    },
+    {
+      "num": 530826785,
+      "typeName": "资产净值",
+      "assetTypeName": "港口道路"
+    },
+    {
+      "num": 2568638687,
+      "typeName": "资产原值",
+      "assetTypeName": "辅助设施"
+    },
+    {
+      "num": 20839289367,
+      "typeName": "资产原值",
+      "assetTypeName": "水工设施"
+    },
+    {
+      "num": 446689901,
+      "typeName": "资产原值",
+      "assetTypeName": "其他设施"
+    },
+    {
+      "num": 741279442,
+      "typeName": "资产原值",
+      "assetTypeName": "港口道路"
+    },
+    {
+      "num": 12605046263,
+      "typeName": "资产原值",
+      "assetTypeName": "仓储转运设施"
+    },
+    {
+      "num": 599809001,
+      "typeName": "资产原值",
+      "assetTypeName": "水域设施"
+    },
+    {
+      "num": 998610051,
+      "typeName": "资产原值",
+      "assetTypeName": "港口铁路"
+    }
+  ]
+}
