@@ -6,6 +6,7 @@
     "complexity": "full_report",
     "domains": ["D3", "D2"],
     "sample_query": "生成2026年4月市场客户与战略客户洞察综合分析PPT报告",
+    "trigger_keywords": ["战略客户报告", "客户洞察报告", "客户贡献报告", "市场客户分析报告", "客户综合分析"],
     "slot_values": {
       "output_complexity": "full_report",
       "output_format": "pptx",

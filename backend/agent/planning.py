@@ -30,13 +30,13 @@ logger = logging.getLogger("analytica.planning")
 
 TASK_COUNT_LIMITS = {
     "simple_table": (1, 3),
-    "chart_text": (2, 5),
-    "full_report": (5, 12),
+    "chart_text":   (2, 5),
+    "full_report":  (5, 25),  # 模板最多23任务
 }
 
 # ── Template Hint 开关 ────────────────────────────────────────
-# 开启后从 DB 查历史模板注入 prompt，暂不激活
-ENABLE_TEMPLATE_HINT = False
+ENABLE_TEMPLATE_HINT   = True   # 从 DB 查历史模板注入 prompt
+ENABLE_TEMPLATE_BYPASS = True   # 命中 trigger_keywords 时直接返回模板，跳过 LLM
 
 # ── 业务规则常量（可单独维护）────────────────────────────────
 
@@ -257,6 +257,39 @@ def _break_cycles(tasks: list[TaskItem]) -> list[TaskItem]:
     return tasks
 
 
+def _apply_time_params(plan: AnalysisPlan, intent: dict) -> AnalysisPlan:
+    """将模板中的占位时间参数替换为 intent 中的实际时间值。"""
+    import copy
+    slots = intent.get("slots", {})
+    tr = (slots.get("time_range") or {}) if isinstance(slots, dict) else {}
+    tr_val = tr.get("value") if isinstance(tr, dict) else None
+    if not isinstance(tr_val, dict):
+        return plan
+
+    end_str   = tr_val.get("end", "")
+    start_str = tr_val.get("start", "")
+    end_year  = end_str[:4]
+    end_month = end_str[:7]
+    prev_year = str(int(end_year) - 1) if end_year.isdigit() else end_year
+
+    replacements = {
+        "2026-04-30": end_str,
+        "2026-04-01": start_str,
+        "2026-04":    end_month,
+        "2026-01":    start_str[:7],
+        "2026":       end_year,
+        "2025":       prev_year,
+    }
+    plan_dict = copy.deepcopy(plan.model_dump())
+    plan_str  = json.dumps(plan_dict, ensure_ascii=False)
+    for old, new in replacements.items():
+        if new:
+            plan_str = plan_str.replace(f'"{old}"', f'"{new}"')
+    updated = json.loads(plan_str)
+    updated.pop("plan_id", None)
+    return AnalysisPlan(**updated)
+
+
 class PlanningEngine:
     """Core planning engine for the planning layer."""
 
@@ -280,6 +313,7 @@ class PlanningEngine:
         allowed_endpoints: frozenset[str] | None = None,
         allowed_skills: frozenset[str] | None = None,
         prompt_suffix: str = "",
+        employee_id: str | None = None,
     ) -> AnalysisPlan:
         """Generate an analysis plan from a structured intent.
 
@@ -289,6 +323,7 @@ class PlanningEngine:
             allowed_endpoints: 端点白名单 frozenset（来自 EmployeeProfile），硬过滤。
             allowed_skills: 技能白名单 frozenset（来自 EmployeeProfile），硬过滤。
             prompt_suffix: 员工规划层提示后缀。
+            employee_id: 员工 ID，用于模板匹配。
         """
         # 确定合法技能集
         if allowed_skills is not None:
@@ -306,13 +341,27 @@ class PlanningEngine:
         else:
             valid_endpoints = VALID_ENDPOINT_IDS
 
+        complexity = self._get_complexity(intent)
+
+        # Template bypass: 命中 trigger_keywords 时直接返回模板，跳过 LLM
+        if ENABLE_TEMPLATE_BYPASS and employee_id and complexity == "full_report":
+            try:
+                from backend.agent.plan_templates import match_template
+                raw_query = intent.get("raw_query", "") or intent.get("query", "")
+                bypassed = match_template(employee_id, raw_query, complexity)
+                if bypassed is not None:
+                    bypassed = _apply_time_params(bypassed, intent)
+                    logger.info("Template bypass: employee=%s, tasks=%d", employee_id, len(bypassed.tasks))
+                    return bypassed
+            except Exception as e:
+                logger.warning("Template bypass failed, fallback to LLM: %s", e)
+
         # Template hint（根据开关决定是否从 DB 查历史模板）
         if ENABLE_TEMPLATE_HINT:
             template_hint = await self._fetch_template_hint(intent, db_session, user_id)
         else:
             template_hint = ""
 
-        complexity = self._get_complexity(intent)
         prompt = self._build_prompt(
             intent, complexity, db_session, user_id,
             available_skills=available_skills,

@@ -129,7 +129,10 @@ async def planning_node(state: AgentState) -> AgentState:
         )
 
         engine = PlanningEngine(llm=llm, llm_timeout=120.0, max_retries=3)
-        plan = await engine.generate_plan(intent)
+        plan = await engine.generate_plan(
+            intent,
+            employee_id=state.get("employee_id"),
+        )
 
         plan_dict = plan.model_dump()
         state["analysis_plan"] = plan_dict

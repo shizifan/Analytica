@@ -6,6 +6,7 @@
     "complexity": "full_report",
     "domains": ["D1", "D2"],
     "sample_query": "生成2026年一季度全港吞吐量经营综合分析报告",
+    "trigger_keywords": ["经营综合报告", "吞吐量报告", "全港吞吐", "生产运营报告", "全港经营分析"],
     "slot_values": {
       "output_complexity": "full_report",
       "output_format": "html",

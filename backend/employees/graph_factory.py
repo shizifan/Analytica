@@ -67,6 +67,7 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
                 allowed_endpoints=allowed_endpoints,
                 allowed_skills=allowed_skills,
                 prompt_suffix=planning_prompt_suffix,
+                employee_id=profile.employee_id,
             )
 
             plan_dict = plan.model_dump()

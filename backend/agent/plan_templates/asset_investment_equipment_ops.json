@@ -6,6 +6,7 @@
     "complexity": "full_report",
     "domains": ["D5", "D6", "D7"],
     "sample_query": "生成2026年一季度资产价值、投资进度、设备效能综合分析Word报告",
+    "trigger_keywords": ["资产投资报告", "设备效能报告", "资产设备综合", "投资进度报告", "资产设备分析报告"],
     "slot_values": {
       "output_complexity": "full_report",
       "output_format": "docx",
