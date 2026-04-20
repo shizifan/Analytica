@@ -21,6 +21,9 @@ wheels/
 # E2E test artifacts (generated per run)
 reports/e2e_artifacts/
 
+# Local generated reports
+reports/
+
 # Node.js
 node_modules/
 
