@@ -26,6 +26,9 @@ logger = logging.getLogger("analytica.perception")
 
 SLOT_EXTRACTION_PROMPT = """你是一个数据分析意图槽位提取专家。
 
+【重要上下文】
+当前日期：{current_date}
+
 【当前已填充的槽位】
 {current_slots_json}
 
@@ -53,6 +56,8 @@ SLOT_EXTRACTION_PROMPT = """你是一个数据分析意图槽位提取专家。
 规则：
 - 只输出有依据的槽位，无依据的不输出（宁缺毋滥）
 - time_range 解析为 {{"start": "YYYY-MM-DD", "end": "YYYY-MM-DD", "description": "自然语言"}}
+- 【重要】"今年""本年""当前年度"应基于【当前日期】推断年份：当前是{current_date}，则"今年"对应{current_year}年，"去年"对应{prev_year}年，"前年"对应{prev_prev_year}年
+- 【重要】"Q1"对应第1季度(01-01至03-31)，"Q2"对应第2季度(04-01至06-30)，"Q3"对应第3季度(07-01至09-30)，"Q4"对应第4季度(10-01至12-31)
 - output_complexity 判断（须有强关键词，否则不输出此槽位，走系统默认 simple_table）：
   * chart_text：用户明确说"图文""图表""可视化""带图"
   * full_report：用户明确说"报告""分析报告""PPT""Word""生成文档"
@@ -307,7 +312,17 @@ class SlotFillingEngine:
             if rule_lines:
                 extra_rules = "\n【额外槽位与约束规则】\n" + "\n".join(rule_lines)
 
+        import datetime
+        today = datetime.date.today()
+        current_date = today.isoformat()
+        current_year = today.year
+        prev_year = current_year - 1
+        prev_prev_year = current_year - 2
         prompt = SLOT_EXTRACTION_PROMPT.format(
+            current_date=current_date,
+            current_year=current_year,
+            prev_year=prev_year,
+            prev_prev_year=prev_prev_year,
             current_slots_json=json.dumps(current_slots_json, ensure_ascii=False, indent=2),
             conversation_history=history_text,
             latest_user_message=text,
