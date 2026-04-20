@@ -2,8 +2,29 @@ employee_id: customer_insight
 name: 市场客户专家
 description: 专注于战略客户贡献分析、客户结构洞察和市场商务数据
 version: "1.1"
-domains: [D2, D3]
-endpoints: []  # 空 = D2+D3 全部端点
+domains: [D3]
+endpoints:
+  # D3 客户管理（全部12个）
+  - getCustomerQty
+  - getCustomerTypeAnalysis
+  - getCustomerFieldAnalysis
+  - getCustomerCredit
+  - getStrategicCustomerThroughput
+  - getStrategicCustomers
+  - getCurStrategicCustomerContributionByCargoTypeThroughput
+  - getCurContributionRankOfStrategicCustomer
+  - getSumStrategyCustomerTrendAnalysis
+  - getCurStrategyCustomerTrendAnalysis
+  - getSumStrategicCustomerContributionByCargoTypeThroughput
+  - getSumContributionRankOfStrategicCustomer
+  # D2 市场商务（5个与客户分析相关）
+  - getTrendChart
+  - getKeyEnterprise
+  - getCumulativeKeyEnterprise
+  - getMonthlyRegionalThroughputAreaBusinessDashboard
+  - getCumulativeTrendChart
+  # D4 投企管理（仅1个有生产数据的股权API）
+  - investCorpShareholdingProp
 
 skills:
   # 数据获取
@@ -52,7 +73,7 @@ perception:
       meaning: "排名取前 N 位（默认 10）"
   slot_constraints:
     domain:
-      allowed_values: [D2, D3]
+      allowed_values: [D2, D3, D4]
       default_value: D3
     data_granularity:
       allowed_values: [port, zone, company, customer, cargo, business]

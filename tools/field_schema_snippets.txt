@@ -1,0 +1,563 @@
+# getActualPerformance: NO DATA
+
+# getAssetValue  (1 rows)
+    field_schema=((),),
+
+# getBerthList: NO DATA
+
+# getBerthOccupancyRate: NO DATA
+
+# getBerthOccupancyRateByBusinessType  (48 rows)
+    field_schema=((("businessType", "str", ""), ("dateMonth", "str", ""), ("rate", "float", "")),),
+
+# getBerthOccupancyRateByRegion  (60 rows)
+    field_schema=((("regionName", "str", ""), ("dateMonth", "str", ""), ("rate", "float", "")),),
+
+# getBusinessDashboardCumulativeThroughputByCargoType: NO DATA
+
+# getBusinessExpirationInfo: NO DATA
+
+# getBusinessSegmentBranch  (27 rows)
+    field_schema=((("mainOrgCode", "str", ""), ("orgName", "str", ""), ("bsCargoKind", "str", ""), ("sndStatName", "str", ""), ("snOrgName", "str", ""), ("shortName", "str", "")),),
+
+# getBusinessTypeThroughputAnalysisYoyMomByDay: NO DATA
+
+# getBusinessTypeThroughputAnalysisYoyMomByMonth: NO DATA
+
+# getBusinessTypeThroughputAnalysisYoyMomByYear: NO DATA
+
+# getCapitalApprovalAnalysisLimitInquiry  (6 rows)
+    field_schema=((("num", "float", ""), ("typeName", "str", "")),),
+
+# getCapitalApprovalAnalysisProject  (4 rows)
+    field_schema=((("num", "float", ""), ("typeName", "str", "")),),
+
+# getCapitalProjectsList  (20 rows)
+    field_schema=((("dateMonth", "str", ""), ("projectName", "str", ""), ("projectNo", "str", ""), ("investProjectType", "str", ""), ("investProjectStatus", "str", ""), ("investProjectStatusName", "str", ""), ("projectCurrentStage", "str", ""), ("captProjectPayProgress", "float", ""), ("ownerLgZoneName", "str", ""), ("ownerDept", "str", ""), ("planYear", "str", ""), ("proAmt", "float", ""), ("planInvestAmt", "float", ""), ("planPayAmt", "float", ""), ("captProjectPhysicalProgress", "float", ""), ("finishInvestAmt", "float", ""), ("finishPayAmt", "float", "")),),
+
+# getCategoryAnalysis  (24 rows)
+    field_schema=((("num", "float", ""), ("typeName", "str", ""), ("assetTypeName", "str", "")),),
+
+# getCategoryAnalysisTransparentTransmission  (306 rows)
+    field_schema=((("num", "float", ""), ("typeName", "str", ""), ("ownerUnitName", "str", "")),),
+
+# getClientContributionOrder: NO DATA
+
+# getCompanyStatisticsBusinessType: NO DATA
+
+# getCompletionStatus: NO DATA
+
+# getContainerAnalysisYoyMomByYear  (47 rows)
+    field_schema=((("regionName", "str", ""), ("qty", "float", ""), ("statType", "str", ""), ("dateType", "str", "")),),
+
+# getContainerAndVehicleTrade  (14 rows)
+    field_schema=((("regionName", "str", ""), ("cargoKind", "str", ""), ("tradeType", "str", ""), ("transType", "str", ""), ("cntQ", "float", "")),),
+
+# getContainerByBusinessType  (5 rows)
+    field_schema=((("regionName", "str", ""), ("targetQty", "float", ""), ("finishQty", "float", "")),),
+
+# getContainerMachineHourRate  (12 rows)
+    field_schema=((("machineHourRate", "float", ""), ("dateMonth", "str", "")),),
+
+# getContainerThroughputAnalysisByYear  (24 rows)
+    field_schema=((("dateMonth", "str", ""), ("qty", "float", "")),),
+
+# getContributionByCargoCategoryName: NO DATA
+
+# getContributionTrend: NO DATA
+
+# getCostProjectAmtByOwnerLgZoneName  (7 rows)
+    field_schema=((("investAmt", "float", ""), ("finishPayAmt", "float", ""), ("ownerLgZoneName", "str", "")),),
+
+# getCostProjectCurrentStageQtyList  (42 rows)
+    field_schema=((("projectQty", "int", ""), ("projectCurrentStage", "str", ""), ("ownerLgZoneName", "str", "")),),
+
+# getCostProjectFinishByYear  (2 rows)
+    field_schema=((("dateYear", "int", ""), ("projectQty", "int", ""), ("realFinishPayAmt", "float", ""), ("costApplyInvestAmt", "float", "")),),
+
+# getCostProjectQtyByProjectCmp  (97 rows)
+    field_schema=((("projectCmp", "str", ""), ("projectQty", "int", ""), ("investAmt", "float", ""), ("finishPayAmt", "float", "")),),
+
+# getCostProjectQtyList  (7 rows)
+    field_schema=((("projectQty", "float", ""), ("ownerLgZoneName", "str", "")),),
+
+# getCostProjectYoyList  (2 rows)
+    field_schema=((("currYear", "int", ""), ("projectQty", "int", ""), ("investAmt", "float", ""), ("finishPayAmt", "float", ""), ("deliveryRate", "float", "")),),
+
+# getCumulativeBusinessSegmentThroughput  (1304 rows)
+    field_schema=((("dateYear", "str", ""), ("zoneName", "str", ""), ("ioTrade", "str", ""), ("inOutFlag", "str", ""), ("businessSegment", "str", ""), ("bigCategory", "str", ""), ("midCategory", "str", ""), ("unitName", "str", ""), ("throughput", "float", "")),),
+
+# getCumulativeContributionTrend: NO DATA
+
+# getCumulativeKeyEnterprise  (32 rows)
+    field_schema=((("throughput", "float", ""), ("companyName", "str", ""), ("dateYear", "str", "")),),
+
+# getCumulativeRegionalThroughput  (6 rows)
+    field_schema=((("num", "float", ""), ("typeName", "str", ""), ("zoneName", "str", "")),),
+
+# getCumulativeThroughput  (4 rows)
+    field_schema=((("ioTrade", "str", ""), ("throughput", "float", ""), ("dateYear", "str", "")),),
+
+# getCumulativeTrendChart  (2 rows)
+    field_schema=((("throughput", "float", ""), ("businessSegment", "str", ""), ("dateYear", "str", "")),),
+
+# getCumulativeZoneThroughput  (10 rows)
+    field_schema=((("throughput", "float", ""), ("dateYear", "str", ""), ("zoneName", "str", "")),),
+
+# getCurBusinessCockpitTrendChart: NO DATA
+
+# getCurBusinessDashboardThroughput  (8 rows)
+    field_schema=((("typeName", "str", ""), ("num", "float", "")),),
+
+# getCurContributionRankOfStrategicCustomer  (37 rows)
+    field_schema=((("num", "float", ""), ("clientName", "str", "")),),
+
+# getCurStrategicCustomerContributionByCargoTypeThroughput  (4 rows)
+    field_schema=((("num", "float", ""), ("categoryName", "str", "")),),
+
+# getCurStrategyCustomerTrendAnalysis  (13 rows)
+    field_schema=((("num", "float", ""), ("dateMonth", "str", ""), ("typeName", "str", "")),),
+
+# getCurrentBusinessSegmentThroughput  (1304 rows)
+    field_schema=((("dateMonth", "str", ""), ("zoneName", "str", ""), ("ioTrade", "str", ""), ("inOutFlag", "str", ""), ("businessSegment", "str", ""), ("bigCategory", "str", ""), ("midCategory", "str", ""), ("unitName", "str", ""), ("throughput", "float", "")),),
+
+# getCustomerCredit  (2435 rows)
+    field_schema=((("orgName", "str", ""), ("orgCode", "str", ""), ("customerName", "str", ""), ("cstmId", "str", ""), ("year", "str", ""), ("frequency", "str", ""), ("gradeScore", "float", ""), ("gradeResult", "str", ""), ("creditLimit", "float", ""), ("creditTerm", "float", "")),),
+
+# getCustomerFieldAnalysis  (17 rows)
+    field_schema=((("indstryFieldName", "str", ""), ("qty", "int", "")),),
+
+# getCustomerQty  (1 rows)
+    field_schema=((("totalQty", "int", ""), ("outPortQty", "int", ""), ("strategyClientQty", "int", ""), ("customerFilesNumber", "int", "")),),
+
+# getCustomerTypeAnalysis  (13 rows)
+    field_schema=((("clientType", "str", ""), ("qty", "int", "")),),
+
+# getDailyPortInventoryData: NO DATA
+
+# getDeliveryRate  (6 rows)
+    field_schema=((("dateYear", "int", ""), ("rate", "float", "")),),
+
+# getEquipmentAnalysisTransparentTransmission: NO DATA
+
+# getEquipmentAnalysisTransparentTransmissionByFirst: NO DATA
+
+# getEquipmentElectricityTonCost  (12 rows)
+    field_schema=((("tonCost", "float", ""), ("dateMonth", "str", "")),),
+
+# getEquipmentEnergyConsumptionPerUnit  (12 rows)
+    field_schema=((("workingAmount", "float", ""), ("dateMonth", "str", "")),),
+
+# getEquipmentFacilityAnalysis  (60 rows)
+    field_schema=((("num", "float", ""), ("typeName", "str", ""), ("assetTypeName", "str", "")),),
+
+# getEquipmentFacilityAnalysisYoy  (6 rows)
+    field_schema=((("num", "int", ""), ("typeName", "str", ""), ("dateYear", "float", "")),),
+
+# getEquipmentFacilityRegionalAnalysis  (12 rows)
+    field_schema=((("num", "float", ""), ("typeName", "str", ""), ("ownerZone", "str", "")),),
+
+# getEquipmentFacilityStatusAnalysis  (24 rows)
+    field_schema=((("num", "float", ""), ("typeName", "str", ""), ("assetStatus", "str", "")),),
+
+# getEquipmentFacilityWorthAnalysis  (10 rows)
+    field_schema=((("num", "int", ""), ("typeName", "str", ""), ("rate", "str", "")),),
+
+# getEquipmentFirstLevelClassNameList  (14 rows)
+    field_schema=((("firstLevelClassName", "str", ""), ("num", "float", "")),),
+
+# getEquipmentFuelOilTonCost  (12 rows)
+    field_schema=((("tonCost", "float", ""), ("dateMonth", "str", "")),),
+
+# getEquipmentIndicatorOperationQty  (14 rows)
+    field_schema=((("num", "float", ""), ("firstLevelName", "str", "")),),
+
+# getEquipmentIndicatorUseCost  (14 rows)
+    field_schema=((("num", "float", ""), ("firstLevelName", "str", "")),),
+
+# getEquipmentMachineHourRate: NO DATA
+
+# getEquipmentServiceableRate  (12 rows)
+    field_schema=((("serviceableRate", "float", ""), ("dateMonth", "str", "")),),
+
+# getEquipmentUsageRate  (12 rows)
+    field_schema=((("usageRate", "float", ""), ("dateMonth", "str", "")),),
+
+# getEquipmentUseList: NO DATA
+
+# getFinishProgressAndDeliveryRate  (1 rows)
+    field_schema=((("realFinishInvestAmt", "int", ""), ("planInvestAmt", "float", ""), ("realFinishPayAmt", "float", ""), ("planPayAmt", "float", ""), ("deliveryCaptProjectQty", "int", ""), ("captProjectQty", "int", "")),),
+
+# getFuelTonCostOfAircraftDataDisplay: NO DATA
+
+# getHistoricalTrends: NO DATA
+
+# getHousingAnalysisYoy  (8 rows)
+    field_schema=((("num", "float", ""), ("typeName", "str", ""), ("dateYear", "float", "")),),
+
+# getHousingAssertAnalysisTransparentTransmission: NO DATA
+
+# getHousingRegionalAnalysis: NO DATA
+
+# getHousingWorthAnalysis: NO DATA
+
+# getImportAssertAnalysisList  (20 rows)
+    field_schema=((("assetFirstname", "str", ""), ("assetStatusName", "str", ""), ("cardId", "str", ""), ("realAssetTypeName", "str", ""), ("assetTypeName", "str", ""), ("assetName", "str", ""), ("assetCode", "str", ""), ("ownerZone", "str", ""), ("propertyUnit", "str", ""), ("useUnit", "str", ""), ("buyDate", "str", ""), ("assetStatus", "str", ""), ("originalValue", "float", ""), ("netValue", "float", "")),),
+
+# getImportAssetWorthAnalysisByCmpName: NO DATA
+
+# getImportAssetWorthAnalysisByOwnerZone: NO DATA
+
+# getImportantAssetRegionAnalysisPenetrationPage: NO DATA
+
+# getImportantCargoPortInventoryByBusinessType: NO DATA
+
+# getImportantCargoPortInventoryByRegion  (41 rows)
+    field_schema=((("cargoKind", "str", ""), ("tonQ", "float", ""), ("portRegion", "str", ""), ("bsCargoKind", "str", "")),),
+
+# getInvestAmtList  (20 rows)
+    field_schema=((("projectNo", "str", ""), ("projectName", "str", ""), ("adminName", "str", ""), ("projectCmp", "str", ""), ("requestingDept", "str", ""), ("ownerDept", "str", ""), ("investAmt", "float", ""), ("phaseName", "str", ""), ("phaseCode", "int", ""), ("winnerPrice", "float", ""), ("startDate", "str", "")),),
+
+# getInvestPlanByYear  (7 rows)
+    field_schema=((("dateYear", "int", ""), ("finishInvestAmt", "int", ""), ("planInvestAmt", "float", ""), ("realFinishPayAmt", "float", ""), ("captPlanPayAmt", "float", "")),),
+
+# getInvestPlanTypeProjectList  (7 rows)
+    field_schema=((("investProjectType", "str", ""), ("total", "int", ""), ("engineeringQty", "int", ""), ("importantQty", "int", ""), ("planInvestAmt", "float", ""), ("planPayAmt", "float", "")),),
+
+# getKeyEnterprise  (14 rows)
+    field_schema=((("throughput", "float", ""), ("companyName", "str", ""), ("dateMonth", "str", "")),),
+
+# getKeyVesselList  (12 rows)
+    field_schema=((("shipRecordId", "int", ""), ("shipStatus", "str", ""), ("regionName", "str", ""), ("vesselName", "str", ""), ("berthName", "str", ""), ("cargoName", "str", ""), ("planQ", "str", ""), ("shipDynName", "str", ""), ("anchorTime", "str", ""), ("atbTime", "str", ""), ("atcTime", "str", ""), ("planEndWorkTime", "str", "")),),
+
+# getLandMaritimeAnalysisTransparentTransmission  (129 rows)
+    field_schema=((("num", "float", ""), ("typeName", "str", ""), ("ownerUnitName", "str", "")),),
+
+# getLandMaritimeAnalysisYoy  (6 rows)
+    field_schema=((("num", "int", ""), ("typeName", "str", ""), ("dateYear", "float", "")),),
+
+# getLandMaritimeRegionalAnalysis  (6 rows)
+    field_schema=((("num", "float", ""), ("typeName", "str", ""), ("ownerZone", "str", "")),),
+
+# getLandMaritimeWorthAnalysis  (4 rows)
+    field_schema=((("num", "int", ""), ("typeName", "str", ""), ("rate", "str", "")),),
+
+# getMachineDataDisplayEquipmentReliability  (24 rows)
+    field_schema=((("usageRate", "float", ""), ("dateYear", "float", ""), ("dateMonth", "str", "")),),
+
+# getMachineDataDisplayScreenEquipmentIntegrityRate  (12 rows)
+    field_schema=((("usageRate", "float", ""), ("dateMonth", "str", "")),),
+
+# getMachineDataDisplayScreenHourlyEfficiency  (5 rows)
+    field_schema=((("usageRate", "float", ""), ("ownerLgZoneName", "str", "")),),
+
+# getMachineDataDisplaySingleUnitEnergyConsumption  (75 rows)
+    field_schema=((("workingAmount", "float", ""), ("equipmentNo", "str", "")),),
+
+# getMachineTypeDataDisplayScreenPowerConsumptionCostPerTon: NO DATA
+
+# getMainAssetsInfo: NO DATA
+
+# getMeetDetail: NO DATA
+
+# getMeetingInfo: NO DATA
+
+# getModelDataDisplayScreenEffectiveUtilization  (12 rows)
+    field_schema=((("usageRate", "float", ""), ("dateMonth", "str", "")),),
+
+# getModelDataDisplayScreenEnergyConsumptionPerUnit  (5 rows)
+    field_schema=((("workingAmount", "float", ""), ("ownerLgZoneName", "str", "")),),
+
+# getModelDataDisplayScreenHierarchyRelation  (1 rows)
+    field_schema=((("firstLevelClassName", "str", ""), ("secondLevelClassName", "str", "")),),
+
+# getModelDataDisplayScreenUtilization  (12 rows)
+    field_schema=((("usageRate", "float", ""), ("dateMonth", "str", "")),),
+
+# getMonthlyCargoThroughputCategory: NO DATA
+
+# getMonthlyRegionalThroughputAreaBusinessDashboard  (6 rows)
+    field_schema=((("num", "float", ""), ("typeName", "str", ""), ("zoneName", "str", "")),),
+
+# getMonthlyThroughput  (4 rows)
+    field_schema=((("ioTrade", "str", ""), ("throughput", "float", ""), ("dateMonth", "str", "")),),
+
+# getMonthlyTrendThroughput: NO DATA
+
+# getMonthlyZoneThroughput  (10 rows)
+    field_schema=((("throughput", "float", ""), ("dateMonth", "str", ""), ("zoneName", "str", "")),),
+
+# getMothballingRealAssetQty: NO DATA
+
+# getNetValueDistribution: NO DATA
+
+# getNewAssetTransparentAnalysis: NO DATA
+
+# getNewEnterprise: NO DATA
+
+# getNonContainerProductionEquipmentReliability  (24 rows)
+    field_schema=((("usageRate", "float", ""), ("dateYear", "float", ""), ("dateMonth", "str", "")),),
+
+# getNumberCapitalProjectsDelivered: NO DATA
+
+# getNumberCapitalProjectsDeliveredPlanAnalysis: NO DATA
+
+# getNumberCapitalProjectsDeliveredZoneName: NO DATA
+
+# getOilsChemBreakBulkByBusinessType  (5 rows)
+    field_schema=((("regionName", "str", ""), ("targetQty", "float", ""), ("finishQty", "float", "")),),
+
+# getOriginalQuantity: NO DATA
+
+# getOriginalValueDistribution: NO DATA
+
+# getOriginalValueScrappedQuantity: NO DATA
+
+# getOutOfPlanFinishProgressList  (1 rows)
+    field_schema=((("planInvestAmt", "float", ""), ("finishInvestAmt", "float", ""), ("planPayAmt", "float", ""), ("finishPayAmt", "float", "")),),
+
+# getOutOfPlanProjectInvestFinishList  (5 rows)
+    field_schema=((("dateYear", "int", ""), ("planInvestAmt", "float", ""), ("finishInvestAmt", "float", "")),),
+
+# getOutOfPlanProjectPayFinishList  (5 rows)
+    field_schema=((("dateYear", "int", ""), ("planPayAmt", "float", ""), ("finishPayAmt", "float", "")),),
+
+# getOutOfPlanProjectQtyYoy  (2 rows)
+    field_schema=((("dateYear", "int", ""), ("projectQty", "int", ""), ("projectDeliveryRate", "float", "")),),
+
+# getOverviewQuery  (8 rows)
+    field_schema=((("typeName", "str", "")),),
+
+# getPersonalCenterCargoThroughput  (5 rows)
+    field_schema=((("regionName", "str", ""), ("curTonQ", "float", ""), ("curTeuQ", "int", ""), ("momTonQ", "float", ""), ("momTeuQ", "int", ""), ("yoyTonQ", "float", ""), ("yoyTeuQ", "int", "")),),
+
+# getPersonalCenterMonthCargoThroughput  (5 rows)
+    field_schema=((("regionName", "str", ""), ("curTonQ", "float", ""), ("curTeuQ", "float", ""), ("momTonQ", "float", ""), ("momTeuQ", "float", ""), ("yoyTonQ", "float", ""), ("yoyTeuQ", "float", "")),),
+
+# getPersonalCenterYearCargoThroughput  (5 rows)
+    field_schema=((("regionName", "str", ""), ("curTonQ", "float", ""), ("curTeuQ", "float", ""), ("yoyTonQ", "float", ""), ("yoyTeuQ", "float", "")),),
+
+# getPersonalCenterYearCargoThroughputTrend  (60 rows)
+    field_schema=((("regionName", "str", ""), ("yearId", "str", ""), ("monthId", "str", ""), ("tonQ", "float", ""), ("teuQ", "float", "")),),
+
+# getPhysicalAssets  (6 rows)
+    field_schema=((("num", "float", ""), ("typeName", "str", ""), ("dateYear", "float", "")),),
+
+# getPlanExcludedProjectPenetrationAnalysis  (250 rows)
+    field_schema=((("qty", "float", ""), ("projectCmp", "str", ""), ("typeName", "str", "")),),
+
+# getPlanFinishByProjectType  (7 rows)
+    field_schema=((("investProjectType", "str", ""), ("planInvestAmt", "float", ""), ("finishInvestAmt", "float", ""), ("planPayAmt", "float", ""), ("finishPayAmt", "float", "")),),
+
+# getPlanFinishByZone  (5 rows)
+    field_schema=((("ownerLgZoneName", "str", ""), ("planInvestAmt", "float", ""), ("finishInvestAmt", "float", ""), ("planPayAmt", "float", ""), ("finishPayAmt", "float", "")),),
+
+# getPlanProgressByMonth: NO DATA
+
+# getPortCompanyThroughput  (2 rows)
+    field_schema=((("num", "float", ""), ("businessType", "str", ""), ("dateYear", "int", "")),),
+
+# getPortInventoryTrend: NO DATA
+
+# getProdShipDesc  (5 rows)
+    field_schema=((("portVesselDesc", "str", ""), ("anchorageVesselDesc", "str", ""), ("orgType", "str", "")),),
+
+# getProdShipDynNum  (16 rows)
+    field_schema=((("typeName", "str", ""), ("num", "int", ""), ("orgType", "str", "")),),
+
+# getProductEquipmentDataAnalysisList  (20 rows)
+    field_schema=((("ownerLgZoneName", "str", ""), ("deptName", "str", ""), ("maintenanceFee", "float", ""), ("fee", "float", ""), ("oilCostTeul", "float", ""), ("elecCostTeu", "float", ""), ("containerElec", "float", ""), ("containerOil", "float", "")),),
+
+# getProductEquipmentIntegrityRateByMonth  (10 rows)
+    field_schema=((("usageRate", "float", ""), ("ownerZone", "str", ""), ("dateMonth", "str", "")),),
+
+# getProductEquipmentIntegrityRateByYear  (10 rows)
+    field_schema=((("usageRate", "float", ""), ("ownerZone", "str", ""), ("dateYear", "int", "")),),
+
+# getProductEquipmentRateByYear  (4 rows)
+    field_schema=((("usageRate", "float", ""), ("dateYear", "int", "")),),
+
+# getProductEquipmentReliabilityByMonth  (60 rows)
+    field_schema=((("usageRate", "float", ""), ("dateMonth", "str", ""), ("ownerLgZoneName", "str", "")),),
+
+# getProductEquipmentReliabilityByYear  (20 rows)
+    field_schema=((("usageRate", "float", ""), ("dateYear", "int", ""), ("ownerLgZoneName", "str", "")),),
+
+# getProductEquipmentUnitConsumptionByMonth  (45 rows)
+    field_schema=((("unitConsumption", "float", ""), ("secondLevelClassName", "str", "")),),
+
+# getProductEquipmentUnitConsumptionByYear  (48 rows)
+    field_schema=((("unitConsumption", "float", ""), ("secondLevelClassName", "str", "")),),
+
+# getProductEquipmentUsageRateByMonth  (12 rows)
+    field_schema=((("usageRate", "float", ""), ("dateMonth", "str", "")),),
+
+# getProductEquipmentUsageRateByYear  (4 rows)
+    field_schema=((("usageRate", "float", ""), ("dateYear", "int", "")),),
+
+# getProductEquipmentWorkingAmountByMonth  (5 rows)
+    field_schema=((("num", "float", ""), ("ownerLgZoneName", "str", "")),),
+
+# getProductEquipmentWorkingAmountByYear  (5 rows)
+    field_schema=((("num", "float", ""), ("ownerLgZoneName", "str", "")),),
+
+# getProductViewShipOperationRateAvg  (5 rows)
+    field_schema=((("statCargoKind", "str", ""), ("tonQ", "float", ""), ("workTh", "float", "")),),
+
+# getProductViewShipOperationRateTrend  (49 rows)
+    field_schema=((("monthId", "str", ""), ("monthStr", "str", ""), ("statCargoKind", "str", ""), ("tonQ", "float", ""), ("workTh", "float", "")),),
+
+# getProductionEquipmentFaultNum  (12 rows)
+    field_schema=((("num", "int", ""), ("dateMonth", "str", "")),),
+
+# getProductionEquipmentServiceAgeDistribution: NO DATA
+
+# getProductionEquipmentStatistic  (45 rows)
+    field_schema=((("num", "int", ""), ("secondLevelName", "str", "")),),
+
+# getQuayEquipmentWorkingAmount  (10 rows)
+    field_schema=((("num", "float", ""), ("typeName", "str", "")),),
+
+# getRealAssetQty: NO DATA
+
+# getRealAssetsDistribution: NO DATA
+
+# getRealTimeWeather  (296 rows)
+    field_schema=((("regionName", "str", ""), ("stationId", "str", ""), ("stationName", "str", ""), ("weather", "str", ""), ("createTime", "str", "")),),
+
+# getRegionalAnalysis  (12 rows)
+    field_schema=((("num", "float", ""), ("typeName", "str", ""), ("ownerZone", "str", "")),),
+
+# getRegionalAnalysisTransparentTransmission: NO DATA
+
+# getRegionalInvestmentQuota: NO DATA
+
+# getRoroByBusinessType  (2 rows)
+    field_schema=((("regionName", "str", ""), ("targetQty", "float", ""), ("finishQty", "float", "")),),
+
+# getScrapAssetTransmitAnalysis: NO DATA
+
+# getShipOperationDynamic: NO DATA
+
+# getShipStatisticsByBusinessType  (4 rows)
+    field_schema=((("planQty", "int", ""), ("berthQty", "int", ""), ("anchorageQty", "int", ""), ("businessType", "str", "")),),
+
+# getShipStatisticsByRegion  (7 rows)
+    field_schema=((("planQty", "int", ""), ("berthQty", "int", ""), ("anchorageQty", "int", ""), ("regionName", "str", ""), ("businessType", "str", "")),),
+
+# getSingleCost: NO DATA
+
+# getSingleEquipmentIntegrityRate: NO DATA
+
+# getSingleMachineUtilization: NO DATA
+
+# getSingleShipRate  (22 rows)
+    field_schema=((("regionName", "str", ""), ("cmpName", "str", ""), ("cargoType", "str", ""), ("tonQ", "float", ""), ("workTh", "float", "")),),
+
+# getStrategicClientsEnterprises: NO DATA
+
+# getStrategicCustomerContributionCustomerOperatingRevenue: NO DATA
+
+# getStrategicCustomerRevenue: NO DATA
+
+# getStrategicCustomerThroughput  (297 rows)
+    field_schema=((("clientName", "str", ""), ("ttlNum", "str", ""), ("cargoCategoryName", "str", ""), ("ttlDate", "str", "")),),
+
+# getStrategicCustomers  (37 rows)
+    field_schema=((("displayCode", "str", ""), ("displayName", "str", "")),),
+
+# getSumBusinessCockpitTrendChart: NO DATA
+
+# getSumBusinessDashboardThroughput  (8 rows)
+    field_schema=((("typeName", "str", ""), ("num", "float", "")),),
+
+# getSumContributionRankOfStrategicCustomer  (41 rows)
+    field_schema=((("num", "float", ""), ("clientName", "str", "")),),
+
+# getSumStrategicCustomerContributionByCargoTypeThroughput  (4 rows)
+    field_schema=((("num", "float", ""), ("categoryName", "str", "")),),
+
+# getSumStrategicCustomerContributionCustomerOperatingRevenue: NO DATA
+
+# getSumStrategyCustomerTrendAnalysis  (2 rows)
+    field_schema=((("num", "float", ""), ("dateYear", "int", "")),),
+
+# getSupervisorIncidentInfo: NO DATA
+
+# getThroughputAnalysisByYear  (24 rows)
+    field_schema=((("dateMonth", "str", ""), ("qty", "float", "")),),
+
+# getThroughputAnalysisContainer  (5 rows)
+    field_schema=((("regionName", "str", ""), ("targetQty", "float", ""), ("finishQty", "float", "")),),
+
+# getThroughputAnalysisNonContainer  (5 rows)
+    field_schema=((("regionName", "str", ""), ("finishQty", "float", ""), ("targetQty", "float", "")),),
+
+# getThroughputAnalysisYoyMomByDay  (6 rows)
+    field_schema=((("regionName", "str", ""), ("qty", "float", ""), ("yoyQty", "float", ""), ("momQty", "float", "")),),
+
+# getThroughputAnalysisYoyMomByMonth  (6 rows)
+    field_schema=((("regionName", "str", ""), ("qty", "float", ""), ("yoyQty", "float", ""), ("momQty", "float", "")),),
+
+# getThroughputAnalysisYoyMomByYear  (48 rows)
+    field_schema=((("regionName", "str", ""), ("qty", "float", ""), ("statType", "str", ""), ("dateType", "str", "")),),
+
+# getThroughputAndTargetThroughputTeu  (1 rows)
+    field_schema=((("targetQty", "float", ""), ("finishQty", "float", "")),),
+
+# getThroughputAndTargetThroughputTon  (1 rows)
+    field_schema=((("targetQty", "float", ""), ("finishQty", "float", "")),),
+
+# getThroughputByCargoCategoryName: NO DATA
+
+# getThroughputByZoneName: NO DATA
+
+# getThroughputCollect: NO DATA
+
+# getThroughputMonthlyTrend: NO DATA
+
+# getTotalBerthDuration: NO DATA
+
+# getTotalssets  (1 rows)
+    field_schema=((("assetQty", "float", ""), ("realAssetQty", "float", "")),),
+
+# getTrafficControl: NO DATA
+
+# getTrendChart  (11 rows)
+    field_schema=((("throughput", "float", ""), ("businessSegment", "str", ""), ("dateMonth", "str", "")),),
+
+# getTrendNewAssets: NO DATA
+
+# getTrendScrappedAssets: NO DATA
+
+# getTypeAnalysisInvestmentAmountQuery: NO DATA
+
+# getUnitConsumption: NO DATA
+
+# getUnitHourEfficiency: NO DATA
+
+# getUnplannedProjectsInquiry  (20 rows)
+    field_schema=((("planYear", "str", ""), ("proName", "str", ""), ("proNo", "str", ""), ("proMainTypeName", "str", ""), ("chkStatus", "str", ""), ("onstructionTime", "str", ""), ("deptName", "str", ""), ("ownFunds", "float", ""), ("foreignLoans", "float", ""), ("theYearInvestPlanNums", "float", ""), ("theYearPayPlanNums", "float", ""), ("theYearInvestAmt", "float", ""), ("theYearPayAmt", "float", "")),),
+
+# getVesselOperationEfficiency  (1 rows)
+    field_schema=((),),
+
+# getVesselOperationEfficiencyTrend: NO DATA
+
+# getVisualProgressAnalysisAndStatistics: NO DATA
+
+# getWeatherForecast  (15 rows)
+    field_schema=((("regionCode", "str", ""), ("regionName", "str", ""), ("furtherDate", "str", ""), ("weather", "str", "")),),
+
+# getWithdrawalInfo: NO DATA
+
+# getlnportDispatchPort: NO DATA
+
+# getlnportDispatchWharf: NO DATA
+
+# investCorpShareholdingProp  (9 rows)
+    field_schema=((("num", "int", ""), ("ratioName", "str", ""), ("ratio", "str", "")),),
+
+# planInvestAndPayYoy  (2 rows)
+    field_schema=((("dateYear", "int", ""), ("planInvestAmt", "float", ""), ("planPayAmt", "float", "")),),
+

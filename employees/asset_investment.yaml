@@ -3,7 +3,76 @@ name: 资产设备专家
 description: 专注于资产分布分析、投资项目进度跟踪、资产价值评估和生产设备运营分析
 version: "1.1"
 domains: [D5, D6, D7]
-endpoints: []  # 空 = D5+D6+D7 全部端点
+endpoints:
+  # D5 资产管理（17个，排除3个prod_data行数=0的API）
+  # 排除：getMainAssetsInfo / getRealAssetsDistribution / getOriginalValueDistribution
+  - getTotalssets
+  - getAssetValue
+  - getPhysicalAssets
+  - getRegionalAnalysis
+  - getCategoryAnalysis
+  - getCategoryAnalysisTransparentTransmission
+  - getEquipmentFacilityAnalysisYoy
+  - getEquipmentFacilityAnalysis
+  - getEquipmentFacilityStatusAnalysis
+  - getEquipmentFacilityRegionalAnalysis
+  - getEquipmentFacilityWorthAnalysis
+  - getLandMaritimeAnalysisTransparentTransmission
+  - getHousingAnalysisYoy
+  - getLandMaritimeAnalysisYoy
+  - getLandMaritimeRegionalAnalysis
+  - getLandMaritimeWorthAnalysis
+  - getImportAssertAnalysisList
+  # D6 投资管理（11个核心分析API）
+  # 排除12个明细列表/查询API：getInvestPlanTypeProjectList / getCostProjectYoyList /
+  # getCostProjectQtyList / getCostProjectQtyByProjectCmp / getInvestAmtList /
+  # getOutOfPlanProjectInvestFinishList / getOutOfPlanProjectPayFinishList /
+  # getPlanExcludedProjectPenetrationAnalysis / getUnplannedProjectsInquiry /
+  # getCapitalApprovalAnalysisLimitInquiry / getCapitalApprovalAnalysisProject /
+  # getCapitalProjectsList
+  - planInvestAndPayYoy
+  - getFinishProgressAndDeliveryRate
+  - getInvestPlanByYear
+  - getCostProjectFinishByYear
+  - getCostProjectAmtByOwnerLgZoneName
+  - getCostProjectCurrentStageQtyList
+  - getOutOfPlanFinishProgressList
+  - getOutOfPlanProjectQtyYoy
+  - getPlanFinishByZone
+  - getPlanFinishByProjectType
+  - getDeliveryRate
+  # D7 设备子屏（25个，排除9个MachineDataDisplay/ModelDataDisplay大屏专用API）
+  # 排除：getMachineDataDisplayScreenHourlyEfficiency /
+  # getModelDataDisplayScreenEnergyConsumptionPerUnit /
+  # getModelDataDisplayScreenUtilization / getModelDataDisplayScreenEffectiveUtilization /
+  # getMachineDataDisplayScreenEquipmentIntegrityRate /
+  # getModelDataDisplayScreenHierarchyRelation / getMachineDataDisplayEquipmentReliability /
+  # getNonContainerProductionEquipmentReliability / getMachineDataDisplaySingleUnitEnergyConsumption
+  - getEquipmentIndicatorOperationQty
+  - getEquipmentIndicatorUseCost
+  - getProductionEquipmentFaultNum
+  - getProductionEquipmentStatistic
+  - getOverviewQuery
+  - getEquipmentUsageRate
+  - getEquipmentServiceableRate
+  - getEquipmentFirstLevelClassNameList
+  - getContainerMachineHourRate
+  - getEquipmentEnergyConsumptionPerUnit
+  - getEquipmentFuelOilTonCost
+  - getEquipmentElectricityTonCost
+  - getProductEquipmentUsageRateByYear
+  - getProductEquipmentUsageRateByMonth
+  - getProductEquipmentRateByYear
+  - getProductEquipmentIntegrityRateByYear
+  - getProductEquipmentIntegrityRateByMonth
+  - getQuayEquipmentWorkingAmount
+  - getProductEquipmentDataAnalysisList
+  - getProductEquipmentWorkingAmountByYear
+  - getProductEquipmentWorkingAmountByMonth
+  - getProductEquipmentReliabilityByYear
+  - getProductEquipmentReliabilityByMonth
+  - getProductEquipmentUnitConsumptionByYear
+  - getProductEquipmentUnitConsumptionByMonth
 
 skills:
   # 数据获取
