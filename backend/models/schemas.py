@@ -20,7 +20,7 @@ class SlotDefinition(BaseModel):
 SLOT_SCHEMA: list[SlotDefinition] = [
     SlotDefinition(name="analysis_subject", required=True, priority=2, inferable=False),
     SlotDefinition(name="time_range", required=True, priority=1, inferable=False),
-    SlotDefinition(name="output_complexity", required=True, priority=3, inferable=True),
+    SlotDefinition(name="output_complexity", required=False, priority=3, inferable=True),
     SlotDefinition(name="output_format", required=False, priority=4, condition="output_complexity=full_report"),
     SlotDefinition(name="attribution_needed", required=False, priority=5, condition="output_complexity in [chart_text,full_report]"),
     SlotDefinition(name="predictive_needed", required=False, priority=6, condition="output_complexity=full_report"),

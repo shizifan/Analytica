@@ -377,7 +377,16 @@ class PlanningEngine:
 
         # Convert to registry filter hints
         from backend.agent.api_registry import COMPARISON_TO_TIME, GRANULARITY_MAP, DOMAIN_INDEX
-        time_hint = COMPARISON_TO_TIME.get(comparison_type) if comparison_type else None
+        # Handle list comparison_type (multiple comparison types)
+        if isinstance(comparison_type, list):
+            time_hint = None
+            for ct in comparison_type:
+                hint = COMPARISON_TO_TIME.get(ct)
+                if hint:
+                    time_hint = hint
+                    break
+        else:
+            time_hint = COMPARISON_TO_TIME.get(comparison_type) if comparison_type else None
         granularity_hint = GRANULARITY_MAP.get(data_granularity) if data_granularity else None
 
         # Auto-detect multi-month range → prefer T_TREND endpoints
@@ -459,9 +468,18 @@ class PlanningEngine:
         # Build structured hints block
         hint_lines = []
         if comparison_type:
-            ct_display = {"yoy": "同比", "mom": "环比", "cumulative": "累计",
-                          "trend": "趋势", "snapshot": "实时", "historical": "历史"}.get(comparison_type, comparison_type)
-            time_types_display = ", ".join(sorted(COMPARISON_TO_TIME.get(comparison_type, set())))
+            ct_map = {"yoy": "同比", "mom": "环比", "cumulative": "累计",
+                      "trend": "趋势", "snapshot": "实时", "historical": "历史"}
+            # Handle list comparison_type (multiple comparison types)
+            if isinstance(comparison_type, list):
+                ct_display = ", ".join(ct_map.get(v, v) for v in comparison_type if v in ct_map) or str(comparison_type[0])
+                time_types = set()
+                for ct in comparison_type:
+                    time_types.update(COMPARISON_TO_TIME.get(ct, set()))
+                time_types_display = ", ".join(sorted(time_types)) if time_types else ""
+            else:
+                ct_display = ct_map.get(comparison_type, comparison_type)
+                time_types_display = ", ".join(sorted(COMPARISON_TO_TIME.get(comparison_type, set())))
             hint_lines.append(f"- 对比方式: {ct_display} → 优先选择 {time_types_display} 类型端点")
         if region_val:
             hint_lines.append(f'- 区域范围: {region_val} → 端点参数传 regionName/ownerZone="{region_val}"')

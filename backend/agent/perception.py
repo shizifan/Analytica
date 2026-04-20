@@ -53,7 +53,11 @@ SLOT_EXTRACTION_PROMPT = """你是一个数据分析意图槽位提取专家。
 规则：
 - 只输出有依据的槽位，无依据的不输出（宁缺毋滥）
 - time_range 解析为 {{"start": "YYYY-MM-DD", "end": "YYYY-MM-DD", "description": "自然语言"}}
-- output_complexity 判断：查数字→simple_table，看趋势/原因→chart_text，要完整报告/PPT→full_report
+- output_complexity 判断（须有强关键词，否则不输出此槽位，走系统默认 simple_table）：
+  * chart_text：用户明确说"图文""图表""可视化""带图"
+  * full_report：用户明确说"报告""分析报告""PPT""Word""生成文档"
+  * 仅说"查""看""分析""对比"等一般词汇 → 不输出，走默认
+- attribution_needed：仅当用户明确说"归因""为什么""原因分析"时提取为 true，其余情况不输出
 - analysis_subject 提取为列表形式，如 ["吞吐量"]。注意：用户未明确指定具体货类（集装箱、散杂货等）时，不要自行补充货类限定词
 - 不推测用户未表达的内容
 - comparison_type 对比方式提取：识别关键词映射——"同比"→yoy, "环比"→mom, "累计"→cumulative, "趋势"/"走势"/"变化"→trend, "实时"/"当前"→snapshot, "历年"/"历史"→historical。无对比关键词时输出 null
@@ -147,7 +151,7 @@ SLOT_DEFAULTS = {
 # Condition activation rules
 CONDITION_RULES = {
     "output_format": lambda complexity: complexity == "full_report",
-    "attribution_needed": lambda complexity: complexity in ("chart_text", "full_report"),
+    "attribution_needed": lambda complexity: complexity == "full_report",
     "predictive_needed": lambda complexity: complexity == "full_report",
 }
 
@@ -510,7 +514,12 @@ class SlotFillingEngine:
         if comp_type_slot and comp_type_slot.value:
             ct_map = {"yoy": "同比", "mom": "环比", "cumulative": "累计",
                       "trend": "趋势", "snapshot": "实时", "historical": "历史"}
-            comp_type_text = ct_map.get(comp_type_slot.value, comp_type_slot.value)
+            # Handle list value (multiple comparison types)
+            if isinstance(comp_type_slot.value, list):
+                texts = [ct_map.get(v, v) for v in comp_type_slot.value if v in ct_map]
+                comp_type_text = "".join(texts) if texts else str(comp_type_slot.value[0])
+            else:
+                comp_type_text = ct_map.get(comp_type_slot.value, comp_type_slot.value)
 
         if subject_text:
             goal_parts = ["分析"]
@@ -788,6 +797,19 @@ async def run_perception(state: dict, profile: Any = None) -> dict:
         slot_values = await engine.extract_slots_from_text(
             user_message, slot_values, messages[:-1] if len(messages) > 1 else []
         )
+
+        # ── 默认值回填（对 inferable 且仍为空的槽位） ──
+        for slot_def in SLOT_SCHEMA:
+            name = slot_def.name
+            if not slot_def.inferable:
+                continue
+            sv = slot_values.get(name)
+            if sv is None or sv.value is None:
+                default = SLOT_DEFAULTS.get(name)
+                if default is not None:
+                    slot_values[name] = SlotValue(
+                        value=default, source="inferred", confirmed=False
+                    )
 
         # Get current complexity
         complexity = None
