@@ -1,0 +1,256 @@
+{
+  "_meta": {
+    "employee_id": "throughput_analyst",
+    "template_id": "throughput_full_report",
+    "description": "年度吞吐量经营综合分析报告：覆盖目标完成、月度趋势、港区同比、业务板块、作业效率、归因分析",
+    "complexity": "full_report",
+    "domains": ["D1", "D2"],
+    "sample_query": "生成2026年一季度全港吞吐量经营综合分析报告",
+    "slot_values": {
+      "output_complexity": "full_report",
+      "output_format": "html",
+      "attribution_needed": true,
+      "comparison_type": "yoy",
+      "data_granularity": "zone",
+      "time_range": {"start": "2026-01-01", "end": "2026-04-30", "description": "2026年1-4月"}
+    },
+    "core_apis_covered": 10,
+    "task_count": 19
+  },
+  "plan_id": "tpl-throughput-full-report-001",
+  "version": 1,
+  "title": "2026年一季度全港吞吐量经营综合分析报告",
+  "analysis_goal": "综合分析2026年1-4月全港吞吐量经营情况：评估目标完成率，识别月度趋势拐点，对比各港区同比增减，拆解业务板块结构，分析作业效率变化，对偏差做归因",
+  "estimated_duration": 180,
+  "tasks": [
+    {
+      "task_id": "T001",
+      "type": "data_fetch",
+      "name": "获取全港吞吐量目标完成KPI（吨）",
+      "description": "获取2026年吞吐量目标值与实际完成量（仅1行），返回targetQty/finishQty",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getThroughputAndTargetThroughputTon", "dateYear": "2026"},
+      "estimated_seconds": 6, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T002",
+      "type": "data_fetch",
+      "name": "获取集装箱TEU目标完成KPI",
+      "description": "获取2026年集装箱TEU目标量与实际完成量（仅1行），返回targetQty/finishQty",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getThroughputAndTargetThroughputTeu", "dateYear": "2026"},
+      "estimated_seconds": 6, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T003",
+      "type": "data_fetch",
+      "name": "获取当年+上年月度吞吐量（吨）",
+      "description": "获取2026年和2025年逐月吞吐量（16行），用于月度趋势对比",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getThroughputAnalysisByYear", "dateYear": "2026", "preYear": "2025"},
+      "estimated_seconds": 8, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T004",
+      "type": "data_fetch",
+      "name": "获取当年+上年月度集装箱TEU",
+      "description": "获取2026年和2025年逐月集装箱TEU量（16行），用于集装箱月度趋势对比",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getContainerThroughputAnalysisByYear", "dateYear": "2026", "preYear": "2025"},
+      "estimated_seconds": 8, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T005",
+      "type": "data_fetch",
+      "name": "获取各港区同比环比数据",
+      "description": "获取各港区2026年累计吞吐量同比/环比，返回 regionName/qty/statType/dateType 多维度",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getThroughputAnalysisYoyMomByYear", "date": "2026-04-01"},
+      "estimated_seconds": 8, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T006",
+      "type": "data_fetch",
+      "name": "获取各港区油化散杂货完成",
+      "description": "各港区油化品、散杂货目标完成量对比，返回 regionName/targetQty/finishQty",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getOilsChemBreakBulkByBusinessType", "date": "2026-04"},
+      "estimated_seconds": 8, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T007",
+      "type": "data_fetch",
+      "name": "获取各港区集装箱完成",
+      "description": "各港区集装箱目标完成量对比，返回 regionName/targetQty/finishQty",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getContainerByBusinessType", "date": "2026-04"},
+      "estimated_seconds": 8, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T008",
+      "type": "data_fetch",
+      "name": "获取各港区泊位占用率月度趋势",
+      "description": "获取2026年各港区泊位占用率月度数据（多港区×多月），用于作业效率分析",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getBerthOccupancyRateByRegion", "startDate": "2026-01", "endDate": "2026-04"},
+      "estimated_seconds": 8, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T009",
+      "type": "data_fetch",
+      "name": "获取D2市场板块当月吞吐",
+      "description": "获取2026年4月市场视角各业务板块吞吐量，返回 num/typeName 透视格式",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getCurBusinessDashboardThroughput", "date": "2026-04"},
+      "estimated_seconds": 8, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T010",
+      "type": "data_fetch",
+      "name": "获取船舶作业效率月度趋势",
+      "description": "获取2026年船舶作业效率按货类的月度趋势，返回 monthId/statCargoKind/tonQ/workTh",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getProductViewShipOperationRateTrend", "startDate": "2026-01", "endDate": "2026-04"},
+      "estimated_seconds": 8, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T011",
+      "type": "analysis",
+      "name": "月度趋势深度洞察",
+      "description": "基于T003+T004的月度吞吐/TEU数据，识别趋势拐点、异常月份、同比变化的时序模式",
+      "depends_on": ["T003", "T004"],
+      "skill": "skill_desc_analysis",
+      "params": {
+        "data_refs": ["T003", "T004"],
+        "focus_points": ["2026年1-4月吞吐量环比趋势是否稳定", "相对2025年同月有哪些月份偏离较大", "TEU与吨趋势是否同步（结构变化信号）", "是否存在明显季节性特征"]
+      },
+      "estimated_seconds": 15, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T012",
+      "type": "analysis",
+      "name": "目标完成偏差归因分析",
+      "description": "结合目标KPI、港区同比、业务板块数据，对完成偏差做多维归因",
+      "depends_on": ["T001", "T002", "T005", "T006", "T007"],
+      "skill": "skill_attribution",
+      "params": {
+        "data_refs": ["T001", "T002", "T005", "T006", "T007"],
+        "target_kpi": ["T001.finishQty/T001.targetQty", "T002.finishQty/T002.targetQty"],
+        "drivers": ["港区贡献(T005)", "油化散杂货贡献(T006)", "集装箱贡献(T007)"],
+        "focus_points": ["哪些港区拉高或拖累整体完成率", "哪类货种贡献了主要增量/减量", "目标偏差主要由哪个港区×货种组合造成"]
+      },
+      "estimated_seconds": 18, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T013",
+      "type": "analysis",
+      "name": "作业效率洞察",
+      "description": "结合泊位占用率与船舶作业效率数据，识别作业瓶颈与效率改善空间",
+      "depends_on": ["T008", "T010"],
+      "skill": "skill_desc_analysis",
+      "params": {
+        "data_refs": ["T008", "T010"],
+        "focus_points": ["泊位占用率最高的港区及其变化", "作业效率（吨/台时）同比是否改善", "泊位紧张与效率偏低是否同时出现"]
+      },
+      "estimated_seconds": 15, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T014",
+      "type": "visualization",
+      "name": "目标完成率双KPI柱状图",
+      "description": "用T001+T002绘制吨/TEU目标vs实际对比柱状图，标注完成率",
+      "depends_on": ["T001", "T002"],
+      "skill": "skill_chart_bar",
+      "params": {
+        "data_refs": ["T001", "T002"],
+        "config": {"chart_type": "grouped_bar", "series": [{"label": "全港吞吐量(吨)", "target": "T001.targetQty", "actual": "T001.finishQty"}, {"label": "集装箱TEU", "target": "T002.targetQty", "actual": "T002.finishQty"}], "show_completion_rate_label": true, "title": "2026年双KPI目标完成对比"}
+      },
+      "estimated_seconds": 6, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T015",
+      "type": "visualization",
+      "name": "双轴月度趋势折线图",
+      "description": "用T003+T004绘制吨（左轴）与TEU（右轴）月度趋势双线对比图，当年vs上年共4条线",
+      "depends_on": ["T003", "T004"],
+      "skill": "skill_chart_line",
+      "params": {
+        "data_refs": ["T003", "T004"],
+        "config": {"chart_type": "dual_y_line", "x_field": "dateMonth", "left_y": {"source": "T003", "y_field": "qty", "series_by": "year", "label": "吞吐量(吨)"}, "right_y": {"source": "T004", "y_field": "qty", "series_by": "year", "label": "集装箱TEU"}, "title": "2026 vs 2025 月度吞吐量&TEU趋势"}
+      },
+      "estimated_seconds": 6, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T016",
+      "type": "visualization",
+      "name": "港区同比瀑布图",
+      "description": "用T005数据绘制各港区对整体同比变化的贡献瀑布图",
+      "depends_on": ["T005"],
+      "skill": "skill_chart_waterfall",
+      "params": {
+        "data_refs": ["T005"],
+        "config": {"category_field": "regionName", "value_field": "qty", "filter": {"statType": "同比变化", "dateType": "当年"}, "title": "各港区对2026年吞吐量同比变化的贡献拆解"}
+      },
+      "estimated_seconds": 6, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T017",
+      "type": "visualization",
+      "name": "业务板块结构图",
+      "description": "用T009数据绘制市场视角各业务板块吞吐量占比柱状图",
+      "depends_on": ["T009"],
+      "skill": "skill_chart_bar",
+      "params": {
+        "data_refs": ["T009"],
+        "config": {"x_field": "typeName", "y_field": "num", "orientation": "horizontal", "sort": "desc", "title": "2026年4月市场视角业务板块吞吐结构"}
+      },
+      "estimated_seconds": 6, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T018",
+      "type": "analysis",
+      "name": "生成综合经营摘要",
+      "description": "汇总所有分析结论，生成面向管理层的经营摘要，包含关键数字、趋势判断、风险提示",
+      "depends_on": ["T011", "T012", "T013"],
+      "skill": "skill_summary_gen",
+      "params": {
+        "data_refs": ["T011", "T012", "T013"],
+        "summary_style": "executive",
+        "focus_points": ["整体完成进度（吨+TEU）", "最突出的趋势信号", "主要完成偏差的根因", "作业效率状态", "下一步需关注的风险点"]
+      },
+      "estimated_seconds": 18, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T019",
+      "type": "report_gen",
+      "name": "生成HTML综合分析报告",
+      "description": "按report_structure组装分章节HTML分析报告",
+      "depends_on": ["T014", "T015", "T016", "T017", "T018"],
+      "skill": "skill_report_html",
+      "params": {"report_metadata": {"title": "2026年一季度全港吞吐量经营综合分析报告", "author": "吞吐量绩效分析师", "date": "2026-04-20"}},
+      "estimated_seconds": 30, "status": "pending", "output_ref": ""
+    }
+  ],
+  "report_structure": {
+    "sections": [
+      {"name": "一、经营摘要", "task_refs": ["T001", "T002", "T018"]},
+      {"name": "二、月度吞吐趋势分析", "task_refs": ["T003", "T004", "T011", "T015"]},
+      {"name": "三、港区同比结构分析", "task_refs": ["T005", "T016"]},
+      {"name": "四、业务板块结构分析", "task_refs": ["T006", "T007", "T009", "T017"]},
+      {"name": "五、作业效率分析", "task_refs": ["T008", "T010", "T013"]},
+      {"name": "六、目标完成偏差归因", "task_refs": ["T001", "T002", "T012", "T014"]},
+      {"name": "七、综合结论与下一步建议", "task_refs": ["T018"]}
+    ]
+  },
+  "revision_log": []
+}

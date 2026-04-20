@@ -1,0 +1,256 @@
+{
+  "_meta": {
+    "employee_id": "customer_insight",
+    "template_id": "customer_full_report",
+    "description": "市场商务与战略客户洞察综合报告：覆盖客户总量结构、战略客户排名贡献、货类结构、趋势、市场板块联动、集中度归因",
+    "complexity": "full_report",
+    "domains": ["D3", "D2"],
+    "sample_query": "生成2026年4月市场客户与战略客户洞察综合分析PPT报告",
+    "slot_values": {
+      "output_complexity": "full_report",
+      "output_format": "pptx",
+      "attribution_needed": true,
+      "comparison_type": "snapshot",
+      "data_granularity": "customer",
+      "time_range": {"start": "2026-04-01", "end": "2026-04-30", "description": "2026年4月"}
+    },
+    "core_apis_covered": 10,
+    "task_count": 19
+  },
+  "plan_id": "tpl-customer-full-report-001",
+  "version": 1,
+  "title": "2026年4月市场客户与战略客户洞察综合分析报告",
+  "analysis_goal": "综合评估客户结构、战略客户贡献排名、货类集中度、客户累计趋势、与市场板块的联动，识别贡献集中度风险并给出归因分析",
+  "estimated_duration": 180,
+  "tasks": [
+    {
+      "task_id": "T001",
+      "type": "data_fetch",
+      "name": "获取客户总量概览",
+      "description": "获取客户总量快照：totalQty/outPortQty/strategyClientQty/customerFilesNumber",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getCustomerQty"},
+      "estimated_seconds": 6, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T002",
+      "type": "data_fetch",
+      "name": "获取客户类型分布",
+      "description": "获取各客户类型数量分布，返回 clientType/qty",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getCustomerTypeAnalysis"},
+      "estimated_seconds": 6, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T003",
+      "type": "data_fetch",
+      "name": "获取客户行业分布",
+      "description": "获取客户行业维度分布，返回 indstryFieldName/qty",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getCustomerFieldAnalysis"},
+      "estimated_seconds": 6, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T004",
+      "type": "data_fetch",
+      "name": "获取战略客户名录",
+      "description": "获取当前战略客户列表（约37个），返回 displayCode/displayName",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getStrategicCustomers"},
+      "estimated_seconds": 6, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T005",
+      "type": "data_fetch",
+      "name": "获取当月战略客户贡献排名",
+      "description": "获取2026年4月战略客户吞吐量排名，返回 num/clientName",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getCurContributionRankOfStrategicCustomer", "date": "2026-04"},
+      "estimated_seconds": 8, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T006",
+      "type": "data_fetch",
+      "name": "获取当月战略客户按货类贡献",
+      "description": "获取2026年4月战略客户各货类吞吐量，返回 num/categoryName",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getCurStrategicCustomerContributionByCargoTypeThroughput", "date": "2026-04"},
+      "estimated_seconds": 8, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T007",
+      "type": "data_fetch",
+      "name": "获取累计战略客户按货类贡献",
+      "description": "获取年累计战略客户各货类贡献，返回 num/categoryName",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getSumStrategicCustomerContributionByCargoTypeThroughput"},
+      "estimated_seconds": 8, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T008",
+      "type": "data_fetch",
+      "name": "获取战略客户累计趋势",
+      "description": "获取战略客户累计月份序列指标，长期趋势数据",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getSumStrategyCustomerTrendAnalysis"},
+      "estimated_seconds": 8, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T009",
+      "type": "data_fetch",
+      "name": "获取D2市场板块当月吞吐",
+      "description": "获取2026年4月市场视角各业务板块吞吐量，返回 num/typeName 透视格式",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getCurBusinessDashboardThroughput", "date": "2026-04"},
+      "estimated_seconds": 8, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T010",
+      "type": "data_fetch",
+      "name": "获取集装箱板块重点企业排名",
+      "description": "获取2026年4月集装箱板块重点企业贡献排名",
+      "depends_on": [],
+      "skill": "skill_api_fetch",
+      "params": {"endpoint_id": "getKeyEnterprise", "businessSegment": "集装箱", "curDateMonth": "2026-04", "yearDateMonth": "2025-04"},
+      "estimated_seconds": 10, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T011",
+      "type": "analysis",
+      "name": "客户结构深度洞察",
+      "description": "基于客户总量、类型、行业分布，识别客户结构特征与集中度",
+      "depends_on": ["T001", "T002", "T003"],
+      "skill": "skill_desc_analysis",
+      "params": {
+        "data_refs": ["T001", "T002", "T003"],
+        "focus_points": ["战略客户占总客户比例", "客户类型结构中占比最高的类型", "行业分布的集中度（前3行业占比）", "港外客户占比及其含义"]
+      },
+      "estimated_seconds": 15, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T012",
+      "type": "analysis",
+      "name": "战略客户集中度与排名洞察",
+      "description": "分析战略客户贡献排名的集中度（Top3/Top5/Top10占比），识别高价值客户",
+      "depends_on": ["T005", "T006"],
+      "skill": "skill_desc_analysis",
+      "params": {
+        "data_refs": ["T005", "T006"],
+        "focus_points": ["Top3战略客户的合计贡献占比", "Top10战略客户的合计贡献占比", "客户贡献是否过度集中于单一客户", "主要贡献货类的集中度"]
+      },
+      "estimated_seconds": 15, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T013",
+      "type": "analysis",
+      "name": "战略客户货类结构变化归因",
+      "description": "对比当月vs年累计的货类贡献差异，归因货类结构变化",
+      "depends_on": ["T006", "T007"],
+      "skill": "skill_attribution",
+      "params": {
+        "data_refs": ["T006", "T007"],
+        "target_kpi": "当月战略客户货类分布",
+        "drivers": ["年累计货类分布(T007)作为基线"],
+        "focus_points": ["当月哪个货类偏离累计结构最多", "偏离是正向（上升）还是负向（下降）", "可能的业务解释（季节/客户单笔/结构转型）"]
+      },
+      "estimated_seconds": 18, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T014",
+      "type": "visualization",
+      "name": "客户类型与行业分布双图",
+      "description": "用T002+T003绘制客户类型+行业分布对比柱状图",
+      "depends_on": ["T002", "T003"],
+      "skill": "skill_chart_bar",
+      "params": {
+        "data_refs": ["T002", "T003"],
+        "config": {"layout": "side_by_side", "left_chart": {"source": "T002", "x_field": "clientType", "y_field": "qty", "title": "客户类型分布"}, "right_chart": {"source": "T003", "x_field": "indstryFieldName", "y_field": "qty", "title": "客户行业分布"}}
+      },
+      "estimated_seconds": 6, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T015",
+      "type": "visualization",
+      "name": "战略客户Top10排名图",
+      "description": "用T005数据绘制Top10战略客户横向排名柱状图",
+      "depends_on": ["T005"],
+      "skill": "skill_chart_bar",
+      "params": {
+        "data_refs": ["T005"],
+        "config": {"orientation": "horizontal", "x_field": "num", "y_field": "clientName", "sort": "desc", "top_n": 10, "title": "2026年4月战略客户贡献Top10"}
+      },
+      "estimated_seconds": 6, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T016",
+      "type": "visualization",
+      "name": "货类贡献当月vs累计对比图",
+      "description": "用T006+T007绘制按货类的当月与年累计分组柱状图",
+      "depends_on": ["T006", "T007"],
+      "skill": "skill_chart_bar",
+      "params": {
+        "data_refs": ["T006", "T007"],
+        "config": {"chart_type": "grouped_bar", "x_field": "categoryName", "series": [{"label": "当月", "source": "T006", "y_field": "num"}, {"label": "年累计", "source": "T007", "y_field": "num"}], "title": "战略客户货类贡献：当月 vs 年累计"}
+      },
+      "estimated_seconds": 6, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T017",
+      "type": "visualization",
+      "name": "战略客户累计趋势折线",
+      "description": "用T008数据绘制战略客户累计吞吐/收入趋势折线",
+      "depends_on": ["T008"],
+      "skill": "skill_chart_line",
+      "params": {
+        "data_refs": ["T008"],
+        "config": {"x_field": "dateMonth", "y_field": "num", "series_by": "typeName", "title": "战略客户累计贡献月度趋势"}
+      },
+      "estimated_seconds": 6, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T018",
+      "type": "analysis",
+      "name": "生成市场客户洞察摘要",
+      "description": "汇总客户结构、战略客户集中度、货类变化、市场板块联动，生成PPT主线摘要",
+      "depends_on": ["T011", "T012", "T013"],
+      "skill": "skill_summary_gen",
+      "params": {
+        "data_refs": ["T011", "T012", "T013"],
+        "summary_style": "executive",
+        "focus_points": ["客户结构关键数字（总量/战略/港外）", "Top3战略客户贡献集中度", "主力货类及其结构变化", "集中度风险提示", "客户拓展与维护建议"]
+      },
+      "estimated_seconds": 18, "status": "pending", "output_ref": ""
+    },
+    {
+      "task_id": "T019",
+      "type": "report_gen",
+      "name": "生成PPTX洞察报告",
+      "description": "按report_structure组装PPT格式的市场客户洞察报告",
+      "depends_on": ["T014", "T015", "T016", "T017", "T018"],
+      "skill": "skill_report_pptx",
+      "params": {"report_metadata": {"title": "2026年4月市场客户与战略客户洞察报告", "author": "市场商务与战略客户洞察专家", "date": "2026-04-20"}},
+      "estimated_seconds": 30, "status": "pending", "output_ref": ""
+    }
+  ],
+  "report_structure": {
+    "sections": [
+      {"name": "一、客户总览", "task_refs": ["T001", "T002", "T003", "T011", "T014"]},
+      {"name": "二、战略客户名录与排名", "task_refs": ["T004", "T005", "T015"]},
+      {"name": "三、战略客户货类贡献结构", "task_refs": ["T006", "T007", "T016"]},
+      {"name": "四、战略客户累计趋势", "task_refs": ["T008", "T017"]},
+      {"name": "五、市场板块联动分析", "task_refs": ["T009", "T010"]},
+      {"name": "六、集中度与归因分析", "task_refs": ["T012", "T013"]},
+      {"name": "七、结论与客户经营建议", "task_refs": ["T018"]}
+    ]
+  },
+  "revision_log": []
+}
