@@ -24,6 +24,9 @@ reports/e2e_artifacts/
 # Local generated reports
 reports/
 
+# Mock/Prod data (local only, never commit)
+prod_data/
+
 # Node.js
 node_modules/
 
