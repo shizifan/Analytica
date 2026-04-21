@@ -31,6 +31,35 @@ from backend.skills.registry import SkillRegistry
 
 logger = logging.getLogger("analytica.execution")
 
+
+def _summarize_skill_output(output: SkillOutput) -> dict[str, Any]:
+    """Compact preview for the thinking stream's tool_call_end event.
+
+    Must be small enough to post over WS hundreds of times per minute —
+    no full DataFrames, no full text bodies, no LLM chain-of-thought.
+    """
+    preview: dict[str, Any] = {"output_type": getattr(output, "output_type", None)}
+    data = getattr(output, "data", None)
+    if data is None:
+        return preview
+
+    if isinstance(data, pd.DataFrame):
+        preview["rows"] = int(len(data))
+        preview["cols"] = int(len(data.columns))
+        preview["columns"] = [str(c) for c in list(data.columns)[:6]]
+    elif isinstance(data, (list, tuple)):
+        preview["count"] = len(data)
+        if data and isinstance(data[0], dict):
+            preview["columns"] = list(data[0].keys())[:6]
+    elif isinstance(data, dict):
+        preview["keys"] = list(data.keys())[:8]
+    elif isinstance(data, str):
+        preview["char_count"] = len(data)
+        preview["sample"] = data[:120]
+    else:
+        preview["kind"] = type(data).__name__
+    return preview
+
 # ── 并发 / 超时 / 重试配置 ─────────────────────────────────
 #
 # 不同类型任务的特性差异显著：data_fetch 是 IO 密集，可高并发；analysis 调用
@@ -476,9 +505,10 @@ async def _execute_single_task(
 
         output.attempt_count = attempt
 
-        # ── tool_call_end (Phase 2) ────────────────────────
+        # ── tool_call_end (Phase 2 + 3.5 preview) ──────────
         if ws_callback:
             try:
+                preview = _summarize_skill_output(output)
                 await ws_callback({
                     "event": "tool_call_end",
                     "call_id": call_id,
@@ -487,6 +517,7 @@ async def _execute_single_task(
                     "status": output.status,
                     "error": output.error_message,
                     "error_category": output.error_category,
+                    "preview": preview,
                 })
             except Exception:
                 pass
@@ -868,8 +899,11 @@ async def execution_node(
         state["error"] = "Analysis plan has no tasks"
         return state
 
-    # Extract WebSocket callback from state (if provided)
-    ws_callback = state.get("_ws_callback")
+    # Phase 3.5: ws_callback now flows through contextvars instead of
+    # the state dict — survives LangGraph state merging and doesn't
+    # pollute state_json serialisation.
+    from backend.agent.ws_ctx import get_ws_callback
+    ws_callback = get_ws_callback() or state.get("_ws_callback")  # back-compat
 
     task_statuses, execution_context, needs_replan = await execute_plan(
         tasks, ws_callback=ws_callback, allowed_skills=allowed_skills,

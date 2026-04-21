@@ -8,14 +8,12 @@ import { useEmployeeStore } from '../stores/employeeStore';
 import { api } from '../api/client';
 import { getEmployeeFAQs } from '../data/employeeFaq';
 
-import { ChatMessage } from '../components/ChatMessage';
-import { ExecutionProgress } from '../components/ExecutionProgress';
-import { ReflectionCard } from '../components/ReflectionCard';
 import { InputBar } from '../components/InputBar';
 import { EmployeeSelector } from '../components/EmployeeSelector';
-import { SlotStatusCard } from '../components/SlotStatusCard';
-import { PlanCard } from '../components/PlanCard';
 
+import { ChatMessage } from '../components/ui/ChatMessage';
+import { ExecutionProgress } from '../components/ui/ExecutionProgress';
+import { ReflectionCard } from '../components/ui/ReflectionCard';
 import { Topbar } from '../components/ui/Topbar';
 import { HistoryPane } from '../components/ui/HistoryPane';
 import { AgentPane } from '../components/ui/AgentPane';
@@ -322,12 +320,7 @@ export function ChatPageV2() {
           collapsed={agentCollapsed}
           onToggle={() => setAgentCollapsed((v) => !v)}
           phaseLabel={PHASE_SHORT[phase] ?? phase}
-        >
-          <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <SlotStatusCard />
-            <PlanCard />
-          </div>
-        </AgentPane>
+        />
       </div>
 
       <TweaksPanel open={tweaksOpen} onClose={() => setTweaksOpen(false)} />

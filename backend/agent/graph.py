@@ -245,6 +245,98 @@ def build_graph() -> StateGraph:
 compiled_graph = None
 
 
+# ── Phase 3.5: node-exit summaries for the thinking stream ─────────────
+
+def _summarize_node_exit(
+    node_name: str, node_state: dict | None,
+) -> dict | None:
+    """Build a compact payload describing what a node produced.
+
+    Returned dict is merged into the `phase_exit` thinking event; keep
+    fields short and UI-friendly (no raw DataFrames or prompt dumps).
+    """
+    if not node_state:
+        return None
+
+    if node_name == "perception":
+        slots = node_state.get("slots") or {}
+        filled = sum(
+            1
+            for v in slots.values()
+            if isinstance(v, dict) and v.get("value") not in (None, "")
+        )
+        return {
+            "slot_total": len(slots),
+            "slot_filled": filled,
+            "intent_ready": bool(node_state.get("structured_intent")),
+            "clarification_round": node_state.get("clarification_round", 0),
+            "asking_slot": node_state.get("current_target_slot"),
+        }
+
+    if node_name == "planning":
+        plan = node_state.get("analysis_plan") or {}
+        tasks = plan.get("tasks") or []
+        return {
+            "plan_ready": bool(plan),
+            "plan_version": plan.get("version"),
+            "task_count": len(tasks),
+            "estimated_duration": plan.get("estimated_duration"),
+        }
+
+    if node_name == "execution":
+        statuses = node_state.get("task_statuses") or {}
+        counter = {"done": 0, "failed": 0, "skipped": 0, "running": 0}
+        for s in statuses.values():
+            counter[s] = counter.get(s, 0) + 1
+        return {
+            "task_total": len(statuses),
+            **counter,
+            "needs_replan": bool(node_state.get("needs_replan")),
+        }
+
+    if node_name == "reflection":
+        rs = node_state.get("reflection_summary") or {}
+        return {
+            "preferences": len(rs.get("user_preferences") or []),
+            "templates": 1 if rs.get("analysis_template") else 0,
+            "skill_feedback": len(rs.get("skill_feedback") or []),
+        }
+
+    return None
+
+
+def _detect_decision(
+    node_name: str, node_state: dict | None, prev_phase: str | None,
+) -> dict | None:
+    """Emit a `decision` thinking event at key branch points."""
+    if not node_state:
+        return None
+
+    if node_name == "perception":
+        # Clarification vs proceed
+        if node_state.get("current_target_slot"):
+            return {
+                "branch": "clarify",
+                "reason": f"追问槽位 {node_state['current_target_slot']}",
+            }
+        if node_state.get("structured_intent"):
+            return {"branch": "proceed", "reason": "意图就绪 → planning"}
+
+    if node_name == "planning":
+        plan = node_state.get("analysis_plan") or {}
+        if plan.get("tasks"):
+            return {
+                "branch": "plan_ready",
+                "reason": f"{len(plan['tasks'])} 个任务 · v{plan.get('version')}",
+            }
+
+    if node_name == "execution":
+        if node_state.get("needs_replan"):
+            return {"branch": "replan", "reason": "数据不足触发重新规划"}
+
+    return None
+
+
 def get_compiled_graph():
     """Get or compile the graph singleton."""
     global compiled_graph
@@ -298,11 +390,6 @@ async def run_stream(
             make_initial_state(session_id, user_id, user_message, employee_id=employee_id)
         )
 
-    # 2b. 注入 Phase 2 WS 回调（execution.py 读 state["_ws_callback"]）
-    #     持久化前会被 pop 掉，避免写入 state_json。
-    if ws_callback is not None:
-        state["_ws_callback"] = ws_callback
-
     # 3. 获取对应的编译图
     if employee_id:
         from backend.employees.manager import EmployeeManager
@@ -315,28 +402,53 @@ async def run_stream(
     yield {"__meta__": {"initial_msg_count": len(state.get("messages", []))}}
 
     # 5. 执行图并流式返回事件，同时捕获最终状态 + 节点边界思维流事件
+    #    Phase 3.5: ws_callback 通过 contextvars 暴露给所有节点（避免把
+    #    可调用对象写进 state 导致的 TypedDict 过滤与序列化问题）。
+    from backend.agent import ws_ctx
+    token = ws_ctx.set_ws_callback(ws_callback)
     final_state = dict(state)
     visited_nodes: set[str] = set()
-    async for event in graph.astream(state):
-        for node_name, node_state in event.items():
-            final_state.update(node_state)
-            # 节点边界思维事件（Phase 2 粗粒度；Phase 3 再加 token 级）
-            if node_name not in visited_nodes:
-                visited_nodes.add(node_name)
-                yield {
-                    "__thinking__": {
-                        "kind": "phase",
-                        "phase": node_name,
-                        "payload": {
-                            "event": "phase_enter",
-                            "node": node_name,
-                        },
+    try:
+        async for event in graph.astream(state):
+            for node_name, node_state in event.items():
+                prev_phase = final_state.get("current_phase")
+                final_state.update(node_state)
+                # 节点进入事件
+                if node_name not in visited_nodes:
+                    visited_nodes.add(node_name)
+                    yield {
+                        "__thinking__": {
+                            "kind": "phase",
+                            "phase": node_name,
+                            "payload": {
+                                "event": "phase_enter",
+                                "node": node_name,
+                            },
+                        }
                     }
-                }
-        yield event
+                # 节点退出事件 + 节点产物摘要（Phase 3.5）
+                exit_payload = _summarize_node_exit(node_name, node_state)
+                if exit_payload:
+                    yield {
+                        "__thinking__": {
+                            "kind": "phase",
+                            "phase": node_name,
+                            "payload": {
+                                "event": "phase_exit",
+                                "node": node_name,
+                                **exit_payload,
+                            },
+                        }
+                    }
+                # 关键分叉决策
+                decision = _detect_decision(node_name, node_state, prev_phase)
+                if decision:
+                    yield {"__thinking__": {"kind": "decision", "phase": node_name, "payload": decision}}
+            yield event
+    finally:
+        ws_ctx.reset_ws_callback(token)
 
     # 6. 最终状态 → DB；剥离非序列化字段
-    final_state.pop("_ws_callback", None)
     try:
         safe_state = json.loads(
             json.dumps(final_state, ensure_ascii=False, default=str)

@@ -128,6 +128,43 @@ async def test_list_sessions_filters_empty(fresh_session, test_db_session):
 
 
 @pytest.mark.asyncio(loop_scope="function")
+async def test_title_only_set_once_and_skips_control_phrases(fresh_session, test_db_session):
+    """Replays the WS title-seeding logic end to end:
+
+    1. First real user message → sets title.
+    2. Subsequent plan-confirmation phrases must NOT overwrite it.
+    """
+    sid = fresh_session
+    db = test_db_session
+
+    # Helper: replicate main.py's decision (DB-driven, not cached)
+    control = {"确认执行", "修改方案", "重新规划"}
+
+    async def seed_turn(msg: str) -> None:
+        await session_log.append_chat_message(db, sid, role="user", content=msg)
+        cur = (
+            await db.execute(
+                text("SELECT title FROM sessions WHERE session_id = :s"),
+                {"s": sid},
+            )
+        ).scalar()
+        if not cur and msg.strip() and msg.strip() not in control:
+            await session_log.update_session_title(db, sid, msg.strip()[:80])
+
+    await seed_turn("2026 年 Q1 吞吐量")
+    await seed_turn("确认执行")
+    await seed_turn("修改方案")
+
+    title = (
+        await db.execute(
+            text("SELECT title FROM sessions WHERE session_id = :s"),
+            {"s": sid},
+        )
+    ).scalar()
+    assert title == "2026 年 Q1 吞吐量"
+
+
+@pytest.mark.asyncio(loop_scope="function")
 async def test_purge_empty_sessions(fresh_session, test_db_session):
     """purge_empty_sessions deletes title-less empty sessions (respecting age)."""
     sid = fresh_session

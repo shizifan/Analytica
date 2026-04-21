@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 
 from backend.database import get_db_session, get_engine, Base
 from backend.memory.store import MemoryStore
@@ -452,21 +453,32 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                 continue
 
             # ── Phase 2: persist user message + seed session title ────
+            # Plan-confirmation control words are sent through the same
+            # sendMessage path from the frontend; they must never become
+            # the session title because they overwrite the real first
+            # message. Filter them out here.
+            control_phrases = {"确认执行", "修改方案", "重新规划"}
             async with factory() as db_session:
                 await session_log.append_chat_message(
                     db_session, session_id, role="user", content=user_message,
                     type="text", phase=None,
                 )
-                if session_data is None or not (session_data.get("title")):
-                    # Only set on first message; keep snippet <= 80 chars.
-                    snippet = user_message.strip().replace("\n", " ")[:80]
-                    if snippet:
-                        await session_log.update_session_title(
-                            db_session, session_id, snippet,
-                        )
-                        # Mark locally so we don't overwrite on next turn
-                        session_data = session_data or {}
-                        session_data["title"] = snippet
+                # Always check the live DB title, not a cached connect-time
+                # snapshot (which didn't include the column before).
+                row = await db_session.execute(
+                    text("SELECT title FROM sessions WHERE session_id = :sid"),
+                    {"sid": session_id},
+                )
+                current_title = row.scalar()
+                stripped = user_message.strip().replace("\n", " ")
+                if (
+                    not current_title
+                    and stripped
+                    and stripped not in control_phrases
+                ):
+                    await session_log.update_session_title(
+                        db_session, session_id, stripped[:80],
+                    )
 
             try:
                 prev_task_statuses: dict[str, str] = {}
@@ -518,12 +530,14 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                                     )
                             except Exception:
                                 logger.exception("thinking_events insert failed")
-                            await ws.send_json({
-                                "event": "thinking_stream",
-                                "kind": thinking.get("kind", "thinking"),
-                                "phase": thinking.get("phase"),
-                                "payload": thinking.get("payload"),
-                            })
+                        # Always forward — the UI renders regardless of
+                        # whether we're persisting for audit.
+                        await ws.send_json({
+                            "event": "thinking_stream",
+                            "kind": thinking.get("kind", "thinking"),
+                            "phase": thinking.get("phase"),
+                            "payload": thinking.get("payload"),
+                        })
                         continue
 
                     for node_name, node_state in event.items():

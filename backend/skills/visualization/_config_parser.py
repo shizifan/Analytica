@@ -13,9 +13,32 @@ with graceful fallbacks to the legacy flat keys.
 """
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import pandas as pd
+
+
+logger = logging.getLogger(__name__)
+
+
+def _coerce_mapping(value: Any, field: str) -> dict[str, Any]:
+    """Best-effort coerce an LLM-generated value into a dict.
+
+    The planning LLM occasionally emits string scalars where the template
+    expects ``dict`` — e.g. ``"filter": "port=全港"`` instead of
+    ``{"port": "全港"}``. Crashing the skill here is worse than degrading
+    to "no filter"; log and return an empty mapping.
+    """
+    if isinstance(value, dict):
+        return value
+    if value in (None, "", 0, False):
+        return {}
+    logger.warning(
+        "chart param %r expected dict, got %s (%r) — dropping",
+        field, type(value).__name__, value,
+    )
+    return {}
 
 
 def parse_chart_params(params: dict[str, Any], task_name: str = "") -> dict[str, Any]:
@@ -47,32 +70,55 @@ def parse_chart_params(params: dict[str, Any], task_name: str = "") -> dict[str,
     if isinstance(y_fields, str):
         y_fields = [y_fields]
 
+    # left_y / right_y / filter must be dicts; LLM sometimes emits strings.
+    left_y = cfg.get("left_y")
+    right_y = cfg.get("right_y")
+    if left_y is not None and not isinstance(left_y, dict):
+        left_y = _coerce_mapping(left_y, "config.left_y") or None
+    if right_y is not None and not isinstance(right_y, dict):
+        right_y = _coerce_mapping(right_y, "config.right_y") or None
+
+    # `series` must be a list of descriptors; tolerate a single-dict shape.
+    series = cfg.get("series") or []
+    if isinstance(series, dict):
+        series = [series]
+    elif not isinstance(series, list):
+        logger.warning(
+            "chart param config.series expected list, got %s — dropping",
+            type(series).__name__,
+        )
+        series = []
+
     return {
         "title": title,
         "chart_subtype": cfg.get("chart_type"),           # e.g. "grouped_bar", "dual_y_line"
         "x_field": x_field,
         "y_fields": y_fields,
         "series_by": cfg.get("series_by"),                # field to split series by
-        "left_y": cfg.get("left_y"),                      # dual_y_line: left-axis spec
-        "right_y": cfg.get("right_y"),                    # dual_y_line: right-axis spec
-        "filter": cfg.get("filter") or {},                # row filter on DataFrame
+        "left_y": left_y,                                 # dual_y_line: left-axis spec
+        "right_y": right_y,                               # dual_y_line: right-axis spec
+        "filter": _coerce_mapping(cfg.get("filter"), "config.filter"),
         "sort": cfg.get("sort"),                          # "asc" / "desc" / None
         "orientation": cfg.get("orientation", "vertical"),
-        "series": cfg.get("series") or [],                # grouped_bar: series descriptors
+        "series": series,                                 # grouped_bar: series descriptors
         "show_completion_rate_label": cfg.get("show_completion_rate_label", False),
         "data_refs": params.get("data_refs") or [],
         "source": cfg.get("source"),
     }
 
 
-def apply_row_filter(df: pd.DataFrame, filter_dict: dict[str, Any]) -> pd.DataFrame:
+def apply_row_filter(df: pd.DataFrame, filter_dict: Any) -> pd.DataFrame:
     """Filter a DataFrame by equality on the given columns.
 
     Only applies filters whose column exists; unknown columns are ignored
     (templates sometimes reference fields that the underlying API didn't
     return — falling back to the unfiltered frame beats crashing).
+
+    Defense in depth: ``filter_dict`` is also validated here because the
+    skill may be called directly with an LLM-generated params blob that
+    bypassed ``parse_chart_params``.
     """
-    if not filter_dict:
+    if not isinstance(filter_dict, dict) or not filter_dict:
         return df
     for k, v in filter_dict.items():
         if k in df.columns:

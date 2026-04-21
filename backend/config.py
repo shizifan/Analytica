@@ -44,8 +44,10 @@ class Settings(BaseSettings):
         description="Phase 1: enable three-pane workbench layout + new design tokens",
     )
     FF_THINKING_STREAM: bool = Field(
-        default=False,
-        description="Phase 2/3: emit thinking_stream / tool_call_* WS events + persist thinking_events",
+        default=True,
+        description="Phase 2/3: persist thinking_events (node + tool + decision). "
+                    "WS events are always forwarded so the inspector renders "
+                    "in real time even when persistence is off.",
     )
     FF_EMPLOYEE_SOURCE: str = Field(
         default="yaml",
