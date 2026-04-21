@@ -53,7 +53,7 @@ services:
     image: nginx:alpine
     volumes:
       - ./frontend/dist:/usr/share/nginx/html:ro
-      - ./deploy/docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "${FRONTEND_PORT:-3000}:80"
     depends_on:
@@ -61,3 +61,9 @@ services:
     networks:
       - analytica-net
     restart: unless-stopped
+
+volumes:
+  mysql_data:
+
+networks:
+  analytica-net:

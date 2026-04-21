@@ -79,8 +79,9 @@ echo ""
 echo "[2/5] Copying frontend dist ..."
 
 if [ -d "$SCRIPT_DIR/frontend-dist" ]; then
-    rm -rf "$SCRIPT_DIR/../frontend/dist"
-    cp -r "$SCRIPT_DIR/frontend-dist" "$SCRIPT_DIR/../frontend/dist"
+    mkdir -p "$SCRIPT_DIR/frontend"
+    rm -rf "$SCRIPT_DIR/frontend/dist"
+    cp -r "$SCRIPT_DIR/frontend-dist" "$SCRIPT_DIR/frontend/dist"
     echo "  Frontend dist copied."
 else
     echo "[WARN] frontend-dist not found in package, skipping."
