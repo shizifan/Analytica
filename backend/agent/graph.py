@@ -116,7 +116,11 @@ async def planning_node(state: AgentState) -> AgentState:
     try:
         from backend.config import get_settings
         from langchain_openai import ChatOpenAI
-        from backend.agent.planning import PlanningEngine, format_plan_as_markdown
+        from backend.agent.planning import (
+            PlanningEngine,
+            format_plan_as_markdown,
+            is_simple_plan,
+        )
 
         settings = get_settings()
         llm = ChatOpenAI(
@@ -136,15 +140,38 @@ async def planning_node(state: AgentState) -> AgentState:
 
         plan_dict = plan.model_dump()
         state["analysis_plan"] = plan_dict
-        state["plan_confirmed"] = False
         state["plan_version"] = plan.version
 
-        # Generate markdown display
-        md = format_plan_as_markdown(plan)
-        state["messages"].append({
-            "role": "assistant",
-            "content": md,
-        })
+        # Simple plans auto-execute: no confirmation card, graph flows
+        # directly into execution on the next routing step.
+        auto_confirmed = is_simple_plan(plan)
+        state["plan_confirmed"] = auto_confirmed
+        state["plan_auto_confirmed"] = auto_confirmed
+
+        if auto_confirmed:
+            # Terse acknowledgement — the full plan lives in the Agent
+            # Inspector · Plan tab; duplicating a markdown task list in
+            # the chat stream just adds visual noise for simple queries.
+            est = plan.estimated_duration or sum(
+                t.estimated_seconds for t in plan.tasks
+            )
+            duration_str = (
+                f"约 {est // 60} 分钟" if est >= 60 else f"约 {est} 秒"
+            )
+            state["messages"].append({
+                "role": "assistant",
+                "content": (
+                    f"已生成 **{len(plan.tasks)} 个任务** 的分析方案"
+                    f"（预计 {duration_str}），自动开始执行。"
+                ),
+            })
+        else:
+            # Complex plans still show the full markdown card so the user
+            # can review and confirm/modify before execution.
+            state["messages"].append({
+                "role": "assistant",
+                "content": format_plan_as_markdown(plan, auto_confirmed=False),
+            })
 
     except Exception as e:
         logger.exception("Planning node error: %s", e)
@@ -374,6 +401,69 @@ async def run_stream(
         session_data = await store.get_session(session_id)
 
     prev_state = (session_data.get("state_json") if session_data else None) or {}
+
+    # ── Control-phrase fast path ────────────────────────────
+    # Plan-action buttons send these as regular chat messages; they must
+    # not re-trigger perception (which would duplicate the "已理解..."
+    # intent summary). "确认执行" with a pending plan short-circuits
+    # directly into execution; others fall through to the graph.
+    stripped_msg = (user_message or "").strip()
+    is_confirm = stripped_msg == "确认执行"
+    has_pending_plan = (
+        bool(prev_state.get("analysis_plan"))
+        and not prev_state.get("plan_confirmed")
+    )
+    if is_confirm and has_pending_plan:
+        state = dict(prev_state)
+        state.setdefault("messages", [])
+        state["messages"].append({"role": "user", "content": user_message})
+        state["plan_confirmed"] = True
+        state["current_phase"] = "execution"
+        state["error"] = None
+
+        yield {"__meta__": {"initial_msg_count": len(state.get("messages", []))}}
+
+        from backend.agent import ws_ctx
+        from backend.agent.execution import execution_node as _exec_node
+        token = ws_ctx.set_ws_callback(ws_callback)
+        try:
+            yield {
+                "__thinking__": {
+                    "kind": "phase",
+                    "phase": "execution",
+                    "payload": {"event": "phase_enter", "node": "execution"},
+                },
+            }
+            state = await _exec_node(state)
+            exit_payload = _summarize_node_exit("execution", state)
+            if exit_payload:
+                yield {
+                    "__thinking__": {
+                        "kind": "phase",
+                        "phase": "execution",
+                        "payload": {
+                            "event": "phase_exit",
+                            "node": "execution",
+                            **exit_payload,
+                        },
+                    },
+                }
+            # Emit as if execution node yielded via graph so main.py's
+            # existing event loop picks up task_statuses/messages.
+            yield {"execution": state}
+        finally:
+            ws_ctx.reset_ws_callback(token)
+
+        try:
+            safe_state = json.loads(
+                json.dumps(state, ensure_ascii=False, default=str)
+            )
+            async with factory() as db_session:
+                store = MemoryStore(db_session)
+                await store.save_session_state(session_id, safe_state)
+        except Exception:
+            logger.exception("Failed to save session state for %s", session_id)
+        return
 
     # 2. 构建本轮状态：有历史槽位则续接，否则全新开始
     if prev_state.get("slots"):

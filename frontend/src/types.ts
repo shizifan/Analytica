@@ -50,9 +50,10 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
-  type?: 'text' | 'reflection_card' | 'execution_progress';
+  type?: 'text' | 'reflection_card' | 'execution_progress' | 'task_results';
   phase?: string;
   timestamp: number;
+  payload?: Record<string, unknown> | null;
 }
 
 export type AgentPhase = 'idle' | 'perception' | 'planning' | 'executing' | 'reflection' | 'done';
@@ -167,4 +168,43 @@ export interface SessionSummary {
   pinned: boolean;
   created_at?: string | null;
   updated_at?: string | null;
+}
+
+// ── Phase 3.7: structured task results ───────────────────────
+
+export type TaskOutputKind = 'table' | 'chart' | 'text' | 'json' | 'file';
+
+export interface TaskResultTable {
+  columns: string[];
+  rows: Array<Array<string | number | boolean | null>>;
+  total_rows: number;
+}
+
+export interface TaskResultChart {
+  option: Record<string, unknown>;
+}
+
+export interface TaskResultText {
+  text: string;
+}
+
+export interface TaskResultFile {
+  format: string;
+  path?: string | null;
+}
+
+export interface TaskResult {
+  task_id: string;
+  name: string;
+  skill: string;
+  type: string;             // task.type — data_fetch / visualization / analysis / report_gen
+  output_type: TaskOutputKind;
+  depends_on: string[];
+  source_api?: string;
+  duration_ms?: number;
+  data: TaskResultTable | TaskResultChart | TaskResultText | TaskResultFile | { object: Record<string, unknown> } | null;
+}
+
+export interface TaskResultsPayload {
+  tasks: TaskResult[];
 }

@@ -74,8 +74,10 @@ export function useWebSocket(sessionId: string | null) {
           addMessage({
             id: makeMessageId(),
             role: 'assistant',
-            content: data.content as string,
+            content: (data.content as string) ?? '',
             phase: data.phase as string,
+            type: data.type as never,
+            payload: (data.payload as Record<string, unknown> | undefined) ?? null,
             timestamp: Date.now(),
           });
           if (data.phase) setPhase(data.phase as never);

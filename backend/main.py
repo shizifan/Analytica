@@ -211,6 +211,20 @@ async def replay_messages(
     return {"items": items, "count": len(items), "since_id": since_id}
 
 
+@app.delete("/api/sessions/{session_id}")
+async def delete_session(session_id: str, db=Depends(get_db_session)):
+    """Soft-delete a session — hides it from HistoryPane while keeping
+    chat_messages / thinking_events intact for audit."""
+    from backend.memory import session_log
+    deleted = await session_log.soft_delete_session(db, session_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail="Session not found or already deleted",
+        )
+    return {"status": "ok", "session_id": session_id}
+
+
 @app.get("/api/sessions/{session_id}/thinking")
 async def replay_thinking(
     session_id: str,
@@ -556,8 +570,10 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                             for msg in messages[prev_msg_count:]:
                                 if msg.get("role") == "assistant":
                                     phase = node_state.get("current_phase", "unknown")
-                                    content = msg["content"]
-                                    # Persist assistant message (Phase 2)
+                                    content = msg.get("content", "")
+                                    msg_type = msg.get("type") or "text"
+                                    msg_payload = msg.get("payload")
+                                    # Persist assistant message (Phase 2 + 3.7)
                                     persisted_id = 0
                                     try:
                                         async with factory() as tx:
@@ -565,17 +581,23 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                                                 tx, session_id,
                                                 role="assistant",
                                                 content=content,
-                                                type="text",
+                                                type=msg_type,
                                                 phase=phase,
+                                                payload=msg_payload,
                                             )
                                     except Exception:
                                         logger.exception("chat_messages insert failed")
-                                    await ws.send_json({
+                                    out: dict[str, Any] = {
                                         "event": "message",
                                         "content": content,
                                         "phase": phase,
                                         "message_id": persisted_id or None,
-                                    })
+                                    }
+                                    if msg_type and msg_type != "text":
+                                        out["type"] = msg_type
+                                    if msg_payload is not None:
+                                        out["payload"] = msg_payload
+                                    await ws.send_json(out)
                             prev_msg_count = cur_msg_count
 
                         # Push structured intent if ready

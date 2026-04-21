@@ -799,6 +799,112 @@ def _dump_execution_report(
 MAX_TABLE_ROWS = 20
 
 
+def _build_task_results_payload(
+    tasks: list[TaskItem],
+    execution_context: dict[str, SkillOutput],
+    task_statuses: dict[str, str],
+) -> dict[str, Any]:
+    """Phase 3.7 — structured projection of successful tasks for the V2
+    Result Card renderer. Returns a dict with `tasks: [...]` matching the
+    `TaskResult` contract consumed by the frontend.
+
+    Each entry is ≤ a few KB — large DataFrames are full-row (for CSV
+    download) but deep-object previews are capped.
+    """
+    import pandas as pd
+
+    out_tasks: list[dict[str, Any]] = []
+
+    for task in tasks:
+        tid = task.task_id
+        if task_statuses.get(tid) != "done":
+            continue
+
+        output = execution_context.get(tid)
+        if output is None or output.status not in ("success", "partial"):
+            continue
+
+        entry: dict[str, Any] = {
+            "task_id": tid,
+            "name": task.name or task.skill,
+            "skill": task.skill,
+            "type": task.type,
+            "depends_on": list(task.depends_on or []),
+            "output_type": "unknown",
+            "data": None,
+        }
+
+        # Optional metadata
+        ep_id = task.params.get("endpoint_id") if task.params else None
+        if ep_id:
+            entry["source_api"] = ep_id
+        duration_ms = getattr(output, "duration_ms", None)
+        if duration_ms:
+            entry["duration_ms"] = int(duration_ms)
+
+        data = output.data
+        try:
+            if output.output_type == "dataframe" and isinstance(data, pd.DataFrame):
+                entry["output_type"] = "table"
+                # Keep full data — CSV download needs every row.
+                columns = [str(c) for c in data.columns]
+                # Replace NaN/NaT with None so JSON serialisation stays
+                # honest (otherwise floats become NaN literals which json
+                # can't emit and the frontend would show "NaN").
+                rows: list[list[Any]] = []
+                for record in data.itertuples(index=False, name=None):
+                    row: list[Any] = []
+                    for value in record:
+                        if value is None:
+                            row.append(None)
+                        elif isinstance(value, float) and (value != value):  # NaN
+                            row.append(None)
+                        elif hasattr(pd, "isna") and pd.isna(value):
+                            row.append(None)
+                        else:
+                            row.append(value)
+                    rows.append(row)
+                entry["data"] = {
+                    "columns": columns,
+                    "rows": rows,
+                    "total_rows": int(len(data)),
+                }
+
+            elif output.output_type == "chart" and isinstance(data, dict):
+                entry["output_type"] = "chart"
+                entry["data"] = {"option": data}
+
+            elif output.output_type == "text" and data:
+                entry["output_type"] = "text"
+                entry["data"] = {"text": str(data)}
+
+            elif output.output_type == "json" and isinstance(data, dict):
+                narrative = data.get("narrative") or data.get("description")
+                if narrative:
+                    entry["output_type"] = "text"
+                    entry["data"] = {"text": str(narrative)}
+                else:
+                    entry["output_type"] = "json"
+                    entry["data"] = {"object": data}
+
+            elif output.output_type == "file":
+                entry["output_type"] = "file"
+                fmt = (output.metadata or {}).get("format", "file")
+                entry["data"] = {
+                    "format": str(fmt).upper(),
+                    "path": (output.metadata or {}).get("path"),
+                }
+            else:
+                continue  # Unknown shape; don't surface to UI
+        except Exception:
+            logger.exception("task_results payload failed for %s", tid)
+            continue
+
+        out_tasks.append(entry)
+
+    return {"tasks": out_tasks}
+
+
 def _format_execution_results(
     tasks: list[TaskItem],
     execution_context: dict[str, SkillOutput],
@@ -919,11 +1025,18 @@ async def execution_node(
     if all_done and not needs_replan:
         # Format and append execution result content
         result_parts = _format_execution_results(tasks, execution_context, task_statuses)
+        structured = _build_task_results_payload(
+            tasks, execution_context, task_statuses,
+        )
         state["messages"] = state.get("messages", [])
         if result_parts:
+            # Phase 3.7 — emit both legacy markdown (v1 fallback) and
+            # the structured payload the V2 Result Card consumes.
             state["messages"].append({
                 "role": "assistant",
+                "type": "task_results",
                 "content": "\n\n---\n\n".join(result_parts),
+                "payload": structured,
             })
         else:
             state["messages"].append({

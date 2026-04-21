@@ -71,10 +71,15 @@ export function ChatMessage({ message, onPlanAction }: Props) {
     );
   }
 
+  // Inline plan-confirmation cards need the full pane width; plain text
+  // messages stay content-width so a short "已理解..." doesn't leave a
+  // 400px blank void on its right.
+  const bubbleStyle = hasPlanActions ? { flex: 1, minWidth: 0 } : undefined;
+
   return (
     <div data-testid="chat-message-assistant" className="an-msg-row assistant">
       <div className="an-role-avatar assistant">A</div>
-      <div className="an-msg-bubble" style={{ flex: 1, minWidth: 0 }}>
+      <div className="an-msg-bubble" style={bubbleStyle}>
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
           {contentWithoutActions}
         </ReactMarkdown>

@@ -17,6 +17,7 @@ interface Props {
   activeId: string | null;
   onSelect(id: string): void;
   onNew(): void;
+  onDelete?(id: string): void;
 }
 
 function formatGroup(dateIso: string): string {
@@ -35,8 +36,17 @@ function formatGroup(dateIso: string): string {
   return '更早';
 }
 
-export function HistoryPane({ items, activeId, onSelect, onNew }: Props) {
+export function HistoryPane({ items, activeId, onSelect, onNew, onDelete }: Props) {
   const [query, setQuery] = useState('');
+
+  const handleDelete = (id: string, title: string) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onDelete) return;
+    const snippet = title.slice(0, 30);
+    if (window.confirm(`删除会话「${snippet}${title.length > 30 ? '…' : ''}」？\n消息与审计记录保留。`)) {
+      onDelete(id);
+    }
+  };
 
   const grouped = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -93,18 +103,33 @@ export function HistoryPane({ items, activeId, onSelect, onNew }: Props) {
             <div key={g.label}>
               <div className="an-history-group-label">{g.label}</div>
               {g.items.map((it) => (
-                <button
+                <div
                   key={it.id}
-                  type="button"
-                  className={`an-history-item${activeId === it.id ? ' active' : ''}`}
-                  onClick={() => onSelect(it.id)}
+                  className={`an-history-row${activeId === it.id ? ' active' : ''}`}
                 >
-                  <div className="an-h-title">{it.title || '(未命名会话)'}</div>
-                  <div className="an-h-meta">
-                    {it.employeeTag && <span>{it.employeeTag}</span>}
-                    <span>{new Date(it.updatedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
-                  </div>
-                </button>
+                  <button
+                    type="button"
+                    className="an-history-item"
+                    onClick={() => onSelect(it.id)}
+                  >
+                    <div className="an-h-title">{it.title || '(未命名会话)'}</div>
+                    <div className="an-h-meta">
+                      {it.employeeTag && <span>{it.employeeTag}</span>}
+                      <span>{new Date(it.updatedAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  </button>
+                  {onDelete && (
+                    <button
+                      type="button"
+                      className="an-history-delete"
+                      title="删除会话"
+                      aria-label="删除会话"
+                      onClick={handleDelete(it.id, it.title)}
+                    >
+                      <Icon name="x" size={12} />
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           ))

@@ -98,4 +98,10 @@ export const api = {
       `/api/sessions/${sessionId}/thinking?${params.toString()}`,
     );
   },
+
+  deleteSession: (sessionId: string) =>
+    request<{ status: string; session_id: string }>(
+      'DELETE',
+      `/api/sessions/${sessionId}`,
+    ),
 };

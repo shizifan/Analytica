@@ -848,8 +848,13 @@ TYPE_LABELS = {
 }
 
 
-def format_plan_as_markdown(plan: AnalysisPlan) -> str:
-    """Format an AnalysisPlan as user-facing Markdown."""
+def format_plan_as_markdown(plan: AnalysisPlan, auto_confirmed: bool = False) -> str:
+    """Format an AnalysisPlan as user-facing Markdown.
+
+    When `auto_confirmed` is True (simple plans that skip the confirmation
+    prompt), the trailing action line is omitted so the frontend renders
+    the plan as a read-only summary rather than a blocking card.
+    """
     total_seconds = plan.estimated_duration or sum(t.estimated_seconds for t in plan.tasks)
     if total_seconds >= 60:
         time_str = f"约 {total_seconds // 60} 分钟"
@@ -878,13 +883,31 @@ def format_plan_as_markdown(plan: AnalysisPlan) -> str:
             f"{ep_info}"
         )
 
-    lines.extend([
-        "",
-        "---",
-        "[确认执行] [修改方案] [重新规划]",
-    ])
+    if auto_confirmed:
+        lines.extend(["", "---", "_自动执行中…_"])
+    else:
+        lines.extend(["", "---", "[确认执行] [修改方案] [重新规划]"])
 
     return "\n".join(lines)
+
+
+def is_simple_plan(plan: AnalysisPlan) -> bool:
+    """A plan is "simple" when it can safely auto-execute without user
+    confirmation — few tasks, no report generation, no human-in-the-loop
+    hints in task metadata.
+
+    Threshold of 3 tasks picked to cover the common "data fetch →
+    visualize → describe" pattern while deferring L3 deep reports
+    (which typically fan out to 6+ tasks incl. report_gen).
+    """
+    tasks = plan.tasks or []
+    if len(tasks) == 0 or len(tasks) > 3:
+        return False
+    for t in tasks:
+        ttype = getattr(t, "type", None) or (t.get("type") if isinstance(t, dict) else None)
+        if ttype == "report_gen":
+            return False
+    return True
 
 
 # ── Plan Update & Versioning ─────────────────────────────────

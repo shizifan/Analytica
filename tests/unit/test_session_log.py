@@ -165,6 +165,36 @@ async def test_title_only_set_once_and_skips_control_phrases(fresh_session, test
 
 
 @pytest.mark.asyncio(loop_scope="function")
+async def test_soft_delete_hides_from_list(fresh_session, test_db_session):
+    """soft_delete_session sets deleted_at and the session stops appearing
+    in the default list query (but is still in the DB for audit)."""
+    sid = fresh_session
+    db = test_db_session
+
+    # Seed a message so the session is listable.
+    await session_log.append_chat_message(db, sid, role="user", content="hi")
+
+    before = await session_log.list_sessions(db, user_id="test-user")
+    assert any(s["session_id"] == sid for s in before)
+
+    ok = await session_log.soft_delete_session(db, sid)
+    assert ok is True
+
+    after = await session_log.list_sessions(db, user_id="test-user")
+    assert all(s["session_id"] != sid for s in after)
+
+    # Still present with include_deleted=True
+    incl = await session_log.list_sessions(
+        db, user_id="test-user", include_deleted=True,
+    )
+    assert any(s["session_id"] == sid for s in incl)
+
+    # Second delete is a no-op (idempotent safety)
+    again = await session_log.soft_delete_session(db, sid)
+    assert again is False
+
+
+@pytest.mark.asyncio(loop_scope="function")
 async def test_purge_empty_sessions(fresh_session, test_db_session):
     """purge_empty_sessions deletes title-less empty sessions (respecting age)."""
     sid = fresh_session

@@ -1,28 +1,59 @@
 /** Hydrate client state from the server after refresh / session switch.
  *
- * Only replays recently-persisted chat messages + thinking events —
- * slot/plan/reflection state still comes from the next WS tick. Replay is
- * best-effort: if the request fails, we keep whatever the WS handshake
- * gives us.
+ * Replays:
+ *   - chat_messages → sessionStore.messages
+ *   - thinking_events → thinkingStore.events
+ *   - state_json.slots / analysis_plan / task_statuses → slot + plan stores
+ *
+ * Replay is best-effort: if any request fails we keep whatever the WS
+ * handshake gives us instead.
  */
 import { api } from '../api/client';
 import { useSessionStore, makeMessageId } from '../stores/sessionStore';
+import { useSlotStore } from '../stores/slotStore';
+import { usePlanStore } from '../stores/planStore';
 import { useThinkingStore } from '../stores/thinkingStore';
-import type { ChatMessage, ThinkingEvent } from '../types';
+import type {
+  AnalysisPlan,
+  ChatMessage,
+  PlanStatus,
+  SlotState,
+  TaskStatus,
+  ThinkingEvent,
+} from '../types';
+
+const KNOWN_MSG_TYPES = new Set([
+  'text', 'reflection_card', 'execution_progress', 'task_results',
+]);
+
+const TERMINAL_TASK_STATES: Set<TaskStatus> = new Set([
+  'done', 'error',
+]);
+
+function derivePlanStatus(
+  taskStatuses: Record<string, TaskStatus>,
+): PlanStatus {
+  const vals = Object.values(taskStatuses);
+  if (vals.length === 0) return 'ready';
+  const allTerminal = vals.every((v) => TERMINAL_TASK_STATES.has(v));
+  if (allTerminal) return 'done';
+  if (vals.some((v) => v === 'running' || v === 'pending')) return 'executing';
+  return 'ready';
+}
 
 export async function hydrateSession(sessionId: string): Promise<void> {
   try {
-    const [msgRes, thkRes] = await Promise.all([
+    const [msgRes, thkRes, sessionRes] = await Promise.all([
       api.replayMessages(sessionId),
       api.replayThinking(sessionId),
+      api.getSession(sessionId).catch(() => null),
     ]);
 
+    // ── chat messages ─────────────────────────────────────
     const store = useSessionStore.getState();
-    // If the user is mid-stream, don't clobber the in-flight buffer.
     if (store.messages.length === 0) {
-      const KNOWN_TYPES = new Set(['text', 'reflection_card', 'execution_progress']);
       const hydrated: ChatMessage[] = msgRes.items.map((m) => {
-        const msgType = KNOWN_TYPES.has(m.type) ? (m.type as ChatMessage['type']) : undefined;
+        const msgType = KNOWN_MSG_TYPES.has(m.type) ? (m.type as ChatMessage['type']) : undefined;
         return {
           id: `persisted_${m.id}`,
           role: m.role,
@@ -30,6 +61,7 @@ export async function hydrateSession(sessionId: string): Promise<void> {
           ...(msgType === 'text' || msgType === undefined ? {} : { type: msgType }),
           phase: m.phase ?? undefined,
           timestamp: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
+          payload: m.payload ?? null,
         };
       });
       for (const msg of hydrated) {
@@ -37,6 +69,7 @@ export async function hydrateSession(sessionId: string): Promise<void> {
       }
     }
 
+    // ── thinking events ───────────────────────────────────
     const thkStore = useThinkingStore.getState();
     if (thkStore.events.length === 0) {
       const events: ThinkingEvent[] = thkRes.items.map((e) => ({
@@ -49,13 +82,36 @@ export async function hydrateSession(sessionId: string): Promise<void> {
       }));
       thkStore.setEvents(events);
     }
+
+    // ── slot + plan state (Phase 3.7.1) ───────────────────
+    if (sessionRes && typeof sessionRes === 'object') {
+      const stateJson = (sessionRes as { state_json?: Record<string, unknown> }).state_json;
+      if (stateJson && typeof stateJson === 'object') {
+        const slots = stateJson.slots as Record<string, SlotState> | undefined;
+        if (slots && typeof slots === 'object' && Object.keys(slots).length > 0) {
+          if (Object.keys(useSlotStore.getState().slots).length === 0) {
+            useSlotStore.getState().setSlots(slots);
+          }
+        }
+
+        const analysisPlan = stateJson.analysis_plan as AnalysisPlan | undefined;
+        const taskStatuses = stateJson.task_statuses as Record<string, TaskStatus> | undefined;
+        const planStore = usePlanStore.getState();
+        if (analysisPlan && !planStore.plan) {
+          planStore.setPlan(analysisPlan);
+          if (taskStatuses && typeof taskStatuses === 'object') {
+            for (const [tid, st] of Object.entries(taskStatuses)) {
+              planStore.updateTaskStatus(tid, st);
+            }
+            planStore.setStatus(derivePlanStatus(taskStatuses));
+          }
+        }
+      }
+    }
   } catch (err) {
-    // Hydration is best-effort; swallow errors (first-load sessions will 404).
     if (import.meta.env.DEV) {
       console.warn('[hydrate] replay failed', err);
     }
   }
-  // Ensure unused import warning doesn't fire — makeMessageId is kept for
-  // future use when we need client-side ids for hydrated messages.
   void makeMessageId;
 }

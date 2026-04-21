@@ -266,3 +266,18 @@ async def update_session_title(
         {"sid": session_id, "title": title[:255]},
     )
     await db.commit()
+
+
+async def soft_delete_session(db: AsyncSession, session_id: str) -> bool:
+    """Mark a session as deleted (sets deleted_at). Returns True if a row
+    was actually updated — callers may use this to distinguish "not found"
+    from "already deleted"."""
+    result = await db.execute(
+        text(
+            "UPDATE sessions SET deleted_at = NOW() "
+            "WHERE session_id = :sid AND deleted_at IS NULL"
+        ),
+        {"sid": session_id},
+    )
+    await db.commit()
+    return bool(result.rowcount)

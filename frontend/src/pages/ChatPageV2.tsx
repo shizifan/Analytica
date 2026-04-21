@@ -12,8 +12,9 @@ import { InputBar } from '../components/InputBar';
 import { EmployeeSelector } from '../components/EmployeeSelector';
 
 import { ChatMessage } from '../components/ui/ChatMessage';
-import { ExecutionProgress } from '../components/ui/ExecutionProgress';
 import { ReflectionCard } from '../components/ui/ReflectionCard';
+import { TaskResultsBlock } from '../components/ui/TaskResultsBlock';
+import { ThinkingIndicator } from '../components/ui/ThinkingIndicator';
 import { Topbar } from '../components/ui/Topbar';
 import { HistoryPane } from '../components/ui/HistoryPane';
 import { AgentPane } from '../components/ui/AgentPane';
@@ -48,7 +49,6 @@ export function ChatPageV2() {
   const userId = useSessionStore((s) => s.userId);
   const setSession = useSessionStore((s) => s.setSession);
   const messages = useSessionStore((s) => s.messages);
-  const sending = useSessionStore((s) => s.sending);
   const phase = useSessionStore((s) => s.phase);
   const clearConversation = useSessionStore((s) => s.clearConversation);
 
@@ -203,6 +203,44 @@ export function ChatPageV2() {
     refreshHistory,
   ]);
 
+  const handleDeleteHistory = useCallback(
+    async (id: string) => {
+      try {
+        await api.deleteSession(id);
+      } catch {
+        // If backend fails, still refresh to reflect current server state.
+      }
+      // Drop it from the rail optimistically.
+      setHistory((h) => h.filter((it) => it.id !== id));
+      // If the user just deleted the active conversation, spin up a fresh one.
+      if (id === sessionId) {
+        clearConversation();
+        resetPlan();
+        resetSlots();
+        resetThinking();
+        setReflectionSummary(null);
+        setAgentCollapsed(true);
+        api
+          .createSession(userId, selectedId ?? undefined)
+          .then(({ session_id }) => setSession(session_id, userId, selectedId))
+          .catch(() => {});
+      }
+      // Sync with server truth in the background.
+      setTimeout(refreshHistory, 300);
+    },
+    [
+      sessionId,
+      userId,
+      selectedId,
+      clearConversation,
+      resetPlan,
+      resetSlots,
+      resetThinking,
+      setSession,
+      refreshHistory,
+    ],
+  );
+
   const handleSelectHistory = useCallback(
     (id: string) => {
       if (id === sessionId) return;
@@ -241,6 +279,7 @@ export function ChatPageV2() {
           activeId={sessionId}
           onSelect={handleSelectHistory}
           onNew={handleNewConversation}
+          onDelete={handleDeleteHistory}
         />
 
         <main className="an-pane an-chat-pane">
@@ -289,7 +328,33 @@ export function ChatPageV2() {
                     );
                   }
                   if (msg.type === 'execution_progress') {
-                    return <ExecutionProgress key={msg.id} />;
+                    // Phase 3.5.3 — execution progress is owned by the
+                    // Agent Inspector · 计划 Tab (plus a compact preview
+                    // in ThinkingIndicator). Rendering another full list
+                    // here just duplicated the information. Swallow the
+                    // legacy marker message silently.
+                    return null;
+                  }
+                  if (msg.type === 'task_results' && msg.payload) {
+                    // Phase 3.7 — structured result cards (chart / table
+                    // / text). Fall through to plain markdown only if the
+                    // payload didn't make it across (old persisted row).
+                    const payload = msg.payload as unknown as import('../types').TaskResultsPayload;
+                    return (
+                      <div
+                        key={msg.id}
+                        data-testid="task-results"
+                        className="an-msg-row assistant"
+                      >
+                        <div className="an-role-avatar assistant">A</div>
+                        <div
+                          className="an-msg-bubble"
+                          style={{ flex: 1, minWidth: 0, padding: 0, background: 'transparent', border: 0 }}
+                        >
+                          <TaskResultsBlock payload={payload} />
+                        </div>
+                      </div>
+                    );
                   }
                   return (
                     <ChatMessage
@@ -301,13 +366,7 @@ export function ChatPageV2() {
                 })
               )}
 
-              {planStatus === 'executing' && <ExecutionProgress />}
-
-              {sending && (
-                <div style={{ color: 'var(--an-ink-4)', fontSize: 12, padding: '6px 4px' }}>
-                  正在思考<span className="an-mono">…</span>
-                </div>
-              )}
+              <ThinkingIndicator />
 
               <div ref={messagesEndRef} />
             </div>

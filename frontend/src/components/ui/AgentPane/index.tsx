@@ -64,15 +64,12 @@ export function AgentPane({ collapsed, onToggle, phaseLabel }: Props) {
             onToggle();
           }
         }}
-        aria-label="展开 Agent Inspector"
+        aria-label={`展开 Agent Inspector（当前 ${phaseLabel}）`}
+        title={`展开 Agent Inspector · ${phaseLabel}`}
       >
         <span className="an-collapsed-toggle">
           <Icon name="panel-left" size={14} />
         </span>
-        <span className="an-collapsed-label">
-          <span className="an-pill">{phaseLabel}</span>
-        </span>
-        <span className="an-collapsed-spine an-mono">AGENT · INSPECTOR</span>
       </aside>
     );
   }
