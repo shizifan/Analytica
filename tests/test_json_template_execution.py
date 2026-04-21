@@ -298,7 +298,7 @@ async def generate_report(
     template: dict[str, Any],
     context: dict[str, Any],
     report_format: str,
-    section_names: list[str],
+    section_names: list[str] | None = None,
 ) -> tuple[SkillOutput | None, str]:
     """生成指定格式的报告。
 
@@ -306,7 +306,7 @@ async def generate_report(
         template: JSON 模板
         context: 执行上下文
         report_format: 报告格式（markdown/html/docx/pptx）
-        section_names: 要包含的章节名称
+        section_names: 要包含的章节名称；传 None 使用模板全部章节（批次 4 默认）
 
     Returns:
         (SkillOutput, error_message) 元组
@@ -334,15 +334,33 @@ async def generate_report(
     meta = template.get("_meta", {})
     title = template.get("title", "分析报告")
 
-    # 收集报告结构中的任务引用
+    # 模板的完整章节配置（带 task_refs）— 批次 4 后不再自己拼接 context_refs,
+    # 直接把模板的 report_structure 原样传给 report skill，
+    # 让 _content_collector 按 section.task_refs 精确归属各条目。
     report_structure = template.get("report_structure", {})
-    section_task_refs = []
-    for section in report_structure.get("sections", []):
-        if section["name"] in section_names:
-            section_task_refs.extend(section.get("task_refs", []))
+    all_sections = report_structure.get("sections", [])
+    if section_names is not None:
+        selected_sections = [s for s in all_sections if s["name"] in section_names]
+        # 若完全不匹配，回退到全量章节而不是空结构
+        if not selected_sections:
+            selected_sections = all_sections
+    else:
+        selected_sections = all_sections
 
-    # 去重
-    context_refs = list(dict.fromkeys(section_task_refs))
+    # 从模板的全部任务拿执行顺序（T001..T019），作为内容迭代基准
+    task_order = [t["task_id"] for t in template.get("tasks", [])]
+    # _template_meta 供 KPI 抽取 + 域 prompt 使用
+    template_meta = {
+        "template_id": meta.get("template_id") or "",
+        "employee_id": meta.get("employee_id") or "",
+        "slot_values": meta.get("slot_values") or {},
+        "title": title,
+    }
+
+    # 上下文引用：用于 inp.context_refs，合并所有章节的 task_refs
+    context_refs = list(dict.fromkeys(
+        [ref for s in selected_sections for ref in s.get("task_refs", [])]
+    ))
 
     params = {
         "report_metadata": {
@@ -351,11 +369,15 @@ async def generate_report(
             "date": datetime.now().strftime("%Y-%m-%d"),
         },
         "report_structure": {
+            # 按模板原始 sections（每个章节保留自己的 task_refs）
             "sections": [
-                {"name": name, "task_refs": context_refs}
-                for name in section_names
+                {"name": s["name"], "task_refs": list(s.get("task_refs", []))}
+                for s in selected_sections
             ]
         },
+        # 批次 4: 显式传入任务顺序 + 模板元数据
+        "_task_order": task_order,
+        "_template_meta": template_meta,
     }
 
     inp = SkillInput(params=params, context_refs=context_refs)
@@ -511,10 +533,9 @@ class TestReportGenerationMarkdown:
         # 收集成功的任务
         successful_refs = [tid for tid, status in statuses.items() if status == "done"]
 
-        # 生成 Markdown 报告
+        # 生成 Markdown 报告 — 使用模板定义的全部章节（批次 4 后的默认行为）
         output, error = await generate_report(
             template, context, "markdown",
-            ["一、经营摘要", "二、综合分析"]
         )
 
         if error:
@@ -556,10 +577,9 @@ class TestReportGenerationHTML:
             template, skills, max_tasks=18, template_name=template_name
         )
 
-        # 生成 HTML 报告
+        # 生成 HTML 报告 — 使用模板定义的全部章节
         output, error = await generate_report(
             template, context, "html",
-            ["一、经营摘要", "二、综合分析"]
         )
 
         if error:
@@ -601,10 +621,9 @@ class TestReportGenerationDOCX:
             template, skills, max_tasks=18, template_name=template_name
         )
 
-        # 生成 DOCX 报告
+        # 生成 DOCX 报告 — 使用模板定义的全部章节
         output, error = await generate_report(
             template, context, "docx",
-            ["一、管理摘要", "二、综合分析"]
         )
 
         if error:
@@ -646,10 +665,9 @@ class TestReportGenerationPPTX:
             template, skills, max_tasks=18, template_name=template_name
         )
 
-        # 生成 PPTX 报告
+        # 生成 PPTX 报告 — 使用模板定义的全部章节
         output, error = await generate_report(
             template, context, "pptx",
-            ["一、客户总览", "二、综合分析"]
         )
 
         if error:
@@ -705,7 +723,6 @@ class TestFullReportPipeline:
         for fmt in report_formats:
             output, error = await generate_report(
                 template, context, fmt,
-                ["一、综合摘要"]
             )
             results[fmt] = (output, error)
 

@@ -140,7 +140,10 @@ class MarkdownReportSkill(BaseSkill):
 
     async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
         try:
-            report = collect_and_associate(inp.params, context)
+            report = collect_and_associate(
+                inp.params, context,
+                task_order=inp.params.get("_task_order"),
+            )
 
             # Build markdown content
             content = _build_markdown_deterministic(report)

@@ -506,6 +506,11 @@ async def execute_plan(
     _reset_semaphores()  # rebind to current event loop
 
     layers = _topological_layers(tasks)
+    # Global task order (template declaration / topological) — threaded into
+    # report_gen tasks so _content_collector iterates items in the same
+    # sequence rather than in lexicographic dict order.
+    global_task_order = [t.task_id for t in tasks]
+
     task_statuses: dict[str, str] = {}
     execution_context: dict[str, SkillOutput] = {}
     needs_replan = False
@@ -535,6 +540,10 @@ async def execute_plan(
                     continue
 
             if _deps_satisfied(task, task_statuses):
+                # Inject global task order into report_gen params so the
+                # content collector can iterate in template-declaration order.
+                if task.type == "report_gen" and "_task_order" not in task.params:
+                    task.params = {**task.params, "_task_order": global_task_order}
                 runnable.append(task)
             else:
                 task_statuses[task.task_id] = "failed"

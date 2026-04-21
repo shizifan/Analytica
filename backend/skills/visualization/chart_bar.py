@@ -74,12 +74,34 @@ class BarChartSkill(BaseSkill):
         # ── Generic path (covers default vertical/horizontal single-source) ──
         return self._render_generic(parsed, params, inp.context_refs or [], context)
 
-    # ── Grouped-bar (target vs actual) ─────────────────────────
+    # ── Grouped-bar (target vs actual OR multi-source comparison) ──
     def _render_grouped_bar(
         self,
         parsed: dict[str, Any],
         context: dict[str, Any],
     ) -> SkillOutput:
+        """Two grouped-bar patterns are supported:
+
+        A. **KPI target-vs-actual** (one row per label from a single task):
+           series = [{"label":"吨","target":"T001.targetQty","actual":"T001.finishQty"}]
+           → one pair of bars per series entry.
+
+        B. **Multi-source by category** (two tasks sharing the same x_field):
+           series = [{"label":"当月","source":"T006","y_field":"num"},
+                     {"label":"年累计","source":"T007","y_field":"num"}]
+           x_field = "categoryName"
+           → bars grouped by category, one series per source task.
+
+        We detect pattern B when the first series entry carries a ``source``
+        key (no ``target``/``actual``).
+        """
+        first = parsed["series"][0] if parsed["series"] else {}
+        is_pattern_b = "source" in first and "target" not in first and "actual" not in first
+
+        if is_pattern_b:
+            return self._render_multi_source_grouped(parsed, context)
+
+        # ── Pattern A: target vs actual ──
         categories: list[str] = []
         target_vals: list[float | None] = []
         actual_vals: list[float | None] = []
@@ -134,6 +156,103 @@ class BarChartSkill(BaseSkill):
                 "chart_subtype": "grouped_bar",
                 "series_count": 2,
                 "completion_rates": rate_labels,
+            },
+        )
+
+    # ── Pattern B: multi-source grouped by x_field ─────────────
+    def _render_multi_source_grouped(
+        self,
+        parsed: dict[str, Any],
+        context: dict[str, Any],
+    ) -> SkillOutput:
+        """Pattern B: one series per upstream task, bars grouped by x_field.
+
+        Example template:
+            x_field="categoryName", series=[
+              {"label":"当月","source":"T006","y_field":"num"},
+              {"label":"年累计","source":"T007","y_field":"num"}]
+
+        All series are joined on x_field (union of categories across tasks).
+        Missing values become null → excluded from the has_valid_series_data
+        gate only when *every* entry is null.
+        """
+        x_field = parsed["x_field"]
+        if not x_field:
+            return self._fail("多源 grouped_bar 需要 config.x_field")
+
+        # Collect categories (union across sources) and per-source maps
+        per_series: list[dict[str, Any]] = []
+        all_categories: list[str] = []
+        seen: set[str] = set()
+
+        for item in parsed["series"]:
+            source = item.get("source") or ""
+            y_field = item.get("y_field") or ""
+            label = item.get("label") or source or y_field or "-"
+            if source not in context:
+                per_series.append({"label": label, "map": {}})
+                continue
+            df = context[source].data if hasattr(context[source], "data") else None
+            if df is None or not hasattr(df, "columns") or x_field not in df.columns or y_field not in df.columns:
+                per_series.append({"label": label, "map": {}})
+                continue
+            # Build {category: value} map
+            value_map: dict[str, float] = {}
+            for _, row in df.iterrows():
+                try:
+                    cat = str(row[x_field])
+                    val = float(row[y_field])
+                except Exception:
+                    continue
+                value_map[cat] = val
+                if cat not in seen:
+                    seen.add(cat)
+                    all_categories.append(cat)
+            per_series.append({"label": label, "map": value_map})
+
+        if not all_categories:
+            return SkillOutput(
+                skill_id=self.skill_id, status="skipped", output_type="chart",
+                error_message="多源 grouped_bar: 未找到共同类别",
+                metadata={"skip_reason": "NO_CATEGORIES", "chart_subtype": "grouped_bar"},
+            )
+
+        series = []
+        for i, s in enumerate(per_series):
+            vmap = s["map"]
+            data = [round(vmap[c], 2) if c in vmap else None for c in all_categories]
+            series.append({
+                "name": s["label"],
+                "type": "bar",
+                "data": data,
+                "itemStyle": {"color": SERIES_COLORS[i % len(SERIES_COLORS)]},
+            })
+
+        if not has_valid_series_data(series):
+            return SkillOutput(
+                skill_id=self.skill_id, status="skipped", output_type="chart",
+                error_message="多源 grouped_bar: 所有系列数据均为 null",
+                metadata={"skip_reason": "ALL_NULL", "chart_subtype": "grouped_bar"},
+            )
+
+        option = {
+            "title": {"text": parsed["title"] or "多源对比", "left": "center",
+                      "textStyle": {"color": THEME_PRIMARY}},
+            "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+            "legend": {"data": [s["name"] for s in series], "bottom": 0},
+            "xAxis": {"type": "category", "data": all_categories},
+            "yAxis": {"type": "value"},
+            "series": series,
+        }
+
+        return SkillOutput(
+            skill_id=self.skill_id, status="success", output_type="chart",
+            data=option,
+            metadata={
+                "chart_type": "bar",
+                "chart_subtype": "grouped_bar_multi_source",
+                "series_count": len(series),
+                "category_count": len(all_categories),
             },
         )
 

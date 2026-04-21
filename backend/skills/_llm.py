@@ -115,10 +115,19 @@ async def invoke_llm(
     start = time.monotonic()
 
     try:
+        import httpx
         from backend.config import get_settings
         from langchain_openai import ChatOpenAI
 
         settings = get_settings()
+        # Bind a fresh httpx.AsyncClient to the *current* event loop. Without
+        # this, langchain_openai/openai SDK caches a wrapper at module level
+        # that stays bound to whichever event loop first used it; subsequent
+        # pytest-asyncio tests (or any process that spins up a fresh loop)
+        # then fail with "Invalid http_client argument: Expected instance of
+        # httpx.AsyncClient" even though the wrapper IS a subclass — what's
+        # actually wrong is that the underlying transport is closed.
+        http_client = httpx.AsyncClient(timeout=timeout)
         llm = ChatOpenAI(
             base_url=settings.QWEN_API_BASE,
             api_key=settings.QWEN_API_KEY,
@@ -126,18 +135,22 @@ async def invoke_llm(
             temperature=temperature,
             request_timeout=timeout,
             extra_body={"enable_thinking": False},
+            http_async_client=http_client,
         )
 
         sem = _get_semaphore()
         async with sem:
-            if truncated_system:
-                messages = [
-                    {"role": "system", "content": truncated_system},
-                    {"role": "user", "content": truncated_user},
-                ]
-                response = await llm.ainvoke(messages)
-            else:
-                response = await llm.ainvoke(truncated_user)
+            try:
+                if truncated_system:
+                    messages = [
+                        {"role": "system", "content": truncated_system},
+                        {"role": "user", "content": truncated_user},
+                    ]
+                    response = await llm.ainvoke(messages)
+                else:
+                    response = await llm.ainvoke(truncated_user)
+            finally:
+                await http_client.aclose()
 
         raw = response.content if hasattr(response, "content") else str(response)
         text = _strip_think_tags(raw)

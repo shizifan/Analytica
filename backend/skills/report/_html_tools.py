@@ -99,13 +99,15 @@ HTML_SYSTEM_PROMPT = """\
 你是一位专业的 HTML 报告排版师。你的任务是使用提供的工具将分析内容组合成一份结构完整的单页 HTML 报告。
 
 ## 排版规范
-1. 按章节顺序处理每个 Section：先打开章节（add_section_open），添加内容，再关闭章节（add_section_close）
-2. 章节内建议的内容顺序：叙述文本 → KPI 卡片 → 统计表格 → 图表 → 数据明细表
-3. 最后添加总结（add_summary_html）
-4. 完成后必须调用 finalize_html
+1. 如果存在 KPI 指标（用户消息中会标注 "KPI 卡片: N 张"），先调用 add_kpi_cards_html
+2. 按章节顺序处理每个 Section：先打开章节（add_section_open），添加内容，再关闭章节（add_section_close）
+3. 章节内建议的内容顺序：叙述文本 → 增长率 → 统计表格 → 图表 → 数据明细表
+4. 最后添加总结（add_summary_html）
+5. 完成后必须调用 finalize_html
 
 ## 重要规则
 - 通过 section_index 和 item_index 引用内容，对应用户消息中的 Section 编号和 [] 编号
+- 章节名通常已带中文数字前缀（"一、经营摘要"），调用 add_section_open 只传 title 即可，不要再加 "1." 这类编号
 - 不要跳过有内容的章节
 - 不要自行编造数据
 - 空章节可以跳过
@@ -141,10 +143,28 @@ def make_html_tools(
     # ── Tools ──────────────────────────────────────────────────────
 
     @tool
-    def add_section_open(number: int, title: str) -> str:
-        """打开一个 HTML 章节 div，包含章节标题。"""
-        parts.append(f'<div class="section"><h2>{number}. {title}</h2>')
-        return f"✓ 章节已打开：{number}. {title}"
+    def add_section_open(title: str, number: int | None = None) -> str:
+        """打开一个 HTML 章节 div，包含章节标题。
+
+        ``number`` 参数保留向后兼容（旧代理会传），但渲染时忽略——模板的章节名
+        已自带 "一、" / "二、" 等中文编号前缀，再叠加阿拉伯数字会出现双重编号。
+        """
+        _ = number  # intentionally unused (batch 4: no auto-numbering)
+        parts.append(f'<div class="section"><h2>{title}</h2>')
+        return f"✓ 章节已打开：{title}"
+
+    @tool
+    def add_kpi_cards_html() -> str:
+        """在报告顶部（第一个 section 之前）添加业务 KPI 卡片行。
+
+        使用内置的 ReportContent.kpi_cards 数据，无需参数。
+        """
+        from backend.skills.report.html_gen import _render_kpi_cards
+        html = _render_kpi_cards(content.kpi_cards)
+        if html:
+            parts.append(f'<div class="section">{html}</div>')
+            return f"✓ KPI 卡片已添加（{len(content.kpi_cards)} 张）"
+        return "（无 KPI 可渲染，跳过）"
 
     @tool
     def add_section_close() -> str:
@@ -219,6 +239,7 @@ def make_html_tools(
     return [
         add_section_open,
         add_section_close,
+        add_kpi_cards_html,
         add_narrative_html,
         add_stats_table_html,
         add_growth_kpi_html,

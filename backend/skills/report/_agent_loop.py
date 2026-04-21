@@ -82,6 +82,9 @@ def serialize_report_content(content: ReportContent) -> str:
     lines.append(f"- 标题: {content.title}")
     lines.append(f"- 作者: {content.author}")
     lines.append(f"- 日期: {content.date}")
+    if content.kpi_cards:
+        kpi_preview = ", ".join(f"{k.label}={k.value}" for k in content.kpi_cards[:4])
+        lines.append(f"- KPI 卡片: {len(content.kpi_cards)} 张 ({kpi_preview})")
     lines.append("")
     lines.append("## 章节内容")
 

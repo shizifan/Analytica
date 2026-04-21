@@ -132,6 +132,28 @@ def _render_dataframe(df: Any) -> str:
 # Deterministic builder (extracted from the original execute body)
 # ---------------------------------------------------------------------------
 
+def _render_kpi_cards(kpis: list) -> str:
+    """Render ``ReportContent.kpi_cards`` as a .kpi-row HTML block.
+
+    Empty input → empty string (renderer skips the block entirely instead
+    of producing a stray empty card row).
+    """
+    if not kpis:
+        return ""
+    cards = []
+    for k in kpis:
+        trend_cls = f" {k.trend}" if k.trend else ""
+        sub_html = f'<div class="sub">{k.sub}</div>' if k.sub else ""
+        cards.append(
+            f'<div class="kpi-card">'
+            f'<div class="label">{k.label}</div>'
+            f'<div class="value{trend_cls}">{k.value}</div>'
+            f'{sub_html}'
+            f'</div>'
+        )
+    return f'<div class="kpi-row">{"".join(cards)}</div>'
+
+
 def _build_html_deterministic(report: ReportContent) -> tuple[list[str], int]:
     """Build HTML fragments using hardcoded ordering — the fallback path.
 
@@ -140,8 +162,15 @@ def _build_html_deterministic(report: ReportContent) -> tuple[list[str], int]:
     content_parts: list[str] = []
     chart_idx = 0
 
-    for i, section in enumerate(report.sections, 1):
-        content_parts.append(f'<div class="section"><h2>{i}. {section.name}</h2>')
+    # KPI row rendered once, before section 1 (batch 4)
+    kpi_html = _render_kpi_cards(report.kpi_cards)
+    if kpi_html:
+        content_parts.append(f'<div class="section">{kpi_html}</div>')
+
+    for section in report.sections:
+        # Chinese section names already carry numbering prefixes like "一、", so
+        # we no longer auto-prepend "1." (pre-batch-4 rendered "1. 一、经营摘要").
+        content_parts.append(f'<div class="section"><h2>{section.name}</h2>')
 
         for item in section.items:
             if isinstance(item, NarrativeItem):
@@ -191,7 +220,10 @@ class HtmlReportSkill(BaseSkill):
 
     async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
         try:
-            report = collect_and_associate(inp.params, context)
+            report = collect_and_associate(
+                inp.params, context,
+                task_order=inp.params.get("_task_order"),
+            )
 
             # ── Try Skill mode (LLM agent loop) ──
             mode = "deterministic_fallback"

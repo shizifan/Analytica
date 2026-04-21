@@ -2148,7 +2148,7 @@ async def get_physical_assets(request: Request, dateYear: str):
         "dateYear": float(y),
         "num": round(r.uniform(50000, 100000), 1),
         "typeName": tn,
-    } for y in [year, year - 1] for tn in type_names])
+    } for y in [int(dateYear), int(dateYear) - 1] for tn in type_names])
 
 # [PROD_DATA]
 @app.get("/api/gateway/getRegionalAnalysis")
@@ -2279,7 +2279,7 @@ async def get_equip_yoy(request: Request, dateYear: str):
         "dateYear": float(y),
         "num": round(r.uniform(5000, 30000), 1),
         "typeName": tn,
-    } for y in [year, year - 1] for tn in type_names])
+    } for y in [int(dateYear), int(dateYear) - 1] for tn in type_names])
 
 # [PROD_DATA]
 @app.get("/api/gateway/getEquipmentFacilityAnalysis")
@@ -2351,7 +2351,7 @@ async def get_housing_yoy(request: Request, dateYear: str):
         "dateYear": float(y),
         "num": round(r.uniform(0, 50000), 1),
         "typeName": tn,
-    } for y in [year, year - 1] for tn in type_names])
+    } for y in [int(dateYear), int(dateYear) - 1] for tn in type_names])
 
 # [NO_PROD_DATA]
 @app.get("/api/gateway/getHousingRegionalAnalysis")
@@ -2386,7 +2386,7 @@ async def get_land_yoy(request: Request, dateYear: str):
         "dateYear": float(y),
         "num": round(r.uniform(100000, 800000000), 1),
         "typeName": tn,
-    } for y in [year, year - 1] for tn in type_names])
+    } for y in [int(dateYear), int(dateYear) - 1] for tn in type_names])
 
 # [PROD_DATA]
 @app.get("/api/gateway/getLandMaritimeRegionalAnalysis")
@@ -3382,7 +3382,7 @@ async def get_prod_integrity_year(request: Request, dateYear: int, preYear: int,
         "dateYear": y,
         "ownerZone": reg,
         "usageRate": round(r.uniform(0.95, 1.0), 4),
-    } for reg in REGIONS_ZONE for y in [year, year - 1]])
+    } for reg in REGIONS_ZONE for y in [int(dateYear), int(preYear)]])
 
 # [PROD_DATA]
 @app.get("/api/gateway/getProductEquipmentIntegrityRateByMonth")
@@ -3801,16 +3801,16 @@ async def get_sum_strategy_trend(request: Request):
         rev = strat * r.uniform(1.2, 1.5)
         cumul_tp += strat; cumul_rev += rev
         series.append({
-            "month": f"{year}-{m:02d}",
+            "dateMonth": f"{year}-{m:02d}",
             "strategicThroughput": round(strat, 1),
             "cumulativeStrategicThroughput": round(cumul_tp, 1),
             "cumulativeRevenue": round(cumul_rev, 1),
             "contributionRate": round(r.uniform(60.0, 72.0), 2)
         })
-    return ok([{
-        "dateYear": y,
-        "num": round(r.uniform(0, 2000), 1),
-    } for y in [year, year - 1]])
+    # Return the monthly series the template expects for trend analysis.
+    # (Previously this function threw the series away and returned a yearly
+    # 2-row summary, which broke the strategic-customer trend chart.)
+    return ok(series)
 
 
 

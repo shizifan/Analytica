@@ -182,12 +182,12 @@
       "task_id": "T015",
       "type": "visualization",
       "name": "双轴月度趋势折线图",
-      "description": "用T003+T004绘制吨（左轴）与TEU（右轴）月度趋势双线对比图，当年vs上年共4条线",
+      "description": "用T003+T004绘制吨（左轴）与TEU（右轴）月度趋势对比图。T003返回 dateMonth+qty（已含当年/上年），T004返回 month+currentYearTeu+prevYearTeu — 所以左轴直接按时间绘 qty 折线，右轴按month画当年TEU",
       "depends_on": ["T003", "T004"],
       "skill": "skill_chart_line",
       "params": {
         "data_refs": ["T003", "T004"],
-        "config": {"chart_type": "dual_y_line", "x_field": "dateMonth", "left_y": {"source": "T003", "y_field": "qty", "series_by": "year", "label": "吞吐量(吨)"}, "right_y": {"source": "T004", "y_field": "qty", "series_by": "year", "label": "集装箱TEU"}, "title": "2026 vs 2025 月度吞吐量&TEU趋势"}
+        "config": {"chart_type": "dual_y_line", "x_field": "dateMonth", "left_y": {"source": "T003", "y_field": "qty", "label": "吞吐量(吨)"}, "right_y": {"source": "T004", "x_field": "month", "y_field": "currentYearTeu", "label": "集装箱TEU(当年)"}, "title": "月度吞吐量与集装箱TEU趋势"}
       },
       "estimated_seconds": 6, "status": "pending", "output_ref": ""
     },

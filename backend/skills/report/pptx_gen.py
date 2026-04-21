@@ -106,7 +106,10 @@ class PptxReportSkill(BaseSkill):
 
     async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
         try:
-            report = collect_and_associate(inp.params, context)
+            report = collect_and_associate(
+                inp.params, context,
+                task_order=inp.params.get("_task_order"),
+            )
 
             # ── Try Skill mode (LLM agent loop) ──
             mode = "deterministic_fallback"

@@ -134,7 +134,60 @@ def build_toc_placeholder(doc: Document) -> None:
 # ---------------------------------------------------------------------------
 
 def build_section_heading(doc: Document, number: int, title: str) -> None:
-    doc.add_heading(f"{number}. {title}", level=1)
+    """Add a section heading. ``number`` is kept for backward compatibility
+    with pre-batch-4 agent calls but no longer rendered — Chinese section
+    names already carry "一、/二、" prefixes; stacking "1." on top produced
+    visible double-numbering ("1. 一、经营摘要") in the pre-batch-4 output.
+    """
+    _ = number
+    doc.add_heading(title, level=1)
+
+
+def build_kpi_row(doc: Document, kpis: list) -> None:
+    """Render a KPI card row as a single-row docx table.
+
+    Each cell shows ``label`` / ``value`` / ``sub`` stacked vertically, with
+    the accent-coloured value font weighted. No-op on empty list.
+    """
+    if not kpis:
+        return
+    tbl = doc.add_table(rows=1, cols=len(kpis))
+    tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+    for i, k in enumerate(kpis):
+        cell = tbl.cell(0, i)
+        # Cell shading
+        _set_cell_shading(cell, T.BG_LIGHT)
+
+        # Label
+        p_label = cell.paragraphs[0]
+        p_label.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run_label = p_label.add_run(k.label)
+        run_label.font.size = Pt(9)
+        run_label.font.color.rgb = _rgb(T.RGB_NEUTRAL)
+
+        # Value
+        p_val = cell.add_paragraph()
+        p_val.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run_val = p_val.add_run(k.value)
+        run_val.bold = True
+        run_val.font.size = Pt(18)
+        if k.trend == "positive":
+            run_val.font.color.rgb = _rgb(T.RGB_POSITIVE)
+        elif k.trend == "negative":
+            run_val.font.color.rgb = _rgb(T.RGB_NEGATIVE)
+        else:
+            run_val.font.color.rgb = _rgb(T.RGB_PRIMARY)
+
+        # Sub
+        if k.sub:
+            p_sub = cell.add_paragraph()
+            p_sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run_sub = p_sub.add_run(k.sub)
+            run_sub.font.size = Pt(8)
+            run_sub.font.color.rgb = _rgb(T.RGB_NEUTRAL)
+
+    # Space after the KPI row
+    doc.add_paragraph("")
 
 # ---------------------------------------------------------------------------
 # Narrative paragraphs

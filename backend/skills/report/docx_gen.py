@@ -33,8 +33,13 @@ def _build_docx_deterministic(doc: Document, report: ReportContent) -> None:
     E.build_cover_page(doc, report.title, report.author, report.date)
     E.build_toc_placeholder(doc)
 
-    for idx, section in enumerate(report.sections, 1):
-        E.build_section_heading(doc, idx, section.name)
+    # Batch 4: render KPI cards between TOC and first section
+    if report.kpi_cards:
+        E.build_kpi_row(doc, report.kpi_cards)
+
+    for section in report.sections:
+        # No auto-numbering — section names already include Chinese prefixes
+        E.build_section_heading(doc, 0, section.name)
         for item in section.items:
             if isinstance(item, NarrativeItem):
                 E.build_narrative(doc, item.text)
@@ -61,7 +66,10 @@ class DocxReportSkill(BaseSkill):
 
     async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
         try:
-            report = collect_and_associate(inp.params, context)
+            report = collect_and_associate(
+                inp.params, context,
+                task_order=inp.params.get("_task_order"),
+            )
 
             # ── Try Skill mode (LLM agent loop) ──
             mode = "deterministic_fallback"

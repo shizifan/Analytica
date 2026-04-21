@@ -32,13 +32,15 @@ DOCX_SYSTEM_PROMPT = """\
 
 ## 排版规范
 1. 首先添加封面页（add_cover_page），然后添加目录（add_toc）
-2. 按章节顺序处理每个 Section：先添加章节标题（add_section_heading），再添加该章节的所有内容项
-3. 章节内建议的内容顺序：叙述文本 → 统计表格 → 增长率指标 → 图表数据表 → 数据明细表
-4. 最后添加总结章节（add_summary_section）
-5. 完成后必须调用 finalize_document
+2. 如果存在 KPI 指标（用户消息中会标注 "KPI 卡片: N 张"），在目录之后调用 add_kpi_cards
+3. 按章节顺序处理每个 Section：先添加章节标题（add_section_heading，只传 title），再添加该章节的所有内容项
+4. 章节内建议的内容顺序：叙述文本 → 统计表格 → 增长率指标 → 图表数据表 → 数据明细表
+5. 最后添加总结章节（add_summary_section）
+6. 完成后必须调用 finalize_document
 
 ## 重要规则
 - 通过 section_index 和 item_index 引用内容，对应用户消息中的 Section 编号和 [] 编号
+- 章节名通常已带中文数字前缀（"一、经营摘要"），调用 add_section_heading 只传 title 即可，不要再加 "1." 这类编号
 - 不要跳过有内容的章节
 - 不要自行编造数据
 - 空章节可以跳过
@@ -87,10 +89,23 @@ def make_docx_tools(doc: Document, content: ReportContent) -> list:
         return "✓ 目录已添加"
 
     @tool
-    def add_section_heading(number: int, title: str) -> str:
-        """添加章节标题，如 '1. 货物吞吐量综合分析'。"""
-        E.build_section_heading(doc, number, title)
-        return f"✓ 章节标题已添加：{number}. {title}"
+    def add_section_heading(title: str, number: int | None = None) -> str:
+        """添加章节标题。``number`` 参数保留兼容旧调用，但渲染时忽略——
+        模板的章节名通常已带 "一、/二、" 等中文编号，不要再叠加阿拉伯数字。
+        """
+        E.build_section_heading(doc, number or 0, title)
+        return f"✓ 章节标题已添加：{title}"
+
+    @tool
+    def add_kpi_cards() -> str:
+        """在报告顶部添加业务 KPI 卡片行（封面/目录之后，章节之前）。
+
+        使用内置的 ReportContent.kpi_cards 数据，无需参数。
+        """
+        if not content.kpi_cards:
+            return "（无 KPI 可渲染，跳过）"
+        E.build_kpi_row(doc, content.kpi_cards)
+        return f"✓ KPI 卡片已添加（{len(content.kpi_cards)} 张）"
 
     @tool
     def add_narrative(section_index: int, item_index: int) -> str:
@@ -141,6 +156,7 @@ def make_docx_tools(doc: Document, content: ReportContent) -> list:
     return [
         add_cover_page,
         add_toc,
+        add_kpi_cards,
         add_section_heading,
         add_narrative,
         add_stats_table,
