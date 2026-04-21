@@ -14,6 +14,7 @@ from typing import Any
 
 from langchain_core.tools import tool
 
+from backend.skills._i18n import metric_label
 from backend.skills.report._agent_loop import FINALIZE_SENTINEL
 from backend.skills.report._content_collector import (
     ChartDataItem,
@@ -55,7 +56,7 @@ def _render_stats_table(summary_stats: dict[str, Any]) -> str:
         rows.append(f"<tr><td><b>{col}</b></td>{cells}</tr>")
     if not rows:
         return ""
-    header = "<tr>" + "".join(f"<th>{h}</th>" for h in ["指标"] + metrics) + "</tr>"
+    header = "<tr>" + "".join(f"<th>{h}</th>" for h in ["指标"] + [metric_label(m) for m in metrics]) + "</tr>"
     return f'<table class="stats">{header}{"".join(rows)}</table>'
 
 

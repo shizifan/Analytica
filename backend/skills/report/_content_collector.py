@@ -27,6 +27,7 @@ from typing import Any
 
 import pandas as pd
 
+from backend.skills._i18n import col_label
 from backend.skills.report._kpi_extractor import KPIItem, extract_kpis
 
 logger = logging.getLogger("analytica.skills.report._content_collector")
@@ -115,26 +116,6 @@ def _is_failed_narrative(text: str) -> bool:
 
 # ── DataFrame normalisation (batch 4 S4-6) ───────────────────────
 
-# Column-name → unit annotation map. Keeps the chart skill independent of
-# business vocabulary: when these column names appear in an upstream API
-# response, the rendered table header carries the unit inline.
-_UNIT_HINTS: dict[str, str] = {
-    "qty":        "吨",
-    "tonQ":       "吨",
-    "finishQty":  "万吨",
-    "targetQty":  "万吨",
-    "teu":        "TEU",
-    "currentYearTeu": "TEU",
-    "prevYearTeu":    "TEU",
-    "rate":       "%",
-    "yoyRate":    "%",
-    "momRate":    "%",
-    "workTh":     "台时",
-    "clientCount": "个",
-    "contributionRate": "%",
-}
-
-
 def normalize_dataframe_item(
     item: "DataFrameItem",
     max_rows: int = 8,
@@ -142,7 +123,7 @@ def normalize_dataframe_item(
     """Return a cleaned DataFrameItem suitable for rendering.
 
     Transforms:
-    - Add unit annotations to column headers (uses ``_UNIT_HINTS``).
+    - Translate column headers to Chinese using ``col_label()`` from _i18n.
     - Sort descending by first numeric column (makes TOP-N meaningful).
     - If more than ``max_rows`` rows, keep top (max_rows-1) and append an
       "其他" row summing the remaining numeric columns.
@@ -154,7 +135,19 @@ def normalize_dataframe_item(
         return item
 
     df = df.copy()
-    rename_map = {c: f"{c}({_UNIT_HINTS[c]})" for c in df.columns if c in _UNIT_HINTS}
+    # Rename only columns that have a Chinese translation and whose target
+    # label is not already taken (prevents duplicate column names when
+    # e.g. both "dateMonth" and "month" would map to "月份").
+    rename_map: dict[str, str] = {}
+    target_seen: set[str] = set(df.columns)  # existing names that must stay unique
+    for c in df.columns:
+        target = col_label(c)
+        if target != c and target not in target_seen:
+            rename_map[c] = target
+            target_seen.add(target)
+        elif target != c and target not in rename_map.values():
+            # target already used by another column; keep original name
+            pass
     if rename_map:
         df = df.rename(columns=rename_map)
 

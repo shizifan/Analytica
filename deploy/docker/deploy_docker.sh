@@ -14,7 +14,7 @@ echo "============================================"
 
 # ── Preflight checks ──────────────────────────────────────
 echo ""
-echo "[0/4] Preflight checks ..."
+echo "[0/5] Preflight checks ..."
 
 if ! command -v docker &>/dev/null; then
     echo "[ERROR] Docker is not installed."
@@ -47,7 +47,7 @@ echo "  Compose: $COMPOSE_CMD"
 
 # ── Step 1: Load Docker images ────────────────────────────
 echo ""
-echo "[1/4] Loading Docker images ..."
+echo "[1/5] Loading Docker images ..."
 
 if [ -f "$SCRIPT_DIR/images/analytica-app.tar.gz" ]; then
     echo "  Loading analytica:latest ..."
@@ -64,11 +64,31 @@ else
     echo "  Skipping MySQL image (not in package, assuming already loaded)."
 fi
 
+if [ -f "$SCRIPT_DIR/images/nginx-alpine.tar.gz" ]; then
+    echo "  Loading nginx:alpine ..."
+    docker load -i "$SCRIPT_DIR/images/nginx-alpine.tar.gz"
+else
+    echo "[ERROR] Image file not found: images/nginx-alpine.tar.gz"
+    exit 1
+fi
+
 echo "  Images loaded."
 
-# ── Step 2: Check .env configuration ──────────────────────
+# ── Step 2: Copy frontend dist ────────────────────────────
 echo ""
-echo "[2/4] Checking configuration ..."
+echo "[2/5] Copying frontend dist ..."
+
+if [ -d "$SCRIPT_DIR/frontend-dist" ]; then
+    rm -rf "$SCRIPT_DIR/../frontend/dist"
+    cp -r "$SCRIPT_DIR/frontend-dist" "$SCRIPT_DIR/../frontend/dist"
+    echo "  Frontend dist copied."
+else
+    echo "[WARN] frontend-dist not found in package, skipping."
+fi
+
+# ── Step 3: Check .env configuration ──────────────────────
+echo ""
+echo "[3/5] Checking configuration ..."
 
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
     echo "[ERROR] .env file not found."
@@ -83,9 +103,9 @@ echo "    - PROD_API_BASE"
 echo ""
 read -p "  Press Enter to continue (or Ctrl+C to abort and edit .env) ..."
 
-# ── Step 3: Start services ────────────────────────────────
+# ── Step 4: Start services ────────────────────────────────
 echo ""
-echo "[3/4] Starting services ..."
+echo "[4/5] Starting services ..."
 cd "$SCRIPT_DIR"
 
 # Create reports directory if needed
@@ -95,9 +115,9 @@ $COMPOSE_CMD up -d
 
 echo "  Services starting..."
 
-# ── Step 4: Wait for health check ─────────────────────────
+# ── Step 5: Wait for health check ─────────────────────────
 echo ""
-echo "[4/4] Waiting for application to be ready ..."
+echo "[5/5] Waiting for application to be ready ..."
 
 MAX_WAIT=120
 INTERVAL=5
@@ -109,15 +129,17 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
         echo "============================================"
         echo "  Analytica is running!"
         echo ""
-        echo "  URL: http://localhost:${ANALYTICA_PORT:-8000}"
-        echo "  Health: http://localhost:${ANALYTICA_PORT:-8000}/health"
+        echo "  Backend API:  http://localhost:${ANALYTICA_PORT:-8000}"
+        echo "  Health:       http://localhost:${ANALYTICA_PORT:-8000}/health"
+        echo "  Frontend:     http://localhost:${FRONTEND_PORT:-3000}"
         echo ""
         echo "  Useful commands:"
-        echo "    $COMPOSE_CMD logs -f app    # View app logs"
-        echo "    $COMPOSE_CMD logs -f db     # View MySQL logs"
-        echo "    $COMPOSE_CMD ps             # Service status"
-        echo "    $COMPOSE_CMD down           # Stop services"
-        echo "    $COMPOSE_CMD down -v        # Stop & remove data"
+        echo "    $COMPOSE_CMD logs -f app       # View app logs"
+        echo "    $COMPOSE_CMD logs -f db        # View MySQL logs"
+        echo "    $COMPOSE_CMD logs -f frontend  # View nginx logs"
+        echo "    $COMPOSE_CMD ps                 # Service status"
+        echo "    $COMPOSE_CMD down              # Stop services"
+        echo "    $COMPOSE_CMD down -v           # Stop & remove data"
         echo ""
         echo "  Run tests:"
         echo "    $COMPOSE_CMD exec app pytest tests/pipeline/test_pipeline_core5.py --env=mock -v -s -k 'TestCore5Pipeline'"

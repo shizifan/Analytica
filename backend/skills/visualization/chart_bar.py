@@ -10,6 +10,7 @@ from typing import Any
 
 import pandas as pd
 
+from backend.skills._i18n import col_label
 from backend.skills.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
 from backend.skills.registry import register_skill
 from backend.skills.visualization._config_parser import (
@@ -322,7 +323,7 @@ class BarChartSkill(BaseSkill):
         series = []
         for i, col in enumerate(y_fields):
             series.append({
-                "name": col,
+                "name": col_label(col),
                 "type": "bar",
                 "data": [round(float(v), 2) if pd.notna(v) else None for v in df[col]],
                 "itemStyle": {"color": SERIES_COLORS[i % len(SERIES_COLORS)]},

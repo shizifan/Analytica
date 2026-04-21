@@ -19,6 +19,7 @@ from backend.skills.report._content_collector import (
     ReportContent,
 )
 from backend.skills.report import _theme as T
+from backend.skills._i18n import metric_label
 
 logger = logging.getLogger("analytica.skills.report_html")
 
@@ -92,7 +93,7 @@ def _render_stats_table(summary_stats: dict[str, Any]) -> str:
         rows.append(f"<tr><td><b>{col}</b></td>{cells}</tr>")
     if not rows:
         return ""
-    header = "<tr>" + "".join(f"<th>{h}</th>" for h in ["指标"] + metrics) + "</tr>"
+    header = "<tr>" + "".join(f"<th>{h}</th>" for h in ["指标"] + [metric_label(m) for m in metrics]) + "</tr>"
     return f'<table class="stats">{header}{"".join(rows)}</table>'
 
 

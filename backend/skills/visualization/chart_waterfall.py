@@ -191,7 +191,7 @@ class WaterfallChartSkill(BaseSkill):
             "yAxis": {"type": "value"},
             "series": [
                 {
-                    "name": "base",
+                    "name": "基准",
                     "type": "bar",
                     "stack": "waterfall",
                     "itemStyle": {"borderColor": "transparent", "color": "transparent"},
@@ -199,7 +199,7 @@ class WaterfallChartSkill(BaseSkill):
                     "data": base_series,
                 },
                 {
-                    "name": "value",
+                    "name": "变化量",
                     "type": "bar",
                     "stack": "waterfall",
                     "label": {"show": True, "position": "top"},

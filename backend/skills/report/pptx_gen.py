@@ -1,8 +1,15 @@
-"""PPTX Report Generation Skill — Skill mode (LLM + tools) with deterministic fallback.
+"""PPTX Report Generation Skill.
 
-Orchestrator: delegates metadata/content extraction to ``_content_collector``,
-then either runs an LLM agent loop that composes the presentation using tools
-(wrapping ``_pptx_slides``), or falls back to a deterministic builder.
+Generation strategy (in priority order):
+  1. **PptxGenJS** (Node.js subprocess) — native PowerPoint charts, modern
+     layouts with KPI callouts, two-column narrative+chart slides.
+     Requires: ``node`` + ``pptxgenjs`` npm package.
+  2. **python-pptx deterministic** — pure-Python fallback with the same
+     slide structure but without native charts or advanced styling.
+
+The LLM agent loop is intentionally removed for PPTX: the deterministic
+builders now produce high-quality slides from the structured ReportContent
+model, making LLM orchestration unnecessary overhead.
 """
 from __future__ import annotations
 
@@ -22,12 +29,13 @@ from backend.skills.report._content_collector import (
 )
 from backend.skills.report import _pptx_slides as S
 from backend.skills.report import _theme as T
+from backend.skills._i18n import metric_label
 
 logger = logging.getLogger("analytica.skills.report_pptx")
 
 
 # ---------------------------------------------------------------------------
-# Deterministic builder (extracted from the original execute body)
+# Python-pptx deterministic fallback
 # ---------------------------------------------------------------------------
 
 def _stats_to_text(summary_stats: dict[str, Any]) -> str:
@@ -39,17 +47,50 @@ def _stats_to_text(summary_stats: dict[str, Any]) -> str:
         mean = vals.get("mean")
         std = vals.get("std")
         if mean is not None:
-            line = f"{col}：均值 {mean:,.2f}"
+            line = f"{col}：{metric_label('mean')} {mean:,.2f}"
             if std is not None:
-                line += f"  标准差 {std:,.2f}"
+                line += f"  {metric_label('std')} {std:,.2f}"
             lines.append(line)
     return "\n".join(lines) if lines else "暂无统计数据"
 
 
 def _build_pptx_deterministic(prs: Presentation, report: ReportContent) -> None:
-    """Build PPTX content using hardcoded slide ordering — the fallback path."""
+    """Build PPTX content using hardcoded slide ordering — the python-pptx fallback."""
     S.build_cover_slide(prs, report.title, report.author, report.date)
     S.build_toc_slide(prs, [s.name for s in report.sections])
+
+    # KPI overview slide (python-pptx version)
+    if report.kpi_cards:
+        from pptx.util import Pt
+        from pptx.dml.color import RGBColor
+        from pptx.enum.text import PP_ALIGN
+
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        fill = slide.background.fill
+        fill.solid()
+        fill.fore_color.rgb = RGBColor(*T.RGB_BG_LIGHT)
+
+        from backend.skills.report._pptx_slides import _add_textbox, _add_rect
+        _add_textbox(slide, Inches(0.5), Inches(0.3), Inches(9), Inches(0.7),
+                     "核心经营指标", font_size=22, bold=True,
+                     color=T.RGB_PRIMARY, alignment=PP_ALIGN.LEFT)
+
+        n = min(len(report.kpi_cards), 4)
+        card_w = 8.0 / n
+        for i, kpi in enumerate(report.kpi_cards[:n]):
+            cx = 1.0 + i * card_w
+            _add_rect(slide, Inches(cx), Inches(1.3), Inches(card_w - 0.2), Inches(4.5),
+                      T.RGB_BG_LIGHT)
+            _add_textbox(slide, Inches(cx + 0.1), Inches(1.5), Inches(card_w - 0.4), Inches(0.4),
+                         kpi.label, font_size=10, color=T.RGB_NEUTRAL, alignment=PP_ALIGN.CENTER)
+            color = T.RGB_POSITIVE if kpi.trend == "positive" else (
+                T.RGB_NEGATIVE if kpi.trend == "negative" else T.RGB_PRIMARY)
+            _add_textbox(slide, Inches(cx + 0.1), Inches(2.0), Inches(card_w - 0.4), Inches(1.2),
+                         kpi.value, font_size=36, bold=True, color=color,
+                         alignment=PP_ALIGN.CENTER, font_name=T.FONT_NUM)
+            if kpi.sub:
+                _add_textbox(slide, Inches(cx + 0.1), Inches(3.3), Inches(card_w - 0.4), Inches(0.4),
+                             kpi.sub, font_size=9, color=T.RGB_NEUTRAL, alignment=PP_ALIGN.CENTER)
 
     for idx, section in enumerate(report.sections, 1):
         S.build_section_divider_slide(prs, idx, section.name)
@@ -101,7 +142,7 @@ def _build_pptx_deterministic(prs: Presentation, report: ReportContent) -> None:
 
 @register_skill("skill_report_pptx", SkillCategory.REPORT, "PPTX 报告生成（封面/目录/图表/总结）",
                 input_spec="report_metadata + report_structure + 上游数据/图表引用",
-                output_spec="PPTX 文件路径")
+                output_spec="PPTX 文件字节")
 class PptxReportSkill(BaseSkill):
 
     async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
@@ -111,55 +152,51 @@ class PptxReportSkill(BaseSkill):
                 task_order=inp.params.get("_task_order"),
             )
 
-            # ── Try Skill mode (LLM agent loop) ──
-            mode = "deterministic_fallback"
+            # ── Strategy 1: PptxGenJS (native charts, modern layouts) ──
+            try:
+                from backend.skills.report._pptxgen_builder import (
+                    render_to_pptx,
+                    check_pptxgen_available,
+                )
+                if check_pptxgen_available():
+                    pptx_bytes = render_to_pptx(report)
+                    # Count slides for metadata (open with python-pptx, read-only)
+                    try:
+                        import io as _io
+                        _slide_count = len(Presentation(_io.BytesIO(pptx_bytes)).slides)
+                    except Exception:
+                        _slide_count = len(report.sections) + 4  # cover+toc+summary+thanks
+                    logger.info(
+                        "PPTX generated via PptxGenJS: %d bytes, %d slides, %d sections",
+                        len(pptx_bytes), _slide_count, len(report.sections),
+                    )
+                    return SkillOutput(
+                        skill_id=self.skill_id,
+                        status="success",
+                        output_type="file",
+                        data=pptx_bytes,
+                        metadata={
+                            "format": "pptx",
+                            "title": report.title,
+                            "file_size_bytes": len(pptx_bytes),
+                            "mode": "pptxgenjs",
+                            "slide_count": _slide_count,
+                            "sections": len(report.sections),
+                        },
+                    )
+                else:
+                    logger.info("PptxGenJS not available; using python-pptx fallback")
+            except Exception as pptxgen_err:
+                logger.warning(
+                    "PptxGenJS render failed (%s); falling back to python-pptx", pptxgen_err
+                )
+
+            # ── Strategy 2: python-pptx deterministic ──
             prs = Presentation()
             prs.slide_width = Inches(T.SLIDE_WIDTH)
             prs.slide_height = Inches(T.SLIDE_HEIGHT)
+            _build_pptx_deterministic(prs, report)
 
-            try:
-                from backend.config import get_settings
-
-                settings = get_settings()
-                if not settings.REPORT_AGENT_ENABLED:
-                    raise RuntimeError("agent mode disabled by config")
-
-                from langchain_openai import ChatOpenAI
-
-                from backend.skills.report._agent_loop import run_report_agent, serialize_report_content
-                from backend.skills.report._pptx_tools import PPTX_SYSTEM_PROMPT, make_pptx_tools
-
-                llm = ChatOpenAI(
-                    base_url=settings.QWEN_API_BASE,
-                    api_key=settings.QWEN_API_KEY,
-                    model=settings.QWEN_MODEL,
-                    temperature=0.2,
-                    request_timeout=90,
-                    extra_body={"enable_thinking": False},
-                )
-
-                tools = make_pptx_tools(prs, report)
-                user_message = serialize_report_content(report)
-                success = await run_report_agent(llm, tools, PPTX_SYSTEM_PROMPT, user_message)
-
-                if success:
-                    mode = "llm_agent"
-                else:
-                    logger.warning("PPTX agent did not finalise; falling back to deterministic")
-                    prs = Presentation()
-                    prs.slide_width = Inches(T.SLIDE_WIDTH)
-                    prs.slide_height = Inches(T.SLIDE_HEIGHT)
-                    _build_pptx_deterministic(prs, report)
-
-            except Exception as agent_err:
-                logger.warning("PPTX agent loop failed (%s); falling back to deterministic", agent_err)
-                prs = Presentation()
-                prs.slide_width = Inches(T.SLIDE_WIDTH)
-                prs.slide_height = Inches(T.SLIDE_HEIGHT)
-                _build_pptx_deterministic(prs, report)
-                mode = "deterministic_fallback_error"
-
-            # ── Serialise ──
             buffer = io.BytesIO()
             prs.save(buffer)
             pptx_bytes = buffer.getvalue()
@@ -174,7 +211,7 @@ class PptxReportSkill(BaseSkill):
                     "slide_count": len(prs.slides),
                     "title": report.title,
                     "file_size_bytes": len(pptx_bytes),
-                    "mode": mode,
+                    "mode": "python_pptx_fallback",
                 },
             )
 

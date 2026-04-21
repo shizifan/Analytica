@@ -10,6 +10,7 @@ from typing import Any
 
 import pandas as pd
 
+from backend.skills._i18n import col_label
 from backend.skills.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
 from backend.skills.registry import register_skill
 from backend.skills.visualization._config_parser import (
@@ -43,7 +44,7 @@ def _build_series_for_axis(
     """
     y_field = axis_spec.get("y_field")
     series_by = axis_spec.get("series_by")
-    label = axis_spec.get("label", y_field or "value")
+    label = axis_spec.get("label") or col_label(y_field or "value")
     if not y_field or y_field not in df.columns or x_field not in df.columns:
         return []
 
@@ -252,7 +253,7 @@ class LineChartSkill(BaseSkill):
         for i, col in enumerate(y_fields):
             color = SERIES_COLORS[i % len(SERIES_COLORS)]
             series.append({
-                "name": col,
+                "name": col_label(col),
                 "type": "line",
                 "data": [round(float(v), 2) if pd.notna(v) else None for v in df[col]],
                 "smooth": True,

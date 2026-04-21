@@ -31,3 +31,13 @@ deploy/wheels/
 
 # Environment (injected at runtime)
 .env
+
+# Frontend (served via nginx, not in this image)
+frontend/dist/
+frontend/node_modules/
+frontend/.gitignore
+frontend/eslint.config.js
+frontend/vite.config.ts
+frontend/tsconfig*.json
+frontend/src/test-setup.ts
+frontend/src/**/*.test.*

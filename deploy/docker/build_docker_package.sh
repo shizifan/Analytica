@@ -26,7 +26,7 @@ echo "============================================"
 
 # ── Preflight checks ──────────────────────────────────────
 echo ""
-echo "[0/5] Preflight checks ..."
+echo "[0/6] Preflight checks ..."
 
 if ! command -v docker &>/dev/null; then
     echo "[ERROR] Docker is not installed or not in PATH."
@@ -40,9 +40,26 @@ fi
 
 echo "  Docker OK."
 
-# ── Step 1: Build application image ───────────────────────
+# ── Step 1: Build frontend ───────────────────────────────
 echo ""
-echo "[1/5] Building application image for $PLATFORM ..."
+echo "[1/6] Building frontend ..."
+cd "$PROJECT_DIR/frontend"
+if [ ! -d "node_modules" ]; then
+    echo "  Installing frontend dependencies ..."
+    npm install
+fi
+echo "  Building frontend dist ..."
+npm run build
+FRONTEND_DIST="$PROJECT_DIR/frontend/dist"
+if [ ! -f "$FRONTEND_DIST/index.html" ]; then
+    echo "[ERROR] Frontend build failed: index.html not found."
+    exit 1
+fi
+echo "  Frontend built successfully."
+
+# ── Step 2: Build application image ───────────────────────
+echo ""
+echo "[2/6] Building application image for $PLATFORM ..."
 cd "$PROJECT_DIR"
 docker buildx build \
     --platform "$PLATFORM" \
@@ -51,25 +68,29 @@ docker buildx build \
     .
 echo "  Image 'analytica:latest' built."
 
-# ── Step 2: Pull MySQL image (optional) ───────────────────
+# ── Step 3: Pull MySQL image (optional) ───────────────────
 if [ "$SKIP_MYSQL" != "true" ]; then
     echo ""
-    echo "[2/5] Pulling MySQL 8.0 image for $PLATFORM ..."
+    echo "[3/6] Pulling MySQL 8.0 image for $PLATFORM ..."
     docker pull --platform "$PLATFORM" mysql:8.0
     echo "  Image 'mysql:8.0' pulled."
 else
     echo ""
-    echo "[2/5] Skipping MySQL image (already deployed on target)."
+    echo "[3/6] Skipping MySQL image (already deployed on target)."
 fi
 
-# ── Step 3: Save images ───────────────────────────────────
+# ── Step 4: Save images ───────────────────────────────────
 echo ""
-echo "[3/5] Saving Docker images ..."
+echo "[4/6] Saving Docker images ..."
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR/$PACKAGE_NAME/images"
 
 echo "  Saving analytica:latest ..."
 docker save analytica:latest | gzip > "$BUILD_DIR/$PACKAGE_NAME/images/analytica-app.tar.gz"
+
+echo "  Saving nginx:alpine ..."
+docker pull --platform "$PLATFORM" nginx:alpine
+docker save nginx:alpine | gzip > "$BUILD_DIR/$PACKAGE_NAME/images/nginx-alpine.tar.gz"
 
 if [ "$SKIP_MYSQL" != "true" ]; then
     echo "  Saving mysql:8.0 ..."
@@ -78,9 +99,9 @@ fi
 
 echo "  Images saved."
 
-# ── Step 4: Assemble deployment package ───────────────────
+# ── Step 5: Assemble deployment package ───────────────────
 echo ""
-echo "[4/5] Assembling deployment package ..."
+echo "[5/6] Assembling deployment package ..."
 
 # docker-compose.yml
 cp "$PROJECT_DIR/docker-compose.yml" "$BUILD_DIR/$PACKAGE_NAME/"
@@ -92,6 +113,13 @@ cp "$SCRIPT_DIR/env.docker" "$BUILD_DIR/$PACKAGE_NAME/.env"
 cp "$SCRIPT_DIR/deploy_docker.sh" "$BUILD_DIR/$PACKAGE_NAME/deploy.sh"
 chmod +x "$BUILD_DIR/$PACKAGE_NAME/deploy.sh"
 
+# nginx config
+cp "$SCRIPT_DIR/nginx.conf" "$BUILD_DIR/$PACKAGE_NAME/"
+
+# Frontend dist
+echo "  Copying frontend dist ..."
+cp -r "$FRONTEND_DIST" "$BUILD_DIR/$PACKAGE_NAME/frontend-dist"
+
 # Deployment guide
 if [ -f "$SCRIPT_DIR/README-DEPLOY.md" ]; then
     cp "$SCRIPT_DIR/README-DEPLOY.md" "$BUILD_DIR/$PACKAGE_NAME/"
@@ -99,9 +127,9 @@ fi
 
 echo "  Package assembled."
 
-# ── Step 5: Create archive ────────────────────────────────
+# ── Step 6: Create archive ────────────────────────────────
 echo ""
-echo "[5/5] Creating archive ..."
+echo "[6/6] Creating archive ..."
 cd "$BUILD_DIR"
 tar czf "$OUTPUT" "$PACKAGE_NAME"
 
@@ -121,10 +149,13 @@ echo "  Package contents:"
 echo "    ${PACKAGE_NAME}/"
 echo "    ├── images/"
 echo "    │   ├── analytica-app.tar.gz"
+echo "    │   └── nginx-alpine.tar.gz"
 if [ "$SKIP_MYSQL" != "true" ]; then
 echo "    │   └── mysql-8.0.tar.gz"
 fi
 echo "    ├── docker-compose.yml"
+echo "    ├── nginx.conf"
+echo "    ├── frontend-dist/"
 echo "    ├── .env"
 echo "    ├── deploy.sh"
 echo "    └── README-DEPLOY.md"

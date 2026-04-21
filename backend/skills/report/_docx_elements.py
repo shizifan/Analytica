@@ -16,6 +16,7 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.ns import qn, nsdecls
 from docx.oxml import parse_xml
 
+from backend.skills._i18n import metric_label
 from backend.skills.report import _theme as T
 
 # ---------------------------------------------------------------------------
@@ -228,7 +229,7 @@ def build_stats_table(doc: Document, summary_stats: dict[str, Any]) -> None:
         summary_stats = flat if flat else summary_stats
 
     metrics = ["mean", "median", "std", "min", "max"]
-    headers = ["指标"] + [m for m in metrics]
+    headers = ["指标"] + [metric_label(m) for m in metrics]
     rows_data: list[list[str]] = []
     for col, vals in summary_stats.items():
         if not isinstance(vals, dict):
