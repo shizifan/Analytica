@@ -3,7 +3,8 @@ import { useWsStore } from '../stores/wsStore';
 import { useSlotStore } from '../stores/slotStore';
 import { usePlanStore } from '../stores/planStore';
 import { useSessionStore, makeMessageId } from '../stores/sessionStore';
-import type { ReflectionSummary } from '../types';
+import { useThinkingStore, ephemeralThinkingId } from '../stores/thinkingStore';
+import type { ReflectionSummary, ThinkingKind } from '../types';
 
 const MAX_RETRIES = 10;
 const MAX_BACKOFF_MS = 30_000;
@@ -32,6 +33,8 @@ export function useWebSocket(sessionId: string | null) {
   const addMessage = useSessionStore((s) => s.addMessage);
   const setPhase = useSessionStore((s) => s.setPhase);
   const setSending = useSessionStore((s) => s.setSending);
+
+  const appendThinking = useThinkingStore((s) => s.appendEvent);
 
   // Mutable ref for reflection callback
   const onReflectionRef = useRef<((s: ReflectionSummary) => void) | null>(null);
@@ -123,6 +126,28 @@ export function useWebSocket(sessionId: string | null) {
 
         case 'pong':
           break;
+
+        // ── Phase 2 events ──────────────────────────────
+        case 'thinking_stream':
+          appendThinking({
+            id: ephemeralThinkingId(),
+            kind: ((data.kind as string) ?? 'thinking') as ThinkingKind,
+            phase: (data.phase as string) ?? null,
+            ts_ms: Date.now(),
+            payload: (data.payload as Record<string, unknown>) ?? null,
+          });
+          break;
+
+        case 'tool_call_start':
+        case 'tool_call_end':
+          appendThinking({
+            id: ephemeralThinkingId(),
+            kind: 'tool',
+            phase: 'execution',
+            ts_ms: Date.now(),
+            payload: data as Record<string, unknown>,
+          });
+          break;
       }
     };
 
@@ -143,7 +168,7 @@ export function useWebSocket(sessionId: string | null) {
     ws.onerror = () => {
       ws.close();
     };
-  }, [sessionId, setConnected, setWsStatus, incrementReconnect, setSlots, setCurrentAsking, setPlan, setPlanStatus, updateTaskStatus, addMessage, setPhase, setSending]);
+  }, [sessionId, setConnected, setWsStatus, incrementReconnect, setSlots, setCurrentAsking, setPlan, setPlanStatus, updateTaskStatus, addMessage, setPhase, setSending, appendThinking]);
 
   useEffect(() => {
     unmountedRef.current = false;

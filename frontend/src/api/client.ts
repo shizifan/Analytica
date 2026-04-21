@@ -1,6 +1,12 @@
 /** Lightweight API client — no Axios, uses native fetch. */
 
-import type { EmployeeSummary, EmployeeDetail } from '../types';
+import type {
+  EmployeeSummary,
+  EmployeeDetail,
+  PersistedMessage,
+  SessionSummary,
+  ThinkingEvent,
+} from '../types';
 
 const BASE = '';
 
@@ -60,4 +66,36 @@ export const api = {
 
   updateEmployee: (id: string, payload: Record<string, string>) =>
     request<EmployeeDetail>('PUT', `/api/employees/${id}`, payload),
+
+  // ── Phase 2 ──────────────────────────────────────────────
+  listSessions: (userId?: string, limit = 50, offset = 0) => {
+    const params = new URLSearchParams();
+    if (userId) params.set('user_id', userId);
+    params.set('limit', String(limit));
+    params.set('offset', String(offset));
+    return request<{ items: SessionSummary[]; count: number }>(
+      'GET',
+      `/api/sessions?${params.toString()}`,
+    );
+  },
+
+  replayMessages: (sessionId: string, sinceId = 0, limit = 200) =>
+    request<{ items: PersistedMessage[]; count: number; since_id: number }>(
+      'GET',
+      `/api/sessions/${sessionId}/messages?since_id=${sinceId}&limit=${limit}`,
+    ),
+
+  replayThinking: (
+    sessionId: string,
+    opts: { sinceId?: number; kind?: string; limit?: number } = {},
+  ) => {
+    const params = new URLSearchParams();
+    params.set('since_id', String(opts.sinceId ?? 0));
+    if (opts.kind) params.set('kind', opts.kind);
+    params.set('limit', String(opts.limit ?? 500));
+    return request<{ items: ThinkingEvent[]; count: number; since_id: number }>(
+      'GET',
+      `/api/sessions/${sessionId}/thinking?${params.toString()}`,
+    );
+  },
 };

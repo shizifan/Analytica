@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import (
-    Column, String, JSON, DateTime, Integer, Float, Text, SmallInteger,
+    BigInteger, Column, String, JSON, DateTime, Integer, Float, Text, SmallInteger,
     UniqueConstraint, Index, func,
 )
 
@@ -19,6 +19,60 @@ class SessionModel(Base):
     state_json = Column(JSON, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # Rail metadata for HistoryPane (Phase 2)
+    title = Column(String(255), nullable=True)
+    pinned = Column(SmallInteger, nullable=False, server_default="0")
+    deleted_at = Column(DateTime, nullable=True)
+
+    __table_args__ = (
+        Index("idx_sessions_user_updated", "user_id", "updated_at"),
+    )
+
+
+class ChatMessageModel(Base):
+    """Display-projection of conversation messages (Phase 2).
+
+    Written in parallel with state_json.messages — not the primary source
+    of truth for graph logic, but the authoritative source for replay and
+    the HistoryPane UI.
+    """
+
+    __tablename__ = "chat_messages"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    session_id = Column(String(36), nullable=False)
+    role = Column(String(16), nullable=False)  # user / assistant / system
+    type = Column(String(32), nullable=False, server_default="text")
+    phase = Column(String(32), nullable=True)
+    content = Column(Text, nullable=True)
+    payload = Column(JSON, nullable=True)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_chat_messages_session_id", "session_id", "id"),
+    )
+
+
+class ThinkingEventModel(Base):
+    """Agent thinking / tool-call / decision audit trail (Phase 2).
+
+    Feeds the "思维流" tab of Agent Inspector. Append-only; never mutated.
+    """
+
+    __tablename__ = "thinking_events"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    session_id = Column(String(36), nullable=False)
+    kind = Column(String(16), nullable=False)  # thinking / tool / decision / phase
+    phase = Column(String(32), nullable=True)
+    ts_ms = Column(BigInteger, nullable=False)
+    payload = Column(JSON, nullable=True)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_thinking_events_session_id", "session_id", "id"),
+    )
 
 
 class UserPreference(Base):

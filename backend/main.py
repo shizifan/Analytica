@@ -166,6 +166,70 @@ async def get_session(session_id: str, db=Depends(get_db_session)):
     return session
 
 
+# ── Sessions list & replay (Phase 2) ──────────────────────────
+
+@app.get("/api/sessions")
+async def list_sessions(
+    user_id: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    db=Depends(get_db_session),
+):
+    """List sessions for HistoryPane, newest first.
+
+    `user_id` filter is optional — omit to list every session (dev
+    convenience; callers wanting personal history should pass it).
+    """
+    from backend.memory import session_log
+    if limit < 1 or limit > 200:
+        limit = 50
+    if offset < 0:
+        offset = 0
+    items = await session_log.list_sessions(
+        db, user_id=user_id, limit=limit, offset=offset,
+    )
+    return {"items": items, "count": len(items)}
+
+
+@app.get("/api/sessions/{session_id}/messages")
+async def replay_messages(
+    session_id: str,
+    since_id: int = 0,
+    limit: int = 200,
+    db=Depends(get_db_session),
+):
+    """Replay chat messages for a session (for refresh/hydration)."""
+    from backend.memory import session_log
+    if limit < 1 or limit > 1000:
+        limit = 200
+    if since_id < 0:
+        since_id = 0
+    items = await session_log.list_chat_messages(
+        db, session_id, since_id=since_id, limit=limit,
+    )
+    return {"items": items, "count": len(items), "since_id": since_id}
+
+
+@app.get("/api/sessions/{session_id}/thinking")
+async def replay_thinking(
+    session_id: str,
+    since_id: int = 0,
+    kind: Optional[str] = None,
+    limit: int = 500,
+    db=Depends(get_db_session),
+):
+    """Replay thinking/tool/decision events for a session."""
+    from backend.memory import session_log
+    if limit < 1 or limit > 2000:
+        limit = 500
+    if since_id < 0:
+        since_id = 0
+    items = await session_log.list_thinking_events(
+        db, session_id, since_id=since_id, kind=kind, limit=limit,
+    )
+    return {"items": items, "count": len(items), "since_id": since_id}
+
+
 # ── Planning APIs ─────────────────────────────────────────────
 
 class PlanConfirmRequest(BaseModel):
@@ -353,6 +417,11 @@ async def websocket_chat(ws: WebSocket, session_id: str):
 
     # 从 session 获取 employee_id
     from backend.database import get_session_factory
+    from backend.memory import session_log
+    from backend.config import get_settings
+    settings = get_settings()
+    thinking_stream_enabled = settings.FF_THINKING_STREAM
+
     factory = get_session_factory()
     employee_id = None
     async with factory() as db_session:
@@ -382,16 +451,79 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                 await ws.send_json({"type": "error", "message": "Empty message"})
                 continue
 
+            # ── Phase 2: persist user message + seed session title ────
+            async with factory() as db_session:
+                await session_log.append_chat_message(
+                    db_session, session_id, role="user", content=user_message,
+                    type="text", phase=None,
+                )
+                if session_data is None or not (session_data.get("title")):
+                    # Only set on first message; keep snippet <= 80 chars.
+                    snippet = user_message.strip().replace("\n", " ")[:80]
+                    if snippet:
+                        await session_log.update_session_title(
+                            db_session, session_id, snippet,
+                        )
+                        # Mark locally so we don't overwrite on next turn
+                        session_data = session_data or {}
+                        session_data["title"] = snippet
+
             try:
                 prev_task_statuses: dict[str, str] = {}
                 prev_msg_count = 0
 
+                # Build a ws_callback that both forwards to the client and
+                # persists tool_call_* events to thinking_events.
+                async def _ws_callback(payload: dict) -> None:
+                    evt = payload.get("event")
+                    if evt in ("tool_call_start", "tool_call_end"):
+                        if thinking_stream_enabled:
+                            try:
+                                async with factory() as tx:
+                                    await session_log.append_thinking_event(
+                                        tx, session_id,
+                                        kind="tool",
+                                        payload=payload,
+                                        phase="execution",
+                                    )
+                            except Exception:
+                                logger.exception("thinking_events insert failed")
+                        # Always forward — the client can decide whether to
+                        # render the rich inspector or not.
+                        await ws.send_json(payload)
+                    else:
+                        # pass-through for task_update etc.
+                        await ws.send_json(payload)
+
                 async for event in run_stream(
                     session_id, user_id, user_message, employee_id=employee_id,
+                    ws_callback=_ws_callback,
                 ):
                     # 处理 run_stream 发出的初始元信息（消息基线）
                     if "__meta__" in event:
                         prev_msg_count = event["__meta__"].get("initial_msg_count", 0)
+                        continue
+
+                    # Thinking stream (node-boundary events from graph.run_stream)
+                    if "__thinking__" in event:
+                        thinking = event["__thinking__"]
+                        if thinking_stream_enabled:
+                            try:
+                                async with factory() as tx:
+                                    await session_log.append_thinking_event(
+                                        tx, session_id,
+                                        kind=thinking.get("kind", "thinking"),
+                                        payload=thinking.get("payload"),
+                                        phase=thinking.get("phase"),
+                                    )
+                            except Exception:
+                                logger.exception("thinking_events insert failed")
+                            await ws.send_json({
+                                "event": "thinking_stream",
+                                "kind": thinking.get("kind", "thinking"),
+                                "phase": thinking.get("phase"),
+                                "payload": thinking.get("payload"),
+                            })
                         continue
 
                     for node_name, node_state in event.items():
@@ -409,10 +541,26 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                         if cur_msg_count > prev_msg_count:
                             for msg in messages[prev_msg_count:]:
                                 if msg.get("role") == "assistant":
+                                    phase = node_state.get("current_phase", "unknown")
+                                    content = msg["content"]
+                                    # Persist assistant message (Phase 2)
+                                    persisted_id = 0
+                                    try:
+                                        async with factory() as tx:
+                                            persisted_id = await session_log.append_chat_message(
+                                                tx, session_id,
+                                                role="assistant",
+                                                content=content,
+                                                type="text",
+                                                phase=phase,
+                                            )
+                                    except Exception:
+                                        logger.exception("chat_messages insert failed")
                                     await ws.send_json({
                                         "event": "message",
-                                        "content": msg["content"],
-                                        "phase": node_state.get("current_phase", "unknown"),
+                                        "content": content,
+                                        "phase": phase,
+                                        "message_id": persisted_id or None,
                                     })
                             prev_msg_count = cur_msg_count
 

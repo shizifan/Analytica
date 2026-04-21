@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, AsyncGenerator, TypedDict
+from typing import Any, AsyncGenerator, Callable, TypedDict
 from uuid import uuid4
 
 from langgraph.graph import StateGraph, END
@@ -258,6 +258,7 @@ async def run_stream(
     user_id: str,
     user_message: str,
     employee_id: str | None = None,
+    ws_callback: Callable[[dict], Any] | None = None,
 ) -> AsyncGenerator[dict, None]:
     """Run the agent graph and stream state updates.
 
@@ -266,6 +267,9 @@ async def run_stream(
     持久化回数据库，供下一轮使用。
 
     当 employee_id 提供时，使用员工专属图；否则使用通用单例图。
+
+    `ws_callback` (Phase 2) — 若提供，execution.py 的任务更新 / 技能调用
+    事件会直接推送到该回调，而非仅通过状态 yield 传出。不序列化到 DB。
     """
     from backend.database import get_session_factory
     from backend.memory.store import MemoryStore
@@ -294,6 +298,11 @@ async def run_stream(
             make_initial_state(session_id, user_id, user_message, employee_id=employee_id)
         )
 
+    # 2b. 注入 Phase 2 WS 回调（execution.py 读 state["_ws_callback"]）
+    #     持久化前会被 pop 掉，避免写入 state_json。
+    if ws_callback is not None:
+        state["_ws_callback"] = ws_callback
+
     # 3. 获取对应的编译图
     if employee_id:
         from backend.employees.manager import EmployeeManager
@@ -305,14 +314,29 @@ async def run_stream(
     # 4. 通知调用方当前消息基线（避免重发历史消息）
     yield {"__meta__": {"initial_msg_count": len(state.get("messages", []))}}
 
-    # 5. 执行图并流式返回事件，同时捕获最终状态
+    # 5. 执行图并流式返回事件，同时捕获最终状态 + 节点边界思维流事件
     final_state = dict(state)
+    visited_nodes: set[str] = set()
     async for event in graph.astream(state):
-        for _node_name, node_state in event.items():
+        for node_name, node_state in event.items():
             final_state.update(node_state)
+            # 节点边界思维事件（Phase 2 粗粒度；Phase 3 再加 token 级）
+            if node_name not in visited_nodes:
+                visited_nodes.add(node_name)
+                yield {
+                    "__thinking__": {
+                        "kind": "phase",
+                        "phase": node_name,
+                        "payload": {
+                            "event": "phase_enter",
+                            "node": node_name,
+                        },
+                    }
+                }
         yield event
 
-    # 6. 将最终状态持久化到数据库，供下一轮加载
+    # 6. 最终状态 → DB；剥离非序列化字段
+    final_state.pop("_ws_callback", None)
     try:
         safe_state = json.loads(
             json.dumps(final_state, ensure_ascii=False, default=str)

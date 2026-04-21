@@ -85,7 +85,7 @@ export function HistoryPane({ items, activeId, onSelect, onNew }: Props) {
             暂无历史
             <br />
             <span className="an-mono" style={{ fontSize: 10 }}>
-              Phase 2 将接入会话持久化
+              发送第一条消息后会出现在这里
             </span>
           </div>
         ) : (

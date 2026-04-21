@@ -451,10 +451,45 @@ async def _execute_single_task(
     output: SkillOutput | None = None
     for attempt in range(1, max_attempts + 1):
         inp = SkillInput(params=task.params, context_refs=task.depends_on)
+        # ── tool_call_start (Phase 2) ──────────────────────
+        call_id = f"{task_id}#{attempt}"
+        if ws_callback:
+            try:
+                # Keep args payload compact — skip huge data context refs.
+                args_preview = {
+                    k: v for k, v in task.params.items()
+                    if not isinstance(v, (list, dict)) or len(repr(v)) < 500
+                }
+                await ws_callback({
+                    "event": "tool_call_start",
+                    "call_id": call_id,
+                    "task_id": task_id,
+                    "skill_id": skill_id,
+                    "attempt": attempt,
+                    "args": args_preview,
+                })
+            except Exception:
+                pass
+
         async with sem:
             output = await skill_executor(skill, inp, context, timeout_seconds=timeout)
 
         output.attempt_count = attempt
+
+        # ── tool_call_end (Phase 2) ────────────────────────
+        if ws_callback:
+            try:
+                await ws_callback({
+                    "event": "tool_call_end",
+                    "call_id": call_id,
+                    "task_id": task_id,
+                    "skill_id": skill_id,
+                    "status": output.status,
+                    "error": output.error_message,
+                    "error_category": output.error_category,
+                })
+            except Exception:
+                pass
 
         if output.status in ("success", "partial"):
             break

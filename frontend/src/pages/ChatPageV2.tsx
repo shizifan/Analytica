@@ -22,6 +22,8 @@ import { AgentPane } from '../components/ui/AgentPane';
 import { EmptyHero } from '../components/ui/EmptyHero';
 import { TweaksPanel } from '../components/ui/TweaksPanel';
 import { useTweakStore, applyTweaksToDocument } from '../lib/tweaks';
+import { hydrateSession } from '../lib/hydrate';
+import { useThinkingStore } from '../stores/thinkingStore';
 
 import type { ReflectionSummary } from '../types';
 import type { ConversationItem } from '../components/ui/HistoryPane';
@@ -70,8 +72,24 @@ export function ChatPageV2() {
   const [agentCollapsed, setAgentCollapsed] = useState(true);
   const [reflectionSummary, setReflectionSummary] = useState<ReflectionSummary | null>(null);
 
-  // Local history rail — Phase 2 replaces with GET /api/sessions.
-  const [history] = useState<ConversationItem[]>([]);
+  const [history, setHistory] = useState<ConversationItem[]>([]);
+  const resetThinking = useThinkingStore((s) => s.reset);
+
+  const refreshHistory = useCallback(async () => {
+    try {
+      const { items } = await api.listSessions(userId, 50);
+      setHistory(
+        items.map((s) => ({
+          id: s.session_id,
+          title: s.title ?? '(未命名会话)',
+          employeeTag: s.employee_id ?? undefined,
+          updatedAt: s.updated_at ?? new Date().toISOString(),
+        })),
+      );
+    } catch {
+      /* best-effort */
+    }
+  }, [userId]);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const initRef = useRef(false);
@@ -116,6 +134,16 @@ export function ChatPageV2() {
       .catch(() => {});
   }, [sessionId, selectedId, userId, setSession]);
 
+  // Phase 2: replay history + hydrate messages on session change
+  useEffect(() => {
+    refreshHistory();
+  }, [refreshHistory]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    hydrateSession(sessionId);
+  }, [sessionId]);
+
   useEffect(() => {
     if (!initRef.current) return;
     if (sessionId) {
@@ -134,8 +162,11 @@ export function ChatPageV2() {
     (content: string) => {
       sendMessage(content, userId);
       if (agentCollapsed) setAgentCollapsed(false);
+      // Refresh the history rail once the backend has a title; fire-and-
+      // forget with a short delay so the INSERT lands first.
+      setTimeout(refreshHistory, 1200);
     },
-    [sendMessage, userId, agentCollapsed],
+    [sendMessage, userId, agentCollapsed, refreshHistory],
   );
 
   const handlePlanAction = useCallback(
@@ -155,13 +186,48 @@ export function ChatPageV2() {
     clearConversation();
     resetPlan();
     resetSlots();
+    resetThinking();
     setReflectionSummary(null);
     setAgentCollapsed(true);
     api
       .createSession(userId, selectedId ?? undefined)
       .then(({ session_id }) => setSession(session_id, userId, selectedId))
       .catch(() => {});
-  }, [userId, selectedId, clearConversation, resetPlan, resetSlots, setSession]);
+    setTimeout(refreshHistory, 500);
+  }, [
+    userId,
+    selectedId,
+    clearConversation,
+    resetPlan,
+    resetSlots,
+    resetThinking,
+    setSession,
+    refreshHistory,
+  ]);
+
+  const handleSelectHistory = useCallback(
+    (id: string) => {
+      if (id === sessionId) return;
+      clearConversation();
+      resetPlan();
+      resetSlots();
+      resetThinking();
+      setReflectionSummary(null);
+      // Jump into the existing session; WS hook will re-connect, hydrate
+      // effect will replay messages.
+      setSession(id, userId, selectedId);
+    },
+    [
+      sessionId,
+      clearConversation,
+      resetPlan,
+      resetSlots,
+      resetThinking,
+      setSession,
+      userId,
+      selectedId,
+    ],
+  );
 
   const selectedEmployee = employees.find((e) => e.employee_id === selectedId) ?? null;
   const faqs = getEmployeeFAQs(selectedId);
@@ -175,9 +241,7 @@ export function ChatPageV2() {
         <HistoryPane
           items={history}
           activeId={sessionId}
-          onSelect={() => {
-            /* Phase 2 wires session switching */
-          }}
+          onSelect={handleSelectHistory}
           onNew={handleNewConversation}
         />
 

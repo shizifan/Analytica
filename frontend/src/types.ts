@@ -133,3 +133,38 @@ export interface EmployeeUpdatePayload {
   name?: string;
   description?: string;
 }
+
+// ── Phase 2: thinking stream + persisted messages ─────────────
+
+export type ThinkingKind = 'thinking' | 'tool' | 'decision' | 'phase';
+
+export interface ThinkingEvent {
+  id: number;
+  session_id?: string;
+  kind: ThinkingKind;
+  phase?: string | null;
+  ts_ms: number;
+  payload: Record<string, unknown> | null;
+  created_at?: string | null;
+}
+
+export interface PersistedMessage {
+  id: number;
+  session_id: string;
+  role: 'user' | 'assistant' | 'system';
+  type: string;
+  phase?: string | null;
+  content?: string | null;
+  payload?: Record<string, unknown> | null;
+  created_at?: string | null;
+}
+
+export interface SessionSummary {
+  session_id: string;
+  user_id: string;
+  employee_id?: string | null;
+  title?: string | null;
+  pinned: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
