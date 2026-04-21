@@ -2,7 +2,9 @@ import { NavLink, Routes, Route, Navigate } from 'react-router-dom';
 import { useSessionStore } from './stores/sessionStore';
 import { useWsStore } from './stores/wsStore';
 import { ChatPage } from './pages/ChatPage';
+import { ChatPageV2 } from './pages/ChatPageV2';
 import { EmployeesPage } from './pages/EmployeesPage';
+import { isNewUIEnabled } from './lib/featureFlags';
 
 function App() {
   const phase = useSessionStore((s) => s.phase);
@@ -17,6 +19,20 @@ function App() {
     reflection: '反思中',
     done: '已完成',
   };
+
+  // ChatPageV2 renders its own shell (Topbar + Workbench). The legacy header
+  // and banner below are only for the v1 routes.
+  const newUI = isNewUIEnabled();
+
+  if (newUI) {
+    return (
+      <Routes>
+        <Route index element={<ChatPageV2 />} />
+        <Route path="employees" element={<EmployeesPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
 
   return (
     <div className="flex h-screen flex-col bg-gray-50 text-gray-800">

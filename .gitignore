@@ -39,3 +39,6 @@ tests/output/
 # Docker build artifacts
 *.tar.gz
 nginx.conf
+
+#Design
+design/

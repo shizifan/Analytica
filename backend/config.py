@@ -37,6 +37,25 @@ class Settings(BaseSettings):
         description="API mode: 'mock' or 'prod'",
     )
 
+    # UI/UE revamp feature flags — see specs/ui-revamp-v2 phased plan.
+    # All default to the pre-revamp behavior so flipping them off rolls back cleanly.
+    FF_NEW_UI: bool = Field(
+        default=False,
+        description="Phase 1: enable three-pane workbench layout + new design tokens",
+    )
+    FF_THINKING_STREAM: bool = Field(
+        default=False,
+        description="Phase 2/3: emit thinking_stream / tool_call_* WS events + persist thinking_events",
+    )
+    FF_EMPLOYEE_SOURCE: str = Field(
+        default="yaml",
+        description="Phase 4: 'yaml' (files are source of truth) or 'db' (employees table)",
+    )
+    FF_API_REGISTRY_SOURCE: str = Field(
+        default="code",
+        description="Phase 6: 'code' (backend/agent/api_registry.py) or 'db' (api_endpoints table)",
+    )
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
