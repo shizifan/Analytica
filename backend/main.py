@@ -26,13 +26,26 @@ async def lifespan(app: FastAPI):
     skill_count = load_all_skills()
     logger.info("Loaded %d skill modules", skill_count)
 
-    # 加载员工配置
+    # 加载员工配置 — Phase 4: picks DB or YAML based on FF.
     from pathlib import Path
+    from backend.config import get_settings
     from backend.employees.manager import EmployeeManager
+    settings = get_settings()
     manager = EmployeeManager.get_instance()
-    config_dir = Path(__file__).resolve().parent.parent / "employees"
-    emp_count = manager.load_all_profiles(config_dir)
-    logger.info("Loaded %d employee profiles", emp_count)
+    if settings.FF_EMPLOYEE_SOURCE == "db":
+        try:
+            emp_count = await manager.load_from_db()
+            logger.info("Loaded %d employee profiles from DB", emp_count)
+        except Exception:
+            logger.exception(
+                "DB load failed for employees — falling back to YAML",
+            )
+            config_dir = Path(__file__).resolve().parent.parent / "employees"
+            emp_count = manager.load_all_profiles(config_dir)
+    else:
+        config_dir = Path(__file__).resolve().parent.parent / "employees"
+        emp_count = manager.load_all_profiles(config_dir)
+        logger.info("Loaded %d employee profiles from YAML", emp_count)
 
     # 启动校验
     if emp_count > 0:
@@ -61,69 +74,228 @@ async def health():
 
 # ── Employee APIs ────────────────────────────────────────────
 
-class UpdateEmployeeRequest(BaseModel):
+class FAQItemPayload(BaseModel):
+    id: str
+    question: str
+    tag: Optional[str] = None
+    type: Optional[str] = None
+
+
+class UpsertEmployeeRequest(BaseModel):
+    """Full-field upsert. `employee_id` is taken from the URL, not the
+    body, to avoid mismatch bugs."""
+
+    name: str
+    description: Optional[str] = None
+    version: str = "1.0"
+    initials: Optional[str] = None
+    status: str = "active"
+    domains: list[str] = Field(default_factory=list)
+    endpoints: list[str] = Field(default_factory=list)
+    skills: list[str] = Field(default_factory=list)
+    faqs: list[FAQItemPayload] = Field(default_factory=list)
+    perception: Optional[dict[str, Any]] = None
+    planning: Optional[dict[str, Any]] = None
+    snapshot_note: Optional[str] = None
+
+
+class PatchEmployeeRequest(BaseModel):
+    """Partial update; all fields optional. Missing fields keep current values."""
+
     name: Optional[str] = None
     description: Optional[str] = None
+    version: Optional[str] = None
+    initials: Optional[str] = None
+    status: Optional[str] = None
+    domains: Optional[list[str]] = None
+    endpoints: Optional[list[str]] = None
+    skills: Optional[list[str]] = None
+    faqs: Optional[list[FAQItemPayload]] = None
+    perception: Optional[dict[str, Any]] = None
+    planning: Optional[dict[str, Any]] = None
+    snapshot_note: Optional[str] = None
 
 
-@app.get("/api/employees")
-async def list_employees():
-    """List all available employees."""
-    from backend.employees.manager import EmployeeManager
-    manager = EmployeeManager.get_instance()
-    return [
-        {
-            "employee_id": p.employee_id,
-            "name": p.name,
-            "description": p.description,
-            "domains": p.domains,
-            "version": p.version,
-        }
-        for p in manager.list_employees()
-    ]
-
-
-@app.get("/api/employees/{employee_id}")
-async def get_employee(employee_id: str):
-    """Get employee details."""
-    from backend.employees.manager import EmployeeManager
-    manager = EmployeeManager.get_instance()
-    profile = manager.get_employee(employee_id)
-    if profile is None:
-        raise HTTPException(status_code=404, detail=f"Employee not found: {employee_id}")
+def _profile_to_detail(profile: Any) -> dict[str, Any]:
     return {
         "employee_id": profile.employee_id,
         "name": profile.name,
         "description": profile.description,
         "version": profile.version,
+        "initials": profile.initials,
+        "status": profile.status,
         "domains": profile.domains,
+        "endpoints": profile.endpoints,
         "skills": profile.skills,
+        "faqs": [f.model_dump() for f in profile.faqs],
         "perception": profile.perception.model_dump(),
         "planning": profile.planning.model_dump(),
     }
 
 
-@app.put("/api/employees/{employee_id}")
-async def update_employee(employee_id: str, req: UpdateEmployeeRequest):
-    """Update employee (only name and description)."""
+def _profile_to_summary(profile: Any) -> dict[str, Any]:
+    return {
+        "employee_id": profile.employee_id,
+        "name": profile.name,
+        "description": profile.description,
+        "domains": profile.domains,
+        "version": profile.version,
+        "initials": profile.initials,
+        "status": profile.status,
+        "faqs_count": len(profile.faqs),
+        "skills_count": len(profile.skills),
+        "endpoints_count": len(profile.endpoints),
+    }
+
+
+@app.get("/api/employees")
+async def list_employees():
+    """List all available employees (summary shape)."""
     from backend.employees.manager import EmployeeManager
     manager = EmployeeManager.get_instance()
-    updated = manager.update_employee(
-        employee_id,
-        **req.model_dump(exclude_none=True),
-    )
-    if updated is None:
+    return [_profile_to_summary(p) for p in manager.list_employees()]
+
+
+@app.get("/api/employees/{employee_id}")
+async def get_employee(employee_id: str):
+    """Get employee details (full profile)."""
+    from backend.employees.manager import EmployeeManager
+    manager = EmployeeManager.get_instance()
+    profile = manager.get_employee(employee_id)
+    if profile is None:
         raise HTTPException(status_code=404, detail=f"Employee not found: {employee_id}")
-    return {
-        "employee_id": updated.employee_id,
-        "name": updated.name,
-        "description": updated.description,
-        "version": updated.version,
-        "domains": updated.domains,
-        "skills": updated.skills,
-        "perception": updated.perception.model_dump(),
-        "planning": updated.planning.model_dump(),
+    return _profile_to_detail(profile)
+
+
+@app.post("/api/employees/{employee_id}", status_code=201)
+async def create_or_replace_employee(
+    employee_id: str, req: UpsertEmployeeRequest,
+):
+    """Create (or full-replace) an employee — DB mode only."""
+    from backend.employees.manager import EmployeeManager
+    manager = EmployeeManager.get_instance()
+    if manager.source != "db":
+        raise HTTPException(
+            status_code=400,
+            detail="Employee creation requires FF_EMPLOYEE_SOURCE=db",
+        )
+    try:
+        profile = await manager.upsert_employee(
+            employee_id,
+            **req.model_dump(exclude={"snapshot_note"}),
+            snapshot_note=req.snapshot_note,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if profile is None:
+        raise HTTPException(status_code=500, detail="Employee upsert failed")
+    return _profile_to_detail(profile)
+
+
+@app.put("/api/employees/{employee_id}")
+async def update_employee(employee_id: str, req: PatchEmployeeRequest):
+    """Patch an employee. YAML mode: name/description only (in-memory).
+    DB mode: all fields; persisted + version snapshot."""
+    from backend.employees.manager import EmployeeManager
+    manager = EmployeeManager.get_instance()
+
+    if manager.source == "yaml":
+        # Back-compat: YAML mode only supports the two simple fields.
+        updated = manager.update_employee(
+            employee_id,
+            name=req.name,
+            description=req.description,
+        )
+        if updated is None:
+            raise HTTPException(status_code=404, detail=f"Employee not found: {employee_id}")
+        return _profile_to_detail(updated)
+
+    # DB mode — merge over current profile for fields the caller omitted.
+    current = manager.get_employee(employee_id)
+    if current is None:
+        raise HTTPException(status_code=404, detail=f"Employee not found: {employee_id}")
+
+    patch = req.model_dump(exclude_unset=True, exclude_none=True)
+    faqs_override = patch.get("faqs")
+    if faqs_override is not None:
+        # pydantic dumped FAQItemPayload → list[dict]; pass through
+        faqs = faqs_override
+    else:
+        faqs = [f.model_dump() for f in current.faqs]
+
+    merged = {
+        "name": patch.get("name", current.name),
+        "description": patch.get("description", current.description),
+        "version": patch.get("version", current.version),
+        "initials": patch.get("initials", current.initials),
+        "status": patch.get("status", current.status),
+        "domains": patch.get("domains", current.domains),
+        "endpoints": patch.get("endpoints", current.endpoints),
+        "skills": patch.get("skills", current.skills),
+        "faqs": faqs,
+        "perception": patch.get("perception", current.perception.model_dump()),
+        "planning": patch.get("planning", current.planning.model_dump()),
+        "snapshot_note": patch.get("snapshot_note"),
     }
+
+    profile = await manager.upsert_employee(employee_id, **merged)
+    if profile is None:
+        raise HTTPException(status_code=500, detail="Employee update failed")
+    return _profile_to_detail(profile)
+
+
+@app.delete("/api/employees/{employee_id}")
+async def archive_employee(employee_id: str):
+    """Archive (soft delete) an employee — DB mode only."""
+    from backend.employees.manager import EmployeeManager
+    manager = EmployeeManager.get_instance()
+    if manager.source != "db":
+        raise HTTPException(
+            status_code=400,
+            detail="Archive requires FF_EMPLOYEE_SOURCE=db",
+        )
+    ok = await manager.archive_employee(employee_id)
+    if not ok:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Employee not found or already archived: {employee_id}",
+        )
+    return {"status": "ok", "employee_id": employee_id}
+
+
+@app.get("/api/employees/{employee_id}/versions")
+async def list_employee_versions(employee_id: str, db=Depends(get_db_session)):
+    """Return the version history for an employee (DB mode only)."""
+    from backend.employees.manager import EmployeeManager
+    from backend.memory import employee_store
+    if EmployeeManager.get_instance().source != "db":
+        raise HTTPException(
+            status_code=400,
+            detail="Version history requires FF_EMPLOYEE_SOURCE=db",
+        )
+    items = await employee_store.list_versions(db, employee_id)
+    return {"items": items, "count": len(items)}
+
+
+@app.get("/api/employees/{employee_id}/versions/{version}")
+async def get_employee_version(
+    employee_id: str, version: str, db=Depends(get_db_session),
+):
+    """Return the snapshot of a specific employee version (DB mode only)."""
+    from backend.employees.manager import EmployeeManager
+    from backend.memory import employee_store
+    if EmployeeManager.get_instance().source != "db":
+        raise HTTPException(
+            status_code=400,
+            detail="Version history requires FF_EMPLOYEE_SOURCE=db",
+        )
+    snap = await employee_store.get_version_snapshot(db, employee_id, version)
+    if snap is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Version not found: {employee_id}@{version}",
+        )
+    return {"employee_id": employee_id, "version": version, "snapshot": snap}
 
 
 # ── Session APIs ─────────────────────────────────────────────

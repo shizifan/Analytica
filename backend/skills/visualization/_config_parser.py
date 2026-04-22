@@ -41,6 +41,42 @@ def _coerce_mapping(value: Any, field: str) -> dict[str, Any]:
     return {}
 
 
+# Generic/placeholder chart titles that the planning LLM sometimes emits.
+# When the resolved title is one of these, fall through to the task name so
+# the chart gets a more descriptive heading derived from its task definition.
+_GENERIC_TITLES: frozenset[str] = frozenset([
+    "趋势图", "折线图", "柱状图", "饼图", "图表", "瀑布图",
+    "分析图", "对比图", "图", "chart", "trend",
+])
+
+# Leading action verbs and trailing chart-type suffixes to strip when
+# converting a task name (e.g. "生成全港吞吐量月度趋势折线图") into a
+# concise chart title (→ "全港吞吐量月度趋势").
+_TASK_NAME_PREFIXES = ("生成", "绘制", "制作", "创建", "展示", "画", "输出")
+_TASK_NAME_SUFFIXES = ("折线图", "柱状图", "饼图", "瀑布图", "趋势图", "图表", "图")
+
+
+def _clean_task_name_as_title(task_name: str) -> str:
+    """Strip action verbs and chart-type words from a task name for use as chart title.
+
+    Examples::
+
+        "生成全港吞吐量月度趋势折线图" → "全港吞吐量月度趋势"
+        "绘制港区吞吐量对比柱状图"    → "港区吞吐量对比"
+        "分析客户贡献率"               → "分析客户贡献率"  (no match → unchanged)
+    """
+    name = task_name.strip()
+    for prefix in _TASK_NAME_PREFIXES:
+        if name.startswith(prefix):
+            name = name[len(prefix):]
+            break
+    for suffix in _TASK_NAME_SUFFIXES:
+        if name.endswith(suffix):
+            name = name[: -len(suffix)]
+            break
+    return name.strip() or task_name.strip()
+
+
 def parse_chart_params(params: dict[str, Any], task_name: str = "") -> dict[str, Any]:
     """Normalise template-style params into a single dict.
 
@@ -51,8 +87,21 @@ def parse_chart_params(params: dict[str, Any], task_name: str = "") -> dict[str,
     """
     cfg = params.get("config") or {}
 
-    # Title: config.title > params.title > task.name > None
-    title = cfg.get("title") or params.get("title") or task_name or None
+    # Title resolution (in priority order):
+    #   1. config.title  — explicit per-chart override in template
+    #   2. params.title  — flat legacy field from planning LLM
+    #   3. task_name     — cleaned version of the task definition name
+    #
+    # Special case: if the resolved title is a known generic placeholder
+    # (e.g. "趋势图", "图表") skip it and fall through to task_name,
+    # which yields a much more descriptive heading.
+    _explicit = cfg.get("title") or params.get("title") or ""
+    if _explicit and _explicit.strip() not in _GENERIC_TITLES:
+        title = _explicit.strip()
+    elif task_name:
+        title = _clean_task_name_as_title(task_name)
+    else:
+        title = _explicit.strip() or None
 
     # Fields: config.* wins, fall back to legacy flat keys
     x_field = (

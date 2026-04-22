@@ -9,9 +9,9 @@ import { api } from '../api/client';
 import { getEmployeeFAQs } from '../data/employeeFaq';
 
 import { InputBar } from '../components/InputBar';
-import { EmployeeSelector } from '../components/EmployeeSelector';
 
 import { ChatMessage } from '../components/ui/ChatMessage';
+import { Icon } from '../components/ui/Icon';
 import { ReflectionCard } from '../components/ui/ReflectionCard';
 import { TaskResultsBlock } from '../components/ui/TaskResultsBlock';
 import { ThinkingIndicator } from '../components/ui/ThinkingIndicator';
@@ -20,6 +20,7 @@ import { HistoryPane } from '../components/ui/HistoryPane';
 import { AgentPane } from '../components/ui/AgentPane';
 import { EmptyHero } from '../components/ui/EmptyHero';
 import { TweaksPanel } from '../components/ui/TweaksPanel';
+import { EmployeesDrawer } from '../components/ui/EmployeesDrawer';
 import { useTweakStore, applyTweaksToDocument } from '../lib/tweaks';
 import { hydrateSession } from '../lib/hydrate';
 import { useThinkingStore } from '../stores/thinkingStore';
@@ -68,6 +69,7 @@ export function ChatPageV2() {
   const tweaks = useTweakStore();
   const [tweaksOpen, setTweaksOpen] = useState(false);
   const [agentCollapsed, setAgentCollapsed] = useState(true);
+  const [employeesDrawerOpen, setEmployeesDrawerOpen] = useState(false);
   const [reflectionSummary, setReflectionSummary] = useState<ReflectionSummary | null>(null);
 
   const [history, setHistory] = useState<ConversationItem[]>([]);
@@ -121,6 +123,17 @@ export function ChatPageV2() {
   useEffect(() => {
     if (employees.length === 0) fetchEmployees();
   }, [employees.length, fetchEmployees]);
+
+  const defaultSelectedAppliedRef = useRef(false);
+  useEffect(() => {
+    if (defaultSelectedAppliedRef.current) return;
+    if (employees.length === 0) return;
+    defaultSelectedAppliedRef.current = true;
+    if (selectedId !== null) return;
+    if (sessionId) return;
+    const fallback = employees.find((e) => e.employee_id === 'asset_investment');
+    if (fallback) setSelectedId(fallback.employee_id);
+  }, [employees, selectedId, sessionId, setSelectedId]);
 
   useEffect(() => {
     if (initRef.current) return;
@@ -266,7 +279,24 @@ export function ChatPageV2() {
   );
 
   const selectedEmployee = employees.find((e) => e.employee_id === selectedId) ?? null;
-  const faqs = getEmployeeFAQs(selectedId);
+
+  // Phase 4: prefer the profile's DB FAQs, fall back to legacy hardcoded
+  // file when an employee hasn't been seeded yet (or in "通用模式").
+  const detail = useEmployeeStore((s) => s.detail);
+  const fetchDetail = useEmployeeStore((s) => s.fetchDetail);
+  const clearDetail = useEmployeeStore((s) => s.clearDetail);
+  useEffect(() => {
+    if (selectedId) fetchDetail(selectedId);
+    else clearDetail();
+  }, [selectedId, fetchDetail, clearDetail]);
+
+  const faqs = (() => {
+    if (selectedId && detail?.employee_id === selectedId && detail.faqs?.length) {
+      return detail.faqs.map((f) => ({ id: f.id, question: f.question }));
+    }
+    return getEmployeeFAQs(selectedId);
+  })();
+
   const inputDisabled = !sessionId || wsStatus !== 'connected';
 
   return (
@@ -285,11 +315,25 @@ export function ChatPageV2() {
         <main className="an-pane an-chat-pane">
           <div className="an-chat-toolbar">
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-              <EmployeeSelector
-                employees={employees}
-                selectedId={selectedId}
-                onChange={(id) => setSelectedId(id)}
-              />
+              <button
+                type="button"
+                className="an-employee-chip"
+                onClick={() => setEmployeesDrawerOpen(true)}
+                title="切换 / 管理数字员工"
+              >
+                <span className={`avatar${selectedEmployee ? '' : ' gray'}`}>
+                  {selectedEmployee
+                    ? (selectedEmployee.initials || selectedEmployee.name.slice(0, 2))
+                    : 'ANY'}
+                </span>
+                <span className="name">
+                  {selectedEmployee ? selectedEmployee.name : '通用模式'}
+                </span>
+                {selectedEmployee && (
+                  <span className="ver">v{selectedEmployee.version}</span>
+                )}
+                <Icon name="chev-right" size={12} />
+              </button>
               {selectedEmployee && (
                 <span
                   style={{
@@ -383,6 +427,13 @@ export function ChatPageV2() {
       </div>
 
       <TweaksPanel open={tweaksOpen} onClose={() => setTweaksOpen(false)} />
+
+      <EmployeesDrawer
+        open={employeesDrawerOpen}
+        selectedId={selectedId}
+        onSelect={(id) => setSelectedId(id)}
+        onClose={() => setEmployeesDrawerOpen(false)}
+      />
     </div>
   );
 }

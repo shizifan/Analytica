@@ -113,8 +113,17 @@ cp "$SCRIPT_DIR/env.docker" "$BUILD_DIR/$PACKAGE_NAME/.env"
 cp "$SCRIPT_DIR/deploy_docker.sh" "$BUILD_DIR/$PACKAGE_NAME/deploy.sh"
 chmod +x "$BUILD_DIR/$PACKAGE_NAME/deploy.sh"
 
-# nginx config
-cp "$SCRIPT_DIR/nginx.conf" "$BUILD_DIR/$PACKAGE_NAME/"
+# nginx config (must be a file, not a directory)
+if [ -d "$SCRIPT_DIR/nginx.conf" ]; then
+    echo "[ERROR] nginx.conf is a directory, not a file. Please remove it first."
+    exit 1
+fi
+if [ -f "$SCRIPT_DIR/nginx.conf" ]; then
+    cp "$SCRIPT_DIR/nginx.conf" "$BUILD_DIR/$PACKAGE_NAME/"
+else
+    echo "[ERROR] nginx.conf not found at $SCRIPT_DIR/nginx.conf"
+    exit 1
+fi
 
 # Frontend dist
 echo "  Copying frontend dist ..."

@@ -56,6 +56,27 @@ def _validate_required_params(endpoint_id: str, params: dict) -> str | None:
     return None
 
 
+def _autofill_year_pairs(endpoint_id: str, params: dict) -> None:
+    """Derive `preYear = <base> - 1` when the endpoint accepts preYear but caller omitted it.
+
+    Prod API rejects missing preYear even though the planner may treat it as optional.
+    Mutates `params` in place, matching the type of the base year value.
+    """
+    if "preYear" in params:
+        return
+    ep = get_endpoint(endpoint_id)
+    if not ep or "preYear" not in (ep.required + ep.optional):
+        return
+    base = params.get("dateYear") if "dateYear" in params else params.get("currYear")
+    if base is None:
+        return
+    try:
+        pre = int(base) - 1
+    except (TypeError, ValueError):
+        return
+    params["preYear"] = str(pre) if isinstance(base, str) else pre
+
+
 @register_skill("skill_api_fetch", SkillCategory.DATA_FETCH, "调用数据源 API 获取原始数据，返回 DataFrame",
                 input_spec="endpoint_id + 查询参数（日期/区域等）",
                 output_spec="DataFrame (JSON 数据)")
@@ -76,6 +97,7 @@ class ApiDataFetchSkill(BaseSkill):
 
         # Validate required params
         query_params = {k: v for k, v in params.items() if k != "endpoint_id"}
+        _autofill_year_pairs(endpoint_id, query_params)
         validation_err = _validate_required_params(endpoint_id, query_params)
         if validation_err:
             return self._fail(validation_err)

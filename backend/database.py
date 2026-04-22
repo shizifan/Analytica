@@ -54,6 +54,46 @@ class ChatMessageModel(Base):
     )
 
 
+class EmployeeModel(Base):
+    """Digital-worker profile (Phase 4).
+
+    Superset of the YAML schema plus `initials` / `faqs` / `status`
+    columns that power the admin drawer. Endpoints = [] retains the
+    legacy "auto-derive from domains" semantic.
+    """
+
+    __tablename__ = "employees"
+
+    employee_id = Column(String(64), primary_key=True)
+    name = Column(String(128), nullable=False)
+    description = Column(Text, nullable=True)
+    version = Column(String(32), nullable=False, server_default="1.0")
+    initials = Column(String(8), nullable=True)
+    status = Column(String(16), nullable=False, server_default="active")
+    domains = Column(JSON, nullable=False)
+    endpoints = Column(JSON, nullable=False)
+    skills = Column(JSON, nullable=False)
+    faqs = Column(JSON, nullable=False)
+    perception = Column(JSON, nullable=True)
+    planning = Column(JSON, nullable=True)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+    updated_at = Column(
+        DateTime, nullable=False, server_default=func.now(), onupdate=func.now(),
+    )
+
+
+class EmployeeVersionModel(Base):
+    """Frozen snapshots of an employee profile for audit / diff / rollback."""
+
+    __tablename__ = "employee_versions"
+
+    employee_id = Column(String(64), primary_key=True)
+    version = Column(String(32), primary_key=True)
+    snapshot = Column(JSON, nullable=False)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+
+
 class ThinkingEventModel(Base):
     """Agent thinking / tool-call / decision audit trail (Phase 2).
 

@@ -18,6 +18,25 @@ load_dotenv()
 
 # ── Database Session Fixture ──────────────────────────────────
 
+@pytest_asyncio.fixture(autouse=True, loop_scope="function")
+async def _reset_global_db_engine_between_tests():
+    """Each test runs in a fresh event loop (function-scoped), but
+    ``backend.database`` caches a module-level engine bound to whatever
+    loop first called ``get_engine()``. Leaving that engine around
+    poisons subsequent tests with "got Future attached to a different
+    loop". Dispose + null out before each test.
+    """
+    from backend import database
+    if database._engine is not None:
+        try:
+            await database._engine.dispose()
+        except Exception:
+            pass
+        database._engine = None
+        database._session_factory = None
+    yield
+
+
 @pytest_asyncio.fixture(loop_scope="function")
 async def test_db_session():
     """Provide an async database session for tests.

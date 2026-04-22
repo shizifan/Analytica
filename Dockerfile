@@ -10,18 +10,14 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies (production + test)
-COPY requirements.txt requirements-test.txt ./
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-test.txt
+# Install Python dependencies
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application source
 COPY backend/ backend/
 COPY migrations/ migrations/
 COPY alembic.ini pyproject.toml ./
-
-# Copy test & mock server (for pipeline testing on target)
-COPY tests/ tests/
-COPY mock_server/ mock_server/
 COPY employees/ employees/
 
 # Copy entrypoint script

@@ -1,8 +1,10 @@
 /** Lightweight API client — no Axios, uses native fetch. */
 
 import type {
-  EmployeeSummary,
   EmployeeDetail,
+  EmployeeSummary,
+  EmployeeUpdatePayload,
+  EmployeeVersionSummary,
   PersistedMessage,
   SessionSummary,
   ThinkingEvent,
@@ -64,8 +66,21 @@ export const api = {
   getEmployee: (id: string) =>
     request<EmployeeDetail>('GET', `/api/employees/${id}`),
 
-  updateEmployee: (id: string, payload: Record<string, string>) =>
+  updateEmployee: (id: string, payload: EmployeeUpdatePayload) =>
     request<EmployeeDetail>('PUT', `/api/employees/${id}`, payload),
+
+  createEmployee: (id: string, payload: EmployeeUpdatePayload) =>
+    request<EmployeeDetail>('POST', `/api/employees/${id}`, payload),
+
+  deleteEmployee: (id: string) =>
+    request<{ status: string; employee_id: string }>(
+      'DELETE', `/api/employees/${id}`,
+    ),
+
+  listEmployeeVersions: (id: string) =>
+    request<{ items: EmployeeVersionSummary[]; count: number }>(
+      'GET', `/api/employees/${id}/versions`,
+    ),
 
   // ── Phase 2 ──────────────────────────────────────────────
   listSessions: (userId?: string, limit = 50, offset = 0) => {

@@ -81,10 +81,34 @@ echo "[2/5] Copying frontend dist ..."
 if [ -d "$SCRIPT_DIR/frontend-dist" ]; then
     mkdir -p "$SCRIPT_DIR/frontend"
     rm -rf "$SCRIPT_DIR/frontend/dist"
-    cp -r "$SCRIPT_DIR/frontend-dist" "$SCRIPT_DIR/frontend/dist"
-    echo "  Frontend dist copied."
+    # Use trailing slash to copy contents, not the directory itself
+    cp -r "$SCRIPT_DIR/frontend-dist/" "$SCRIPT_DIR/frontend/dist/"
+    echo "  Frontend dist copied to frontend/dist/."
+    
+    # Verify the copy was successful
+    if [ -f "$SCRIPT_DIR/frontend/dist/index.html" ]; then
+        echo "  Verification: index.html found."
+    else
+        echo "[ERROR] index.html not found after copy!"
+        echo "  Contents of frontend-dist:"
+        ls -la "$SCRIPT_DIR/frontend-dist/"
+        echo "  Contents of frontend/"
+        ls -la "$SCRIPT_DIR/frontend/"
+        exit 1
+    fi
 else
     echo "[WARN] frontend-dist not found in package, skipping."
+fi
+
+# Verify nginx.conf is a file (not a directory)
+if [ -d "$SCRIPT_DIR/nginx.conf" ]; then
+    echo "[ERROR] nginx.conf is a directory. Please remove it first:"
+    echo "  rm -rf \"$SCRIPT_DIR/nginx.conf\""
+    exit 1
+fi
+if [ ! -f "$SCRIPT_DIR/nginx.conf" ]; then
+    echo "[ERROR] nginx.conf not found."
+    exit 1
 fi
 
 # ── Step 3: Check .env configuration ──────────────────────
@@ -141,10 +165,6 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
         echo "    $COMPOSE_CMD ps                 # Service status"
         echo "    $COMPOSE_CMD down              # Stop services"
         echo "    $COMPOSE_CMD down -v           # Stop & remove data"
-        echo ""
-        echo "  Run tests:"
-        echo "    $COMPOSE_CMD exec app pytest tests/pipeline/test_pipeline_core5.py --env=mock -v -s -k 'TestCore5Pipeline'"
-        echo "    $COMPOSE_CMD exec app pytest tests/pipeline/test_pipeline_core5.py --env=prod -v -s -k 'TestCore5Pipeline'"
         echo "============================================"
         exit 0
     fi

@@ -50,8 +50,10 @@ class Settings(BaseSettings):
                     "in real time even when persistence is off.",
     )
     FF_EMPLOYEE_SOURCE: str = Field(
-        default="yaml",
-        description="Phase 4: 'yaml' (files are source of truth) or 'db' (employees table)",
+        default="db",
+        description="Phase 4: 'yaml' (files are source of truth) or 'db' (employees table). "
+                    "DB mode requires the seed script to have run. YAML is a safe fallback "
+                    "(lifespan catches DB failure and falls back automatically).",
     )
     FF_API_REGISTRY_SOURCE: str = Field(
         default="code",

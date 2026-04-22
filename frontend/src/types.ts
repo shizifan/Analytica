@@ -116,16 +116,30 @@ export type WsIncomingEvent =
 
 // ── Digital Employee types ────────────────────────────────────
 
+export interface EmployeeFAQ {
+  id: string;
+  question: string;
+  tag?: string | null;
+  type?: string | null;
+}
+
 export interface EmployeeSummary {
   employee_id: string;
   name: string;
   description: string;
   domains: string[];
   version: string;
+  initials?: string | null;
+  status?: string;
+  faqs_count?: number;
+  skills_count?: number;
+  endpoints_count?: number;
 }
 
 export interface EmployeeDetail extends EmployeeSummary {
   skills: string[];
+  endpoints: string[];
+  faqs: EmployeeFAQ[];
   perception: Record<string, unknown>;
   planning: Record<string, unknown>;
 }
@@ -133,6 +147,22 @@ export interface EmployeeDetail extends EmployeeSummary {
 export interface EmployeeUpdatePayload {
   name?: string;
   description?: string;
+  version?: string;
+  initials?: string | null;
+  status?: string;
+  domains?: string[];
+  endpoints?: string[];
+  skills?: string[];
+  faqs?: EmployeeFAQ[];
+  perception?: Record<string, unknown>;
+  planning?: Record<string, unknown>;
+  snapshot_note?: string;
+}
+
+export interface EmployeeVersionSummary {
+  version: string;
+  note?: string | null;
+  created_at: string;
 }
 
 // ── Phase 2: thinking stream + persisted messages ─────────────

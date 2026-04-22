@@ -51,6 +51,16 @@ class PlanningConfig(BaseModel):
 # ── EmployeeProfile ────────────────────────────────────────
 
 
+class FAQItem(BaseModel):
+    """Phase 4: FAQ entries moved from frontend-only `employeeFaq.ts`
+    into the authoritative employee profile so admins can edit them."""
+
+    id: str
+    question: str
+    tag: Optional[str] = None
+    type: Optional[str] = None
+
+
 class EmployeeProfile(BaseModel):
     employee_id: str
     name: str
@@ -61,6 +71,10 @@ class EmployeeProfile(BaseModel):
     skills: list[str]
     perception: PerceptionConfig = Field(default_factory=PerceptionConfig)
     planning: PlanningConfig = Field(default_factory=PlanningConfig)
+    # ── Phase 4 additions (DB-first fields) ──
+    initials: Optional[str] = None
+    status: str = "active"
+    faqs: list[FAQItem] = Field(default_factory=list)
 
     # ── class methods ──
 
