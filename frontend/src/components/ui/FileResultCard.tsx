@@ -30,6 +30,9 @@ function durationLabel(ms?: number): string | null {
  * `artifact_id` is null the artifact failed to persist — surface a
  * degraded card with no download, just the format badge.
  */
+// 与 api/client.ts 的 BASE 规则保持一致：支持子路径（如 /analytica/）部署
+const API_PREFIX = import.meta.env.BASE_URL.replace(/\/$/, '');
+
 export function FileResultCard({ primary }: Props) {
   const file = (primary.data as TaskResultFile | null) ?? null;
   const artifactId = file?.artifact_id ?? null;
@@ -57,8 +60,8 @@ export function FileResultCard({ primary }: Props) {
   if (duration) metaBits.push(duration);
   if (primary.skill) metaBits.push(primary.skill);
 
-  const downloadUrl = artifactId ? `/api/reports/${artifactId}/download` : null;
-  const previewUrl = artifactId ? `/api/reports/${artifactId}/preview` : null;
+  const downloadUrl = artifactId ? `${API_PREFIX}/api/reports/${artifactId}/download` : null;
+  const previewUrl = artifactId ? `${API_PREFIX}/api/reports/${artifactId}/preview` : null;
 
   const handleDownload = () => {
     if (!downloadUrl) return;
@@ -85,7 +88,7 @@ export function FileResultCard({ primary }: Props) {
       setConverted((m) => ({ ...m, [fmt]: newId }));
       // Immediately trigger download — that's the user's intent.
       const a = document.createElement('a');
-      a.href = `/api/reports/${newId}/download`;
+      a.href = `${API_PREFIX}/api/reports/${newId}/download`;
       a.target = '_blank';
       a.rel = 'noopener';
       document.body.appendChild(a);
@@ -103,7 +106,7 @@ export function FileResultCard({ primary }: Props) {
     const id = converted[fmt];
     if (!id) return;
     const a = document.createElement('a');
-    a.href = `/api/reports/${id}/download`;
+    a.href = `${API_PREFIX}/api/reports/${id}/download`;
     a.target = '_blank';
     a.rel = 'noopener';
     document.body.appendChild(a);

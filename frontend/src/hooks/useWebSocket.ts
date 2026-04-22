@@ -43,7 +43,9 @@ export function useWebSocket(sessionId: string | null) {
     if (!sessionId || unmountedRef.current) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const url = `${protocol}//${window.location.host}/ws/chat/${sessionId}`;
+    // 与 api/client.ts 保持一致：继承 Vite `base`，子路径部署也能连上 WS
+    const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+    const url = `${protocol}//${window.location.host}${basePath}/ws/chat/${sessionId}`;
 
     setWsStatus('connecting');
     const ws = new WebSocket(url);
