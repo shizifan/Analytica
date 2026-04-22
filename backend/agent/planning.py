@@ -398,7 +398,14 @@ class PlanningEngine:
             template_hint=template_hint,
         )
 
+        # Use per-complexity timeout; fall back to constructor default only when
+        # the complexity-specific value doesn't exist.
+        effective_timeout = _PLANNING_TIMEOUT_BY_COMPLEXITY.get(
+            complexity, self.llm_timeout
+        )
+
         last_error: Exception | None = None
+        timeout_attempts = 0
         for attempt in range(self.max_retries):
             if attempt > 0:
                 await asyncio.sleep(1.0 * (2 ** (attempt - 1)))
@@ -406,7 +413,7 @@ class PlanningEngine:
             try:
                 raw_output = await asyncio.wait_for(
                     self._invoke_llm(prompt),
-                    timeout=self.llm_timeout,
+                    timeout=effective_timeout,
                 )
                 plan_dict = parse_planning_llm_output(raw_output)
                 plan = self._build_plan(plan_dict, complexity, intent)
@@ -414,7 +421,15 @@ class PlanningEngine:
                 return plan
             except asyncio.TimeoutError as e:
                 last_error = e
-                logger.warning("Planning LLM timeout (attempt %d/%d)", attempt + 1, self.max_retries)
+                timeout_attempts += 1
+                logger.warning(
+                    "Planning LLM timeout (attempt %d/%d, complexity=%s, timeout=%.0fs)",
+                    attempt + 1, self.max_retries, complexity, effective_timeout,
+                )
+                # Timeout is a capacity/network issue; a single retry is enough.
+                # Retrying 3× would block the user for 3×timeout seconds.
+                if timeout_attempts >= 2:
+                    break
             except PlanningError as e:
                 last_error = e
                 logger.warning("Planning parse error (attempt %d/%d): %s", attempt + 1, self.max_retries, e)

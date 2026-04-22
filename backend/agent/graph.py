@@ -128,7 +128,7 @@ async def planning_node(state: AgentState) -> AgentState:
             api_key=settings.QWEN_API_KEY,
             model=settings.QWEN_MODEL,
             temperature=0.1,
-            request_timeout=120,
+            request_timeout=200,  # must exceed the largest per-complexity timeout (180s)
             extra_body={"enable_thinking": False},
         )
 

@@ -9,6 +9,21 @@ class Settings(BaseSettings):
     QWEN_API_KEY: str = Field(..., description="Qwen3 API key")
     QWEN_MODEL: str = Field(default="qwen3-235b-instruct", description="Qwen3 model name")
 
+    # Qwen3.5-122B — lighter/faster model for planning or quick queries
+    # External: opensseapi.cmhk.com  |  Online (prod): opensseapi.cmft.com
+    QWEN3_5_122B_API_BASE: str = Field(
+        default="https://opensseapi.cmhk.com/CMHK-LMMP-PRD_Qwen3_5_122B/CMHK-LMMP-PRD/v1",
+        description="Qwen3.5-122B API base URL (OpenAI compatible)",
+    )
+    QWEN3_5_122B_API_KEY: str = Field(
+        default="",
+        description="Qwen3.5-122B API key (leave empty to reuse QWEN_API_KEY)",
+    )
+    QWEN3_5_122B_MODEL: str = Field(
+        default="Qwen3-5-122B",
+        description="Qwen3.5-122B model name",
+    )
+
     REPORT_AGENT_ENABLED: bool = Field(
         default=True,
         description="Enable LLM agent loop for report generation; set False to use deterministic mode only",
