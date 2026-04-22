@@ -45,6 +45,15 @@ async def lifespan(app: FastAPI):
         try:
             emp_count = await manager.load_from_db()
             logger.info("Loaded %d employee profiles from DB", emp_count)
+            # 兜底：DB 可用但表里是空的（seed 未跑 / 还没导入）时也回退
+            # 到 YAML，避免前端拿到空列表只剩"通用模式"。
+            if emp_count == 0:
+                logger.warning(
+                    "DB returned 0 employees — falling back to YAML "
+                    "(run `python -m migrations.scripts.seed_employees_from_yaml` to seed DB)"
+                )
+                config_dir = Path(__file__).resolve().parent.parent / "employees"
+                emp_count = manager.load_all_profiles(config_dir)
         except Exception:
             logger.exception(
                 "DB load failed for employees — falling back to YAML",

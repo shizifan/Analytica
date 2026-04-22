@@ -68,6 +68,10 @@ docker buildx build \
     .
 echo "  Image 'analytica:latest' built."
 
+# Reclaim dangling images from previous builds (same tag got reassigned).
+docker image prune -f >/dev/null
+echo "  Dangling images pruned."
+
 # ── Step 3: Pull MySQL image (optional) ───────────────────
 if [ "$SKIP_MYSQL" != "true" ]; then
     echo ""
@@ -128,6 +132,10 @@ fi
 # Frontend dist
 echo "  Copying frontend dist ..."
 cp -r "$FRONTEND_DIST" "$BUILD_DIR/$PACKAGE_NAME/frontend-dist"
+# Strip macOS AppleDouble sidecar files (._foo) that `cp`/`tar` would otherwise embed.
+find "$BUILD_DIR/$PACKAGE_NAME/frontend-dist" -name '._*' -delete 2>/dev/null || true
+# Ensure world-readable so the `nginx` user inside the container can serve them.
+chmod -R a+rX "$BUILD_DIR/$PACKAGE_NAME/frontend-dist"
 
 # Deployment guide
 if [ -f "$SCRIPT_DIR/README-DEPLOY.md" ]; then
@@ -140,7 +148,21 @@ echo "  Package assembled."
 echo ""
 echo "[6/6] Creating archive ..."
 cd "$BUILD_DIR"
-tar czf "$OUTPUT" "$PACKAGE_NAME"
+
+# 1) 清掉 macOS 扩展属性（com.apple.provenance / com.apple.quarantine 等），
+#    否则 bsdtar 会把它们塞进 tar 扩展头，Linux GNU tar 解包会一路 warn。
+if command -v xattr &>/dev/null; then
+    xattr -cr "$PACKAGE_NAME" 2>/dev/null || true
+fi
+
+# 2) 直接尝试用 bsdtar 的 --options 禁用 xattr + mac metadata。
+#    bsdtar ≥ 3.x 的 `--help` 输出是精简版，即便不列出这些选项也是支持的，
+#    因此不做 `--help` 检测，失败时自动回退到基础 tar。
+#    COPYFILE_DISABLE=1 仍作为 AppleDouble (._foo) 兜底。
+if ! COPYFILE_DISABLE=1 tar --no-xattrs --no-mac-metadata -czf "$OUTPUT" "$PACKAGE_NAME" 2>/dev/null; then
+    echo "  [fallback] tar without --no-xattrs/--no-mac-metadata ..."
+    COPYFILE_DISABLE=1 tar -czf "$OUTPUT" "$PACKAGE_NAME"
+fi
 
 # Cleanup build dir
 rm -rf "$BUILD_DIR"

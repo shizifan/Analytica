@@ -36,12 +36,14 @@ def upgrade() -> None:
     op.create_table('sessions',
     sa.Column('session_id', sa.String(length=36), nullable=False),
     sa.Column('user_id', sa.String(length=36), nullable=False),
+    sa.Column('employee_id', sa.String(length=100), nullable=True),
     sa.Column('state_json', sa.JSON(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
     sa.PrimaryKeyConstraint('session_id')
     )
     op.create_index(op.f('ix_sessions_user_id'), 'sessions', ['user_id'], unique=False)
+    op.create_index(op.f('ix_sessions_employee_id'), 'sessions', ['employee_id'], unique=False)
     op.create_table('skill_notes',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('skill_id', sa.String(length=100), nullable=False),
@@ -82,6 +84,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_slot_history_session_id'), table_name='slot_history')
     op.drop_table('slot_history')
     op.drop_table('skill_notes')
+    op.drop_index(op.f('ix_sessions_employee_id'), table_name='sessions')
     op.drop_index(op.f('ix_sessions_user_id'), table_name='sessions')
     op.drop_table('sessions')
     op.drop_index('idx_templates_lookup', table_name='analysis_templates')

@@ -83,8 +83,12 @@ if [ -d "$SCRIPT_DIR/frontend-dist" ]; then
     rm -rf "$SCRIPT_DIR/frontend/dist"
     # Use trailing slash to copy contents, not the directory itself
     cp -r "$SCRIPT_DIR/frontend-dist/" "$SCRIPT_DIR/frontend/dist/"
+    # Strip macOS AppleDouble (._foo) files that slipped into legacy packages.
+    find "$SCRIPT_DIR/frontend/dist" -name '._*' -delete 2>/dev/null || true
+    # Nginx worker runs as the `nginx` user inside the container; ensure world-readable.
+    chmod -R a+rX "$SCRIPT_DIR/frontend/dist"
     echo "  Frontend dist copied to frontend/dist/."
-    
+
     # Verify the copy was successful
     if [ -f "$SCRIPT_DIR/frontend/dist/index.html" ]; then
         echo "  Verification: index.html found."

@@ -10,9 +10,7 @@ import type {
   ThinkingEvent,
 } from '../types';
 
-// 统一用 Vite 的 BASE_URL（即 vite.config 里的 `base`）做前缀，
-// 这样无论部署在根路径还是 `/analytica/` 子路径下都能正确拼接。
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+const BASE = '';
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const opts: RequestInit = {
