@@ -51,6 +51,14 @@ function derivePlanStatus(
   return 'ready';
 }
 
+/** Guard: returns true if the store's active session still matches the one we
+ *  started hydrating for. Rapid session switches can leave multiple in-flight
+ *  hydrateSession calls; without this check the slower one would overwrite the
+ *  faster one's results when its awaits complete. */
+function isStillActive(sessionId: string): boolean {
+  return useSessionStore.getState().sessionId === sessionId;
+}
+
 export async function hydrateSession(sessionId: string): Promise<void> {
   try {
     const store = useSessionStore.getState();
@@ -66,6 +74,9 @@ export async function hydrateSession(sessionId: string): Promise<void> {
       api.replayThinking(sessionId),
       api.getSession(sessionId).catch(() => null),
     ]);
+
+    // Bail out if the user switched sessions while we were awaiting.
+    if (!isStillActive(sessionId)) return;
 
     // ── chat messages (delta) ──────────────────────────────────
     if (msgRes.items.length > 0) {

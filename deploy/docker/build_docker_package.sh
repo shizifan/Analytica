@@ -17,6 +17,7 @@ BUILD_DIR="$PROJECT_DIR/build_docker"
 OUTPUT="$PROJECT_DIR/${PACKAGE_NAME}.tar.gz"
 PLATFORM="linux/arm64"
 SKIP_MYSQL="${SKIP_MYSQL:-true}"
+SKIP_BUMP="${SKIP_BUMP:-false}"
 
 echo "============================================"
 echo "  Analytica Docker Offline Package Builder"
@@ -39,6 +40,24 @@ if ! docker info &>/dev/null; then
 fi
 
 echo "  Docker OK."
+
+# ── Step 0.5: Bump patch version in package.json ─────────
+PKGJSON="$PROJECT_DIR/frontend/package.json"
+CURRENT_VER=$(python3 -c "import json; print(json.load(open('$PKGJSON'))['version'])")
+if [ "$SKIP_BUMP" = "true" ]; then
+    echo "  Version bump skipped. Using: $CURRENT_VER"
+else
+    IFS='.' read -r V_MAJOR V_MINOR V_PATCH <<< "$CURRENT_VER"
+    NEW_VER="${V_MAJOR}.${V_MINOR}.$((V_PATCH + 1))"
+    python3 - <<PY
+import json
+p = json.load(open('$PKGJSON'))
+p['version'] = '$NEW_VER'
+json.dump(p, open('$PKGJSON', 'w'), indent=2, ensure_ascii=False)
+open('$PKGJSON', 'a').write('\n')
+PY
+    echo "  Version bumped: $CURRENT_VER → $NEW_VER"
+fi
 
 # ── Step 1: Build frontend ───────────────────────────────
 echo ""

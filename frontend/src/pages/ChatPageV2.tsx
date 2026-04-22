@@ -161,6 +161,8 @@ export function ChatPageV2() {
       clearConversation();
       resetPlan();
       resetSlots();
+      resetThinking();
+      setReflectionSummary(null);
       api
         .createSession(userId, selectedId ?? undefined)
         .then(({ session_id }) => setSession(session_id, userId, selectedId))
