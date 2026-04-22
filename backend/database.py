@@ -94,6 +94,33 @@ class EmployeeVersionModel(Base):
     created_at = Column(DateTime, nullable=False, server_default=func.now())
 
 
+class ReportArtifactModel(Base):
+    """Generated report file (HTML / DOCX / PPTX / Markdown) — Phase 5.
+
+    The bytes live on disk under `settings.REPORTS_DIR` to keep MySQL
+    slim; this row is the lookup key + metadata for the download /
+    preview endpoints.
+    """
+
+    __tablename__ = "report_artifacts"
+
+    id = Column(String(36), primary_key=True)
+    session_id = Column(String(36), nullable=False)
+    task_id = Column(String(64), nullable=True)
+    skill_id = Column(String(100), nullable=True)
+    format = Column(String(16), nullable=False)
+    title = Column(String(255), nullable=True)
+    file_path = Column(String(512), nullable=False)
+    size_bytes = Column(BigInteger, nullable=True)
+    status = Column(String(16), nullable=False, server_default="ready")
+    meta = Column(JSON, nullable=True)
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+
+    __table_args__ = (
+        Index("idx_report_artifacts_session", "session_id", "created_at"),
+    )
+
+
 class ThinkingEventModel(Base):
     """Agent thinking / tool-call / decision audit trail (Phase 2).
 

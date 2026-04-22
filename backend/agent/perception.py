@@ -153,11 +153,12 @@ SLOT_DEFAULTS = {
     "data_granularity": None,
 }
 
-# Condition activation rules
+# Condition activation rules — only slots here will trigger clarification questions
+# when their condition is met. attribution_needed / predictive_needed intentionally
+# omitted: they default to False via SLOT_DEFAULTS and are enabled only when the
+# user explicitly asks for 归因/预测 in their query.
 CONDITION_RULES = {
     "output_format": lambda complexity: complexity == "full_report",
-    "attribution_needed": lambda complexity: complexity == "full_report",
-    "predictive_needed": lambda complexity: complexity == "full_report",
 }
 
 

@@ -532,14 +532,29 @@ class PlanningEngine:
         # Report hint: 5层链路规范
         report_hint = ""
         if complexity == "full_report":
-            output_format = ""
             slots_inner = intent.get("slots", {})
+
+            def _normalize_formats(raw: Any) -> list[str]:
+                if raw is None:
+                    return []
+                items = raw if isinstance(raw, list) else [raw]
+                out: list[str] = []
+                for item in items:
+                    if item is None:
+                        continue
+                    s = str(item).strip().upper()
+                    if s:
+                        out.append(s)
+                return list(dict.fromkeys(out))  # preserve order, dedupe
+
+            raw_formats: list[str] = []
             if isinstance(slots_inner, dict):
                 fmt_slot = slots_inner.get("output_format", {})
                 if isinstance(fmt_slot, dict):
-                    output_format = (fmt_slot.get("value") or "").upper()
-            if not output_format:
-                output_format = (intent.get("output_format") or "").upper()
+                    raw_formats = _normalize_formats(fmt_slot.get("value"))
+            if not raw_formats:
+                raw_formats = _normalize_formats(intent.get("output_format"))
+            output_formats = raw_formats or ["HTML"]
 
             format_skill_map = {
                 "HTML": "skill_report_html",
@@ -548,15 +563,39 @@ class PlanningEngine:
                 "PPTX": "skill_report_pptx",
                 "PPT": "skill_report_pptx",
             }
-            report_skill = format_skill_map.get(output_format, "skill_report_html")
+            report_skills = [
+                (fmt, format_skill_map.get(fmt, "skill_report_html"))
+                for fmt in output_formats
+            ]
 
             attr_slot = slots_inner.get("attribution_needed", {}) if isinstance(slots_inner, dict) else {}
             attr_needed = attr_slot.get("value", True) if isinstance(attr_slot, dict) else True
             attr_note = "" if attr_needed else "\n  → attribution_needed=false，可省略 skill_attribution 任务"
 
+            if len(report_skills) == 1:
+                fmt, skill = report_skills[0]
+                layer5_spec = (
+                    f"  Layer5 报告层（1，必须最后）: {skill}\n"
+                    f"    → depends_on 所有可视化层 + 汇总层任务\n"
+                    f"    → estimated_seconds: 30\n"
+                    f"    → params 包含 report_metadata: {{title, author, date}}"
+                )
+                format_display = fmt
+            else:
+                format_display = " / ".join(fmt for fmt, _ in report_skills)
+                lines = [
+                    f"  Layer5 报告层（共 {len(report_skills)} 个任务，每种格式 1 个，必须最后）:"
+                ]
+                for fmt, skill in report_skills:
+                    lines.append(
+                        f"    • {skill}（{fmt}）→ depends_on 所有可视化层 + 汇总层任务；"
+                        f"estimated_seconds: 30；params 包含 report_metadata: {{title, author, date}}"
+                    )
+                layer5_spec = "\n".join(lines)
+
             report_hint = (
                 f"【full_report 报告生成规范】\n"
-                f"报告格式: {output_format or 'HTML'}，报告技能: {report_skill}\n\n"
+                f"报告格式: {format_display}\n\n"
                 f"必须按5层链路组织 tasks：\n"
                 f"  Layer1 数据层（≥4）: skill_api_fetch × N（主KPI + 趋势序列 + 结构分布 + 对比基线）\n"
                 f"  Layer2 分析层（≥2）: skill_desc_analysis + skill_attribution{attr_note}\n"
@@ -564,10 +603,7 @@ class PlanningEngine:
                 f"  Layer3 可视化层（≥3）: skill_chart_bar / skill_chart_line / skill_chart_waterfall 组合\n"
                 f"    → 每图 depends_on 1-2个数据层任务\n"
                 f"  Layer4 汇总层（1）: skill_summary_gen，depends_on 所有分析层任务\n"
-                f"  Layer5 报告层（1，必须最后）: {report_skill}\n"
-                f"    → depends_on 所有可视化层 + 汇总层任务\n"
-                f"    → estimated_seconds: 30\n"
-                f"    → params 包含 report_metadata: {{title, author, date}}\n\n"
+                f"{layer5_spec}\n\n"
                 f"report_structure 必须填充，格式:\n"
                 f'  {{"sections": [{{"name": "章节名", "task_refs": ["T001", "T002"]}}, ...]}}\n'
                 f"建议章节：一、概览 | 二、趋势分析 | 三、结构分析 | 四、归因分析 | 五、结论建议"
@@ -848,45 +884,113 @@ TYPE_LABELS = {
 }
 
 
+_LAYER_ORDER = ["data_fetch", "search", "analysis", "visualization", "report_gen"]
+
+_REPORT_SKILL_TO_FORMAT = {
+    "skill_report_html": "HTML",
+    "skill_report_docx": "DOCX",
+    "skill_report_pptx": "PPTX",
+    "skill_report_markdown": "Markdown",
+}
+
+
+def _fmt_duration(seconds: int) -> str:
+    if seconds >= 60:
+        return f"约 {seconds // 60} 分钟"
+    return f"约 {seconds} 秒"
+
+
+def _summarize_deliverables(grouped: dict[str, list[TaskItem]]) -> str:
+    """Produce a short, user-facing description of what the plan delivers."""
+    report_tasks = grouped.get("report_gen", [])
+    viz_tasks = grouped.get("visualization", [])
+    data_tasks = grouped.get("data_fetch", [])
+
+    parts: list[str] = []
+
+    if report_tasks:
+        formats: list[str] = []
+        for t in report_tasks:
+            fmt = _REPORT_SKILL_TO_FORMAT.get(t.skill)
+            if fmt and fmt not in formats:
+                formats.append(fmt)
+        if formats:
+            parts.append(
+                f"{len(report_tasks)} 份综合报告（{' / '.join(formats)}）"
+            )
+        else:
+            parts.append(f"{len(report_tasks)} 份综合报告")
+
+    if viz_tasks and not report_tasks:
+        # If report_gen exists, charts are embedded in the report — don't double-count.
+        parts.append(f"{len(viz_tasks)} 张图表")
+
+    if not report_tasks and not viz_tasks and data_tasks:
+        parts.append(f"{len(data_tasks)} 份数据查询结果")
+
+    return "；".join(parts) if parts else "分析结果"
+
+
 def format_plan_as_markdown(plan: AnalysisPlan, auto_confirmed: bool = False) -> str:
-    """Format an AnalysisPlan as user-facing Markdown.
+    """Format an AnalysisPlan as a user-facing **summary** in Markdown.
+
+    The chat bubble is intentionally summary-only — the full interactive
+    task list lives in the Inspector's PlanCard. Here we surface:
+
+    1. Deliverables (what will I actually get)
+    2. Execution scope by layer (counts + subtotal time)
+    3. Total time and action line
 
     When `auto_confirmed` is True (simple plans that skip the confirmation
     prompt), the trailing action line is omitted so the frontend renders
     the plan as a read-only summary rather than a blocking card.
     """
     total_seconds = plan.estimated_duration or sum(t.estimated_seconds for t in plan.tasks)
-    if total_seconds >= 60:
-        time_str = f"约 {total_seconds // 60} 分钟"
-    else:
-        time_str = f"约 {total_seconds} 秒"
 
-    lines = [
-        f"**分析方案 · v{plan.version}**（预计完成时间：{time_str}）",
+    grouped: dict[str, list[TaskItem]] = {}
+    for task in plan.tasks:
+        grouped.setdefault(task.type, []).append(task)
+
+    lines: list[str] = [
+        f"**分析方案 · v{plan.version}**（预计完成时间：{_fmt_duration(total_seconds)}）",
         "",
         f"**分析目标：** {plan.analysis_goal or plan.title}",
         "",
-        "任务清单：",
+        "**交付产出**",
+        f"- {_summarize_deliverables(grouped)}",
+        "",
+        f"**执行范围**（共 {len(plan.tasks)} 个任务）",
     ]
 
-    for task in plan.tasks:
-        type_label = TYPE_LABELS.get(task.type, task.type)
-        ep_id = task.params.get("endpoint_id", "")
-        ep_info = ""
-        if ep_id:
-            ep_meta = get_endpoint(ep_id)
-            ep_intent = ep_meta.intent if ep_meta else ""
-            ep_info = f"\n   → 来源：{ep_id}，{ep_intent}"
+    # Show layer counts + subtotal time, without listing individual tasks.
+    rendered_types: set[str] = set()
+    for ttype in _LAYER_ORDER:
+        group = grouped.get(ttype)
+        if not group:
+            continue
+        label = TYPE_LABELS.get(ttype, ttype)
+        group_seconds = sum(t.estimated_seconds for t in group)
+        lines.append(f"- {label} · {len(group)} 个（{_fmt_duration(group_seconds)}）")
+        rendered_types.add(ttype)
 
-        lines.append(
-            f"  {task.task_id} · {task.name} _({type_label} · 预计 {task.estimated_seconds} 秒)_"
-            f"{ep_info}"
-        )
+    for ttype, group in grouped.items():
+        if ttype in rendered_types:
+            continue
+        label = TYPE_LABELS.get(ttype, ttype)
+        group_seconds = sum(t.estimated_seconds for t in group)
+        lines.append(f"- {label} · {len(group)} 个（{_fmt_duration(group_seconds)}）")
+
+    lines.extend([
+        "",
+        "_完整任务清单见右侧「计划」面板_",
+        "",
+        "---",
+    ])
 
     if auto_confirmed:
-        lines.extend(["", "---", "_自动执行中…_"])
+        lines.append("_自动执行中…_")
     else:
-        lines.extend(["", "---", "[确认执行] [修改方案] [重新规划]"])
+        lines.append("[确认执行] [修改方案] [重新规划]")
 
     return "\n".join(lines)
 

@@ -119,4 +119,10 @@ export const api = {
       'DELETE',
       `/api/sessions/${sessionId}`,
     ),
+
+  convertReport: (artifactId: string, format: 'docx' | 'pptx') =>
+    request<{ artifact_id: string; format: string; status: string }>(
+      'POST',
+      `/api/reports/${artifactId}/convert?format=${format}`,
+    ),
 };

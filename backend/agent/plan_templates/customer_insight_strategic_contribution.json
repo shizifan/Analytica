@@ -14,11 +14,16 @@
       "客户洞察报告",
       "客户贡献报告",
       "市场客户分析报告",
-      "客户综合分析"
+      "客户综合分析",
+      "战略客户洞察综合报告",
+      "战略客户洞察综合",
+      "客户洞察综合报告"
     ],
     "slot_values": {
       "output_complexity": "full_report",
-      "output_format": "pptx",
+      "output_format": [
+        "HTML"
+      ],
       "attribution_needed": true,
       "comparison_type": "snapshot",
       "data_granularity": "customer",
@@ -29,7 +34,7 @@
       }
     },
     "core_apis_covered": 10,
-    "task_count": 19
+    "task_count": 21
   },
   "plan_id": "tpl-customer-full-report-001",
   "version": 1,
@@ -420,10 +425,10 @@
       "output_ref": ""
     },
     {
-      "task_id": "T019",
+      "task_id": "T020",
       "type": "report_gen",
-      "name": "生成PPTX洞察报告",
-      "description": "按report_structure组装PPT格式的市场客户洞察报告",
+      "name": "生成HTML洞察报告",
+      "description": "按report_structure组装HTML格式的市场客户洞察报告",
       "depends_on": [
         "T014",
         "T015",
@@ -431,7 +436,7 @@
         "T017",
         "T018"
       ],
-      "skill": "skill_report_pptx",
+      "skill": "skill_report_html",
       "params": {
         "report_metadata": {
           "title": "2026年4月市场客户与战略客户洞察报告",

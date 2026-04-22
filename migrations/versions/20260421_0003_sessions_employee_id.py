@@ -1,15 +1,19 @@
-"""sessions.employee_id column
+"""sessions.employee_id column (no-op)
 
 Revision ID: 20260421_0003
 Revises: 20260421_0002
 Create Date: 2026-04-21
+
+This revision was created during Phase 4 to add `sessions.employee_id`,
+but that column already exists from the initial `347e30f8de94` migration
+(`VARCHAR(100)` with an auto-generated index). Re-adding it would abort
+the upgrade with a "duplicate column name" error, so the body is now a
+no-op. The revision number is preserved to keep the migration chain
+linear across environments that already stamped it.
 """
 from __future__ import annotations
 
 from typing import Sequence, Union
-
-import sqlalchemy as sa
-from alembic import op
 
 
 revision: str = "20260421_0003"
@@ -19,15 +23,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "sessions",
-        sa.Column("employee_id", sa.String(length=64), nullable=True),
-    )
-    op.create_index(
-        "idx_sessions_employee_id", "sessions", ["employee_id"]
-    )
+    # Column already present; nothing to do.
+    pass
 
 
 def downgrade() -> None:
-    op.drop_index("idx_sessions_employee_id", table_name="sessions")
-    op.drop_column("sessions", "employee_id")
+    pass

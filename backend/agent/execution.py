@@ -553,6 +553,7 @@ async def execute_plan(
     ws_callback: Callable | None = None,
     allowed_skills: frozenset[str] | None = None,
     report_dir: Path | str | None = None,
+    persist_snapshot: Callable[[dict[str, str]], Any] | None = None,
 ) -> tuple[dict[str, str], dict[str, SkillOutput], bool]:
     """Execute an analysis plan.
 
@@ -561,6 +562,11 @@ async def execute_plan(
         ws_callback: optional websocket notifier
         allowed_skills: per-employee skill whitelist
         report_dir: if provided, dump execution_report.json here after execution
+        persist_snapshot: optional async callback invoked after each layer
+            with a copy of the current task_statuses. Used by the graph
+            node to incrementally persist progress so a user who switches
+            sessions mid-execution can hydrate real progress on return.
+            Failures are logged and ignored — never block execution.
 
     Returns:
         task_statuses: dict mapping task_id → "done"/"failed"/"skipped"
@@ -697,6 +703,14 @@ async def execute_plan(
             retry_frag, err_frag,
         )
 
+        # ── P1: snapshot task_statuses after each layer so a user who
+        #    switches sessions mid-execution can see real progress on return.
+        if persist_snapshot is not None:
+            try:
+                await persist_snapshot(dict(task_statuses))
+            except Exception:
+                logger.exception("persist_snapshot callback failed; continuing")
+
     # ── Dump execution_report.json when report_dir is provided ──
     if report_dir is not None:
         try:
@@ -799,10 +813,116 @@ def _dump_execution_report(
 MAX_TABLE_ROWS = 20
 
 
+async def _persist_file_artifacts(
+    session_id: str,
+    tasks: list[TaskItem],
+    execution_context: dict[str, SkillOutput],
+    task_statuses: dict[str, str],
+) -> dict[str, dict[str, Any]]:
+    """Phase 5 — write every successful file-output task to REPORTS_DIR
+    and insert a `report_artifacts` row. Returns a mapping
+    ``{task_id: artifact_row}`` for the payload builder to embed as
+    ``data.artifact_id`` on the frontend card.
+    """
+    from backend.database import get_session_factory
+    from backend.memory import artifact_store
+
+    artifacts: dict[str, dict[str, Any]] = {}
+    factory = get_session_factory()
+
+    for task in tasks:
+        tid = task.task_id
+        if task_statuses.get(tid) != "done":
+            continue
+        output = execution_context.get(tid)
+        if output is None or output.output_type != "file":
+            continue
+        if output.status not in ("success", "partial"):
+            continue
+
+        meta = output.metadata or {}
+        fmt = str(meta.get("format", "file")).lower()
+        title = meta.get("title") or task.name or tid
+        try:
+            async with factory() as db:
+                row = await artifact_store.persist_artifact(
+                    db,
+                    session_id=session_id,
+                    task_id=tid,
+                    skill_id=task.skill,
+                    fmt=fmt,
+                    title=title,
+                    content=output.data,
+                    meta={
+                        k: v for k, v in meta.items()
+                        if k not in ("format", "title", "path")
+                    },
+                )
+        except Exception:
+            logger.exception("persist_artifact failed for task %s", tid)
+            row = None
+
+        if row:
+            artifacts[tid] = row
+
+            # Phase 5.7 — for HTML reports, save the upstream context
+            # alongside so the user can click "生成 DOCX / PPTX" later
+            # and we can re-run the rendering skill without a full
+            # graph execution.
+            if (row.get("format") == "html"
+                    and (task.skill or "").startswith("skill_report_")):
+                try:
+                    sub_ctx = _collect_report_context(
+                        task, tasks, execution_context,
+                    )
+                    from backend.memory import artifact_store
+                    artifact_store.write_conversion_context(
+                        row["id"],
+                        {
+                            "params": dict(task.params or {}),
+                            "context": sub_ctx,
+                            "session_id": session_id,
+                            "task_order": [t.task_id for t in tasks],
+                        },
+                    )
+                except Exception:
+                    logger.exception(
+                        "failed to persist conversion ctx for %s", tid,
+                    )
+
+    return artifacts
+
+
+def _collect_report_context(
+    report_task: TaskItem,
+    all_tasks: list[TaskItem],
+    execution_context: dict[str, SkillOutput],
+) -> dict[str, Any]:
+    """Walk transitively from the report task through `depends_on` and
+    build a minimal context dict for later skill re-invocation."""
+    needed: set[str] = set()
+    frontier: list[str] = list(report_task.depends_on or [])
+    by_id = {t.task_id: t for t in all_tasks}
+    while frontier:
+        tid = frontier.pop()
+        if tid in needed:
+            continue
+        needed.add(tid)
+        nxt = by_id.get(tid)
+        if nxt and nxt.depends_on:
+            frontier.extend(nxt.depends_on)
+    return {
+        tid: execution_context[tid]
+        for tid in needed
+        if tid in execution_context
+    }
+
+
 def _build_task_results_payload(
     tasks: list[TaskItem],
     execution_context: dict[str, SkillOutput],
     task_statuses: dict[str, str],
+    artifacts: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Phase 3.7 — structured projection of successful tasks for the V2
     Result Card renderer. Returns a dict with `tasks: [...]` matching the
@@ -890,9 +1010,15 @@ def _build_task_results_payload(
             elif output.output_type == "file":
                 entry["output_type"] = "file"
                 fmt = (output.metadata or {}).get("format", "file")
+                artifact = (artifacts or {}).get(tid)
                 entry["data"] = {
                     "format": str(fmt).upper(),
-                    "path": (output.metadata or {}).get("path"),
+                    "artifact_id": artifact["id"] if artifact else None,
+                    "title": (
+                        (output.metadata or {}).get("title")
+                        or task.name
+                    ),
+                    "size_bytes": artifact.get("size_bytes") if artifact else None,
                 }
             else:
                 continue  # Unknown shape; don't surface to UI
@@ -1011,8 +1137,34 @@ async def execution_node(
     from backend.agent.ws_ctx import get_ws_callback
     ws_callback = get_ws_callback() or state.get("_ws_callback")  # back-compat
 
+    # P1: per-layer snapshot so switching sessions mid-execution doesn't
+    # leave hydration reading stale DB state. Each layer completion writes
+    # a copy of the current task_statuses into sessions.state_json.
+    session_id = state.get("session_id") or ""
+
+    async def _persist_layer_snapshot(statuses: dict[str, str]) -> None:
+        if not session_id:
+            return
+        from backend.database import get_session_factory
+        from backend.memory.store import MemoryStore
+        snapshot = {**state, "task_statuses": dict(statuses), "current_phase": "execution"}
+        try:
+            safe = _json.loads(_json.dumps(snapshot, ensure_ascii=False, default=str))
+        except Exception:
+            logger.exception("snapshot serialization failed; skipping persist")
+            return
+        factory = get_session_factory()
+        try:
+            async with factory() as db:
+                await MemoryStore(db).save_session_state(session_id, safe)
+        except Exception:
+            logger.exception("per-layer state persist failed for %s", session_id)
+
     task_statuses, execution_context, needs_replan = await execute_plan(
-        tasks, ws_callback=ws_callback, allowed_skills=allowed_skills,
+        tasks,
+        ws_callback=ws_callback,
+        allowed_skills=allowed_skills,
+        persist_snapshot=_persist_layer_snapshot if session_id else None,
     )
 
     state["task_statuses"] = task_statuses
@@ -1023,10 +1175,17 @@ async def execution_node(
     terminal_ok = {"done", "skipped"}
     all_done = all(v in terminal_ok for v in task_statuses.values())
     if all_done and not needs_replan:
+        # Phase 5 — persist any file outputs to disk + report_artifacts
+        # table BEFORE building the payload, so the structured entries
+        # carry the DB artifact id the frontend download buttons use.
+        artifacts = await _persist_file_artifacts(
+            state.get("session_id", ""),
+            tasks, execution_context, task_statuses,
+        )
         # Format and append execution result content
         result_parts = _format_execution_results(tasks, execution_context, task_statuses)
         structured = _build_task_results_payload(
-            tasks, execution_context, task_statuses,
+            tasks, execution_context, task_statuses, artifacts=artifacts,
         )
         state["messages"] = state.get("messages", [])
         if result_parts:

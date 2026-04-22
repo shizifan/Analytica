@@ -21,6 +21,14 @@ async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown."""
     logger.info("Analytica backend starting...")
 
+    # Phase 5 — ensure REPORTS_DIR is available for artifact persistence.
+    try:
+        from backend.memory.artifact_store import ensure_reports_dir
+        reports_dir = ensure_reports_dir()
+        logger.info("Report artifacts dir: %s", reports_dir)
+    except Exception:
+        logger.exception("REPORTS_DIR setup failed — downloads will 410")
+
     # 加载技能
     from backend.skills.loader import load_all_skills
     skill_count = load_all_skills()
@@ -165,6 +173,27 @@ async def get_employee(employee_id: str):
     if profile is None:
         raise HTTPException(status_code=404, detail=f"Employee not found: {employee_id}")
     return _profile_to_detail(profile)
+
+
+@app.post("/api/employees/reload", status_code=200)
+async def reload_employees():
+    """Re-read employee profiles from the current source (DB or YAML).
+
+    Used by maintenance scripts (e.g. FAQ bulk update) to invalidate the
+    in-memory cache without restarting uvicorn. No auth guard here — gate
+    behind RBAC in Phase 7.
+    """
+    from pathlib import Path
+    from backend.config import get_settings
+    from backend.employees.manager import EmployeeManager
+    manager = EmployeeManager.get_instance()
+    settings = get_settings()
+    if settings.FF_EMPLOYEE_SOURCE == "db":
+        count = await manager.load_from_db()
+    else:
+        config_dir = Path(__file__).resolve().parent.parent / "employees"
+        count = manager.load_all_profiles(config_dir)
+    return {"status": "ok", "count": count, "source": settings.FF_EMPLOYEE_SOURCE}
 
 
 @app.post("/api/employees/{employee_id}", status_code=201)
@@ -381,6 +410,171 @@ async def replay_messages(
         db, session_id, since_id=since_id, limit=limit,
     )
     return {"items": items, "count": len(items), "since_id": since_id}
+
+
+# ── Report Artifacts (Phase 5) ────────────────────────────────
+
+@app.get("/api/sessions/{session_id}/reports")
+async def list_session_reports(
+    session_id: str, db=Depends(get_db_session),
+):
+    """Every artifact generated for a given session."""
+    from backend.memory import artifact_store
+    items = await artifact_store.list_artifacts(db, session_id)
+    return {"items": items, "count": len(items)}
+
+
+@app.get("/api/reports/{artifact_id}/download")
+async def download_report(
+    artifact_id: str, db=Depends(get_db_session),
+):
+    """Stream the artifact file as a download attachment."""
+    from fastapi.responses import FileResponse
+    from backend.memory import artifact_store
+
+    artifact = await artifact_store.get_artifact(db, artifact_id)
+    if artifact is None:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    fs_path = artifact_store.resolve_artifact_path(artifact)
+    if not fs_path.exists():
+        raise HTTPException(
+            status_code=410,
+            detail="Artifact file missing on disk (may have been purged)",
+        )
+
+    fmt = artifact.get("format", "file")
+    mime = {
+        "html": "text/html; charset=utf-8",
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "md": "text/markdown; charset=utf-8",
+        "markdown": "text/markdown; charset=utf-8",
+    }.get(fmt, "application/octet-stream")
+
+    filename = fs_path.name
+    return FileResponse(
+        path=str(fs_path),
+        media_type=mime,
+        filename=filename,
+    )
+
+
+@app.post("/api/reports/{artifact_id}/convert")
+async def convert_report(
+    artifact_id: str,
+    format: str,
+    db=Depends(get_db_session),
+):
+    """Phase 5.7 — on-demand DOCX / PPTX generation from an already-
+    generated HTML report.
+
+    Reads the conversion context pickled during the original execution,
+    re-invokes the matching report skill, writes a new artifact row,
+    and returns the new `artifact_id`. Seconds instead of minutes
+    because no data-fetch / analysis re-runs.
+    """
+    from backend.memory import artifact_store
+    from backend.skills.base import SkillInput, skill_executor
+    from backend.skills.registry import SkillRegistry
+
+    fmt = format.lower()
+    if fmt not in ("docx", "pptx"):
+        raise HTTPException(
+            status_code=400,
+            detail="format must be 'docx' or 'pptx'",
+        )
+
+    source = await artifact_store.get_artifact(db, artifact_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Source artifact not found")
+
+    ctx = artifact_store.read_conversion_context(artifact_id)
+    if ctx is None:
+        raise HTTPException(
+            status_code=410,
+            detail="Conversion context missing — original generation may have been purged",
+        )
+
+    # Ensure all skills are registered (lazy-loaded at app startup, but
+    # an uvicorn --reload cycle can leave the registry bound to a fresh
+    # module copy without the decorators re-running).
+    import backend.skills.loader  # noqa: F401
+
+    # Re-invoke the docx / pptx skill with the same params + saved context.
+    skill_id = f"skill_report_{fmt}"
+    skill = SkillRegistry.get_instance().get_skill(skill_id)
+    if skill is None:
+        raise HTTPException(
+            status_code=500, detail=f"Skill not available: {skill_id}",
+        )
+
+    params = dict(ctx.get("params") or {})
+    context = ctx.get("context") or {}
+    inp = SkillInput(
+        params=params,
+        context_refs=list(params.get("_task_order") or context.keys()),
+    )
+
+    try:
+        output = await skill_executor(skill, inp, context, timeout_seconds=120.0)
+    except Exception as e:
+        logger.exception("convert_report skill execution failed")
+        raise HTTPException(
+            status_code=500, detail=f"Skill raised: {type(e).__name__}: {e}",
+        )
+    if output.status not in ("success", "partial"):
+        raise HTTPException(
+            status_code=500,
+            detail=f"Generation failed: {output.error_message or 'unknown'}",
+        )
+
+    # Persist the new artifact under the same session.
+    session_id = source["session_id"]
+    title = (output.metadata or {}).get("title") or source.get("title")
+    new_row = await artifact_store.persist_artifact(
+        db,
+        session_id=session_id,
+        task_id=source.get("task_id"),
+        skill_id=skill_id,
+        fmt=fmt,
+        title=title,
+        content=output.data,
+        meta={
+            **(output.metadata or {}),
+            "source_artifact_id": artifact_id,
+            "converted_from": "html",
+        },
+    )
+    if new_row is None:
+        raise HTTPException(status_code=500, detail="artifact persistence failed")
+
+    return {"artifact_id": new_row["id"], "format": fmt, "status": "ready"}
+
+
+@app.get("/api/reports/{artifact_id}/preview")
+async def preview_report(
+    artifact_id: str, db=Depends(get_db_session),
+):
+    """Inline preview for HTML / Markdown artifacts. Binary formats
+    redirect the caller to the download endpoint."""
+    from fastapi.responses import FileResponse, RedirectResponse
+    from backend.memory import artifact_store
+
+    artifact = await artifact_store.get_artifact(db, artifact_id)
+    if artifact is None:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    fmt = artifact.get("format", "file")
+    if fmt not in ("html", "markdown", "md"):
+        return RedirectResponse(url=f"/api/reports/{artifact_id}/download")
+
+    fs_path = artifact_store.resolve_artifact_path(artifact)
+    if not fs_path.exists():
+        raise HTTPException(status_code=410, detail="Artifact file missing")
+
+    mime = "text/html; charset=utf-8" if fmt == "html" else "text/markdown; charset=utf-8"
+    return FileResponse(path=str(fs_path), media_type=mime)
 
 
 @app.delete("/api/sessions/{session_id}")
@@ -670,6 +864,18 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                 prev_task_statuses: dict[str, str] = {}
                 prev_msg_count = 0
 
+                # Wrap ws.send_json so client-disconnect errors don't kill
+                # the in-flight run_stream generator. If the user switches
+                # sessions mid-execution we want the task to finish and the
+                # final state/messages to be persisted; the returning user
+                # will hydrate from DB. Send failures are logged at debug
+                # level only — the client is gone, nothing to do.
+                async def _safe_send(payload: dict) -> None:
+                    try:
+                        await ws.send_json(payload)
+                    except Exception:
+                        logger.debug("ws.send_json failed (client disconnected); continuing")
+
                 # Build a ws_callback that both forwards to the client and
                 # persists tool_call_* events to thinking_events.
                 async def _ws_callback(payload: dict) -> None:
@@ -686,12 +892,7 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                                     )
                             except Exception:
                                 logger.exception("thinking_events insert failed")
-                        # Always forward — the client can decide whether to
-                        # render the rich inspector or not.
-                        await ws.send_json(payload)
-                    else:
-                        # pass-through for task_update etc.
-                        await ws.send_json(payload)
+                    await _safe_send(payload)
 
                 async for event in run_stream(
                     session_id, user_id, user_message, employee_id=employee_id,
@@ -718,7 +919,7 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                                 logger.exception("thinking_events insert failed")
                         # Always forward — the UI renders regardless of
                         # whether we're persisting for audit.
-                        await ws.send_json({
+                        await _safe_send({
                             "event": "thinking_stream",
                             "kind": thinking.get("kind", "thinking"),
                             "phase": thinking.get("phase"),
@@ -729,7 +930,7 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                     for node_name, node_state in event.items():
                         # Push slot updates
                         if "slots" in node_state:
-                            await ws.send_json({
+                            await _safe_send({
                                 "event": "slot_update",
                                 "slots": node_state.get("slots", {}),
                                 "current_asking": node_state.get("current_target_slot"),
@@ -769,19 +970,19 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                                         out["type"] = msg_type
                                     if msg_payload is not None:
                                         out["payload"] = msg_payload
-                                    await ws.send_json(out)
+                                    await _safe_send(out)
                             prev_msg_count = cur_msg_count
 
                         # Push structured intent if ready
                         if node_state.get("structured_intent"):
-                            await ws.send_json({
+                            await _safe_send({
                                 "event": "intent_ready",
                                 "intent": node_state["structured_intent"],
                             })
 
                         # Push plan update
                         if node_state.get("analysis_plan"):
-                            await ws.send_json({
+                            await _safe_send({
                                 "event": "plan_update",
                                 "plan": node_state["analysis_plan"],
                             })
@@ -790,7 +991,7 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                         cur_task_statuses = node_state.get("task_statuses", {})
                         for tid, ts in cur_task_statuses.items():
                             if prev_task_statuses.get(tid) != ts:
-                                await ws.send_json({
+                                await _safe_send({
                                     "event": "task_update",
                                     "task_id": tid,
                                     "status": ts,
@@ -800,15 +1001,15 @@ async def websocket_chat(ws: WebSocket, session_id: str):
 
                         # Push reflection summary
                         if node_state.get("reflection_summary"):
-                            await ws.send_json({
+                            await _safe_send({
                                 "event": "reflection",
                                 "summary": node_state["reflection_summary"],
                             })
 
-                await ws.send_json({"event": "turn_complete"})
+                await _safe_send({"event": "turn_complete"})
             except Exception as e:
                 logger.exception("Error in graph execution")
-                await ws.send_json({"type": "error", "message": str(e)})
+                await _safe_send({"type": "error", "message": str(e)})
 
     except WebSocketDisconnect:
         logger.info(f"WebSocket disconnected: {session_id}")

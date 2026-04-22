@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { TaskResultCard } from './TaskResultCard';
+import { FileResultCard } from './FileResultCard';
 import type { TaskResult, TaskResultsPayload } from '../../types';
 
 interface Props {
@@ -24,13 +25,18 @@ export function TaskResultsBlock({ payload }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
-      {cards.map((c) => (
-        <TaskResultCard
-          key={c.primary.task_id}
-          primary={c.primary}
-          tableSource={c.tableSource}
-        />
-      ))}
+      {cards.map((c) => {
+        if (c.primary.output_type === 'file') {
+          return <FileResultCard key={c.primary.task_id} primary={c.primary} />;
+        }
+        return (
+          <TaskResultCard
+            key={c.primary.task_id}
+            primary={c.primary}
+            tableSource={c.tableSource}
+          />
+        );
+      })}
     </div>
   );
 }

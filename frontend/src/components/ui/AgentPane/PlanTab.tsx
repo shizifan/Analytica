@@ -44,6 +44,7 @@ export function PlanTab() {
     (t) => taskStatuses[t.task_id] === 'done',
   ).length;
   const pct = total ? Math.round((doneCount / total) * 100) : 0;
+  const isExecuting = status === 'executing' || status === 'done';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -63,9 +64,23 @@ export function PlanTab() {
             )}
           </span>
           <span className="an-plan-meta">
-            {total} 任务 · {collapsed ? '▸' : '▾'}
+            {isExecuting ? `${doneCount}/${total} · ${pct}%` : `${total} 任务`} · {collapsed ? '▸' : '▾'}
           </span>
         </button>
+
+        {isExecuting && (
+          <div
+            className="an-plan-progress"
+            role="progressbar"
+            aria-valuenow={pct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            data-testid="execution-progress"
+          >
+            <div className="fill" style={{ width: `${pct}%` }} />
+          </div>
+        )}
+
         {!collapsed && plan.tasks.map((task, i) => {
           const s = taskStatuses[task.task_id] ?? 'pending';
           const mark = MARK[s] ?? '?';
@@ -91,35 +106,6 @@ export function PlanTab() {
           );
         })}
       </div>
-
-      {(status === 'executing' || status === 'done') && total > 0 && (
-        <div className="an-exec-progress" data-testid="execution-progress">
-          <div className="an-exec-head">
-            <span>正在执行分析任务</span>
-            <span className="an-exec-count">
-              {doneCount}/{total} · {pct}%
-            </span>
-          </div>
-          <div className="an-exec-bar">
-            <div className="fill" style={{ width: `${pct}%` }} />
-          </div>
-          <div className="an-exec-rows">
-            {plan.tasks.map((t) => {
-              const s = taskStatuses[t.task_id] ?? 'pending';
-              return (
-                <div key={t.task_id} className={`an-exec-row s-${s}`}>
-                  <span className="an-exec-mark">
-                    {s === 'running' ? <span className="an-spinner" /> : (MARK[s] ?? '○')}
-                  </span>
-                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {t.name || t.skill}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

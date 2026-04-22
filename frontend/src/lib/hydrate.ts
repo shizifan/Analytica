@@ -32,9 +32,15 @@ const TERMINAL_TASK_STATES: Set<TaskStatus> = new Set([
 
 function derivePlanStatus(
   taskStatuses: Record<string, TaskStatus>,
+  totalTasks: number,
 ): PlanStatus {
   const vals = Object.values(taskStatuses);
   if (vals.length === 0) return 'ready';
+  // If the DB snapshot only has some of the plan's tasks recorded, the
+  // backend is still mid-execution — treat as executing even if every
+  // recorded entry is terminal. (P1 per-layer persistence makes this
+  // partial-state case reachable during normal session switches.)
+  if (vals.length < totalTasks) return 'executing';
   const allTerminal = vals.every((v) => TERMINAL_TASK_STATES.has(v));
   if (allTerminal) return 'done';
   if (vals.some((v) => v === 'running' || v === 'pending')) return 'executing';
@@ -103,7 +109,9 @@ export async function hydrateSession(sessionId: string): Promise<void> {
             for (const [tid, st] of Object.entries(taskStatuses)) {
               planStore.updateTaskStatus(tid, st);
             }
-            planStore.setStatus(derivePlanStatus(taskStatuses));
+            planStore.setStatus(
+              derivePlanStatus(taskStatuses, analysisPlan.tasks.length),
+            );
           }
         }
       }

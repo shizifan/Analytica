@@ -32,6 +32,12 @@ class Settings(BaseSettings):
         default="",
         description="Production API base URL",
     )
+
+    REPORTS_DIR: str = Field(
+        default="reports",
+        description="Directory for persisted report artifacts (DOCX / "
+        "PPTX / HTML / MD). Docker compose mounts /app/reports here.",
+    )
     API_MODE: str = Field(
         default="mock",
         description="API mode: 'mock' or 'prod'",

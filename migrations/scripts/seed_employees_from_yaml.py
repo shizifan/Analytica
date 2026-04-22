@@ -63,11 +63,13 @@ def _initials_from_name(employee_id: str, name: str) -> str:
 
 
 def _parse_faqs_ts(ts_path: Path) -> dict[str, list[dict[str, Any]]]:
-    """Parse `employeeFaq.ts` into `{employee_id: [{id, question}, ...]}`.
+    """Legacy fallback: parse `employeeFaq.ts` into
+    ``{employee_id: [{id, question}, ...]}``.
 
-    The TS module is hand-written JS-like literals; rather than wire a
-    JS parser we do a focused regex pass. If a future redesign moves FAQ
-    authoring to YAML or admin UI, this can be dropped.
+    Kept only for environments without MySQL access — the canonical FAQ
+    set now lives in ``update_employee_faqs.FAQ_SETS`` (Phase 5.6) so
+    the drawer / empty-hero renders consistent "2 simple + 2 chart + 1
+    report" groups with tag/type metadata.
     """
     if not ts_path.exists():
         return {}
@@ -92,6 +94,18 @@ def _parse_faqs_ts(ts_path: Path) -> dict[str, list[dict[str, Any]]]:
             items.append({"id": item.group(1), "question": item.group(2)})
         out[emp_id] = items
     return out
+
+
+def _canonical_faqs() -> dict[str, list[dict[str, Any]]]:
+    """Preferred FAQ source — the Phase 5.6 curated set (tag/type +
+    2-simple + 2-chart + 1-report structure). Falls back to the TS file
+    if the update script module isn't importable (e.g. partial checkout).
+    """
+    try:
+        from migrations.scripts.update_employee_faqs import FAQ_SETS
+        return FAQ_SETS
+    except ImportError:
+        return {}
 
 
 def _profile_dict_from_yaml(path: Path) -> dict[str, Any]:
@@ -126,7 +140,10 @@ async def run(force: bool = False, dry_run: bool = False) -> int:
         logger.error("YAML dir not found: %s", YAML_DIR)
         return 1
 
-    faq_map = _parse_faqs_ts(FAQ_TS_PATH)
+    # Canonical set (Phase 5.6) wins; TS file is a fallback for emp ids
+    # the canonical dict doesn't know about.
+    canonical_faqs = _canonical_faqs()
+    legacy_faqs = _parse_faqs_ts(FAQ_TS_PATH)
     yaml_files = sorted(YAML_DIR.glob("*.yaml"))
     if not yaml_files:
         logger.error("No YAML files under %s", YAML_DIR)
@@ -140,7 +157,7 @@ async def run(force: bool = False, dry_run: bool = False) -> int:
         for path in yaml_files:
             data = _profile_dict_from_yaml(path)
             emp_id = data["employee_id"]
-            faqs = faq_map.get(emp_id, [])
+            faqs = canonical_faqs.get(emp_id) or legacy_faqs.get(emp_id, [])
             row = _build_row(data, faqs)
 
             existing = await employee_store.get_employee(db, emp_id)

@@ -219,8 +219,10 @@ export interface TaskResultText {
 }
 
 export interface TaskResultFile {
-  format: string;
-  path?: string | null;
+  format: string;            // HTML / DOCX / PPTX / MARKDOWN
+  artifact_id?: string | null;
+  title?: string | null;
+  size_bytes?: number | null;
 }
 
 export interface TaskResult {

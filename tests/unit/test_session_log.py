@@ -196,13 +196,17 @@ async def test_soft_delete_hides_from_list(fresh_session, test_db_session):
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_purge_empty_sessions(fresh_session, test_db_session):
-    """purge_empty_sessions deletes title-less empty sessions (respecting age)."""
+    """purge_empty_sessions respects the age cutoff and clears empties.
+
+    Asserts are scoped to THIS test's session — other sessions lingering
+    in the dev DB (from interactive use) can be empty + old without
+    making this test flaky.
+    """
     sid = fresh_session
     db = test_db_session
 
     # Fresh session — too young to be purged (default cutoff 15 min)
-    removed = await session_log.purge_empty_sessions(db)
-    assert removed == 0
+    await session_log.purge_empty_sessions(db)  # may delete unrelated stale rows
     still_there = (
         await db.execute(
             text("SELECT COUNT(*) FROM sessions WHERE session_id = :s"),
@@ -212,8 +216,7 @@ async def test_purge_empty_sessions(fresh_session, test_db_session):
     assert still_there == 1
 
     # With cutoff=0 the row is eligible and should be removed
-    removed = await session_log.purge_empty_sessions(db, older_than_minutes=0)
-    assert removed >= 1
+    await session_log.purge_empty_sessions(db, older_than_minutes=0)
     gone = (
         await db.execute(
             text("SELECT COUNT(*) FROM sessions WHERE session_id = :s"),
