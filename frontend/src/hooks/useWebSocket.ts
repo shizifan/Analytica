@@ -18,6 +18,11 @@ export function useWebSocket(sessionId: string | null) {
   const retryRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const unmountedRef = useRef(false);
+  // Tracks the session this hook instance is currently serving. Updated
+  // synchronously on render so onclose/onmessage handlers from stale
+  // connections can detect they belong to the wrong session and bail out.
+  const activeSessionIdRef = useRef(sessionId);
+  activeSessionIdRef.current = sessionId;
 
   const setConnected = useWsStore((s) => s.setConnected);
   const setWsStatus = useWsStore((s) => s.setStatus);
@@ -45,6 +50,9 @@ export function useWebSocket(sessionId: string | null) {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const url = `${protocol}//${window.location.host}/ws/chat/${sessionId}`;
 
+    // Capture session at connection time so handlers can detect staleness.
+    const capturedSessionId = sessionId;
+
     setWsStatus('connecting');
     const ws = new WebSocket(url);
     wsRef.current = ws;
@@ -55,6 +63,9 @@ export function useWebSocket(sessionId: string | null) {
     };
 
     ws.onmessage = (evt) => {
+      // Reject events from stale connections (e.g. session A's buffered
+      // messages arriving after the user switched to session B).
+      if (ws !== wsRef.current) return;
       let data: Record<string, unknown>;
       try { data = JSON.parse(evt.data); } catch { return; }
 
@@ -187,6 +198,11 @@ export function useWebSocket(sessionId: string | null) {
 
     ws.onclose = () => {
       if (unmountedRef.current) return;
+      // Don't retry if the session has changed since this connection was made.
+      // Without this guard, a stale onclose (firing after unmountedRef resets
+      // to false for the new session) would schedule a reconnect for the old
+      // session ID using the old connect() closure.
+      if (capturedSessionId !== activeSessionIdRef.current) return;
       setConnected(false);
 
       if (retryRef.current < MAX_RETRIES) {

@@ -43,6 +43,7 @@ export function Topbar({ onTweaks }: Props) {
           <span className="an-dot" />
           {PHASE_LABELS[phase] ?? phase}
         </span>
+        <span className="an-pill" title="版本号">v{__APP_VERSION__}</span>
         <Link to="/admin" className="an-console-btn" title="管理控制台">
           <Icon name="grid" size={12} />
           <span>控制台</span>
