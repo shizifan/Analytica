@@ -239,4 +239,7 @@ export interface TaskResult {
 
 export interface TaskResultsPayload {
   tasks: TaskResult[];
+  /** Set to 'report' when the backend suppressed intermediate cards
+   *  because the pipeline generated a persisted report file. */
+  pipeline?: 'report';
 }

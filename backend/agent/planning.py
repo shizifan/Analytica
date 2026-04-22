@@ -308,6 +308,15 @@ def _apply_time_params(plan: AnalysisPlan, intent: dict) -> AnalysisPlan:
     return AnalysisPlan(**updated)
 
 
+# Per-complexity timeout (seconds): full_report needs more headroom for large models
+_PLANNING_TIMEOUT_BY_COMPLEXITY: dict[str, float] = {
+    "simple_table": 60.0,
+    "chart_text":   90.0,
+    "full_report":  180.0,
+    "_default":     120.0,
+}
+
+
 class PlanningEngine:
     """Core planning engine for the planning layer."""
 

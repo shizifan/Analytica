@@ -381,9 +381,13 @@ export function ChatPageV2() {
                   }
                   if (msg.type === 'task_results' && msg.payload) {
                     // Phase 3.7 — structured result cards (chart / table
-                    // / text). Fall through to plain markdown only if the
-                    // payload didn't make it across (old persisted row).
+                    // / text). Phase 5.8 — for report pipelines, the
+                    // payload carries `pipeline: "report"` + only file
+                    // entries; we also render the short summary text
+                    // (msg.content) above the file card.
                     const payload = msg.payload as unknown as import('../types').TaskResultsPayload;
+                    const summaryText =
+                      payload.pipeline === 'report' && msg.content ? msg.content : '';
                     return (
                       <div
                         key={msg.id}
@@ -395,6 +399,14 @@ export function ChatPageV2() {
                           className="an-msg-bubble"
                           style={{ flex: 1, minWidth: 0, padding: 0, background: 'transparent', border: 0 }}
                         >
+                          {summaryText && (
+                            <div
+                              className="an-msg-bubble"
+                              style={{ marginBottom: 8 }}
+                            >
+                              {summaryText}
+                            </div>
+                          )}
                           <TaskResultsBlock payload={payload} />
                         </div>
                       </div>

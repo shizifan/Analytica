@@ -1028,6 +1028,17 @@ def _build_task_results_payload(
 
         out_tasks.append(entry)
 
+    # ── Phase 5.8: report pipelines hide intermediates ─────────
+    # When the pipeline produced a file (HTML report), everything the
+    # user asked for lives IN that file. Tables / charts / analysis
+    # text rendered alongside would just be noise. Keep only the file
+    # entries — the user can preview or download to see the full
+    # contents, and the PlanTab / Thinking stream still expose the
+    # intermediate steps for anyone curious.
+    file_entries = [e for e in out_tasks if e["output_type"] == "file"]
+    if file_entries:
+        return {"tasks": file_entries, "pipeline": "report"}
+
     return {"tasks": out_tasks}
 
 
@@ -1187,14 +1198,28 @@ async def execution_node(
         structured = _build_task_results_payload(
             tasks, execution_context, task_statuses, artifacts=artifacts,
         )
+        is_report = structured.get("pipeline") == "report"
         state["messages"] = state.get("messages", [])
         if result_parts:
-            # Phase 3.7 — emit both legacy markdown (v1 fallback) and
-            # the structured payload the V2 Result Card consumes.
+            if is_report:
+                # Phase 5.8 — for report pipelines, the chat stream just
+                # announces completion. All the numbers / charts /
+                # narrative live inside the rendered report file, so
+                # echoing them in Markdown would be redundant noise.
+                file_count = len(structured.get("tasks", []))
+                total = len(tasks)
+                done_count = sum(1 for v in task_statuses.values() if v == "done")
+                content = (
+                    f"已生成深度分析报告（{file_count} 份文件 · "
+                    f"{done_count}/{total} 个子任务）。"
+                    f"可在下方预览 / 下载，或按需导出其它格式。"
+                )
+            else:
+                content = "\n\n---\n\n".join(result_parts)
             state["messages"].append({
                 "role": "assistant",
                 "type": "task_results",
-                "content": "\n\n---\n\n".join(result_parts),
+                "content": content,
                 "payload": structured,
             })
         else:

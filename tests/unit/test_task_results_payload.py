@@ -89,6 +89,53 @@ def test_failed_and_skipped_tasks_filtered_out():
     assert payload["tasks"] == []
 
 
+def test_report_pipeline_hides_intermediate_tasks():
+    """When the pipeline produces a file (HTML report), the chat stream
+    payload must omit the upstream table / chart / text cards — all that
+    info lives in the rendered report file."""
+    tasks = [
+        _task("T001", "skill_api_fetch", "data_fetch"),
+        _task("T002", "skill_desc_analysis", "analysis", deps=["T001"]),
+        _task("T003", "skill_chart_line", "visualization", deps=["T001"]),
+        _task("T004", "skill_report_html", "report_gen", deps=["T001", "T002", "T003"]),
+    ]
+    df = pd.DataFrame({"month": ["2026-01"], "qty": [100]})
+    ctx = {
+        "T001": SkillOutput(skill_id="skill_api_fetch", status="success", output_type="dataframe", data=df),
+        "T002": SkillOutput(skill_id="skill_desc_analysis", status="success", output_type="text", data="均值 100"),
+        "T003": SkillOutput(skill_id="skill_chart_line", status="success", output_type="chart", data={"series": []}),
+        "T004": SkillOutput(skill_id="skill_report_html", status="success", output_type="file",
+                            data="<html/>", metadata={"format": "html", "title": "Q1 报告"}),
+    }
+    statuses = {t.task_id: "done" for t in tasks}
+
+    payload = _build_task_results_payload(
+        tasks, ctx, statuses,
+        artifacts={"T004": {"id": "art-1", "size_bytes": 5900}},
+    )
+    ids = [e["task_id"] for e in payload["tasks"]]
+    assert ids == ["T004"], "only file-output task should remain"
+    assert payload.get("pipeline") == "report"
+    assert payload["tasks"][0]["data"]["artifact_id"] == "art-1"
+
+
+def test_non_report_pipeline_keeps_all_entries():
+    """Without any file output, the normal structured payload wins."""
+    tasks = [
+        _task("T001", "skill_api_fetch", "data_fetch"),
+        _task("T002", "skill_chart_line", "visualization", deps=["T001"]),
+    ]
+    df = pd.DataFrame({"month": ["2026-01"], "qty": [100]})
+    ctx = {
+        "T001": SkillOutput(skill_id="skill_api_fetch", status="success", output_type="dataframe", data=df),
+        "T002": SkillOutput(skill_id="skill_chart_line", status="success", output_type="chart", data={"series": []}),
+    }
+    statuses = {t.task_id: "done" for t in tasks}
+    payload = _build_task_results_payload(tasks, ctx, statuses)
+    assert {e["task_id"] for e in payload["tasks"]} == {"T001", "T002"}
+    assert payload.get("pipeline") is None
+
+
 def test_nulls_preserved_in_table_rows():
     """NaN in the DataFrame should serialize as JSON null (not 'NaN'
     string) so the frontend can render em-dash consistently."""
