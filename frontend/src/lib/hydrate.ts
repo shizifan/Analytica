@@ -1,9 +1,13 @@
 /** Hydrate client state from the server after refresh / session switch.
  *
  * Replays:
- *   - chat_messages → sessionStore.messages
+ *   - chat_messages → sessionStore.messages   (T3: delta — since maxMessageId)
  *   - thinking_events → thinkingStore.events
  *   - state_json.slots / analysis_plan / task_statuses → slot + plan stores
+ *
+ * T3: uses store.maxMessageId as `since_id` so only new messages are fetched.
+ * Messages are added via addMessage(msg, dbId) which deduplicates against any
+ * live WS events that may have arrived concurrently.
  *
  * Replay is best-effort: if any request fails we keep whatever the WS
  * handshake gives us instead.
@@ -49,15 +53,22 @@ function derivePlanStatus(
 
 export async function hydrateSession(sessionId: string): Promise<void> {
   try {
+    const store = useSessionStore.getState();
+
+    // T3: delta load — only fetch messages we haven't seen yet.
+    // maxMessageId is seeded from the 'connected' WS event (last_message_id)
+    // and updated on every addMessage(msg, dbId) call, so this is always
+    // the correct watermark even after partial hydration or live events.
+    const sinceId = store.maxMessageId;
+
     const [msgRes, thkRes, sessionRes] = await Promise.all([
-      api.replayMessages(sessionId),
+      api.replayMessages(sessionId, sinceId),
       api.replayThinking(sessionId),
       api.getSession(sessionId).catch(() => null),
     ]);
 
-    // ── chat messages ─────────────────────────────────────
-    const store = useSessionStore.getState();
-    if (store.messages.length === 0) {
+    // ── chat messages (delta) ──────────────────────────────────
+    if (msgRes.items.length > 0) {
       const hydrated: ChatMessage[] = msgRes.items.map((m) => {
         const msgType = KNOWN_MSG_TYPES.has(m.type) ? (m.type as ChatMessage['type']) : undefined;
         return {
@@ -71,11 +82,14 @@ export async function hydrateSession(sessionId: string): Promise<void> {
         };
       });
       for (const msg of hydrated) {
-        store.addMessage(msg);
+        // Parse the numeric DB id back out so addMessage can dedup correctly.
+        // Format is "persisted_{id}" (see id construction above).
+        const dbId = parseInt(msg.id.replace('persisted_', ''), 10);
+        store.addMessage(msg, isNaN(dbId) ? undefined : dbId);
       }
     }
 
-    // ── thinking events ───────────────────────────────────
+    // ── thinking events ────────────────────────────────────────
     const thkStore = useThinkingStore.getState();
     if (thkStore.events.length === 0) {
       const events: ThinkingEvent[] = thkRes.items.map((e) => ({
@@ -89,7 +103,7 @@ export async function hydrateSession(sessionId: string): Promise<void> {
       thkStore.setEvents(events);
     }
 
-    // ── slot + plan state (Phase 3.7.1) ───────────────────
+    // ── slot + plan state (Phase 3.7.1) ───────────────────────
     if (sessionRes && typeof sessionRes === 'object') {
       const stateJson = (sessionRes as { state_json?: Record<string, unknown> }).state_json;
       if (stateJson && typeof stateJson === 'object') {

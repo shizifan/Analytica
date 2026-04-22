@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 import json
 import logging
 from contextlib import asynccontextmanager
@@ -793,29 +794,70 @@ async def save_reflection_endpoint(
 
 @app.websocket("/ws/chat/{session_id}")
 async def websocket_chat(ws: WebSocket, session_id: str):
-    """WebSocket endpoint for streaming chat."""
+    """WebSocket endpoint for streaming chat.
+
+    T1: per-session asyncio.Lock prevents concurrent run_stream() calls.
+    T2: SessionRegistry fan-out — every subscribed WS sees the same events
+        via its own inbox queue drained by a background task.
+    T3: every 'message' event carries message_id (DB id) for frontend dedup;
+        'connected' event carries last_message_id for delta hydration.
+    """
     await ws.accept()
 
-    # 从 session 获取 employee_id
     from backend.database import get_session_factory
     from backend.memory import session_log
     from backend.config import get_settings
+    from backend.agent.session_registry import get_registry
+
     settings = get_settings()
     thinking_stream_enabled = settings.FF_THINKING_STREAM
 
     factory = get_session_factory()
+    registry = get_registry()
+
+    # ── T2: subscribe this connection ────────────────────────────────
+    inbox: asyncio.Queue = registry.subscribe(session_id)
+    run_lock = registry.get_lock(session_id)
+
+    async def _drain() -> None:
+        """Pump broadcast events → this WS.  Runs as a concurrent task.
+        Exits on sentinel (None) or on any send failure."""
+        while True:
+            payload = await inbox.get()
+            if payload is None:          # sentinel sent by finally block
+                return
+            try:
+                await ws.send_json(payload)
+            except Exception:
+                return                   # client disconnected; exit cleanly
+
+    drain_task = asyncio.create_task(_drain())
+
+    # Load employee_id + last_message_id (T3) in one DB round-trip
     employee_id = None
+    last_message_id = 0
     async with factory() as db_session:
         store = MemoryStore(db_session)
         session_data = await store.get_session(session_id)
         if session_data:
             employee_id = session_data.get("employee_id")
+        # T3: seed client's maxMessageId so delta hydration starts correctly
+        row = await db_session.execute(
+            text("SELECT MAX(id) FROM chat_messages WHERE session_id = :sid"),
+            {"sid": session_id},
+        )
+        last_message_id = int(row.scalar() or 0)
 
-    await ws.send_json({
-        "type": "connected",
-        "session_id": session_id,
-        "employee_id": employee_id,
-    })
+    # "connected" is per-connection metadata — send directly, not via broadcast
+    try:
+        await ws.send_json({
+            "type": "connected",
+            "session_id": session_id,
+            "employee_id": employee_id,
+            "last_message_id": last_message_id,   # T3
+        })
+    except Exception:
+        pass
 
     try:
         while True:
@@ -860,158 +902,172 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                         db_session, session_id, stripped[:80],
                     )
 
-            try:
-                prev_task_statuses: dict[str, str] = {}
-                prev_msg_count = 0
+            # ── T1: per-session execution lock ────────────────────────
+            # run_lock is obtained once at connect-time from the registry
+            # (see above).  Serialise run_stream() per session_id. If
+            # another WS connection already holds the lock, notify this
+            # client only and skip — never wait for the lock, because
+            # the run would execute again once released (plan_confirmed
+            # is True in the DB by then).
+            if run_lock.locked():
+                try:
+                    await ws.send_json({
+                        "event": "already_running",
+                        "message": "分析正在进行中，请在右侧面板查看实时进度",
+                    })
+                except Exception:
+                    pass
+                continue
 
-                # Wrap ws.send_json so client-disconnect errors don't kill
-                # the in-flight run_stream generator. If the user switches
-                # sessions mid-execution we want the task to finish and the
-                # final state/messages to be persisted; the returning user
-                # will hydrate from DB. Send failures are logged at debug
-                # level only — the client is gone, nothing to do.
-                async def _safe_send(payload: dict) -> None:
-                    try:
-                        await ws.send_json(payload)
-                    except Exception:
-                        logger.debug("ws.send_json failed (client disconnected); continuing")
+            async with run_lock:
+                try:
+                    prev_task_statuses: dict[str, str] = {}
+                    prev_msg_count = 0
 
-                # Build a ws_callback that both forwards to the client and
-                # persists tool_call_* events to thinking_events.
-                async def _ws_callback(payload: dict) -> None:
-                    evt = payload.get("event")
-                    if evt in ("tool_call_start", "tool_call_end"):
-                        if thinking_stream_enabled:
-                            try:
-                                async with factory() as tx:
-                                    await session_log.append_thinking_event(
-                                        tx, session_id,
-                                        kind="tool",
-                                        payload=payload,
-                                        phase="execution",
-                                    )
-                            except Exception:
-                                logger.exception("thinking_events insert failed")
-                    await _safe_send(payload)
+                    # T2: ws_callback persists tool events then broadcasts
+                    # to all subscribers (not just this WS).
+                    async def _ws_callback(payload: dict) -> None:
+                        evt = payload.get("event")
+                        if evt in ("tool_call_start", "tool_call_end"):
+                            if thinking_stream_enabled:
+                                try:
+                                    async with factory() as tx:
+                                        await session_log.append_thinking_event(
+                                            tx, session_id,
+                                            kind="tool",
+                                            payload=payload,
+                                            phase="execution",
+                                        )
+                                except Exception:
+                                    logger.exception("thinking_events insert failed")
+                        registry.broadcast(session_id, payload)
 
-                async for event in run_stream(
-                    session_id, user_id, user_message, employee_id=employee_id,
-                    ws_callback=_ws_callback,
-                ):
-                    # 处理 run_stream 发出的初始元信息（消息基线）
-                    if "__meta__" in event:
-                        prev_msg_count = event["__meta__"].get("initial_msg_count", 0)
-                        continue
+                    async for event in run_stream(
+                        session_id, user_id, user_message, employee_id=employee_id,
+                        ws_callback=_ws_callback,
+                    ):
+                        # 处理 run_stream 发出的初始元信息（消息基线）
+                        if "__meta__" in event:
+                            prev_msg_count = event["__meta__"].get("initial_msg_count", 0)
+                            continue
 
-                    # Thinking stream (node-boundary events from graph.run_stream)
-                    if "__thinking__" in event:
-                        thinking = event["__thinking__"]
-                        if thinking_stream_enabled:
-                            try:
-                                async with factory() as tx:
-                                    await session_log.append_thinking_event(
-                                        tx, session_id,
-                                        kind=thinking.get("kind", "thinking"),
-                                        payload=thinking.get("payload"),
-                                        phase=thinking.get("phase"),
-                                    )
-                            except Exception:
-                                logger.exception("thinking_events insert failed")
-                        # Always forward — the UI renders regardless of
-                        # whether we're persisting for audit.
-                        await _safe_send({
-                            "event": "thinking_stream",
-                            "kind": thinking.get("kind", "thinking"),
-                            "phase": thinking.get("phase"),
-                            "payload": thinking.get("payload"),
-                        })
-                        continue
-
-                    for node_name, node_state in event.items():
-                        # Push slot updates
-                        if "slots" in node_state:
-                            await _safe_send({
-                                "event": "slot_update",
-                                "slots": node_state.get("slots", {}),
-                                "current_asking": node_state.get("current_target_slot"),
+                        # Thinking stream (node-boundary events from graph.run_stream)
+                        if "__thinking__" in event:
+                            thinking = event["__thinking__"]
+                            if thinking_stream_enabled:
+                                try:
+                                    async with factory() as tx:
+                                        await session_log.append_thinking_event(
+                                            tx, session_id,
+                                            kind=thinking.get("kind", "thinking"),
+                                            payload=thinking.get("payload"),
+                                            phase=thinking.get("phase"),
+                                        )
+                                except Exception:
+                                    logger.exception("thinking_events insert failed")
+                            # Broadcast to all subscribers — drain tasks
+                            # forward to each WS.
+                            registry.broadcast(session_id, {
+                                "event": "thinking_stream",
+                                "kind": thinking.get("kind", "thinking"),
+                                "phase": thinking.get("phase"),
+                                "payload": thinking.get("payload"),
                             })
+                            continue
 
-                        # Push messages — only send NEW messages (skip already-sent)
-                        messages = node_state.get("messages", [])
-                        cur_msg_count = len(messages)
-                        if cur_msg_count > prev_msg_count:
-                            for msg in messages[prev_msg_count:]:
-                                if msg.get("role") == "assistant":
-                                    phase = node_state.get("current_phase", "unknown")
-                                    content = msg.get("content", "")
-                                    msg_type = msg.get("type") or "text"
-                                    msg_payload = msg.get("payload")
-                                    # Persist assistant message (Phase 2 + 3.7)
-                                    persisted_id = 0
-                                    try:
-                                        async with factory() as tx:
-                                            persisted_id = await session_log.append_chat_message(
-                                                tx, session_id,
-                                                role="assistant",
-                                                content=content,
-                                                type=msg_type,
-                                                phase=phase,
-                                                payload=msg_payload,
-                                            )
-                                    except Exception:
-                                        logger.exception("chat_messages insert failed")
-                                    out: dict[str, Any] = {
-                                        "event": "message",
-                                        "content": content,
-                                        "phase": phase,
-                                        "message_id": persisted_id or None,
-                                    }
-                                    if msg_type and msg_type != "text":
-                                        out["type"] = msg_type
-                                    if msg_payload is not None:
-                                        out["payload"] = msg_payload
-                                    await _safe_send(out)
-                            prev_msg_count = cur_msg_count
-
-                        # Push structured intent if ready
-                        if node_state.get("structured_intent"):
-                            await _safe_send({
-                                "event": "intent_ready",
-                                "intent": node_state["structured_intent"],
-                            })
-
-                        # Push plan update
-                        if node_state.get("analysis_plan"):
-                            await _safe_send({
-                                "event": "plan_update",
-                                "plan": node_state["analysis_plan"],
-                            })
-
-                        # Push individual task status changes
-                        cur_task_statuses = node_state.get("task_statuses", {})
-                        for tid, ts in cur_task_statuses.items():
-                            if prev_task_statuses.get(tid) != ts:
-                                await _safe_send({
-                                    "event": "task_update",
-                                    "task_id": tid,
-                                    "status": ts,
+                        for node_name, node_state in event.items():
+                            # Push slot updates
+                            if "slots" in node_state:
+                                registry.broadcast(session_id, {
+                                    "event": "slot_update",
+                                    "slots": node_state.get("slots", {}),
+                                    "current_asking": node_state.get("current_target_slot"),
                                 })
-                        if cur_task_statuses:
-                            prev_task_statuses = dict(cur_task_statuses)
 
-                        # Push reflection summary
-                        if node_state.get("reflection_summary"):
-                            await _safe_send({
-                                "event": "reflection",
-                                "summary": node_state["reflection_summary"],
-                            })
+                            # Push messages — only emit NEW messages (skip already-sent)
+                            messages = node_state.get("messages", [])
+                            cur_msg_count = len(messages)
+                            if cur_msg_count > prev_msg_count:
+                                for msg in messages[prev_msg_count:]:
+                                    if msg.get("role") == "assistant":
+                                        phase = node_state.get("current_phase", "unknown")
+                                        content = msg.get("content", "")
+                                        msg_type = msg.get("type") or "text"
+                                        msg_payload = msg.get("payload")
+                                        # Persist assistant message
+                                        persisted_id = 0
+                                        try:
+                                            async with factory() as tx:
+                                                persisted_id = await session_log.append_chat_message(
+                                                    tx, session_id,
+                                                    role="assistant",
+                                                    content=content,
+                                                    type=msg_type,
+                                                    phase=phase,
+                                                    payload=msg_payload,
+                                                )
+                                        except Exception:
+                                            logger.exception("chat_messages insert failed")
+                                        out: dict[str, Any] = {
+                                            "event": "message",
+                                            "content": content,
+                                            "phase": phase,
+                                            "message_id": persisted_id or None,  # T3
+                                        }
+                                        if msg_type and msg_type != "text":
+                                            out["type"] = msg_type
+                                        if msg_payload is not None:
+                                            out["payload"] = msg_payload
+                                        registry.broadcast(session_id, out)
+                                prev_msg_count = cur_msg_count
 
-                await _safe_send({"event": "turn_complete"})
-            except Exception as e:
-                logger.exception("Error in graph execution")
-                await _safe_send({"type": "error", "message": str(e)})
+                            # Push structured intent if ready
+                            if node_state.get("structured_intent"):
+                                registry.broadcast(session_id, {
+                                    "event": "intent_ready",
+                                    "intent": node_state["structured_intent"],
+                                })
+
+                            # Push plan update
+                            if node_state.get("analysis_plan"):
+                                registry.broadcast(session_id, {
+                                    "event": "plan_update",
+                                    "plan": node_state["analysis_plan"],
+                                })
+
+                            # Push individual task status changes
+                            cur_task_statuses = node_state.get("task_statuses", {})
+                            for tid, ts in cur_task_statuses.items():
+                                if prev_task_statuses.get(tid) != ts:
+                                    registry.broadcast(session_id, {
+                                        "event": "task_update",
+                                        "task_id": tid,
+                                        "status": ts,
+                                    })
+                            if cur_task_statuses:
+                                prev_task_statuses = dict(cur_task_statuses)
+
+                            # Push reflection summary
+                            if node_state.get("reflection_summary"):
+                                registry.broadcast(session_id, {
+                                    "event": "reflection",
+                                    "summary": node_state["reflection_summary"],
+                                })
+
+                    registry.broadcast(session_id, {"event": "turn_complete"})
+                except Exception as e:
+                    logger.exception("Error in graph execution")
+                    registry.broadcast(session_id, {"type": "error", "message": str(e)})
 
     except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected: {session_id}")
+        logger.info("WebSocket disconnected: %s", session_id)
     except Exception as e:
-        logger.exception(f"WebSocket error: {e}")
+        logger.exception("WebSocket error: %s", e)
+    finally:
+        # ── T2: clean up this subscriber ─────────────────────────────
+        registry.unsubscribe(session_id, inbox)
+        inbox.put_nowait(None)       # sentinel — tell drain task to exit
+        try:
+            await asyncio.wait_for(drain_task, timeout=2.0)
+        except (asyncio.TimeoutError, asyncio.CancelledError):
+            drain_task.cancel()

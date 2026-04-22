@@ -16,6 +16,31 @@ from langgraph.graph import StateGraph, END
 logger = logging.getLogger("analytica.graph")
 
 
+# ── Model factory ─────────────────────────────────────────────
+
+def build_llm(model_key: str, *, request_timeout: int = 200):
+    """Return a ChatOpenAI instance for the given model_key.
+
+    Supported keys: 'qwen3-235b' (default), 'qwen3_5-122b', 'deepseek-r1'.
+    DeepSeek-R1 omits the Qwen-specific enable_thinking flag.
+    """
+    from backend.config import get_settings
+    from langchain_openai import ChatOpenAI
+
+    s = get_settings()
+    if model_key == "qwen3_5-122b":
+        base, key, name = s.QWEN3_5_122B_API_BASE, s.QWEN3_5_122B_API_KEY or s.QWEN_API_KEY, s.QWEN3_5_122B_MODEL
+    elif model_key == "deepseek-r1":
+        base, key, name = s.DEEPSEEK_R1_API_BASE, s.DEEPSEEK_R1_API_KEY or s.QWEN_API_KEY, s.DEEPSEEK_R1_MODEL
+    else:
+        base, key, name = s.QWEN_API_BASE, s.QWEN_API_KEY, s.QWEN_MODEL
+
+    kwargs: dict = dict(base_url=base, api_key=key, model=name, temperature=0.1, request_timeout=request_timeout)
+    if not model_key.startswith("deepseek"):
+        kwargs["extra_body"] = {"enable_thinking": False}
+    return ChatOpenAI(**kwargs)
+
+
 # ── Agent State ──────────────────────────────────────────────
 
 class AgentState(TypedDict, total=False):
@@ -114,24 +139,13 @@ async def planning_node(state: AgentState) -> AgentState:
         return state
 
     try:
-        from backend.config import get_settings
-        from langchain_openai import ChatOpenAI
         from backend.agent.planning import (
             PlanningEngine,
             format_plan_as_markdown,
             is_simple_plan,
         )
 
-        settings = get_settings()
-        llm = ChatOpenAI(
-            base_url=settings.QWEN_API_BASE,
-            api_key=settings.QWEN_API_KEY,
-            model=settings.QWEN_MODEL,
-            temperature=0.1,
-            request_timeout=200,  # must exceed the largest per-complexity timeout (180s)
-            extra_body={"enable_thinking": False},
-        )
-
+        llm = build_llm("qwen3-235b", request_timeout=200)
         engine = PlanningEngine(llm=llm, llm_timeout=120.0, max_retries=3)
         plan = await engine.generate_plan(
             intent,

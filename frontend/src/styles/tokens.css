@@ -1634,6 +1634,7 @@ html.analytica-v2 [data-density="spacious"] { font-size: 14px; }
   cursor: pointer;
   font-family: inherit;
   font-size: 12px;
+  flex-shrink: 0;
   transition: border-color 0.12s, background 0.12s;
 }
 .an-employee-chip:hover {
@@ -1665,7 +1666,7 @@ html.analytica-v2 [data-density="spacious"] { font-size: 14px; }
   color: var(--an-ink-3);
   border-color: var(--an-border);
 }
-.an-employee-chip .name { font-weight: 500; }
+.an-employee-chip .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
 .an-employee-chip .ver {
   font-family: var(--an-font-mono);
   font-size: 10px;

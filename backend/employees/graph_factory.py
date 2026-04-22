@@ -47,20 +47,9 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
             return state
 
         try:
-            from backend.config import get_settings
-            from langchain_openai import ChatOpenAI
             from backend.agent.planning import PlanningEngine, format_plan_as_markdown
-
-            settings = get_settings()
-            llm = ChatOpenAI(
-                base_url=settings.QWEN_API_BASE,
-                api_key=settings.QWEN_API_KEY,
-                model=settings.QWEN_MODEL,
-                temperature=0.1,
-                request_timeout=200,  # must exceed the largest per-complexity timeout (180s)
-                extra_body={"enable_thinking": False},
-            )
-
+            from backend.agent.graph import build_llm
+            llm = build_llm("qwen3-235b", request_timeout=200)
             engine = PlanningEngine(llm=llm, llm_timeout=120.0, max_retries=3)
             plan = await engine.generate_plan(
                 intent,

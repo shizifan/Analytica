@@ -24,6 +24,21 @@ class Settings(BaseSettings):
         description="Qwen3.5-122B model name",
     )
 
+    # DeepSeek-R1
+    # External: opensseapi.cmhk.com  |  Online (prod): opensseapi.cmft.com
+    DEEPSEEK_R1_API_BASE: str = Field(
+        default="https://opensseapi.cmhk.com/CMHK-LMMP-PRD_DeepSeek_R1/CMHK-LMMP-PRD/v1",
+        description="DeepSeek-R1 API base URL (OpenAI compatible)",
+    )
+    DEEPSEEK_R1_API_KEY: str = Field(
+        default="",
+        description="DeepSeek-R1 API key (leave empty to reuse QWEN_API_KEY)",
+    )
+    DEEPSEEK_R1_MODEL: str = Field(
+        default="DeepSeek-R1",
+        description="DeepSeek-R1 model name",
+    )
+
     REPORT_AGENT_ENABLED: bool = Field(
         default=True,
         description="Enable LLM agent loop for report generation; set False to use deterministic mode only",

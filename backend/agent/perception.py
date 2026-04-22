@@ -728,21 +728,10 @@ async def run_perception(state: dict, profile: Any = None) -> dict:
     Orchestrates the SlotFillingEngine within the agent graph.
     当 profile (EmployeeProfile) 提供时，注入员工域配置（extra_slots、slot_constraints、prompt_suffix）。
     """
-    from backend.config import get_settings
     from backend.database import get_session_factory
-
-    settings = get_settings()
-
-    # Initialize LLM
-    from langchain_openai import ChatOpenAI
-    llm = ChatOpenAI(
-        base_url=settings.QWEN_API_BASE,
-        api_key=settings.QWEN_API_KEY,
-        model=settings.QWEN_MODEL,
-        temperature=0.1,
-        request_timeout=90,
-        extra_body={"enable_thinking": False},
-    )
+    from backend.agent.graph import build_llm
+    # 感知层固定使用主力模型，确保多轮槽位抽取质量；模型切换仅影响规划层
+    llm = build_llm("qwen3-235b", request_timeout=90)
 
     # 从 profile 提取员工域扩展参数
     extra_slot_defs = []

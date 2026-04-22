@@ -62,6 +62,18 @@ export function useWebSocket(sessionId: string | null) {
 
       switch (eventType) {
         case 'connected':
+          // NOTE: do NOT set maxMessageId here.
+          //
+          // On session switch the store is cleared first (maxMessageId=0),
+          // then the WS reconnects and this event fires — if we set
+          // maxMessageId = last_message_id NOW, hydrateSession (triggered by
+          // the sessionId change) would read sinceId=last_message_id and
+          // fetch 0 messages, leaving the chat panel empty.
+          //
+          // hydrateSession runs from sinceId=0 and advances maxMessageId
+          // itself via addMessage(msg, dbId).  On reconnect to the *same*
+          // session (no clearConversation, no re-hydration) the store already
+          // holds the correct maxMessageId and needs no external seed.
           break;
 
         case 'slot_update':
@@ -70,18 +82,26 @@ export function useWebSocket(sessionId: string | null) {
           setPhase('perception');
           break;
 
-        case 'message':
-          addMessage({
-            id: makeMessageId(),
-            role: 'assistant',
-            content: (data.content as string) ?? '',
-            phase: data.phase as string,
-            type: data.type as never,
-            payload: (data.payload as Record<string, unknown> | undefined) ?? null,
-            timestamp: Date.now(),
-          });
+        case 'message': {
+          // T3: use DB id as the stable message identity for deduplication.
+          // If message_id is provided and <= maxMessageId, addMessage will
+          // silently drop it (already rendered via hydration or prior event).
+          const dbId = typeof data.message_id === 'number' ? data.message_id : undefined;
+          addMessage(
+            {
+              id: dbId !== undefined ? `db_${dbId}` : makeMessageId(),
+              role: 'assistant',
+              content: (data.content as string) ?? '',
+              phase: data.phase as string,
+              type: data.type as never,
+              payload: (data.payload as Record<string, unknown> | undefined) ?? null,
+              timestamp: Date.now(),
+            },
+            dbId,
+          );
           if (data.phase) setPhase(data.phase as never);
           break;
+        }
 
         case 'intent_ready':
           setPhase('planning');
@@ -113,6 +133,18 @@ export function useWebSocket(sessionId: string | null) {
           break;
 
         case 'turn_complete':
+          setSending(false);
+          break;
+
+        case 'already_running':
+          // T1: another window is running for this session.
+          // Inform the user and clear the "sending" spinner.
+          addMessage({
+            id: makeMessageId(),
+            role: 'system',
+            content: (data.message as string) ?? '分析正在进行中，请稍候',
+            timestamp: Date.now(),
+          });
           setSending(false);
           break;
 

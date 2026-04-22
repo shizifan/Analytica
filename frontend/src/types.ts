@@ -71,6 +71,8 @@ export interface WsMessageEvent {
   event: 'message';
   content: string;
   phase: string;
+  /** T3: DB chat_messages.id — used by frontend for deduplication. */
+  message_id?: number;
 }
 
 export interface WsIntentReadyEvent {
@@ -99,15 +101,24 @@ export interface WsTurnCompleteEvent {
   event: 'turn_complete';
 }
 
+/** T1: emitted to the WS that tried to start a duplicate run. */
+export interface WsAlreadyRunningEvent {
+  event: 'already_running';
+  message: string;
+}
+
 export interface WsConnectedEvent {
   type: 'connected';
   session_id: string;
   employee_id: string | null;
+  /** T3: seed for client-side maxMessageId; enables delta hydration. */
+  last_message_id?: number;
 }
 
 export type WsIncomingEvent =
   | WsSlotUpdateEvent
   | WsMessageEvent
+  | WsAlreadyRunningEvent
   | WsIntentReadyEvent
   | WsPlanUpdateEvent
   | WsTaskUpdateEvent
