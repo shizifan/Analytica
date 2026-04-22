@@ -12,7 +12,14 @@ type IconName =
   | 'panel-left'
   | 'refresh'
   | 'check'
-  | 'x';
+  | 'x'
+  | 'users'       // Employees
+  | 'terminal'    // APIs
+  | 'bolt'        // Skills
+  | 'layers'      // Domains
+  | 'database'    // Memories
+  | 'clipboard'   // Audit
+  | 'arrow-left'; // Back nav
 
 interface Props extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -81,6 +88,51 @@ const PATHS: Record<IconName, ReactElement> = {
     <>
       <line x1="6" y1="6" x2="18" y2="18" />
       <line x1="6" y1="18" x2="18" y2="6" />
+    </>
+  ),
+  users: (
+    <>
+      <path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
+      <circle cx="10" cy="7" r="4" />
+      <path d="M21 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M17 3.13a4 4 0 0 1 0 7.75" />
+    </>
+  ),
+  terminal: (
+    <>
+      <polyline points="4 17 10 11 4 5" />
+      <line x1="12" y1="19" x2="20" y2="19" />
+    </>
+  ),
+  bolt: (
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+  ),
+  layers: (
+    <>
+      <polygon points="12 2 2 7 12 12 22 7 12 2" />
+      <polyline points="2 17 12 22 22 17" />
+      <polyline points="2 12 12 17 22 12" />
+    </>
+  ),
+  database: (
+    <>
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+      <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3" />
+    </>
+  ),
+  clipboard: (
+    <>
+      <rect x="6" y="4" width="12" height="16" rx="2" />
+      <path d="M9 4h6v3H9z" />
+      <line x1="9" y1="11" x2="15" y2="11" />
+      <line x1="9" y1="15" x2="13" y2="15" />
+    </>
+  ),
+  'arrow-left': (
+    <>
+      <line x1="20" y1="12" x2="4" y2="12" />
+      <polyline points="10 6 4 12 10 18" />
     </>
   ),
 };

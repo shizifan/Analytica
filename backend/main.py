@@ -790,6 +790,213 @@ async def save_reflection_endpoint(
     }
 
 
+# ── Admin Console · Phase 6 ──────────────────────────────────
+
+class ApiEndpointUpsert(BaseModel):
+    name: str
+    method: str = "GET"
+    path: str
+    domain: str
+    intent: Optional[str] = None
+    time_type: Optional[str] = None
+    granularity: Optional[str] = None
+    tags: list[str] = Field(default_factory=list)
+    required_params: list[str] = Field(default_factory=list)
+    optional_params: list[str] = Field(default_factory=list)
+    returns: Optional[str] = None
+    param_note: Optional[str] = None
+    disambiguate: Optional[str] = None
+    source: str = "mock"
+    enabled: bool = True
+
+
+@app.get("/api/admin/apis")
+async def admin_list_apis(
+    domain: Optional[str] = None,
+    q: Optional[str] = None,
+    limit: int = 500,
+    db=Depends(get_db_session),
+):
+    from backend.memory import admin_store
+    items = await admin_store.list_api_endpoints(
+        db, domain=domain, query=q, limit=limit,
+    )
+    return {"items": items, "count": len(items)}
+
+
+@app.get("/api/admin/apis/{name}")
+async def admin_get_api(name: str, db=Depends(get_db_session)):
+    from backend.memory import admin_store
+    row = await admin_store.get_api_endpoint(db, name)
+    if row is None:
+        raise HTTPException(status_code=404, detail="API not found")
+    return row
+
+
+@app.put("/api/admin/apis/{name}")
+async def admin_upsert_api(
+    name: str, req: ApiEndpointUpsert, db=Depends(get_db_session),
+):
+    from backend.memory import admin_store
+    payload = req.model_dump()
+    payload["name"] = name  # URL wins
+    await admin_store.upsert_api_endpoint(db, **payload)
+    await admin_store.append_audit(
+        db, action="update", resource_type="api_endpoint", resource_id=name,
+        actor_type="user", diff=payload,
+    )
+    return await admin_store.get_api_endpoint(db, name)
+
+
+@app.delete("/api/admin/apis/{name}")
+async def admin_delete_api(name: str, db=Depends(get_db_session)):
+    from backend.memory import admin_store
+    ok = await admin_store.delete_api_endpoint(db, name)
+    if not ok:
+        raise HTTPException(status_code=404, detail="API not found")
+    await admin_store.append_audit(
+        db, action="delete", resource_type="api_endpoint", resource_id=name,
+    )
+    return {"status": "ok", "name": name}
+
+
+@app.get("/api/admin/apis/{name}/stats")
+async def admin_api_stats(
+    name: str, days: int = 7, db=Depends(get_db_session),
+):
+    from backend.memory import admin_store
+    return await admin_store.get_api_stats(db, name, days=days)
+
+
+class SkillUpsert(BaseModel):
+    name: str
+    kind: str
+    description: Optional[str] = None
+    input_spec: Optional[str] = None
+    output_spec: Optional[str] = None
+    domains: list[str] = Field(default_factory=list)
+    enabled: bool = True
+
+
+@app.get("/api/admin/skills")
+async def admin_list_skills(db=Depends(get_db_session)):
+    from backend.memory import admin_store
+    items = await admin_store.list_skills(db)
+    return {"items": items, "count": len(items)}
+
+
+@app.get("/api/admin/skills/{skill_id}")
+async def admin_get_skill(skill_id: str, db=Depends(get_db_session)):
+    from backend.memory import admin_store
+    row = await admin_store.get_skill(db, skill_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    return row
+
+
+@app.put("/api/admin/skills/{skill_id}")
+async def admin_upsert_skill(
+    skill_id: str, req: SkillUpsert, db=Depends(get_db_session),
+):
+    from backend.memory import admin_store
+    await admin_store.upsert_skill(db, skill_id=skill_id, **req.model_dump())
+    await admin_store.append_audit(
+        db, action="update", resource_type="skill", resource_id=skill_id,
+        diff=req.model_dump(),
+    )
+    return await admin_store.get_skill(db, skill_id)
+
+
+@app.post("/api/admin/skills/{skill_id}/toggle")
+async def admin_toggle_skill(
+    skill_id: str, enabled: bool = True, db=Depends(get_db_session),
+):
+    from backend.memory import admin_store
+    ok = await admin_store.toggle_skill(db, skill_id, enabled)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    await admin_store.append_audit(
+        db, action="toggle", resource_type="skill", resource_id=skill_id,
+        diff={"enabled": enabled},
+    )
+    return {"status": "ok", "skill_id": skill_id, "enabled": enabled}
+
+
+@app.get("/api/admin/domains")
+async def admin_list_domains(db=Depends(get_db_session)):
+    from backend.memory import admin_store
+    items = await admin_store.list_domains(db)
+    return {"items": items, "count": len(items)}
+
+
+class DomainUpsert(BaseModel):
+    name: str
+    description: Optional[str] = None
+    color: Optional[str] = None
+    top_tags: list[str] = Field(default_factory=list)
+
+
+@app.put("/api/admin/domains/{code}")
+async def admin_upsert_domain(
+    code: str, req: DomainUpsert, db=Depends(get_db_session),
+):
+    from backend.memory import admin_store
+    await admin_store.upsert_domain(db, code=code, **req.model_dump())
+    await admin_store.append_audit(
+        db, action="update", resource_type="domain", resource_id=code,
+        diff=req.model_dump(),
+    )
+    domains = await admin_store.list_domains(db)
+    return next((d for d in domains if d["code"] == code), None)
+
+
+@app.get("/api/admin/memories")
+async def admin_list_memories(
+    user_id: Optional[str] = None,
+    limit: int = 100,
+    db=Depends(get_db_session),
+):
+    from backend.memory import admin_store
+    return await admin_store.list_memory_entries(db, user_id=user_id, limit=limit)
+
+
+@app.delete("/api/admin/memories/{kind}/{entry_id}")
+async def admin_delete_memory(
+    kind: str, entry_id: str, db=Depends(get_db_session),
+):
+    from backend.memory import admin_store
+    ok = await admin_store.delete_memory_entry(db, kind, entry_id)
+    if not ok:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Memory entry not found: {kind}/{entry_id}",
+        )
+    await admin_store.append_audit(
+        db, action="delete", resource_type=f"memory_{kind}",
+        resource_id=entry_id,
+    )
+    return {"status": "ok", "kind": kind, "id": entry_id}
+
+
+@app.get("/api/admin/audit")
+async def admin_list_audit(
+    resource_type: Optional[str] = None,
+    actor_id: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    db=Depends(get_db_session),
+):
+    from backend.memory import admin_store
+    items = await admin_store.list_audit(
+        db,
+        resource_type=resource_type,
+        actor_id=actor_id,
+        limit=limit,
+        offset=offset,
+    )
+    return {"items": items, "count": len(items)}
+
+
 # ── WebSocket Chat ───────────────────────────────────────────
 
 @app.websocket("/ws/chat/{session_id}")

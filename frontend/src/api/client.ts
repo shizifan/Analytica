@@ -125,4 +125,123 @@ export const api = {
       'POST',
       `/api/reports/${artifactId}/convert?format=${format}`,
     ),
+
+  // ── Phase 6 · Admin Console ──────────────────────────────
+  admin: {
+    listApis: (opts: { domain?: string; q?: string; limit?: number } = {}) => {
+      const p = new URLSearchParams();
+      if (opts.domain) p.set('domain', opts.domain);
+      if (opts.q) p.set('q', opts.q);
+      p.set('limit', String(opts.limit ?? 500));
+      return request<{ items: AdminApi[]; count: number }>(
+        'GET',
+        `/api/admin/apis?${p.toString()}`,
+      );
+    },
+    getApiStats: (name: string, days = 7) =>
+      request<{ api_name: string; days: number; series: Array<Record<string, unknown>>; total_calls: number; total_errors: number; error_rate: number; last_called_at?: string }>(
+        'GET',
+        `/api/admin/apis/${encodeURIComponent(name)}/stats?days=${days}`,
+      ),
+    deleteApi: (name: string) =>
+      request<{ status: string; name: string }>(
+        'DELETE',
+        `/api/admin/apis/${encodeURIComponent(name)}`,
+      ),
+
+    listSkills: () =>
+      request<{ items: AdminSkill[]; count: number }>('GET', '/api/admin/skills'),
+    toggleSkill: (id: string, enabled: boolean) =>
+      request<{ status: string; skill_id: string; enabled: boolean }>(
+        'POST',
+        `/api/admin/skills/${encodeURIComponent(id)}/toggle?enabled=${enabled}`,
+      ),
+
+    listDomains: () =>
+      request<{ items: AdminDomain[]; count: number }>('GET', '/api/admin/domains'),
+
+    listMemories: (userId?: string, limit = 100) => {
+      const p = new URLSearchParams();
+      if (userId) p.set('user_id', userId);
+      p.set('limit', String(limit));
+      return request<{
+        preferences: Array<Record<string, unknown>>;
+        templates: Array<Record<string, unknown>>;
+        skill_notes: Array<Record<string, unknown>>;
+      }>('GET', `/api/admin/memories?${p.toString()}`);
+    },
+    deleteMemory: (kind: string, entryId: string) =>
+      request<{ status: string; kind: string; id: string }>(
+        'DELETE',
+        `/api/admin/memories/${kind}/${encodeURIComponent(entryId)}`,
+      ),
+
+    listAudit: (opts: { resourceType?: string; actorId?: string; limit?: number; offset?: number } = {}) => {
+      const p = new URLSearchParams();
+      if (opts.resourceType) p.set('resource_type', opts.resourceType);
+      if (opts.actorId) p.set('actor_id', opts.actorId);
+      p.set('limit', String(opts.limit ?? 100));
+      p.set('offset', String(opts.offset ?? 0));
+      return request<{ items: AdminAuditEntry[]; count: number }>(
+        'GET',
+        `/api/admin/audit?${p.toString()}`,
+      );
+    },
+  },
 };
+
+// ── Admin types (local — a proper types file can consolidate later) ─
+
+export interface AdminApi {
+  name: string;
+  method: string;
+  path: string;
+  domain: string;
+  intent?: string | null;
+  tags: string[];
+  required_params: string[];
+  optional_params: string[];
+  source: string;
+  enabled: boolean;
+  updated_at?: string;
+}
+
+export interface AdminSkill {
+  skill_id: string;
+  name: string;
+  kind: string;
+  description?: string | null;
+  domains: string[];
+  enabled: boolean;
+  run_count: number;
+  error_count: number;
+  avg_latency_ms?: number | null;
+  last_error_at?: string | null;
+  last_error_msg?: string | null;
+  updated_at?: string;
+}
+
+export interface AdminDomain {
+  code: string;
+  name: string;
+  description?: string | null;
+  color?: string | null;
+  top_tags: string[];
+  api_count: number;
+  employee_count: number;
+  updated_at?: string;
+}
+
+export interface AdminAuditEntry {
+  id: number;
+  ts: string;
+  actor_id?: string | null;
+  actor_type: string;
+  action: string;
+  resource_type?: string | null;
+  resource_id?: string | null;
+  result: string;
+  duration_ms?: number | null;
+  diff?: Record<string, unknown> | null;
+  ip?: string | null;
+}

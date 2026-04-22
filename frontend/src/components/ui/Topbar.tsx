@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Icon } from './Icon';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useWsStore } from '../../stores/wsStore';
@@ -42,10 +43,10 @@ export function Topbar({ onTweaks }: Props) {
           <span className="an-dot" />
           {PHASE_LABELS[phase] ?? phase}
         </span>
-        <a className="an-console-btn" href="/admin" title="管理控制台">
+        <Link to="/admin" className="an-console-btn" title="管理控制台">
           <Icon name="grid" size={12} />
           <span>控制台</span>
-        </a>
+        </Link>
         <button
           type="button"
           className="an-icon-btn"
