@@ -19,6 +19,7 @@ double-retry on rate limits.
 from __future__ import annotations
 
 import asyncio
+import json as _json
 import logging
 import re
 import time
@@ -55,6 +56,27 @@ def _reset_semaphore() -> None:
 def _strip_think_tags(text: str) -> str:
     """Remove <think>...</think> blocks (Qwen reasoning traces)."""
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+
+
+def extract_json(text: str) -> dict | None:
+    """Extract the first JSON object from LLM text output.
+
+    Handles markdown fences, leading/trailing whitespace, and <think> blocks.
+    Returns None when no valid JSON object is found.
+    """
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    text = re.sub(r"^```(?:json)?\s*", "", text).rstrip("` \n")
+    try:
+        return _json.loads(text)
+    except Exception:
+        pass
+    m = re.search(r"\{.*\}", text, re.DOTALL)
+    if m:
+        try:
+            return _json.loads(m.group())
+        except Exception:
+            pass
+    return None
 
 
 def truncate(text: str, max_chars: int = 8000) -> str:
@@ -96,6 +118,7 @@ async def invoke_llm(
     max_prompt_chars: int = 8000,
     span_emit: Callable[[dict], Awaitable[None]] | None = None,
     task_id: str = "",
+    _semaphore: asyncio.Semaphore | None = None,
 ) -> dict[str, Any]:
     """Single LLM call with semaphore, truncation, and exception classification.
 
@@ -149,7 +172,7 @@ async def invoke_llm(
             http_async_client=http_client,
         )
 
-        sem = _get_semaphore()
+        sem = _semaphore if _semaphore is not None else _get_semaphore()
         async with sem:
             try:
                 if truncated_system:

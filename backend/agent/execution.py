@@ -84,7 +84,7 @@ MAX_CONCURRENT = 3
 # Per-type timeout profile: (lower_bound, upper_bound, multiplier_on_estimated)
 # resolved_timeout = clip(estimated_seconds * multiplier, lower, upper)
 _TIMEOUT_PROFILE: dict[str, tuple[int, int, float]] = {
-    "data_fetch":    (15, 45,  2.0),
+    "data_fetch":    (15, 90,  3.0),
     "analysis":      (60, 150, 2.5),   # LLM 调用通常 30-90s, 留足余量
     "visualization": (5,  20,  2.0),
     "report_gen":    (30, 120, 2.0),
@@ -561,6 +561,7 @@ async def execute_plan(
     allowed_skills: frozenset[str] | None = None,
     report_dir: Path | str | None = None,
     persist_snapshot: Callable[[dict[str, str]], Any] | None = None,
+    cancel_event: asyncio.Event | None = None,
 ) -> tuple[dict[str, str], dict[str, SkillOutput], bool]:
     """Execute an analysis plan.
 
@@ -595,6 +596,19 @@ async def execute_plan(
     needs_replan = False
 
     for layer_idx, layer in enumerate(layers):
+        # ── Cancellation check (before each layer) ─────────────────
+        if cancel_event and cancel_event.is_set():
+            logger.info("execute_plan: cancellation requested — stopping before layer %d", layer_idx)
+            for task in tasks:
+                if task.task_id not in task_statuses:
+                    task_statuses[task.task_id] = "skipped"
+                    execution_context[task.task_id] = SkillOutput(
+                        skill_id=task.skill, status="skipped", output_type="json",
+                        error_message="用户终止执行",
+                        metadata={"skip_reason": "CANCELLED"},
+                    )
+            break
+
         runnable: list[TaskItem] = []
 
         # ── Per-task pre-flight: dep policy + report_gen threshold ──
@@ -1188,15 +1202,37 @@ async def execution_node(
         except Exception:
             logger.exception("per-layer state persist failed for %s", session_id)
 
+    from backend.agent.session_registry import get_registry
+    registry = get_registry()
+    cancel_event = registry.get_cancel_event(session_id) if session_id else None
+
     task_statuses, execution_context, needs_replan = await execute_plan(
         tasks,
         ws_callback=ws_callback,
         allowed_skills=allowed_skills,
         persist_snapshot=_persist_layer_snapshot if session_id else None,
+        cancel_event=cancel_event,
     )
 
     state["task_statuses"] = task_statuses
     state["execution_context"] = execution_context
+
+    # ── Cancellation: short-circuit before result formatting ───
+    if cancel_event and cancel_event.is_set():
+        registry.clear_cancel(session_id)
+        done_count = sum(1 for v in task_statuses.values() if v == "done")
+        state["needs_replan"] = False
+        state["messages"] = state.get("messages", [])
+        state["messages"].append({
+            "role": "assistant",
+            "content": f"[已终止] 执行被用户中断（已完成 {done_count}/{len(tasks)} 个任务）。",
+        })
+        if ws_callback:
+            try:
+                await ws_callback({"event": "cancelled", "done": done_count, "total": len(tasks)})
+            except Exception:
+                pass
+        return state
 
     _MAX_REPLAN = 1
     replan_count = state.get("replan_count", 0)

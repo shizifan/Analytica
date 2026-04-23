@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any, AsyncGenerator, Callable, TypedDict
@@ -517,11 +518,48 @@ async def run_stream(
     #    Phase 3.5: ws_callback 通过 contextvars 暴露给所有节点（避免把
     #    可调用对象写进 state 导致的 TypedDict 过滤与序列化问题）。
     from backend.agent import ws_ctx
+    from backend.agent.session_registry import get_registry
+    _registry = get_registry()
+    _registry.clear_cancel(session_id)
+    cancel_event = _registry.get_cancel_event(session_id)
+
+    # Run graph in a background Task so we can cancel it mid-LLM-call when
+    # the user clicks "终止".  Without this, cancel_event is only checked
+    # between node completions, meaning a 30-60s planning LLM call can't be
+    # interrupted until it naturally finishes.
+    _event_queue: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
+
+    async def _graph_producer() -> None:
+        try:
+            async for ev in graph.astream(state):
+                await _event_queue.put(("event", ev))
+        except asyncio.CancelledError:
+            pass
+        finally:
+            await _event_queue.put(("done", None))
+
+    _producer = asyncio.create_task(_graph_producer())
+    _cancelled_early = False
+
     token = ws_ctx.set_ws_callback(ws_callback)
     final_state = dict(state)
     visited_nodes: set[str] = set()
     try:
-        async for event in graph.astream(state):
+        while True:
+            # Poll with 0.3s timeout so cancel_event is checked regularly
+            # even while the graph is blocked inside a long LLM call.
+            try:
+                kind, event = await asyncio.wait_for(_event_queue.get(), timeout=0.3)
+            except asyncio.TimeoutError:
+                if cancel_event.is_set():
+                    _producer.cancel()
+                    _cancelled_early = True
+                    break
+                continue
+
+            if kind == "done":
+                break
+
             for node_name, node_state in event.items():
                 prev_phase = final_state.get("current_phase")
                 final_state.update(node_state)
@@ -538,7 +576,7 @@ async def run_stream(
                             },
                         }
                     }
-                # 节点退出事件 + 节点产物摘要（Phase 3.5）
+                # 节点退出事件 + 节点产物摘要
                 exit_payload = _summarize_node_exit(node_name, node_state)
                 if exit_payload:
                     yield {
@@ -557,8 +595,25 @@ async def run_stream(
                 if decision:
                     yield {"__thinking__": {"kind": "decision", "phase": node_name, "payload": decision}}
             yield event
+
+            if cancel_event.is_set():
+                _producer.cancel()
+                _cancelled_early = True
+                break
     finally:
         ws_ctx.reset_ws_callback(token)
+        if not _producer.done():
+            _producer.cancel()
+        await asyncio.gather(_producer, return_exceptions=True)
+
+    if _cancelled_early:
+        _registry.clear_cancel(session_id)
+        if ws_callback:
+            try:
+                await ws_callback({"event": "cancelled"})
+            except Exception:
+                pass
+        return
 
     # 6. 最终状态 → DB；剥离非序列化字段
     try:

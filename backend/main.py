@@ -152,6 +152,11 @@ def _profile_to_detail(profile: Any) -> dict[str, Any]:
 
 
 def _profile_to_summary(profile: Any) -> dict[str, Any]:
+    from backend.agent.api_registry import BY_DOMAIN
+    if profile.endpoints:
+        ep_count = len(profile.endpoints)
+    else:
+        ep_count = sum(len(BY_DOMAIN.get(d, [])) for d in (profile.domains or []))
     return {
         "employee_id": profile.employee_id,
         "name": profile.name,
@@ -162,7 +167,7 @@ def _profile_to_summary(profile: Any) -> dict[str, Any]:
         "status": profile.status,
         "faqs_count": len(profile.faqs),
         "skills_count": len(profile.skills),
-        "endpoints_count": len(profile.endpoints),
+        "endpoints_count": ep_count,
     }
 
 
@@ -585,6 +590,19 @@ async def preview_report(
 
     mime = "text/html; charset=utf-8" if fmt == "html" else "text/markdown; charset=utf-8"
     return FileResponse(path=str(fs_path), media_type=mime)
+
+
+@app.post("/api/sessions/{session_id}/cancel")
+async def cancel_session_execution(session_id: str):
+    """Signal the running execution for this session to stop.
+
+    Idempotent — safe to call even when nothing is running.
+    The execution loop checks this event between task layers and will stop
+    cleanly, marking pending tasks as skipped, before returning control.
+    """
+    from backend.agent.session_registry import get_registry
+    get_registry().request_cancel(session_id)
+    return {"status": "ok", "session_id": session_id}
 
 
 @app.delete("/api/sessions/{session_id}")

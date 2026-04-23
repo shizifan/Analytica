@@ -29,6 +29,7 @@ _QUEUE_MAXSIZE = 500
 class SessionHandle:
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     queues: set[asyncio.Queue] = field(default_factory=set)
+    cancel_event: asyncio.Event = field(default_factory=asyncio.Event)
 
 
 class SessionRegistry:
@@ -67,6 +68,20 @@ class SessionRegistry:
         handle = self._handles.get(session_id)
         if handle:
             handle.queues.discard(q)
+
+    def get_cancel_event(self, session_id: str) -> asyncio.Event:
+        """Return the cancellation Event for session_id."""
+        return self._ensure(session_id).cancel_event
+
+    def request_cancel(self, session_id: str) -> None:
+        """Signal the running execution to stop."""
+        self._ensure(session_id).cancel_event.set()
+
+    def clear_cancel(self, session_id: str) -> None:
+        """Reset cancellation state before a new run starts."""
+        handle = self._handles.get(session_id)
+        if handle:
+            handle.cancel_event.clear()
 
     def broadcast(self, session_id: str, payload: Any) -> None:
         """Fan out payload to every subscriber's inbox (synchronous)."""

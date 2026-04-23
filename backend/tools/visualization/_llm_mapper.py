@@ -9,14 +9,12 @@ Entry point: decide_chart_mapping(df, intent, chart_type, span_emit, task_id)
 """
 from __future__ import annotations
 
-import json
 import logging
-import re
 from typing import Any
 
 import pandas as pd
 
-from backend.tools._llm import invoke_llm
+from backend.tools._llm import extract_json, invoke_llm
 
 logger = logging.getLogger("analytica.tools.visualization.llm_mapper")
 
@@ -171,21 +169,6 @@ def _fallback_mapping(df: pd.DataFrame, chart_type: str, intent: str) -> dict[st
     return {"category_field": cat, "value_field": val, "title": intent[:15]}
 
 
-# ── JSON parse with fallback ─────────────────────────────────────
-
-def _parse_llm_json(text: str) -> dict | None:
-    """Extract and parse JSON from LLM response, tolerating minor formatting issues."""
-    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
-    # Strip markdown fences
-    text = re.sub(r"^```(?:json)?\s*", "", text).rstrip("` \n")
-    # Find first { ... }
-    m = re.search(r"\{.*\}", text, re.DOTALL)
-    if not m:
-        return None
-    try:
-        return json.loads(m.group())
-    except json.JSONDecodeError:
-        return None
 
 
 def _validate_mapping(mapping: dict, df: pd.DataFrame, chart_type: str) -> bool:
@@ -208,6 +191,47 @@ def _validate_mapping(mapping: dict, df: pd.DataFrame, chart_type: str) -> bool:
     return True
 
 
+# ── Hint extraction from fetch-task metadata ────────────────────
+
+def _extract_display_hint_from_context(
+    context: dict[str, Any],
+    chart_type: str,
+    df: pd.DataFrame,
+) -> dict[str, Any] | None:
+    """Check upstream data_fetch SkillOutputs for a matching display_hint.
+
+    api_fetch stores a display_hint in metadata when it resolves params with
+    LLM. If that hint names valid columns for the requested chart type, reuse
+    it instead of making another LLM call.
+    """
+    for out in context.values():
+        hint = (getattr(out, "metadata", None) or {}).get("display_hint")
+        if not isinstance(hint, dict):
+            continue
+        if hint.get("type") == "chart" or chart_type in ("line", "bar", "waterfall"):
+            if chart_type in ("line", "bar"):
+                x = hint.get("x_field")
+                y = hint.get("y_field") or hint.get("y_fields")
+                if isinstance(y, str):
+                    y = [y]
+                if x and y and x in df.columns and all(f in df.columns for f in y):
+                    return {
+                        "x_field": x,
+                        "y_fields": y,
+                        "series_by": hint.get("series_by"),
+                        "title": hint.get("title") or "",
+                        "y_axis_label": hint.get("y_axis_label") or "",
+                        "sort": hint.get("sort"),
+                        "orientation": hint.get("orientation", "vertical"),
+                    }
+            elif chart_type == "waterfall":
+                cat = hint.get("x_field") or hint.get("category_field")
+                val = hint.get("y_field") or hint.get("value_field")
+                if cat and val and cat in df.columns and val in df.columns:
+                    return {"category_field": cat, "value_field": val, "title": hint.get("title") or ""}
+    return None
+
+
 # ── Public entry point ───────────────────────────────────────────
 
 async def decide_chart_mapping(
@@ -217,6 +241,7 @@ async def decide_chart_mapping(
     *,
     span_emit=None,
     task_id: str = "",
+    context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Decide axis/series mapping for a chart based on actual DataFrame columns.
 
@@ -233,6 +258,14 @@ async def decide_chart_mapping(
     """
     if df is None or df.empty:
         return _fallback_mapping(pd.DataFrame(), chart_type, intent)
+
+    # Reuse display_hint from upstream api_fetch if it names valid columns —
+    # avoids a redundant LLM call when param resolution already produced a hint.
+    if context:
+        cached = _extract_display_hint_from_context(context, chart_type, df)
+        if cached:
+            logger.info("chart mapping: reusing display_hint from fetch metadata [%s]", chart_type)
+            return cached
 
     prompt_template = _PROMPTS.get(chart_type, _LINE_PROMPT)
     schema = describe_dataframe(df)
@@ -255,7 +288,7 @@ async def decide_chart_mapping(
         )
         return _fallback_mapping(df, chart_type, intent)
 
-    mapping = _parse_llm_json(result["text"])
+    mapping = extract_json(result["text"])
     if mapping is None:
         logger.warning("chart mapping: JSON parse failed, text=%r", result["text"][:200])
         return _fallback_mapping(df, chart_type, intent)

@@ -46,6 +46,11 @@ export const api = {
       modifications,
     }),
 
+  cancelExecution: (sessionId: string) =>
+    request<{ status: string; session_id: string }>(
+      'POST', `/api/sessions/${sessionId}/cancel`,
+    ),
+
   saveReflection: (
     sessionId: string,
     opts: { save_preferences?: boolean; save_template?: boolean; save_skill_notes?: boolean } = {},

@@ -97,11 +97,14 @@ class BarChartSkill(BaseSkill):
                 metadata={"skip_reason": "EMPTY_AFTER_FILTER"},
             )
 
-        # LLM decides axis/series mapping based on actual DataFrame columns
+        # LLM decides axis/series mapping based on actual DataFrame columns.
+        # Passes context so decide_chart_mapping can reuse display_hint from
+        # upstream api_fetch and skip the LLM call when the hint is valid.
         mapping = await decide_chart_mapping(
             df, intent, "bar",
             span_emit=inp.span_emit,
             task_id=task_id,
+            context=context,
         )
         return self._render_with_mapping(df, mapping)
 

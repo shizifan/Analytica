@@ -52,6 +52,7 @@ export function ChatPageV2() {
   const setSession = useSessionStore((s) => s.setSession);
   const messages = useSessionStore((s) => s.messages);
   const phase = useSessionStore((s) => s.phase);
+  const sending = useSessionStore((s) => s.sending);
   const clearConversation = useSessionStore((s) => s.clearConversation);
 
   const wsStatus = useWsStore((s) => s.status);
@@ -309,6 +310,16 @@ export function ChatPageV2() {
   })();
 
   const inputDisabled = !sessionId || wsStatus !== 'connected';
+  const isRunning = sending || phase === 'executing';
+
+  const handleCancel = useCallback(async () => {
+    if (!sessionId) return;
+    try {
+      await api.cancelExecution(sessionId);
+    } catch {
+      // ignore — backend may already have finished
+    }
+  }, [sessionId]);
 
   return (
     <div className="an-app">
@@ -432,7 +443,12 @@ export function ChatPageV2() {
             </div>
           </div>
 
-          <InputBar onSend={handleSend} disabled={inputDisabled} />
+          <InputBar
+            onSend={handleSend}
+            onCancel={handleCancel}
+            disabled={inputDisabled && !isRunning}
+            isRunning={isRunning}
+          />
         </main>
 
         <AgentPane

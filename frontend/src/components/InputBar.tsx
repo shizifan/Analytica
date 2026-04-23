@@ -2,10 +2,13 @@ import { useState, useCallback, useRef, type KeyboardEvent } from 'react';
 
 interface Props {
   onSend: (content: string) => void;
+  onCancel?: () => void;
   disabled?: boolean;
+  /** When true, shows a stop button instead of send */
+  isRunning?: boolean;
 }
 
-export function InputBar({ onSend, disabled = false }: Props) {
+export function InputBar({ onSend, onCancel, disabled = false, isRunning = false }: Props) {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -51,14 +54,25 @@ export function InputBar({ onSend, disabled = false }: Props) {
         rows={1}
         className="max-h-40 min-h-[36px] flex-1 resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 disabled:bg-gray-100 disabled:text-gray-400"
       />
-      <button
-        data-testid="send-button"
-        onClick={handleSend}
-        disabled={disabled || !text.trim()}
-        className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
-      >
-        发送
-      </button>
+      {isRunning ? (
+        <button
+          data-testid="cancel-button"
+          onClick={onCancel}
+          title="终止当前任务"
+          className="shrink-0 rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-600"
+        >
+          终止
+        </button>
+      ) : (
+        <button
+          data-testid="send-button"
+          onClick={handleSend}
+          disabled={disabled || !text.trim()}
+          className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+        >
+          发送
+        </button>
+      )}
     </div>
   );
 }

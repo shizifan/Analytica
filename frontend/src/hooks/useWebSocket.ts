@@ -145,8 +145,14 @@ export function useWebSocket(sessionId: string | null) {
           });
           break;
 
+        case 'cancelled':
+          setSending(false);
+          setPhase('idle');
+          break;
+
         case 'turn_complete':
           setSending(false);
+          setPhase('idle');
           break;
 
         case 'already_running':
