@@ -983,6 +983,27 @@ async def admin_get_skill(skill_id: str, db=Depends(get_db_session)):
     return row
 
 
+@app.get("/api/admin/skills/{skill_id}/source")
+async def admin_skill_source(skill_id: str):
+    """Return the source file of a registered skill."""
+    import inspect
+    from pathlib import Path
+    from backend.skills.registry import SkillRegistry
+    skill = SkillRegistry.get_instance().get_skill(skill_id)
+    if skill is None:
+        raise HTTPException(status_code=404, detail="Skill not found or not loaded")
+    try:
+        src_path = Path(inspect.getfile(type(skill)))
+        source = src_path.read_text(encoding="utf-8")
+        return {
+            "skill_id": skill_id,
+            "file": str(src_path.relative_to(Path(__file__).parent.parent)),
+            "source": source,
+        }
+    except (TypeError, OSError) as exc:
+        raise HTTPException(status_code=500, detail=f"Cannot read source: {exc}")
+
+
 @app.put("/api/admin/skills/{skill_id}")
 async def admin_upsert_skill(
     skill_id: str, req: SkillUpsert, db=Depends(get_db_session),

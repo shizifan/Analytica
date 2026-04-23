@@ -332,17 +332,10 @@ export function ChatPageV2() {
                 onClick={() => setEmployeesDrawerOpen(true)}
                 title="切换 / 管理数字员工"
               >
-                <span className={`avatar${selectedEmployee ? '' : ' gray'}`}>
-                  {selectedEmployee
-                    ? (selectedEmployee.initials || selectedEmployee.name.slice(0, 2))
-                    : 'ANY'}
-                </span>
                 <span className="name">
                   {selectedEmployee ? selectedEmployee.name : '通用模式'}
                 </span>
-                {selectedEmployee && (
-                  <span className="ver">v{selectedEmployee.version}</span>
-                )}
+
                 <Icon name="chev-right" size={12} />
               </button>
               {selectedEmployee && (

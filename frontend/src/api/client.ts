@@ -163,6 +163,10 @@ export const api = {
 
     listSkills: () =>
       request<{ items: AdminSkill[]; count: number }>('GET', '/api/admin/skills'),
+    getSkillSource: (id: string) =>
+      request<{ skill_id: string; file: string; source: string }>(
+        'GET', `/api/admin/skills/${encodeURIComponent(id)}/source`,
+      ),
     toggleSkill: (id: string, enabled: boolean) =>
       request<{ status: string; skill_id: string; enabled: boolean }>(
         'POST',
@@ -224,6 +228,8 @@ export interface AdminSkill {
   name: string;
   kind: string;
   description?: string | null;
+  input_spec?: string | null;
+  output_spec?: string | null;
   domains: string[];
   enabled: boolean;
   run_count: number;

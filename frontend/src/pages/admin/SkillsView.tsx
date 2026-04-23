@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AdminListShell } from '../../components/ui/admin/AdminListShell';
+import { SkillDetailDrawer } from '../../components/ui/admin/SkillDetailDrawer';
 import { api, type AdminSkill } from '../../api/client';
 
 const KIND_LABEL: Record<string, string> = {
@@ -15,6 +16,7 @@ export function SkillsView() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<AdminSkill | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -46,12 +48,14 @@ export function SkillsView() {
       setItems((arr) =>
         arr.map((it) => (it.skill_id === id ? { ...it, enabled } : it)),
       );
+      setSelected((prev) => prev?.skill_id === id ? { ...prev, enabled } : prev);
     } catch (e) {
       window.alert(`切换失败：${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
   return (
+    <>
     <AdminListShell
       title="技能"
       count={filtered.length}
@@ -79,7 +83,12 @@ export function SkillsView() {
                 ? Math.round((it.error_count / it.run_count) * 100)
                 : 0;
               return (
-                <tr key={it.skill_id} title={it.last_error_msg ?? undefined}>
+                <tr
+                key={it.skill_id}
+                title={it.last_error_msg ?? undefined}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setSelected(it)}
+              >
                   <td className="mono">{it.skill_id}</td>
                   <td>
                     <span className="an-admin-chip">
@@ -101,7 +110,7 @@ export function SkillsView() {
                       type="button"
                       className={`an-admin-chip ${it.enabled ? 'ok' : 'err'}`}
                       style={{ cursor: 'pointer', border: 0 }}
-                      onClick={() => handleToggle(it.skill_id, !it.enabled)}
+                      onClick={(e) => { e.stopPropagation(); handleToggle(it.skill_id, !it.enabled); }}
                       title={`点击 ${it.enabled ? '停用' : '启用'}`}
                     >
                       {it.enabled ? '启用' : '停用'}
@@ -114,5 +123,14 @@ export function SkillsView() {
         </table>
       )}
     </AdminListShell>
+
+    {selected && (
+      <SkillDetailDrawer
+        item={selected}
+        onClose={() => setSelected(null)}
+        onToggle={handleToggle}
+      />
+    )}
+    </>
   );
 }
