@@ -631,6 +631,16 @@ async def execute_plan(
                     error_message="依赖任务失败",
                     metadata={"error_category": "DEP_FAILED"},
                 )
+                if ws_callback:
+                    try:
+                        await ws_callback({
+                            "event": "task_update",
+                            "task_id": task.task_id,
+                            "status": "failed",
+                            "message": f"跳过：{task.name or task.skill}（上游任务失败）",
+                        })
+                    except Exception:
+                        pass
 
         if not runnable:
             continue
@@ -1187,6 +1197,20 @@ async def execution_node(
 
     state["task_statuses"] = task_statuses
     state["execution_context"] = execution_context
+
+    _MAX_REPLAN = 1
+    replan_count = state.get("replan_count", 0)
+    if needs_replan:
+        if replan_count >= _MAX_REPLAN:
+            needs_replan = False
+            state["error"] = "数据持续为空，已达重新规划上限，终止执行。"
+            logger.warning(
+                "Replan limit (%d) reached for session %s; aborting replan cycle",
+                _MAX_REPLAN, session_id,
+            )
+        else:
+            state["replan_count"] = replan_count + 1
+
     state["needs_replan"] = needs_replan
 
     # Determine next action — skipped tasks are terminal but not failures

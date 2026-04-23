@@ -67,6 +67,7 @@ class AgentState(TypedDict, total=False):
     task_statuses: dict[str, str]
     execution_context: dict[str, Any] | None
     needs_replan: bool
+    replan_count: int
 
     # Reflection
     reflection: dict[str, Any] | None
@@ -100,6 +101,7 @@ def make_initial_state(
         task_statuses={},
         execution_context=None,
         needs_replan=False,
+        replan_count=0,
         reflection=None,
         reflection_summary=None,
         current_phase="perception",
@@ -237,9 +239,15 @@ def route_after_execution(state: AgentState) -> str:
     task_statuses = state.get("task_statuses", {})
     if not task_statuses:
         return END
-    # Exit when all tasks reached a terminal state (done/failed/error/skipped)
     terminal_states = {"done", "failed", "error", "skipped"}
-    all_terminal = all(v in terminal_states for v in task_statuses.values())
+    # "running"/"pending" are the only valid non-terminal values; anything
+    # outside known states is treated as terminal (defensive guard against
+    # unexpected status values causing an infinite execution loop).
+    non_terminal = {"running", "pending"}
+    all_terminal = all(
+        v in terminal_states or v not in non_terminal
+        for v in task_statuses.values()
+    )
     if all_terminal:
         return END
     return "execution"

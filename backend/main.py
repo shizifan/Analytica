@@ -1189,6 +1189,13 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                                     )
                             except Exception:
                                 logger.exception("trace_span persist failed")
+                        elif evt == "task_update":
+                            # Sync diff state so the post-node task_statuses loop
+                            # skips statuses already broadcast here (prevents duplicates).
+                            tid = payload.get("task_id")
+                            ts = payload.get("status")
+                            if tid and ts:
+                                prev_task_statuses[tid] = ts
                         registry.broadcast(session_id, payload)
 
                     async for event in run_stream(
