@@ -621,6 +621,28 @@ async def replay_thinking(
     return {"items": items, "count": len(items), "since_id": since_id}
 
 
+@app.get("/api/sessions/{session_id}/trace")
+async def get_trace(session_id: str, db=Depends(get_db_session)):
+    """Return API and LLM call spans grouped by task_id for the trace viewer."""
+    from backend.memory import session_log
+    rows = await session_log.list_thinking_events(
+        db, session_id, kind="span", limit=2000,
+    )
+    tasks: dict[str, list] = {}
+    for row in rows:
+        span = row.get("payload") or {}
+        tid = span.get("task_id", "unknown")
+        tasks.setdefault(tid, []).append(span)
+
+    return {
+        "session_id": session_id,
+        "tasks": [
+            {"task_id": tid, "spans": spans}
+            for tid, spans in tasks.items()
+        ],
+    }
+
+
 # ── Planning APIs ─────────────────────────────────────────────
 
 class PlanConfirmRequest(BaseModel):
@@ -1156,6 +1178,17 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                                         )
                                 except Exception:
                                     logger.exception("thinking_events insert failed")
+                        elif evt == "trace_span":
+                            try:
+                                async with factory() as tx:
+                                    await session_log.append_thinking_event(
+                                        tx, session_id,
+                                        kind="span",
+                                        payload=payload.get("span"),
+                                        phase="execution",
+                                    )
+                            except Exception:
+                                logger.exception("trace_span persist failed")
                         registry.broadcast(session_id, payload)
 
                     async for event in run_stream(

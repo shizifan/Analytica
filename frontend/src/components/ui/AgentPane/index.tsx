@@ -7,8 +7,10 @@ import { useThinkingStore } from '../../../stores/thinkingStore';
 import { ThinkingTab } from './ThinkingTab';
 import { StatusTab } from './StatusTab';
 import { PlanTab } from './PlanTab';
+import { TraceTab } from './TraceTab';
+import { useTraceStore } from '../../../stores/traceStore';
 
-type TabKey = 'thinking' | 'status' | 'plan';
+type TabKey = 'thinking' | 'status' | 'plan' | 'trace';
 
 interface Props {
   collapsed: boolean;
@@ -35,6 +37,7 @@ export function AgentPane({ collapsed, onToggle, phaseLabel }: Props) {
   );
   const planTaskCount = usePlanStore((s) => s.plan?.tasks?.length ?? 0);
   const thinkingCount = useThinkingStore((s) => s.events.length);
+  const traceTaskCount = useTraceStore((s) => Object.keys(s.spansByTask).length);
 
   // Auto-focus the tab that matches the current phase — but only until
   // the user clicks a tab manually; then we stop moving the focus.
@@ -104,12 +107,19 @@ export function AgentPane({ collapsed, onToggle, phaseLabel }: Props) {
           label="计划"
           badge={planTaskCount}
         />
+        <TabButton
+          active={active === 'trace'}
+          onClick={() => pickTab('trace')}
+          label="追踪"
+          badge={traceTaskCount}
+        />
       </nav>
 
       <div className="an-tab-body" role="tabpanel">
         {active === 'thinking' && <ThinkingTab />}
         {active === 'status' && <StatusTab />}
         {active === 'plan' && <PlanTab />}
+        {active === 'trace' && <TraceTab />}
       </div>
     </aside>
   );

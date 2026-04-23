@@ -22,9 +22,10 @@ import asyncio
 import logging
 import re
 import time
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from backend.skills.base import ErrorCategory, classify_exception
+from backend.tracing import make_span
 
 logger = logging.getLogger("analytica.skills.llm")
 
@@ -93,6 +94,8 @@ async def invoke_llm(
     temperature: float = 0.3,
     timeout: int = 90,
     max_prompt_chars: int = 8000,
+    span_emit: Callable[[dict], Awaitable[None]] | None = None,
+    task_id: str = "",
 ) -> dict[str, Any]:
     """Single LLM call with semaphore, truncation, and exception classification.
 
@@ -113,6 +116,14 @@ async def invoke_llm(
 
     prompt_chars = len(truncated_user) + (len(truncated_system) if truncated_system else 0)
     start = time.monotonic()
+
+    if span_emit:
+        await span_emit(make_span("llm_call", task_id, status="start", input={
+            "prompt_chars": prompt_chars,
+            "temperature": temperature,
+            "system_preview": (truncated_system or "")[:200],
+            "user_preview": truncated_user[:400],
+        }))
 
     try:
         import httpx
@@ -155,10 +166,17 @@ async def invoke_llm(
         raw = response.content if hasattr(response, "content") else str(response)
         text = _strip_think_tags(raw)
         tokens = _extract_usage(response)
+        elapsed = time.monotonic() - start
+        if span_emit:
+            await span_emit(make_span("llm_call", task_id, status="ok", output={
+                "text_preview": text[:400],
+                "tokens": tokens,
+                "latency_ms": int(elapsed * 1000),
+            }))
         return {
             "text": text,
             "tokens": tokens,
-            "elapsed": time.monotonic() - start,
+            "elapsed": elapsed,
             "error_category": None,
             "error": None,
             "prompt_chars": prompt_chars,
@@ -166,14 +184,21 @@ async def invoke_llm(
 
     except Exception as e:
         category = classify_exception(e)
+        elapsed = time.monotonic() - start
         logger.warning(
             "LLM invoke failed [%s] after %.2fs (prompt %d chars): %s",
-            category.value, time.monotonic() - start, prompt_chars, e,
+            category.value, elapsed, prompt_chars, e,
         )
+        if span_emit:
+            await span_emit(make_span("llm_call", task_id, status="error", output={
+                "error_category": category.value,
+                "error": str(e)[:300],
+                "latency_ms": int(elapsed * 1000),
+            }))
         return {
             "text": "",
             "tokens": {},
-            "elapsed": time.monotonic() - start,
+            "elapsed": elapsed,
             "error_category": category.value,
             "error": str(e),
             "prompt_chars": prompt_chars,

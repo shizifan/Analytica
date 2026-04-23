@@ -152,6 +152,8 @@ class AttributionAnalysisSkill(BaseSkill):
             system_prompt=ATTRIBUTION_SYSTEM_PROMPT,
             temperature=0.2,
             timeout=90,
+            span_emit=inp.span_emit,
+            task_id=inp.params.get("__task_id__", ""),
         )
 
         if result["error"]:

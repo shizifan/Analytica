@@ -4,6 +4,7 @@ import { useSlotStore } from '../stores/slotStore';
 import { usePlanStore } from '../stores/planStore';
 import { useSessionStore, makeMessageId } from '../stores/sessionStore';
 import { useThinkingStore, ephemeralThinkingId } from '../stores/thinkingStore';
+import { useTraceStore } from '../stores/traceStore';
 import type { ReflectionSummary, ThinkingKind } from '../types';
 
 const MAX_RETRIES = 10;
@@ -40,6 +41,7 @@ export function useWebSocket(sessionId: string | null) {
   const setSending = useSessionStore((s) => s.setSending);
 
   const appendThinking = useThinkingStore((s) => s.appendEvent);
+  const appendSpan = useTraceStore((s) => s.appendSpan);
 
   // Mutable ref for reflection callback
   const onReflectionRef = useRef<((s: ReflectionSummary) => void) | null>(null);
@@ -193,6 +195,10 @@ export function useWebSocket(sessionId: string | null) {
             payload: data as Record<string, unknown>,
           });
           break;
+
+        case 'trace_span':
+          if (data.span) appendSpan(data.span as never);
+          break;
       }
     };
 
@@ -218,7 +224,7 @@ export function useWebSocket(sessionId: string | null) {
     ws.onerror = () => {
       ws.close();
     };
-  }, [sessionId, setConnected, setWsStatus, incrementReconnect, setSlots, setCurrentAsking, setPlan, setPlanStatus, updateTaskStatus, addMessage, setPhase, setSending, appendThinking]);
+  }, [sessionId, setConnected, setWsStatus, incrementReconnect, setSlots, setCurrentAsking, setPlan, setPlanStatus, updateTaskStatus, addMessage, setPhase, setSending, appendThinking, appendSpan]);
 
   useEffect(() => {
     unmountedRef.current = false;

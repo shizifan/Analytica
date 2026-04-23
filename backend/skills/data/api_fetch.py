@@ -14,6 +14,7 @@ import pandas as pd
 from backend.agent.api_registry import get_endpoint, get_endpoint_path, resolve_endpoint_id
 from backend.skills.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
 from backend.skills.registry import register_skill
+from backend.tracing import make_span
 
 logger = logging.getLogger("analytica.skills.api_fetch")
 
@@ -84,6 +85,8 @@ class ApiDataFetchSkill(BaseSkill):
 
     async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
         params = inp.params
+        span_emit = inp.span_emit
+        task_id = params.get("__task_id__", "")
         raw_endpoint_id = params.get("endpoint_id", "")
 
         # Resolve endpoint function name
@@ -96,7 +99,7 @@ class ApiDataFetchSkill(BaseSkill):
             return self._fail(f"端点 {endpoint_id} 无对应 API 路径")
 
         # Validate required params
-        query_params = {k: v for k, v in params.items() if k != "endpoint_id"}
+        query_params = {k: v for k, v in params.items() if k not in ("endpoint_id", "__task_id__")}
         _autofill_year_pairs(endpoint_id, query_params)
         validation_err = _validate_required_params(endpoint_id, query_params)
         if validation_err:
@@ -106,6 +109,15 @@ class ApiDataFetchSkill(BaseSkill):
         url = f"{api_base}{path}"
         headers = _build_auth_headers(path)
         verify_ssl = not _is_prod_mode()  # prod uses self-signed cert
+
+        import time as _time
+        _start = _time.monotonic()
+        if span_emit:
+            await span_emit(make_span("api_call", task_id, status="start", input={
+                "endpoint_id": endpoint_id,
+                "url": url,
+                "params": query_params,
+            }))
 
         try:
             async with httpx.AsyncClient(timeout=30.0, verify=verify_ssl, trust_env=False) as client:
@@ -172,6 +184,14 @@ class ApiDataFetchSkill(BaseSkill):
             if row_count < 10:
                 metadata["quality_warning"] = "low_data_volume"
 
+            if span_emit:
+                await span_emit(make_span("api_call", task_id, status="ok", output={
+                    "status_code": resp.status_code,
+                    "rows": row_count,
+                    "columns": list(df.columns)[:10],
+                    "latency_ms": int((_time.monotonic() - _start) * 1000),
+                    "quality_warning": metadata.get("quality_warning"),
+                }))
             return SkillOutput(
                 skill_id=self.skill_id,
                 status="success",
@@ -181,7 +201,17 @@ class ApiDataFetchSkill(BaseSkill):
             )
 
         except httpx.TimeoutException:
+            if span_emit:
+                await span_emit(make_span("api_call", task_id, status="error", output={
+                    "error": "API 请求超时",
+                    "latency_ms": int((_time.monotonic() - _start) * 1000),
+                }))
             return self._fail("API 请求超时")
         except Exception as e:
             logger.exception("API fetch error for %s: %s", endpoint_id, e)
+            if span_emit:
+                await span_emit(make_span("api_call", task_id, status="error", output={
+                    "error": str(e)[:300],
+                    "latency_ms": int((_time.monotonic() - _start) * 1000),
+                }))
             return self._fail(str(e))

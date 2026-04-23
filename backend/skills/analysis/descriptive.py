@@ -159,6 +159,8 @@ async def _generate_narrative(
     analysis_goal: str,
     focus_points: list[str],
     template_id: str,
+    span_emit=None,
+    task_id: str = "",
 ) -> dict[str, Any]:
     """Generate narrative via unified LLM wrapper. Returns dict with
     ``text / tokens / error_category / error``; never raises.
@@ -174,7 +176,7 @@ async def _generate_narrative(
         focus=focus_block,
     )
 
-    result = await invoke_llm(prompt, temperature=0.3, timeout=90)
+    result = await invoke_llm(prompt, temperature=0.3, timeout=90, span_emit=span_emit, task_id=task_id)
     if result["error"]:
         # Explicit category tag so upstream (summary_gen) can filter precisely
         # instead of the old opaque "[自动生成失败]".
@@ -274,6 +276,8 @@ class DescriptiveAnalysisSkill(BaseSkill):
         nar = await _generate_narrative(
             summary_stats, growth_rates, analysis_goal,
             focus_points, template_id,
+            span_emit=inp.span_emit,
+            task_id=inp.params.get("__task_id__", ""),
         )
 
         # Partial status when the LLM narrative failed but stats were still

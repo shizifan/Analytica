@@ -101,6 +101,7 @@ def classify_exception(e: BaseException) -> ErrorCategory:
 class SkillInput(BaseModel):
     params: dict[str, Any] = {}
     context_refs: list[str] = []
+    span_emit: Any = None  # Callable[[dict], Awaitable[None]] | None
 
 
 class SkillOutput(BaseModel):

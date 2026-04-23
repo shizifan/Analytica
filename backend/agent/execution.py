@@ -28,6 +28,7 @@ import pandas as pd
 from backend.models.schemas import TaskItem
 from backend.skills.base import ErrorCategory, SkillInput, SkillOutput, skill_executor
 from backend.skills.registry import SkillRegistry
+from backend.tracing import make_span_emit
 
 logger = logging.getLogger("analytica.execution")
 
@@ -477,9 +478,15 @@ async def _execute_single_task(
     )
     sem = _get_semaphore(task.type)
 
+    span_emit = make_span_emit(task_id, ws_callback)
+
     output: SkillOutput | None = None
     for attempt in range(1, max_attempts + 1):
-        inp = SkillInput(params=task.params, context_refs=task.depends_on)
+        inp = SkillInput(
+            params={**task.params, "__task_id__": task_id},
+            context_refs=task.depends_on,
+            span_emit=span_emit,
+        )
         # ── tool_call_start (Phase 2) ──────────────────────
         call_id = f"{task_id}#{attempt}"
         if ws_callback:

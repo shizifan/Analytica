@@ -114,6 +114,12 @@ export const api = {
     );
   },
 
+  getTrace: (sessionId: string) =>
+    request<{ session_id: string; tasks: Array<{ task_id: string; spans: unknown[] }> }>(
+      'GET',
+      `/api/sessions/${sessionId}/trace`,
+    ),
+
   deleteSession: (sessionId: string) =>
     request<{ status: string; session_id: string }>(
       'DELETE',
