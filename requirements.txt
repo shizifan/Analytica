@@ -27,6 +27,8 @@ distro==1.9.0
     # via openai
 fastapi==0.135.3
     # via analytica (pyproject.toml)
+python-multipart==0.0.20
+    # via fastapi (required for Form/File upload handling)
 greenlet==3.4.0
     # via sqlalchemy
 h11==0.16.0
