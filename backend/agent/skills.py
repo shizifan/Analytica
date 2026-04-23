@@ -13,7 +13,7 @@ def get_skills_description(allowed_skills: Optional[frozenset[str]] = None) -> s
     Args:
         allowed_skills: 技能 ID 白名单；None 表示不过滤。
     """
-    from backend.skills.registry import SkillRegistry
+    from backend.tools.registry import SkillRegistry
     registry = SkillRegistry.get_instance()
     lines: list[str] = []
     for sid, skill in registry._skills.items():
@@ -29,7 +29,7 @@ def get_skills_description(allowed_skills: Optional[frozenset[str]] = None) -> s
 
 def get_valid_skill_ids(allowed_skills: Optional[frozenset[str]] = None) -> set[str]:
     """从运行时注册表获取合法技能 ID 集合。"""
-    from backend.skills.registry import SkillRegistry
+    from backend.tools.registry import SkillRegistry
     all_ids = SkillRegistry.get_instance().skill_ids
     if allowed_skills is not None:
         return all_ids & allowed_skills
@@ -38,5 +38,5 @@ def get_valid_skill_ids(allowed_skills: Optional[frozenset[str]] = None) -> set[
 
 def is_valid_skill(skill_id: str) -> bool:
     """检查技能 ID 是否在运行时注册表中。"""
-    from backend.skills.registry import SkillRegistry
+    from backend.tools.registry import SkillRegistry
     return skill_id in SkillRegistry.get_instance().skill_ids

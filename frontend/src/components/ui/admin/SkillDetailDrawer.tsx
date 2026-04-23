@@ -1,31 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, type AdminSkill } from '../../../api/client';
+import { api, type AgentSkill } from '../../../api/client';
 
-const KIND_LABEL: Record<string, string> = {
-  data_fetch: '数据获取',
-  analysis: '分析',
-  visualization: '可视化',
-  report: '报告生成',
-  search: '检索',
-};
-
-type Tab = 'overview' | 'source';
+type Tab = 'overview' | 'content';
 
 interface Props {
-  item: AdminSkill;
+  item: AgentSkill;
   onClose: () => void;
   onToggle: (id: string, enabled: boolean) => void;
+  onDelete: (id: string) => void;
 }
 
-export function SkillDetailDrawer({ item, onClose, onToggle }: Props) {
+export function SkillDetailDrawer({ item, onClose, onToggle, onDelete }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<Tab>('overview');
 
-  // 源码状态（懒加载）
-  const [source, setSource] = useState<string | null>(null);
-  const [sourceFile, setSourceFile] = useState<string | null>(null);
-  const [sourceLoading, setSourceLoading] = useState(false);
-  const [sourceErr, setSourceErr] = useState<string | null>(null);
+  const [content, setContent] = useState<string | null>(item.content ?? null);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [contentErr, setContentErr] = useState<string | null>(null);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -33,29 +24,24 @@ export function SkillDetailDrawer({ item, onClose, onToggle }: Props) {
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  // 切到源码标签时才加载
   useEffect(() => {
-    if (tab !== 'source' || source !== null || sourceLoading) return;
-    setSourceLoading(true);
-    setSourceErr(null);
-    api.admin.getSkillSource(item.skill_id)
-      .then((r) => { setSource(r.source); setSourceFile(r.file); })
-      .catch((e) => setSourceErr(e instanceof Error ? e.message : String(e)))
-      .finally(() => setSourceLoading(false));
-  }, [tab, item.skill_id, source, sourceLoading]);
+    if (tab !== 'content' || content !== null || contentLoading) return;
+    setContentLoading(true);
+    setContentErr(null);
+    api.admin.getAgentSkill(item.skill_id)
+      .then((r) => setContent(r.content ?? null))
+      .catch((e) => setContentErr(e instanceof Error ? e.message : String(e)))
+      .finally(() => setContentLoading(false));
+  }, [tab, item.skill_id, content, contentLoading]);
 
   const handleToggle = async () => {
     try {
-      await api.admin.toggleSkill(item.skill_id, !item.enabled);
+      await api.admin.toggleAgentSkill(item.skill_id, !item.enabled);
       onToggle(item.skill_id, !item.enabled);
     } catch (e) {
       window.alert(`切换失败：${e instanceof Error ? e.message : String(e)}`);
     }
   };
-
-  const errRate = item.run_count > 0
-    ? ((item.error_count / item.run_count) * 100).toFixed(1)
-    : null;
 
   return (
     <>
@@ -64,16 +50,12 @@ export function SkillDetailDrawer({ item, onClose, onToggle }: Props) {
         ref={overlayRef}
         onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
       />
-      <div className="an-drawer" style={{ width: 'min(700px, 100vw)' }}>
+      <div className="an-drawer" style={{ width: 'min(760px, 100vw)' }}>
         {/* 标题栏 */}
         <div className="an-drawer-head">
           <div className="an-drawer-title">
-            <span className="an-admin-chip accent">
-              {KIND_LABEL[item.kind] ?? item.kind}
-            </span>
-            <span style={{ fontFamily: 'var(--an-font-mono)', fontSize: 13 }}>
-              {item.skill_id}
-            </span>
+            <span className="an-admin-chip accent">技能</span>
+            <span style={{ fontWeight: 600 }}>{item.name}</span>
           </div>
           <div className="an-drawer-actions">
             <button
@@ -85,35 +67,61 @@ export function SkillDetailDrawer({ item, onClose, onToggle }: Props) {
             >
               {item.enabled ? '启用' : '停用'}
             </button>
+            <button
+              type="button"
+              className="an-btn ghost"
+              style={{ padding: '3px 8px', fontSize: 12, color: 'var(--an-err)' }}
+              onClick={() => { onDelete(item.skill_id); onClose(); }}
+            >
+              删除
+            </button>
             <button type="button" className="an-btn ghost" onClick={onClose}
               style={{ padding: '3px 8px', fontSize: 12 }}>关闭</button>
           </div>
         </div>
 
-        {/* 标签页切换 */}
+        {/* 标签页 */}
         <div className="an-memory-tabs" style={{ padding: '0 20px' }}>
-          {(['overview', 'source'] as Tab[]).map((t) => (
+          {(['overview', 'content'] as Tab[]).map((t) => (
             <button
               key={t}
               type="button"
               className={`an-memory-tab${tab === t ? ' active' : ''}`}
               onClick={() => setTab(t)}
             >
-              {t === 'overview' ? '概览' : '源码'}
+              {t === 'overview' ? '概览' : '技能内容'}
             </button>
           ))}
         </div>
 
-        {/* 概览内容 */}
+        {/* 概览 */}
         {tab === 'overview' && (
           <div className="an-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             <section>
               <SectionLabel>基本信息</SectionLabel>
               <div className="an-admin-kv">
-                <span className="k">名称</span>
-                <span className="v">{item.name || item.skill_id}</span>
-                <span className="k">类别</span>
-                <span className="v">{KIND_LABEL[item.kind] ?? item.kind}</span>
+                <span className="k">技能 ID</span>
+                <span className="v" style={{ fontFamily: 'var(--an-font-mono)', fontSize: 12 }}>
+                  {item.skill_id}
+                </span>
+                {item.version && (
+                  <>
+                    <span className="k">版本</span>
+                    <span className="v">{item.version}</span>
+                  </>
+                )}
+                {item.author && (
+                  <>
+                    <span className="k">作者</span>
+                    <span className="v">{item.author}</span>
+                  </>
+                )}
+                {item.created_at && (
+                  <>
+                    <span className="k">创建时间</span>
+                    <span className="v">{item.created_at.replace('T', ' ').slice(0, 19)}</span>
+                  </>
+                )}
                 {item.updated_at && (
                   <>
                     <span className="k">更新时间</span>
@@ -132,106 +140,68 @@ export function SkillDetailDrawer({ item, onClose, onToggle }: Props) {
               </section>
             )}
 
-            {(item.input_spec || item.output_spec) && (
+            {(item.tags ?? []).length > 0 && (
               <section>
-                <SectionLabel>输入 / 输出规格</SectionLabel>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {item.input_spec && <SpecBlock label="输入" value={item.input_spec} />}
-                  {item.output_spec && <SpecBlock label="输出" value={item.output_spec} />}
-                </div>
-              </section>
-            )}
-
-            {item.domains.length > 0 && (
-              <section>
-                <SectionLabel>适用域</SectionLabel>
+                <SectionLabel>标签</SectionLabel>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {item.domains.map((d) => (
-                    <span key={d} className="an-admin-chip accent">{d}</span>
+                  {item.tags!.map((t) => (
+                    <span key={t} className="an-admin-chip accent">{t}</span>
                   ))}
                 </div>
               </section>
             )}
 
             <section>
-              <SectionLabel>运行统计</SectionLabel>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                <StatCard label="总运行次数" value={String(item.run_count)} />
-                <StatCard
-                  label="错误率"
-                  value={errRate != null ? `${errRate}%` : '—'}
-                  warn={errRate != null && parseFloat(errRate) > 10}
-                />
-                <StatCard
-                  label="平均耗时"
-                  value={item.avg_latency_ms != null ? `${item.avg_latency_ms} ms` : '—'}
-                />
-              </div>
+              <SectionLabel>规划层注入说明</SectionLabel>
+              <p style={{
+                margin: 0, fontSize: 12, color: 'var(--an-ink-3)', lineHeight: 1.7,
+                padding: '10px 12px',
+                background: 'var(--an-bg-sunken)',
+                border: '1px solid var(--an-border-subtle)',
+                borderRadius: 'var(--an-radius)',
+              }}>
+                {item.enabled
+                  ? '此技能已启用，其描述会注入到 Agent 规划层 Prompt，指导 Agent 编排工具执行步骤。'
+                  : '此技能已停用，不会注入到规划层 Prompt。'}
+              </p>
             </section>
-
-            {item.last_error_msg && (
-              <section>
-                <SectionLabel>最近错误</SectionLabel>
-                <div style={{
-                  padding: '10px 12px',
-                  background: 'var(--an-err-bg)',
-                  border: '1px solid color-mix(in oklch, var(--an-err) 30%, transparent)',
-                  borderRadius: 'var(--an-radius)',
-                  display: 'flex', flexDirection: 'column', gap: 4,
-                }}>
-                  {item.last_error_at && (
-                    <span style={{ fontSize: 10, color: 'var(--an-err)', fontFamily: 'var(--an-font-mono)' }}>
-                      {item.last_error_at.replace('T', ' ').slice(0, 19)}
-                    </span>
-                  )}
-                  <span style={{ fontSize: 12, color: 'var(--an-err)', lineHeight: 1.6 }}>
-                    {item.last_error_msg}
-                  </span>
-                </div>
-              </section>
-            )}
           </div>
         )}
 
-        {/* 源码内容 */}
-        {tab === 'source' && (
+        {/* 技能内容（SKILL.md 原文）*/}
+        {tab === 'content' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {/* 文件路径栏 */}
-            {sourceFile && (
-              <div style={{
-                padding: '6px 20px',
-                background: 'var(--an-bg-sunken)',
-                borderBottom: '1px solid var(--an-border-subtle)',
-                fontFamily: 'var(--an-font-mono)',
-                fontSize: 11,
-                color: 'var(--an-ink-4)',
-              }}>
-                {sourceFile}
-              </div>
-            )}
-
-            {sourceLoading && (
-              <div className="an-admin-empty">加载源码…</div>
-            )}
-            {sourceErr && (
+            <div style={{
+              padding: '6px 20px',
+              background: 'var(--an-bg-sunken)',
+              borderBottom: '1px solid var(--an-border-subtle)',
+              fontFamily: 'var(--an-font-mono)',
+              fontSize: 11,
+              color: 'var(--an-ink-4)',
+            }}>
+              {item.skill_id}.md
+            </div>
+            {contentLoading && <div className="an-admin-empty">加载内容…</div>}
+            {contentErr && (
               <div className="an-admin-empty">
-                <strong>加载失败</strong>{sourceErr}
+                <strong>加载失败</strong>{contentErr}
               </div>
             )}
-            {source && !sourceLoading && (
-              <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+            {content && !contentLoading && (
+              <div style={{ flex: 1, overflow: 'auto' }}>
                 <pre style={{
                   margin: 0,
                   padding: '16px 20px',
                   fontFamily: 'var(--an-font-mono)',
                   fontSize: 12,
-                  lineHeight: 1.65,
+                  lineHeight: 1.75,
                   color: 'var(--an-ink-2)',
                   background: 'var(--an-bg-raised)',
-                  whiteSpace: 'pre',
-                  tabSize: 4,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  tabSize: 2,
                 }}>
-                  <code>{source}</code>
+                  {content}
                 </pre>
               </div>
             )}
@@ -249,46 +219,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
       textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10,
     }}>
       {children}
-    </div>
-  );
-}
-
-function SpecBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-      <span style={{
-        flexShrink: 0, width: 32, fontSize: 10, fontWeight: 600,
-        color: 'var(--an-ink-4)', textAlign: 'right', paddingTop: 6,
-      }}>
-        {label}
-      </span>
-      <code style={{
-        flex: 1, display: 'block', padding: '6px 10px',
-        background: 'var(--an-bg-sunken)', border: '1px solid var(--an-border-subtle)',
-        borderRadius: 'var(--an-radius-sm)', fontFamily: 'var(--an-font-mono)',
-        fontSize: 12, color: 'var(--an-ink-2)', lineHeight: 1.6,
-        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-      }}>
-        {value}
-      </code>
-    </div>
-  );
-}
-
-function StatCard({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
-  return (
-    <div style={{
-      padding: '10px 12px', border: '1px solid var(--an-border)',
-      borderRadius: 'var(--an-radius)', background: 'var(--an-bg-raised)',
-      display: 'flex', flexDirection: 'column', gap: 4,
-    }}>
-      <span style={{ fontSize: 10, color: 'var(--an-ink-4)' }}>{label}</span>
-      <span style={{
-        fontFamily: 'var(--an-font-mono)', fontSize: 18, fontWeight: 600,
-        color: warn ? 'var(--an-err)' : 'var(--an-ink)',
-      }}>
-        {value}
-      </span>
     </div>
   );
 }

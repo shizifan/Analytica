@@ -161,16 +161,42 @@ export const api = {
         { params, mode },
       ),
 
-    listSkills: () =>
-      request<{ items: AdminSkill[]; count: number }>('GET', '/api/admin/skills'),
-    getSkillSource: (id: string) =>
+    listTools: () =>
+      request<{ items: AdminTool[]; count: number }>('GET', '/api/admin/tools'),
+    getToolSource: (id: string) =>
       request<{ skill_id: string; file: string; source: string }>(
-        'GET', `/api/admin/skills/${encodeURIComponent(id)}/source`,
+        'GET', `/api/admin/tools/${encodeURIComponent(id)}/source`,
       ),
-    toggleSkill: (id: string, enabled: boolean) =>
+    toggleTool: (id: string, enabled: boolean) =>
       request<{ status: string; skill_id: string; enabled: boolean }>(
         'POST',
-        `/api/admin/skills/${encodeURIComponent(id)}/toggle?enabled=${enabled}`,
+        `/api/admin/tools/${encodeURIComponent(id)}/toggle?enabled=${enabled}`,
+      ),
+
+    listAgentSkills: () =>
+      request<{ items: AgentSkill[]; count: number }>('GET', '/api/admin/agent-skills'),
+    getAgentSkill: (id: string) =>
+      request<AgentSkill & { content: string }>(
+        'GET', `/api/admin/agent-skills/${encodeURIComponent(id)}`,
+      ),
+    uploadAgentSkill: async (file: File) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/admin/agent-skills', { method: 'POST', body: fd });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Upload failed → ${res.status}: ${text}`);
+      }
+      return res.json() as Promise<AgentSkill & { content: string }>;
+    },
+    deleteAgentSkill: (id: string) =>
+      request<{ status: string; skill_id: string }>(
+        'DELETE', `/api/admin/agent-skills/${encodeURIComponent(id)}`,
+      ),
+    toggleAgentSkill: (id: string, enabled: boolean) =>
+      request<{ status: string; skill_id: string; enabled: boolean }>(
+        'POST',
+        `/api/admin/agent-skills/${encodeURIComponent(id)}/toggle?enabled=${enabled}`,
       ),
 
     listDomains: () =>
@@ -223,7 +249,7 @@ export interface AdminApi {
   updated_at?: string;
 }
 
-export interface AdminSkill {
+export interface AdminTool {
   skill_id: string;
   name: string;
   kind: string;
@@ -237,6 +263,19 @@ export interface AdminSkill {
   avg_latency_ms?: number | null;
   last_error_at?: string | null;
   last_error_msg?: string | null;
+  updated_at?: string;
+}
+
+export interface AgentSkill {
+  skill_id: string;
+  name: string;
+  description?: string | null;
+  author?: string | null;
+  version?: string | null;
+  tags: string[];
+  enabled: boolean;
+  content?: string;
+  created_at?: string;
   updated_at?: string;
 }
 

@@ -10,7 +10,7 @@ const MODULES: Array<{
   {
     to: '/admin/employees',
     label: '数字员工',
-    description: '管理数字员工画像、领域、绑定的 API 与技能',
+    description: '管理数字员工画像、领域、绑定的 API 与工具',
     icon: 'users',
   },
   {
@@ -20,22 +20,28 @@ const MODULES: Array<{
     icon: 'terminal',
   },
   {
+    to: '/admin/tools',
+    label: '工具',
+    description: '查看 Python 工具元数据、运行统计与最近错误',
+    icon: 'bolt',
+  },
+  {
     to: '/admin/skills',
     label: '技能',
-    description: '查看技能元数据、运行统计与最近错误',
-    icon: 'bolt',
+    description: '上传和管理 SKILL.md 工作流技能，注入规划层 Prompt',
+    icon: 'layers',
   },
   {
     to: '/admin/domains',
     label: '业务域',
     description: '维护业务域 D1–D7 的元数据',
-    icon: 'layers',
+    icon: 'database',
   },
   {
     to: '/admin/memories',
     label: '记忆 / 偏好',
-    description: '用户偏好、分析模板、技能反馈一站查看',
-    icon: 'database',
+    description: '用户偏好、分析模板、工具反馈一站查看',
+    icon: 'clipboard',
   },
   {
     to: '/admin/audit',
@@ -51,7 +57,7 @@ export function AdminHome() {
       <div className="an-admin-head">
         <div className="an-admin-head-left">
           <h2 className="an-admin-title">控制台</h2>
-          <span className="an-admin-count an-mono">6 模块</span>
+          <span className="an-admin-count an-mono">7 模块</span>
         </div>
       </div>
       <div className="an-admin-body-inner">

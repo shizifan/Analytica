@@ -77,7 +77,7 @@ export function TaskResultCard({ primary, tableSource }: Props) {
   if (tableData) metaBits.push(`${tableData.total_rows} 行 × ${tableData.columns.length} 列`);
   const duration = durationLabel(primary.duration_ms);
   if (duration) metaBits.push(duration);
-  if (primary.skill) metaBits.push(primary.skill);
+  if (primary.skill) metaBits.push(primary.skill.replace(/^skill_/, 'tool_'));
 
   return (
     <div className="an-result-card">

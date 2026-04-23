@@ -633,3 +633,250 @@ async def delete_memory_entry(
     )
     await db.commit()
     return bool(r.rowcount)
+
+
+# ── tools (renamed from skills) ───────────────────────────────
+
+async def list_tools(db: AsyncSession) -> list[dict[str, Any]]:
+    rows = await db.execute(
+        text(
+            "SELECT skill_id, name, kind, description, input_spec, output_spec, "
+            "domains, enabled, run_count, error_count, avg_latency_ms, "
+            "last_error_at, last_error_msg, updated_at FROM tools "
+            "ORDER BY kind, skill_id"
+        )
+    )
+    return [_skill_row(r) for r in rows]
+
+
+async def get_tool(db: AsyncSession, skill_id: str) -> Optional[dict[str, Any]]:
+    rows = await db.execute(
+        text(
+            "SELECT skill_id, name, kind, description, input_spec, output_spec, "
+            "domains, enabled, run_count, error_count, avg_latency_ms, "
+            "last_error_at, last_error_msg, updated_at FROM tools "
+            "WHERE skill_id = :sid"
+        ),
+        {"sid": skill_id},
+    )
+    row = rows.first()
+    if row is None:
+        return None
+    return _skill_row(row)
+
+
+async def upsert_tool(
+    db: AsyncSession,
+    *,
+    skill_id: str,
+    name: str,
+    kind: str,
+    description: str | None = None,
+    input_spec: str | None = None,
+    output_spec: str | None = None,
+    domains: list[str] | None = None,
+    enabled: bool = True,
+) -> None:
+    await db.execute(
+        text(
+            """
+            INSERT INTO tools
+                (skill_id, name, kind, description, input_spec, output_spec,
+                 domains, enabled)
+            VALUES
+                (:sid, :name, :kind, :desc, :ins, :outs, :doms, :en)
+            ON DUPLICATE KEY UPDATE
+                name = VALUES(name),
+                kind = VALUES(kind),
+                description = VALUES(description),
+                input_spec = VALUES(input_spec),
+                output_spec = VALUES(output_spec),
+                domains = VALUES(domains),
+                enabled = VALUES(enabled),
+                updated_at = NOW()
+            """
+        ),
+        {
+            "sid": skill_id,
+            "name": name,
+            "kind": kind,
+            "desc": description,
+            "ins": input_spec,
+            "outs": output_spec,
+            "doms": json.dumps(domains or [], ensure_ascii=False),
+            "en": 1 if enabled else 0,
+        },
+    )
+    await db.commit()
+
+
+async def toggle_tool(
+    db: AsyncSession, skill_id: str, enabled: bool,
+) -> bool:
+    result = await db.execute(
+        text("UPDATE tools SET enabled = :en WHERE skill_id = :sid"),
+        {"en": 1 if enabled else 0, "sid": skill_id},
+    )
+    await db.commit()
+    return bool(result.rowcount)
+
+
+async def record_tool_run(
+    db: AsyncSession,
+    *,
+    skill_id: str,
+    duration_ms: int,
+    success: bool,
+    error_message: str | None = None,
+) -> None:
+    await db.execute(
+        text(
+            """
+            UPDATE tools SET
+                run_count = run_count + 1,
+                error_count = error_count + :err,
+                avg_latency_ms = ROUND(
+                    (COALESCE(avg_latency_ms, 0) * run_count + :ms) / (run_count + 1)
+                ),
+                last_error_at = CASE WHEN :err = 1 THEN NOW() ELSE last_error_at END,
+                last_error_msg = CASE WHEN :err = 1 THEN :msg ELSE last_error_msg END
+            WHERE skill_id = :sid
+            """
+        ),
+        {
+            "sid": skill_id,
+            "err": 0 if success else 1,
+            "ms": int(duration_ms),
+            "msg": (error_message or "")[:500] if error_message else None,
+        },
+    )
+    await db.commit()
+
+
+# ── agent_skills ───────────────────────────────────────────────
+
+async def list_agent_skills(db: AsyncSession) -> list[dict[str, Any]]:
+    rows = await db.execute(
+        text(
+            "SELECT skill_id, name, description, author, version, tags, enabled, "
+            "created_at, updated_at FROM agent_skills ORDER BY name"
+        )
+    )
+    return [_agent_skill_row(r) for r in rows]
+
+
+def _agent_skill_row(r: Any) -> dict[str, Any]:
+    return {
+        "skill_id": r[0],
+        "name": r[1],
+        "description": r[2],
+        "author": r[3],
+        "version": r[4],
+        "tags": _json_field(r[5]),
+        "enabled": bool(r[6]),
+        "created_at": _iso(r[7]),
+        "updated_at": _iso(r[8]),
+    }
+
+
+async def get_agent_skill(db: AsyncSession, skill_id: str) -> Optional[dict[str, Any]]:
+    rows = await db.execute(
+        text(
+            "SELECT skill_id, name, description, content, author, version, tags, enabled, "
+            "created_at, updated_at FROM agent_skills WHERE skill_id = :sid"
+        ),
+        {"sid": skill_id},
+    )
+    row = rows.first()
+    if row is None:
+        return None
+    return {
+        "skill_id": row[0],
+        "name": row[1],
+        "description": row[2],
+        "content": row[3],
+        "author": row[4],
+        "version": row[5],
+        "tags": _json_field(row[6]),
+        "enabled": bool(row[7]),
+        "created_at": _iso(row[8]),
+        "updated_at": _iso(row[9]),
+    }
+
+
+async def upsert_agent_skill(
+    db: AsyncSession,
+    *,
+    skill_id: str,
+    name: str,
+    description: str | None = None,
+    content: str,
+    author: str | None = None,
+    version: str = "1.0",
+    tags: list[str] | None = None,
+    enabled: bool = True,
+) -> None:
+    await db.execute(
+        text(
+            """
+            INSERT INTO agent_skills
+                (skill_id, name, description, content, author, version, tags, enabled)
+            VALUES
+                (:sid, :name, :desc, :content, :author, :ver, :tags, :en)
+            ON DUPLICATE KEY UPDATE
+                name = VALUES(name),
+                description = VALUES(description),
+                content = VALUES(content),
+                author = VALUES(author),
+                version = VALUES(version),
+                tags = VALUES(tags),
+                enabled = VALUES(enabled),
+                updated_at = NOW()
+            """
+        ),
+        {
+            "sid": skill_id,
+            "name": name,
+            "desc": description,
+            "content": content,
+            "author": author,
+            "ver": version,
+            "tags": json.dumps(tags or [], ensure_ascii=False),
+            "en": 1 if enabled else 0,
+        },
+    )
+    await db.commit()
+
+
+async def delete_agent_skill(db: AsyncSession, skill_id: str) -> bool:
+    result = await db.execute(
+        text("DELETE FROM agent_skills WHERE skill_id = :sid"),
+        {"sid": skill_id},
+    )
+    await db.commit()
+    return bool(result.rowcount)
+
+
+async def toggle_agent_skill(
+    db: AsyncSession, skill_id: str, enabled: bool,
+) -> bool:
+    result = await db.execute(
+        text("UPDATE agent_skills SET enabled = :en WHERE skill_id = :sid"),
+        {"en": 1 if enabled else 0, "sid": skill_id},
+    )
+    await db.commit()
+    return bool(result.rowcount)
+
+
+async def list_enabled_agent_skills(db: AsyncSession) -> list[dict[str, Any]]:
+    """Returns enabled agent skills with content — used by the planning layer."""
+    rows = await db.execute(
+        text(
+            "SELECT skill_id, name, description, content FROM agent_skills "
+            "WHERE enabled = 1 ORDER BY name"
+        )
+    )
+    return [
+        {"skill_id": r[0], "name": r[1], "description": r[2], "content": r[3]}
+        for r in rows
+    ]

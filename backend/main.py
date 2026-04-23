@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from typing import Any, Optional
 from uuid import uuid4
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, UploadFile, File
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
         logger.exception("REPORTS_DIR setup failed — downloads will 410")
 
     # 加载技能
-    from backend.skills.loader import load_all_skills
+    from backend.tools.loader import load_all_skills
     skill_count = load_all_skills()
     logger.info("Loaded %d skill modules", skill_count)
 
@@ -485,8 +485,8 @@ async def convert_report(
     because no data-fetch / analysis re-runs.
     """
     from backend.memory import artifact_store
-    from backend.skills.base import SkillInput, skill_executor
-    from backend.skills.registry import SkillRegistry
+    from backend.tools.base import SkillInput, skill_executor
+    from backend.tools.registry import SkillRegistry
 
     fmt = format.lower()
     if fmt not in ("docx", "pptx"):
@@ -509,7 +509,7 @@ async def convert_report(
     # Ensure all skills are registered (lazy-loaded at app startup, but
     # an uvicorn --reload cycle can leave the registry bound to a fresh
     # module copy without the decorators re-running).
-    import backend.skills.loader  # noqa: F401
+    import backend.tools.loader  # noqa: F401
 
     # Re-invoke the docx / pptx skill with the same params + saved context.
     skill_id = f"skill_report_{fmt}"
@@ -910,7 +910,7 @@ async def admin_test_api(name: str, req: ApiTestRequest):
     import time as _time
     import httpx
     from backend.agent.api_registry import get_endpoint_path, resolve_endpoint_id
-    from backend.skills.data.api_fetch import _build_auth_headers
+    from backend.tools.data.api_fetch import _build_auth_headers
     from backend.config import get_settings
 
     endpoint_id = resolve_endpoint_id(name)
@@ -957,7 +957,7 @@ async def admin_test_api(name: str, req: ApiTestRequest):
         raise HTTPException(status_code=502, detail=str(exc))
 
 
-class SkillUpsert(BaseModel):
+class ToolUpsert(BaseModel):
     name: str
     kind: str
     description: Optional[str] = None
@@ -967,36 +967,36 @@ class SkillUpsert(BaseModel):
     enabled: bool = True
 
 
-@app.get("/api/admin/skills")
-async def admin_list_skills(db=Depends(get_db_session)):
+@app.get("/api/admin/tools")
+async def admin_list_tools(db=Depends(get_db_session)):
     from backend.memory import admin_store
-    items = await admin_store.list_skills(db)
+    items = await admin_store.list_tools(db)
     return {"items": items, "count": len(items)}
 
 
-@app.get("/api/admin/skills/{skill_id}")
-async def admin_get_skill(skill_id: str, db=Depends(get_db_session)):
+@app.get("/api/admin/tools/{tool_id}")
+async def admin_get_tool(tool_id: str, db=Depends(get_db_session)):
     from backend.memory import admin_store
-    row = await admin_store.get_skill(db, skill_id)
+    row = await admin_store.get_tool(db, tool_id)
     if row is None:
-        raise HTTPException(status_code=404, detail="Skill not found")
+        raise HTTPException(status_code=404, detail="Tool not found")
     return row
 
 
-@app.get("/api/admin/skills/{skill_id}/source")
-async def admin_skill_source(skill_id: str):
-    """Return the source file of a registered skill."""
+@app.get("/api/admin/tools/{tool_id}/source")
+async def admin_tool_source(tool_id: str):
+    """Return the Python source file of a registered tool."""
     import inspect
     from pathlib import Path
-    from backend.skills.registry import SkillRegistry
-    skill = SkillRegistry.get_instance().get_skill(skill_id)
+    from backend.tools.registry import SkillRegistry
+    skill = SkillRegistry.get_instance().get_skill(tool_id)
     if skill is None:
-        raise HTTPException(status_code=404, detail="Skill not found or not loaded")
+        raise HTTPException(status_code=404, detail="Tool not found or not loaded")
     try:
         src_path = Path(inspect.getfile(type(skill)))
         source = src_path.read_text(encoding="utf-8")
         return {
-            "skill_id": skill_id,
+            "skill_id": tool_id,
             "file": str(src_path.relative_to(Path(__file__).parent.parent)),
             "source": source,
         }
@@ -1004,29 +1004,123 @@ async def admin_skill_source(skill_id: str):
         raise HTTPException(status_code=500, detail=f"Cannot read source: {exc}")
 
 
-@app.put("/api/admin/skills/{skill_id}")
-async def admin_upsert_skill(
-    skill_id: str, req: SkillUpsert, db=Depends(get_db_session),
+@app.put("/api/admin/tools/{tool_id}")
+async def admin_upsert_tool(
+    tool_id: str, req: ToolUpsert, db=Depends(get_db_session),
 ):
     from backend.memory import admin_store
-    await admin_store.upsert_skill(db, skill_id=skill_id, **req.model_dump())
+    await admin_store.upsert_tool(db, skill_id=tool_id, **req.model_dump())
     await admin_store.append_audit(
-        db, action="update", resource_type="skill", resource_id=skill_id,
+        db, action="update", resource_type="tool", resource_id=tool_id,
         diff=req.model_dump(),
     )
-    return await admin_store.get_skill(db, skill_id)
+    return await admin_store.get_tool(db, tool_id)
 
 
-@app.post("/api/admin/skills/{skill_id}/toggle")
-async def admin_toggle_skill(
+@app.post("/api/admin/tools/{tool_id}/toggle")
+async def admin_toggle_tool(
+    tool_id: str, enabled: bool = True, db=Depends(get_db_session),
+):
+    from backend.memory import admin_store
+    ok = await admin_store.toggle_tool(db, tool_id, enabled)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Tool not found")
+    await admin_store.append_audit(
+        db, action="toggle", resource_type="tool", resource_id=tool_id,
+        diff={"enabled": enabled},
+    )
+    return {"status": "ok", "skill_id": tool_id, "enabled": enabled}
+
+
+# ── Agent Skills (SKILL.md workflow instructions) ─────────────
+
+
+@app.get("/api/admin/agent-skills")
+async def admin_list_agent_skills(db=Depends(get_db_session)):
+    from backend.memory import admin_store
+    items = await admin_store.list_agent_skills(db)
+    return {"items": items, "count": len(items)}
+
+
+@app.get("/api/admin/agent-skills/{skill_id}")
+async def admin_get_agent_skill(skill_id: str, db=Depends(get_db_session)):
+    from backend.memory import admin_store
+    row = await admin_store.get_agent_skill(db, skill_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Agent skill not found")
+    return row
+
+
+@app.post("/api/admin/agent-skills")
+async def admin_upload_agent_skill(
+    file: UploadFile = File(...),
+    db=Depends(get_db_session),
+):
+    """Upload a SKILL.md file. Parses YAML frontmatter for metadata."""
+    import yaml as _yaml
+    import re as _re
+    content = (await file.read()).decode("utf-8")
+    meta: dict = {}
+    if content.startswith("---"):
+        m = _re.match(r"^---\s*\n(.*?)\n---\s*\n", content, _re.DOTALL)
+        if m:
+            try:
+                meta = _yaml.safe_load(m.group(1)) or {}
+            except Exception:
+                meta = {}
+
+    name = meta.get("name") or (file.filename or "").replace(".md", "")
+    if not name:
+        raise HTTPException(status_code=400, detail="Cannot determine skill name from file or frontmatter")
+
+    skill_id = meta.get("id") or name.lower().replace(" ", "_")
+    description = meta.get("description")
+    author = meta.get("author")
+    version = str(meta.get("version", "1.0"))
+    tags = meta.get("tags") or []
+    if isinstance(tags, str):
+        tags = [t.strip() for t in tags.split(",") if t.strip()]
+
+    from backend.memory import admin_store
+    await admin_store.upsert_agent_skill(
+        db,
+        skill_id=skill_id,
+        name=name,
+        description=description,
+        content=content,
+        author=author,
+        version=version,
+        tags=tags,
+        enabled=True,
+    )
+    await admin_store.append_audit(
+        db, action="upload", resource_type="agent_skill", resource_id=skill_id,
+    )
+    return await admin_store.get_agent_skill(db, skill_id)
+
+
+@app.delete("/api/admin/agent-skills/{skill_id}")
+async def admin_delete_agent_skill(skill_id: str, db=Depends(get_db_session)):
+    from backend.memory import admin_store
+    ok = await admin_store.delete_agent_skill(db, skill_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Agent skill not found")
+    await admin_store.append_audit(
+        db, action="delete", resource_type="agent_skill", resource_id=skill_id,
+    )
+    return {"status": "ok", "skill_id": skill_id}
+
+
+@app.post("/api/admin/agent-skills/{skill_id}/toggle")
+async def admin_toggle_agent_skill(
     skill_id: str, enabled: bool = True, db=Depends(get_db_session),
 ):
     from backend.memory import admin_store
-    ok = await admin_store.toggle_skill(db, skill_id, enabled)
+    ok = await admin_store.toggle_agent_skill(db, skill_id, enabled)
     if not ok:
-        raise HTTPException(status_code=404, detail="Skill not found")
+        raise HTTPException(status_code=404, detail="Agent skill not found")
     await admin_store.append_audit(
-        db, action="toggle", resource_type="skill", resource_id=skill_id,
+        db, action="toggle", resource_type="agent_skill", resource_id=skill_id,
         diff={"enabled": enabled},
     )
     return {"status": "ok", "skill_id": skill_id, "enabled": enabled}

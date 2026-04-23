@@ -9,9 +9,10 @@ const NAV: Array<{
 }> = [
   { to: '/admin/employees', label: '数字员工', icon: 'users' },
   { to: '/admin/apis', label: 'API 端点', icon: 'terminal' },
-  { to: '/admin/skills', label: '技能', icon: 'bolt' },
-  { to: '/admin/domains', label: '业务域', icon: 'layers' },
-  { to: '/admin/memories', label: '记忆 / 偏好', icon: 'database' },
+  { to: '/admin/tools', label: '工具', icon: 'bolt' },
+  { to: '/admin/skills', label: '技能', icon: 'layers' },
+  { to: '/admin/domains', label: '业务域', icon: 'database' },
+  { to: '/admin/memories', label: '记忆 / 偏好', icon: 'clipboard' },
   { to: '/admin/audit', label: '审计日志', icon: 'clipboard' },
 ];
 
@@ -19,6 +20,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/admin': '控制台',
   '/admin/employees': '数字员工',
   '/admin/apis': 'API 端点',
+  '/admin/tools': '工具',
   '/admin/skills': '技能',
   '/admin/domains': '业务域',
   '/admin/memories': '记忆 / 偏好',
@@ -26,17 +28,9 @@ const ROUTE_TITLES: Record<string, string> = {
 };
 
 interface Props {
-  /** Optional right-side actions slot in the topbar (e.g. a "+ 新建" button). */
   actions?: ReactNode;
 }
 
-/**
- * Phase 6 — admin console shell.
- *
- * - Topbar: brand + breadcrumb + "返回工作台"
- * - Left nav: 6 modules
- * - Main: <Outlet /> renders the active route's page
- */
 export function AdminLayout({ actions }: Props) {
   const location = useLocation();
   const title = ROUTE_TITLES[location.pathname] ?? '控制台';

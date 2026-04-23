@@ -68,9 +68,9 @@ async def _seed_api_endpoints(db) -> int:
     return count
 
 
-async def _seed_skills(db) -> int:
-    from backend.skills.loader import load_all_skills
-    from backend.skills.registry import SkillRegistry
+async def _seed_tools(db) -> int:
+    from backend.tools.loader import load_all_skills
+    from backend.tools.registry import SkillRegistry
 
     load_all_skills()
     registry = SkillRegistry.get_instance()
@@ -82,7 +82,7 @@ async def _seed_skills(db) -> int:
             else str(skill.category)
         )
         kind = SKILL_KIND_BY_CATEGORY.get(category_name, category_name.lower())
-        await admin_store.upsert_skill(
+        await admin_store.upsert_tool(
             db,
             skill_id=skill.skill_id,
             name=getattr(skill, "name", None) or skill.skill_id,
@@ -117,8 +117,8 @@ async def main() -> int:
     async with factory() as db:
         n_apis = await _seed_api_endpoints(db)
         log.info("api_endpoints: %d rows upserted", n_apis)
-        n_skills = await _seed_skills(db)
-        log.info("skills: %d rows upserted", n_skills)
+        n_tools = await _seed_tools(db)
+        log.info("tools: %d rows upserted", n_tools)
         n_dom = await _seed_domains(db)
         log.info("domains: %d rows upserted", n_dom)
     return 0

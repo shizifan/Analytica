@@ -128,7 +128,7 @@ class EmployeeProfile(BaseModel):
                 errors.append(f"[{self.employee_id}] Unknown endpoint: {ep_name}")
 
         # 校验技能
-        from backend.skills.registry import SkillRegistry
+        from backend.tools.registry import SkillRegistry
         runtime_ids = SkillRegistry.get_instance().skill_ids
         for sid in self.skills:
             if sid not in runtime_ids:

@@ -26,8 +26,8 @@ from typing import Any, Callable, Coroutine
 import pandas as pd
 
 from backend.models.schemas import TaskItem
-from backend.skills.base import ErrorCategory, SkillInput, SkillOutput, skill_executor
-from backend.skills.registry import SkillRegistry
+from backend.tools.base import ErrorCategory, SkillInput, SkillOutput, skill_executor
+from backend.tools.registry import SkillRegistry
 from backend.tracing import make_span_emit
 
 logger = logging.getLogger("analytica.execution")
@@ -580,7 +580,7 @@ async def execute_plan(
         execution_context: dict mapping task_id → SkillOutput
         needs_replan: whether dynamic re-planning is needed
     """
-    import backend.skills.loader  # noqa: F401 — ensure all skills are registered
+    import backend.tools.loader  # noqa: F401 — ensure all skills are registered
 
     _reset_semaphores()  # rebind to current event loop
 
@@ -1137,7 +1137,7 @@ async def execution_node(
     Reads state["analysis_plan"]["tasks"], executes them, and updates state.
     allowed_skills: 员工技能白名单，由图工厂闭包注入。
     """
-    import backend.skills.loader  # noqa: F401
+    import backend.tools.loader  # noqa: F401
 
     state["current_phase"] = "execution"
     plan = state.get("analysis_plan")
