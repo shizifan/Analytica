@@ -191,6 +191,7 @@ class ApiDataFetchSkill(BaseSkill):
                     "columns": list(df.columns)[:10],
                     "latency_ms": int((_time.monotonic() - _start) * 1000),
                     "quality_warning": metadata.get("quality_warning"),
+                    "data": df.head(100).to_dict(orient="records"),
                 }))
             return SkillOutput(
                 skill_id=self.skill_id,

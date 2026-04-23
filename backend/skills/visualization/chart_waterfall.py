@@ -1,17 +1,4 @@
-"""Waterfall Chart Skill — generates ECharts waterfall chart for attribution visualization.
-
-Batch 3 rewrite: adds two new derivation paths beyond the legacy
-``params.waterfall_data`` explicit list:
-
-1. ``config.filter + config.category_field + config.value_field`` — template
-   T016 in the throughput template uses this to derive a waterfall from the
-   port-region YoY table by filtering statType="同比变化".
-2. Automatic extraction from upstream attribution output's ``waterfall_data``.
-
-Before this rewrite the skill returned ``"缺少 waterfall_data 参数"`` whenever
-the template's ``config.filter`` form was used (observed in the 20260420
-report).
-"""
+"""Waterfall Chart Skill — generates ECharts waterfall chart for attribution visualization."""
 from __future__ import annotations
 
 from typing import Any
@@ -26,6 +13,7 @@ from backend.skills.visualization._config_parser import (
     has_valid_series_data,
     parse_chart_params,
 )
+from backend.skills.visualization._llm_mapper import decide_chart_mapping
 
 COLOR_BASE = "#1E3A5F"      # deep blue for base/total
 COLOR_POSITIVE = "#F0A500"  # amber for positive
@@ -99,38 +87,44 @@ class WaterfallChartSkill(BaseSkill):
 
     async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
         params = inp.params
-        task_name = params.get("_task_name", "")
-        parsed = parse_chart_params(params, task_name)
+        intent = params.get("intent") or params.get("_task_name", "")
+        task_id = params.get("__task_id__", "")
+        parsed = parse_chart_params(params, intent)
 
         # Resolution order:
-        # 1) explicit params.waterfall_data (legacy)
-        # 2) derive from a DataFrame using config.category_field/value_field/filter
-        # 3) extract from an upstream attribution's waterfall_data
+        # 1) explicit params.waterfall_data (legacy / attribution skill output)
+        # 2) extract from upstream attribution's waterfall_data in context
+        # 3) derive from DataFrame — LLM decides category_field / value_field
         waterfall_data = params.get("waterfall_data") or []
 
-        cfg = params.get("config") or {}
-        category_field = cfg.get("category_field") or parsed["x_field"]
-        value_field = cfg.get("value_field")
+        if not waterfall_data:
+            waterfall_data = _extract_waterfall_from_context(context, inp.context_refs or [])
 
-        if not waterfall_data and category_field and value_field:
+        if not waterfall_data:
             df = get_df_from_context(
                 source=parsed["source"],
                 context=context,
                 data_refs=parsed["data_refs"],
                 fallback_context_refs=inp.context_refs or [],
             )
-            if df is not None:
-                waterfall_data = _derive_waterfall_from_df(
-                    df, category_field, value_field, parsed["filter"],
+            if df is not None and not df.empty:
+                mapping = await decide_chart_mapping(
+                    df, intent, "waterfall",
+                    span_emit=inp.span_emit,
+                    task_id=task_id,
                 )
+                category_field = mapping.get("category_field", "")
+                value_field = mapping.get("value_field", "")
+                if category_field and value_field:
+                    waterfall_data = _derive_waterfall_from_df(
+                        df, category_field, value_field, parsed["filter"],
+                    )
+                    if not waterfall_data:
+                        # filter may have removed everything — try without filter
+                        waterfall_data = _derive_waterfall_from_df(df, category_field, value_field, {})
 
         if not waterfall_data:
-            waterfall_data = _extract_waterfall_from_context(
-                context, inp.context_refs or [],
-            )
-
-        if not waterfall_data:
-            return self._fail("缺少 waterfall_data 参数，且无法从 config 或上游归因结果推导")
+            return self._fail("缺少 waterfall_data 参数，且无法从上游归因结果或 DataFrame 推导")
 
         categories: list[str] = []
         base_series: list[float] = []    # invisible base (stack)
@@ -184,7 +178,7 @@ class WaterfallChartSkill(BaseSkill):
             )
 
         option = {
-            "title": {"text": parsed["title"] or "归因瀑布图", "left": "center",
+            "title": {"text": parsed["title"] or intent or "归因瀑布图", "left": "center",
                       "textStyle": {"color": COLOR_BASE}},
             "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
             "xAxis": {"type": "category", "data": categories},

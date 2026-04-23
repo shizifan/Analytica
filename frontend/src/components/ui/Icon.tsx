@@ -19,7 +19,8 @@ type IconName =
   | 'layers'      // Domains
   | 'database'    // Memories
   | 'clipboard'   // Audit
-  | 'arrow-left'; // Back nav
+  | 'arrow-left'  // Back nav
+  | 'download';   // Export JSON
 
 interface Props extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -133,6 +134,13 @@ const PATHS: Record<IconName, ReactElement> = {
     <>
       <line x1="20" y1="12" x2="4" y2="12" />
       <polyline points="10 6 4 12 10 18" />
+    </>
+  ),
+  download: (
+    <>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
     </>
   ),
 };

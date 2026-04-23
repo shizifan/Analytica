@@ -82,6 +82,9 @@ class TaskItem(BaseModel):
     # Execution-phase fields (Phase 3)
     status: str = "pending"
     output_ref: str = ""
+    # Intent field: human-readable goal for this task (visualization/analysis)
+    # Skills use this at execution time to drive LLM-powered decisions.
+    intent: str = ""
 
 
 class AnalysisPlan(BaseModel):

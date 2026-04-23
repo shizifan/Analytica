@@ -19,6 +19,7 @@ from backend.skills._llm import (
     infer_domain,
     invoke_llm,
 )
+from backend.skills.analysis._column_selector import select_analysis_columns
 from backend.skills.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
 from backend.skills.registry import register_skill
 
@@ -208,10 +209,12 @@ class DescriptiveAnalysisSkill(BaseSkill):
         group_by = params.get("group_by")
         time_column = params.get("time_column")
         calc_growth = params.get("calc_growth", False)
-        analysis_goal = params.get("analysis_goal", "数据分析")
+        intent = params.get("intent") or params.get("analysis_goal", "数据分析")
+        analysis_goal = intent
         focus_points = params.get("focus_points", []) or []
         tmpl_meta = params.get("_template_meta", {}) or {}
         template_id = tmpl_meta.get("template_id", "")
+        task_id = params.get("__task_id__", "")
 
         # Normalize: LLM sometimes passes list instead of str
         if isinstance(data_ref, list):
@@ -254,13 +257,23 @@ class DescriptiveAnalysisSkill(BaseSkill):
             if df[col].apply(lambda x: isinstance(x, list)).any():
                 df[col] = df[col].astype(str)
 
-        # Validate and auto-detect target_columns
+        # Validate Planning-provided columns; if missing/invalid, let LLM decide
         if target_columns:
-            valid = [c for c in target_columns if c in df.columns]
-            target_columns = valid if valid else []
+            target_columns = [c for c in target_columns if c in df.columns]
 
-        if not target_columns:
-            target_columns = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+        if not target_columns or (not time_column and not group_by):
+            selection = await select_analysis_columns(
+                df, intent,
+                span_emit=inp.span_emit,
+                task_id=task_id,
+            )
+            if not target_columns:
+                target_columns = selection["target_columns"]
+            if not time_column:
+                time_column = selection["time_column"]
+            if not group_by:
+                group_by = selection["group_by"]
+
         if not target_columns:
             return self._fail("未找到可分析的数值列")
 
@@ -277,7 +290,7 @@ class DescriptiveAnalysisSkill(BaseSkill):
             summary_stats, growth_rates, analysis_goal,
             focus_points, template_id,
             span_emit=inp.span_emit,
-            task_id=inp.params.get("__task_id__", ""),
+            task_id=task_id,
         )
 
         # Partial status when the LLM narrative failed but stats were still

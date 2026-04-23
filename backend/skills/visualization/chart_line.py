@@ -1,9 +1,4 @@
-"""Line Chart Skill — generates ECharts line chart option JSON.
-
-Batch 3 rewrite: consumes ``params.config`` so templated ``dual_y_line``
-intents work (previously this subtype silently fell back to a single-axis
-line chart with null data points).
-"""
+"""Line Chart Skill — generates ECharts line chart option JSON."""
 from __future__ import annotations
 
 from typing import Any
@@ -19,6 +14,7 @@ from backend.skills.visualization._config_parser import (
     has_valid_series_data,
     parse_chart_params,
 )
+from backend.skills.visualization._llm_mapper import decide_chart_mapping
 
 THEME_PRIMARY = "#1E3A5F"
 THEME_ACCENT = "#F0A500"
@@ -105,13 +101,121 @@ class LineChartSkill(BaseSkill):
 
     async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
         params = inp.params
-        task_name = params.get("_task_name", "")
-        parsed = parse_chart_params(params, task_name)
-        subtype = parsed["chart_subtype"]
+        intent = params.get("intent") or params.get("_task_name", "")
+        task_id = params.get("__task_id__", "")
 
-        if subtype == "dual_y_line" and parsed["left_y"] and parsed["right_y"]:
+        # dual_y_line requires explicit left/right source config — keep existing path
+        parsed = parse_chart_params(params, intent)
+        if parsed["chart_subtype"] == "dual_y_line" and parsed["left_y"] and parsed["right_y"]:
             return self._render_dual_y(parsed, context)
-        return self._render_generic(parsed, params, inp.context_refs or [], context)
+
+        # Get DataFrame from context (multiple fallback strategies)
+        df = get_df_from_context(
+            source=parsed["source"],
+            context=context,
+            data_refs=parsed["data_refs"],
+            fallback_context_refs=inp.context_refs or [],
+        )
+        if df is None and params.get("data_ref"):
+            data_ref = params["data_ref"]
+            if isinstance(data_ref, list):
+                data_ref = data_ref[0] if data_ref else None
+            if data_ref and data_ref in context:
+                d = context[data_ref].data
+                if isinstance(d, pd.DataFrame) and not d.empty:
+                    df = d
+        if df is None:
+            for ctx_out in context.values():
+                d = ctx_out.data if hasattr(ctx_out, "data") else ctx_out
+                if isinstance(d, pd.DataFrame) and not d.empty:
+                    df = d
+                    break
+        if df is None:
+            return self._fail("无法获取有效的 DataFrame 数据")
+
+        df = apply_row_filter(df, parsed["filter"])
+        if df.empty:
+            return SkillOutput(
+                skill_id=self.skill_id, status="skipped", output_type="chart",
+                error_message=f"filter 后无数据: {parsed['filter']}",
+                metadata={"skip_reason": "EMPTY_AFTER_FILTER"},
+            )
+
+        # LLM decides axis/series mapping based on actual DataFrame columns
+        mapping = await decide_chart_mapping(
+            df, intent, "line",
+            span_emit=inp.span_emit,
+            task_id=task_id,
+        )
+        return self._render_with_mapping(df, mapping)
+
+    # ── LLM-mapped single-axis line ───────────────────────────
+    def _render_with_mapping(self, df: pd.DataFrame, mapping: dict[str, Any]) -> SkillOutput:
+        x_field = mapping["x_field"]
+        y_fields = mapping["y_fields"]
+        series_by = mapping.get("series_by")
+        title = mapping.get("title") or "趋势图"
+        y_axis_label = mapping.get("y_axis_label", "")
+
+        series: list[dict[str, Any]] = []
+
+        if series_by and series_by in df.columns:
+            y_field = y_fields[0]
+            x_data = sorted(df[x_field].astype(str).unique().tolist())
+            for i, (group_val, sub_df) in enumerate(df.groupby(series_by, sort=True)):
+                sub_df = sub_df.copy()
+                sub_df[x_field] = sub_df[x_field].astype(str)
+                indexed = sub_df.set_index(x_field)
+                data = [
+                    round(float(indexed[y_field].get(x)), 2)
+                    if x in indexed.index and pd.notna(indexed[y_field].get(x))
+                    else None
+                    for x in x_data
+                ]
+                color = SERIES_COLORS[i % len(SERIES_COLORS)]
+                series.append({
+                    "name": str(group_val),
+                    "type": "line",
+                    "data": data,
+                    "smooth": True,
+                    "lineStyle": {"color": color},
+                    "itemStyle": {"color": color},
+                })
+        else:
+            x_data = [str(v) for v in df[x_field].tolist()]
+            for i, col in enumerate(y for y in y_fields if y in df.columns):
+                color = SERIES_COLORS[i % len(SERIES_COLORS)]
+                series.append({
+                    "name": col_label(col),
+                    "type": "line",
+                    "data": [round(float(v), 2) if pd.notna(v) else None for v in df[col]],
+                    "smooth": True,
+                    "lineStyle": {"color": color},
+                    "itemStyle": {"color": color},
+                })
+
+        if not has_valid_series_data(series):
+            return SkillOutput(
+                skill_id=self.skill_id, status="skipped", output_type="chart",
+                error_message="所有数值均为 null",
+                metadata={"skip_reason": "ALL_NULL"},
+            )
+
+        option = {
+            "title": {"text": title, "left": "center", "textStyle": {"color": THEME_PRIMARY}},
+            "tooltip": {"trigger": "axis"},
+            "legend": {"data": [s["name"] for s in series], "bottom": 0},
+            "xAxis": {"type": "category", "data": x_data},
+            "yAxis": {"type": "value", "name": y_axis_label},
+            "series": series,
+            "color": SERIES_COLORS[:len(series)],
+        }
+        return SkillOutput(
+            skill_id=self.skill_id, status="success", output_type="chart",
+            data=option,
+            metadata={"chart_type": "line", "chart_subtype": "single_y",
+                      "series_count": len(series), "rows": len(df)},
+        )
 
     # ── Dual Y-axis line ──────────────────────────────────────
     def _render_dual_y(
@@ -196,100 +300,6 @@ class LineChartSkill(BaseSkill):
             },
         )
 
-    # ── Generic single-axis line ──────────────────────────────
-    def _render_generic(
-        self,
-        parsed: dict[str, Any],
-        params: dict[str, Any],
-        fallback_refs: list[str],
-        context: dict[str, Any],
-    ) -> SkillOutput:
-        df = get_df_from_context(
-            source=parsed["source"],
-            context=context,
-            data_refs=parsed["data_refs"],
-            fallback_context_refs=fallback_refs,
-        )
-        if df is None and params.get("data_ref"):
-            data_ref = params["data_ref"]
-            if isinstance(data_ref, list):
-                data_ref = data_ref[0] if data_ref else None
-            if data_ref and data_ref in context:
-                d = context[data_ref].data
-                if isinstance(d, pd.DataFrame) and not d.empty:
-                    df = d
-        if df is None:
-            for ctx_out in context.values():
-                d = ctx_out.data if hasattr(ctx_out, "data") else ctx_out
-                if isinstance(d, pd.DataFrame) and not d.empty:
-                    df = d
-                    break
-        if df is None:
-            return self._fail("无法获取有效的 DataFrame 数据")
-
-        df = apply_row_filter(df, parsed["filter"])
-        if df.empty:
-            return SkillOutput(
-                skill_id=self.skill_id, status="skipped", output_type="chart",
-                error_message=f"filter 后无数据: {parsed['filter']}",
-                metadata={"skip_reason": "EMPTY_AFTER_FILTER"},
-            )
-
-        x_field = parsed["x_field"]
-        if not x_field or x_field not in df.columns:
-            x_field = self._auto_detect_time(df)
-        if not x_field:
-            return self._fail("未找到时间列")
-
-        y_fields = [y for y in parsed["y_fields"] if y in df.columns]
-        if not y_fields:
-            y_fields = [c for c in df.columns
-                        if c != x_field and pd.api.types.is_numeric_dtype(df[c])]
-        if not y_fields:
-            return self._fail("无有效的数值列")
-
-        x_data = [str(v) for v in df[x_field].tolist()]
-        series = []
-        for i, col in enumerate(y_fields):
-            color = SERIES_COLORS[i % len(SERIES_COLORS)]
-            series.append({
-                "name": col_label(col),
-                "type": "line",
-                "data": [round(float(v), 2) if pd.notna(v) else None for v in df[col]],
-                "smooth": True,
-                "lineStyle": {"color": color},
-                "itemStyle": {"color": color},
-            })
-
-        if not has_valid_series_data(series):
-            return SkillOutput(
-                skill_id=self.skill_id, status="skipped", output_type="chart",
-                error_message="所有数值均为 null",
-                metadata={"skip_reason": "ALL_NULL"},
-            )
-
-        option = {
-            "title": {"text": parsed["title"] or "趋势图", "left": "center",
-                      "textStyle": {"color": THEME_PRIMARY}},
-            "tooltip": {"trigger": "axis"},
-            "legend": {"data": [s["name"] for s in series], "bottom": 0},
-            "xAxis": {"type": "category", "data": x_data},
-            "yAxis": {"type": "value"},
-            "series": series,
-            "color": SERIES_COLORS[:len(series)],
-        }
-
-        return SkillOutput(
-            skill_id=self.skill_id, status="success", output_type="chart",
-            data=option,
-            metadata={
-                "chart_type": "line",
-                "chart_subtype": "single_y",
-                "series_count": len(series),
-                "rows": len(df),
-            },
-        )
-
     @staticmethod
     def _find_common_time_col(
         df_left: pd.DataFrame,
@@ -319,9 +329,6 @@ class LineChartSkill(BaseSkill):
             if any(kw in c.lower() for kw in _DATE_KEYWORDS)
             and not pd.api.types.is_numeric_dtype(df[c])
         ]
-        if date_cols:
-            return date_cols[0]
-        for col in df.columns:
-            if not pd.api.types.is_numeric_dtype(df[col]):
-                return col
-        return None
+        return date_cols[0] if date_cols else next(
+            (col for col in df.columns if not pd.api.types.is_numeric_dtype(df[col])), None
+        )

@@ -1,9 +1,4 @@
-"""Bar Chart Skill — generates ECharts bar chart option JSON.
-
-Batch 3 rewrite: consumes ``params.config`` so templated ``grouped_bar`` and
-``horizontal`` intents actually render correctly (previously both fell back
-to generic vertical single-series output with null data).
-"""
+"""Bar Chart Skill — generates ECharts bar chart option JSON."""
 from __future__ import annotations
 
 from typing import Any
@@ -21,6 +16,7 @@ from backend.skills.visualization._config_parser import (
     parse_chart_params,
     sort_df,
 )
+from backend.skills.visualization._llm_mapper import decide_chart_mapping
 
 THEME_PRIMARY = "#1E3A5F"
 THEME_ACCENT = "#F0A500"
@@ -60,20 +56,126 @@ class BarChartSkill(BaseSkill):
 
     async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
         params = inp.params
-        task_name = params.get("_task_name", "")  # set by execution.py if available
-        parsed = parse_chart_params(params, task_name)
+        intent = params.get("intent") or params.get("_task_name", "")
+        task_id = params.get("__task_id__", "")
+        parsed = parse_chart_params(params, intent)
         subtype = parsed["chart_subtype"]
 
-        # ── Subtype: grouped_bar (target vs actual) ─────────────
-        # Template pattern: params.config.series = [
-        #   {"label": "吨吞吐", "target": "T001.targetQty", "actual": "T001.finishQty"},
-        #   {"label": "集装箱", "target": "T002.targetQty", "actual": "T002.finishQty"},
-        # ]
+        # grouped_bar requires explicit series config (target/actual or multi-source) — keep
         if subtype == "grouped_bar" and parsed["series"]:
             return self._render_grouped_bar(parsed, context)
 
-        # ── Generic path (covers default vertical/horizontal single-source) ──
-        return self._render_generic(parsed, params, inp.context_refs or [], context)
+        # Get DataFrame from context
+        df = get_df_from_context(
+            source=parsed["source"],
+            context=context,
+            data_refs=parsed["data_refs"],
+            fallback_context_refs=inp.context_refs or [],
+        )
+        if df is None and params.get("data_ref"):
+            data_ref = params["data_ref"]
+            if isinstance(data_ref, list):
+                data_ref = data_ref[0] if data_ref else None
+            if data_ref and data_ref in context:
+                d = context[data_ref].data if hasattr(context[data_ref], "data") else None
+                if isinstance(d, pd.DataFrame) and not d.empty:
+                    df = d
+        if df is None:
+            for ctx_out in context.values():
+                d = ctx_out.data if hasattr(ctx_out, "data") else ctx_out
+                if isinstance(d, pd.DataFrame) and not d.empty:
+                    df = d
+                    break
+        if df is None:
+            return self._fail("无法获取有效的 DataFrame 数据")
+
+        df = apply_row_filter(df, parsed["filter"])
+        if df.empty:
+            return SkillOutput(
+                skill_id=self.skill_id, status="skipped", output_type="chart",
+                error_message=f"filter 后无数据: {parsed['filter']}",
+                metadata={"skip_reason": "EMPTY_AFTER_FILTER"},
+            )
+
+        # LLM decides axis/series mapping based on actual DataFrame columns
+        mapping = await decide_chart_mapping(
+            df, intent, "bar",
+            span_emit=inp.span_emit,
+            task_id=task_id,
+        )
+        return self._render_with_mapping(df, mapping)
+
+    # ── LLM-mapped single-source bar ──────────────────────────
+    def _render_with_mapping(self, df: pd.DataFrame, mapping: dict[str, Any]) -> SkillOutput:
+        x_field = mapping["x_field"]
+        y_fields = mapping["y_fields"]
+        series_by = mapping.get("series_by")
+        title = mapping.get("title") or "数据对比"
+        sort = mapping.get("sort")
+        is_horizontal = mapping.get("orientation") == "horizontal"
+
+        series: list[dict[str, Any]] = []
+
+        if series_by and series_by in df.columns:
+            y_field = y_fields[0]
+            all_x = list(dict.fromkeys(str(v) for v in df[x_field]))
+            for i, (group_val, sub_df) in enumerate(df.groupby(series_by, sort=True)):
+                sub_df = sub_df.copy()
+                sub_df[x_field] = sub_df[x_field].astype(str)
+                indexed = sub_df.set_index(x_field)
+                data = [
+                    round(float(indexed[y_field].get(x)), 2)
+                    if x in indexed.index and pd.notna(indexed[y_field].get(x))
+                    else None
+                    for x in all_x
+                ]
+                series.append({
+                    "name": str(group_val),
+                    "type": "bar",
+                    "data": data,
+                    "itemStyle": {"color": SERIES_COLORS[i % len(SERIES_COLORS)]},
+                })
+            x_data = all_x
+        else:
+            y_field = y_fields[0] if y_fields else None
+            if y_field and sort:
+                df = sort_df(df, sort, y_field)
+            x_data = [str(v) for v in df[x_field].tolist()]
+            for i, col in enumerate(y for y in y_fields if y in df.columns):
+                series.append({
+                    "name": col_label(col),
+                    "type": "bar",
+                    "data": [round(float(v), 2) if pd.notna(v) else None for v in df[col]],
+                    "itemStyle": {"color": SERIES_COLORS[i % len(SERIES_COLORS)]},
+                })
+
+        if not has_valid_series_data(series):
+            return SkillOutput(
+                skill_id=self.skill_id, status="skipped", output_type="chart",
+                error_message="所有数值均为 null",
+                metadata={"skip_reason": "ALL_NULL"},
+            )
+
+        option: dict[str, Any] = {
+            "title": {"text": title, "left": "center", "textStyle": {"color": THEME_PRIMARY}},
+            "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
+            "legend": {"data": [s["name"] for s in series], "bottom": 0},
+        }
+        if is_horizontal:
+            option["xAxis"] = {"type": "value"}
+            option["yAxis"] = {"type": "category", "data": x_data}
+        else:
+            option["xAxis"] = {"type": "category", "data": x_data}
+            option["yAxis"] = {"type": "value"}
+        option["series"] = series
+
+        return SkillOutput(
+            skill_id=self.skill_id, status="success", output_type="chart",
+            data=option,
+            metadata={"chart_type": "bar",
+                      "chart_subtype": "horizontal" if is_horizontal else "vertical",
+                      "series_count": len(series), "rows": len(df)},
+        )
 
     # ── Grouped-bar (target vs actual OR multi-source comparison) ──
     def _render_grouped_bar(
@@ -257,122 +359,3 @@ class BarChartSkill(BaseSkill):
             },
         )
 
-    # ── Generic single-source bar ─────────────────────────────
-    def _render_generic(
-        self,
-        parsed: dict[str, Any],
-        params: dict[str, Any],
-        fallback_refs: list[str],
-        context: dict[str, Any],
-    ) -> SkillOutput:
-        # Resolve DataFrame: explicit source > data_refs > context_refs > any frame
-        df = get_df_from_context(
-            source=parsed["source"],
-            context=context,
-            data_refs=parsed["data_refs"],
-            fallback_context_refs=fallback_refs,
-        )
-        # Legacy support for data_ref singular key
-        if df is None and params.get("data_ref"):
-            data_ref = params["data_ref"]
-            if isinstance(data_ref, list):
-                data_ref = data_ref[0] if data_ref else None
-            if data_ref and data_ref in context:
-                d = context[data_ref].data if hasattr(context[data_ref], "data") else None
-                if isinstance(d, pd.DataFrame) and not d.empty:
-                    df = d
-        if df is None:
-            # Deep fallback: pick first non-empty DataFrame in the context.
-            for ctx_out in context.values():
-                d = ctx_out.data if hasattr(ctx_out, "data") else ctx_out
-                if isinstance(d, pd.DataFrame) and not d.empty:
-                    df = d
-                    break
-        if df is None:
-            return self._fail("无法获取有效的 DataFrame 数据")
-
-        # Apply filter first (narrows rows before axis/series detection)
-        df = apply_row_filter(df, parsed["filter"])
-        if df.empty:
-            return SkillOutput(
-                skill_id=self.skill_id, status="skipped", output_type="chart",
-                error_message=f"filter 后无数据: {parsed['filter']}",
-                metadata={"skip_reason": "EMPTY_AFTER_FILTER"},
-            )
-
-        # Category column
-        x_field = parsed["x_field"]
-        if not x_field or x_field not in df.columns:
-            x_field = self._auto_detect_x(df)
-        if not x_field:
-            return self._fail("未找到合适的分类列")
-
-        # Value columns
-        y_fields = [y for y in parsed["y_fields"] if y in df.columns]
-        if not y_fields:
-            y_fields = [c for c in df.columns
-                        if c != x_field and pd.api.types.is_numeric_dtype(df[c])]
-        if not y_fields:
-            return self._fail("无有效的数值列")
-
-        # Sort: if sort requested, sort by first y_field
-        df = sort_df(df, parsed["sort"], y_fields[0])
-
-        x_data = [str(v) for v in df[x_field].tolist()]
-
-        series = []
-        for i, col in enumerate(y_fields):
-            series.append({
-                "name": col_label(col),
-                "type": "bar",
-                "data": [round(float(v), 2) if pd.notna(v) else None for v in df[col]],
-                "itemStyle": {"color": SERIES_COLORS[i % len(SERIES_COLORS)]},
-            })
-
-        if not has_valid_series_data(series):
-            return SkillOutput(
-                skill_id=self.skill_id, status="skipped", output_type="chart",
-                error_message="所有数值均为 null",
-                metadata={"skip_reason": "ALL_NULL"},
-            )
-
-        is_horizontal = parsed["orientation"] == "horizontal"
-        option = {
-            "title": {"text": parsed["title"] or "数据对比", "left": "center",
-                      "textStyle": {"color": THEME_PRIMARY}},
-            "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
-            "legend": {"data": [s["name"] for s in series], "bottom": 0},
-        }
-        if is_horizontal:
-            option["xAxis"] = {"type": "value"}
-            option["yAxis"] = {"type": "category", "data": x_data}
-        else:
-            option["xAxis"] = {"type": "category", "data": x_data}
-            option["yAxis"] = {"type": "value"}
-        option["series"] = series
-
-        return SkillOutput(
-            skill_id=self.skill_id, status="success", output_type="chart",
-            data=option,
-            metadata={
-                "chart_type": "bar",
-                "chart_subtype": "horizontal" if is_horizontal else "vertical",
-                "series_count": len(series),
-                "rows": len(df),
-            },
-        )
-
-    @staticmethod
-    def _auto_detect_x(df: pd.DataFrame) -> str | None:
-        _DATE_KEYWORDS = ("date", "month", "year", "time", "day", "period", "quarter")
-        date_cols = [
-            c for c in df.columns
-            if any(kw in c.lower() for kw in _DATE_KEYWORDS)
-            and not pd.api.types.is_numeric_dtype(df[c])
-        ]
-        if date_cols:
-            return date_cols[0]
-        for col in df.columns:
-            if not pd.api.types.is_numeric_dtype(df[col]):
-                return col
-        return None

@@ -24,6 +24,7 @@ import { EmployeesDrawer } from '../components/ui/EmployeesDrawer';
 import { useTweakStore, applyTweaksToDocument } from '../lib/tweaks';
 import { hydrateSession } from '../lib/hydrate';
 import { useThinkingStore } from '../stores/thinkingStore';
+import { useTraceStore } from '../stores/traceStore';
 
 import type { ReflectionSummary } from '../types';
 import type { ConversationItem } from '../components/ui/HistoryPane';
@@ -74,6 +75,7 @@ export function ChatPageV2() {
 
   const [history, setHistory] = useState<ConversationItem[]>([]);
   const resetThinking = useThinkingStore((s) => s.reset);
+  const resetTrace = useTraceStore((s) => s.reset);
 
   const refreshHistory = useCallback(async () => {
     try {
@@ -162,6 +164,7 @@ export function ChatPageV2() {
       resetPlan();
       resetSlots();
       resetThinking();
+      resetTrace();
       setReflectionSummary(null);
       api
         .createSession(userId, selectedId ?? undefined)
@@ -200,6 +203,7 @@ export function ChatPageV2() {
     resetPlan();
     resetSlots();
     resetThinking();
+    resetTrace();
     setReflectionSummary(null);
     setAgentCollapsed(true);
     api
@@ -214,6 +218,7 @@ export function ChatPageV2() {
     resetPlan,
     resetSlots,
     resetThinking,
+    resetTrace,
     setSession,
     refreshHistory,
   ]);
@@ -233,6 +238,7 @@ export function ChatPageV2() {
         resetPlan();
         resetSlots();
         resetThinking();
+        resetTrace();
         setReflectionSummary(null);
         setAgentCollapsed(true);
         api
@@ -251,6 +257,7 @@ export function ChatPageV2() {
       resetPlan,
       resetSlots,
       resetThinking,
+      resetTrace,
       setSession,
       refreshHistory,
     ],
@@ -263,6 +270,7 @@ export function ChatPageV2() {
       resetPlan();
       resetSlots();
       resetThinking();
+      resetTrace();
       setReflectionSummary(null);
       // Jump into the existing session; WS hook will re-connect, hydrate
       // effect will replay messages.
@@ -274,6 +282,7 @@ export function ChatPageV2() {
       resetPlan,
       resetSlots,
       resetThinking,
+      resetTrace,
       setSession,
       userId,
       selectedId,

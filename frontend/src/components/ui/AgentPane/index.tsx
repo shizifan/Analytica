@@ -9,6 +9,7 @@ import { StatusTab } from './StatusTab';
 import { PlanTab } from './PlanTab';
 import { TraceTab } from './TraceTab';
 import { useTraceStore } from '../../../stores/traceStore';
+import { downloadSessionJSON } from '../../../utils/exportSession';
 
 type TabKey = 'thinking' | 'status' | 'plan' | 'trace';
 
@@ -82,6 +83,14 @@ export function AgentPane({ collapsed, onToggle, phaseLabel }: Props) {
       <div className="an-pane-header">
         <span className="an-title">Agent Inspector</span>
         <div className="an-actions">
+          <button
+            type="button"
+            className="an-icon-btn"
+            title="下载会话快照 JSON"
+            onClick={downloadSessionJSON}
+          >
+            <Icon name="download" />
+          </button>
           <button type="button" className="an-icon-btn" title="收起" onClick={onToggle}>
             <Icon name="panel-right" />
           </button>

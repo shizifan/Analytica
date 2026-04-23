@@ -2239,3 +2239,37 @@ html.analytica-v2 [data-density="spacious"] { font-size: 14px; }
   max-height: 200px;
   overflow-y: auto;
 }
+
+/* ── Data table inside trace output ────────────────────────── */
+.an-trace-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--an-border-subtle);
+  border-radius: var(--an-radius-sm);
+  max-height: 260px;
+  overflow-y: auto;
+}
+.an-trace-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--an-font-mono);
+  font-size: 11px;
+}
+.an-trace-table th {
+  position: sticky;
+  top: 0;
+  background: var(--an-bg-raised);
+  color: var(--an-ink-3);
+  font-weight: 500;
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--an-border-subtle);
+  white-space: nowrap;
+}
+.an-trace-table td {
+  padding: 3px 8px;
+  color: var(--an-ink-2);
+  border-bottom: 1px solid var(--an-border-subtle);
+  white-space: nowrap;
+}
+.an-trace-table tr:last-child td { border-bottom: none; }
+.an-trace-table tbody tr:hover td { background: var(--an-bg-hover); }

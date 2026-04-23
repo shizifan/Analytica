@@ -60,6 +60,52 @@ function JsonBlock({ label, data }: { label: string; data: Record<string, unknow
   );
 }
 
+// ── DataTable ────────────────────────────────────────────────────
+
+function DataTable({ rows }: { rows: Record<string, unknown>[] }) {
+  if (!rows || rows.length === 0) return null;
+  const cols = Object.keys(rows[0]);
+  return (
+    <div className="an-trace-table-wrap">
+      <table className="an-trace-table">
+        <thead>
+          <tr>
+            {cols.map((c) => <th key={c}>{c}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => (
+            <tr key={i}>
+              {cols.map((c) => (
+                <td key={c}>{row[c] == null ? '—' : String(row[c])}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── OutputBlock — splits meta + data table ────────────────────────
+
+function OutputBlock({ output }: { output: Record<string, unknown> }) {
+  const { data, ...meta } = output;
+  const rows = Array.isArray(data) ? (data as Record<string, unknown>[]) : null;
+  const hasMeta = Object.keys(meta).length > 0;
+  return (
+    <>
+      {hasMeta && <JsonBlock label="出参" data={meta} />}
+      {rows && rows.length > 0 && (
+        <div className="an-trace-json-block">
+          <div className="an-trace-json-label">数据（{rows.length} 行）</div>
+          <DataTable rows={rows} />
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── SpanPairRow ──────────────────────────────────────────────────
 
 function SpanPairRow({ pair }: { pair: { start: Span; end?: Span } }) {
@@ -90,7 +136,7 @@ function SpanPairRow({ pair }: { pair: { start: Span; end?: Span } }) {
       {open && (
         <div className="an-trace-span-body">
           {start.input && <JsonBlock label="入参" data={start.input} />}
-          {end?.output && <JsonBlock label="出参" data={end.output} />}
+          {end?.output && <OutputBlock output={end.output} />}
         </div>
       )}
     </div>

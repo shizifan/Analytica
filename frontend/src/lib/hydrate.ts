@@ -17,6 +17,7 @@ import { useSessionStore, makeMessageId } from '../stores/sessionStore';
 import { useSlotStore } from '../stores/slotStore';
 import { usePlanStore } from '../stores/planStore';
 import { useThinkingStore } from '../stores/thinkingStore';
+import { useTraceStore } from '../stores/traceStore';
 import type {
   AnalysisPlan,
   ChatMessage,
@@ -69,10 +70,11 @@ export async function hydrateSession(sessionId: string): Promise<void> {
     // the correct watermark even after partial hydration or live events.
     const sinceId = store.maxMessageId;
 
-    const [msgRes, thkRes, sessionRes] = await Promise.all([
+    const [msgRes, thkRes, sessionRes, traceRes] = await Promise.all([
       api.replayMessages(sessionId, sinceId),
       api.replayThinking(sessionId),
       api.getSession(sessionId).catch(() => null),
+      api.getTrace(sessionId).catch(() => null),
     ]);
 
     // Bail out if the user switched sessions while we were awaiting.
@@ -139,6 +141,14 @@ export async function hydrateSession(sessionId: string): Promise<void> {
             );
           }
         }
+      }
+    }
+    // ── trace spans ───────────────────────────────────────────
+    const traceStore = useTraceStore.getState();
+    if (traceRes && Object.keys(traceStore.spansByTask).length === 0) {
+      const tasks = (traceRes as { tasks?: Array<{ task_id: string; spans: unknown[] }> }).tasks;
+      if (Array.isArray(tasks) && tasks.length > 0) {
+        traceStore.loadTasks(tasks as Array<{ task_id: string; spans: never[] }>);
       }
     }
   } catch (err) {
