@@ -899,6 +899,64 @@ async def admin_api_stats(
     return await admin_store.get_api_stats(db, name, days=days)
 
 
+class ApiTestRequest(BaseModel):
+    params: dict[str, Any] = Field(default_factory=dict)
+    mode: str = "mock"  # "mock" | "prod"
+
+
+@app.post("/api/admin/apis/{name}/test")
+async def admin_test_api(name: str, req: ApiTestRequest):
+    """Proxy a test call to the underlying data API and return the raw response."""
+    import time as _time
+    import httpx
+    from backend.agent.api_registry import get_endpoint_path, resolve_endpoint_id
+    from backend.skills.data.api_fetch import _build_auth_headers
+    from backend.config import get_settings
+
+    endpoint_id = resolve_endpoint_id(name)
+    if not endpoint_id:
+        raise HTTPException(status_code=404, detail=f"API endpoint '{name}' not found")
+
+    path = get_endpoint_path(endpoint_id)
+    if not path:
+        raise HTTPException(status_code=404, detail=f"No path for endpoint '{endpoint_id}'")
+
+    settings = get_settings()
+    use_prod = req.mode == "prod"
+    if use_prod:
+        if not settings.PROD_API_BASE:
+            raise HTTPException(status_code=400, detail="生产接口地址未配置（PROD_API_BASE 为空）")
+        api_base = settings.PROD_API_BASE
+        verify_ssl = False  # prod uses self-signed cert
+    else:
+        api_base = settings.MOCK_SERVER_URL
+        verify_ssl = True
+
+    url = f"{api_base}{path}"
+    headers = _build_auth_headers(path)
+
+    start = _time.monotonic()
+    try:
+        async with httpx.AsyncClient(timeout=15.0, verify=verify_ssl, trust_env=False) as client:
+            resp = await client.get(url, params=req.params, headers=headers)
+        duration_ms = round((_time.monotonic() - start) * 1000)
+        try:
+            body = resp.json()
+        except Exception:
+            body = resp.text
+        return {
+            "status_code": resp.status_code,
+            "duration_ms": duration_ms,
+            "url": str(resp.url),
+            "mode": req.mode,
+            "data": body,
+        }
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Upstream API timed out")
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+
 class SkillUpsert(BaseModel):
     name: str
     kind: str

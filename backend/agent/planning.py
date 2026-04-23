@@ -170,22 +170,46 @@ visualization 类型任务必须使用 intent 字段描述图表意图，params 
 }}
 
 【analysis 任务特别规范】
-analysis 类型任务使用 intent 字段描述分析目标，params 只写 data_ref（上游任务ID）。
-禁止在 params 中写 target_columns / group_by / time_column 等列级配置
-（这些由执行阶段根据真实数据和 intent 自动决定）：
+analysis 类型任务必须遵循「Planning 给意图，执行阶段看数据决策」原则：
+- intent 字段描述分析目标（必填，越具体越好）
+- params 仅写 data_ref（skill_desc_analysis）或留空（skill_attribution 直接读 depends_on）
+- 禁止在 params 中写：target_columns / group_by / time_column / analysis_goal /
+  focus_points / target_kpi / drivers / target_metric / time_period
+  （这些由执行阶段根据真实数据和 intent 自动决定）
+
+skill_desc_analysis 示例：
 {{
   "task_id": "T004",
   "type": "analysis",
   "name": "描述性统计分析",
-  "intent": "分析各港区吞吐量结构分布与同比增速差异，找出高增长港区",
+  "intent": "分析各港区吞吐量月度趋势与同比增速，找出高增长和下滑港区",
   "depends_on": ["T001"],
   "skill": "skill_desc_analysis",
   "params": {{"data_ref": "T001"}},
   "estimated_seconds": 30
 }}
 
-如果是 full_report 场景，report_structure 应包含报告章节结构，每个章节必须通过 task_refs 指定其内容来源的任务 ID：
-{{"sections": [{{"name": "章节名称", "task_refs": ["T001", "T002"]}}, ...]}}
+skill_attribution 示例（params 留空，上游数据通过 depends_on 自动注入）：
+{{
+  "task_id": "T006",
+  "type": "analysis",
+  "name": "吞吐量变化归因分析",
+  "intent": "分析2026年1-4月吞吐量同比下降的主要驱动因素，结合港区和货种维度拆解贡献度",
+  "depends_on": ["T001", "T002", "T003"],
+  "skill": "skill_attribution",
+  "params": {{}},
+  "estimated_seconds": 45
+}}
+
+如果是 full_report 场景，report_structure 应包含报告章节结构，sections 只填章节名称，不写 task_refs（执行时自动关联）：
+{{"sections": [{{"name": "章节名称"}}, ...]}}
+
+【报告技能参数规范】
+所有报告技能（skill_summary_gen / skill_report_html / skill_report_docx / skill_report_pptx）：
+- 必须携带 "intent" 字段说明报告意图
+- 禁止在 params 中写：summary_style / topic / domain / template_id / task_refs（这些由执行时 LLM 自动决定）
+- skill_summary_gen params 示例：{{"intent": "分析港口吞吐量完成情况与归因"}}
+- skill_report_* params 示例：{{"intent": "港口运营月度分析", "report_metadata": {{"title": "...", "author": "Analytica", "date": "..."}},"report_structure": {{"sections": [{{"name": "概览"}}, {{"name": "趋势分析"}}]}}}}
 """
 
 
@@ -632,7 +656,7 @@ class PlanningEngine:
                     f"  Layer5 报告层（1，必须最后）: {skill}\n"
                     f"    → depends_on 所有可视化层 + 汇总层任务\n"
                     f"    → estimated_seconds: 30\n"
-                    f"    → params 包含 report_metadata: {{title, author, date}}"
+                    f"    → params 包含 intent（报告意图）+ report_metadata: {{title, author, date}}"
                 )
                 format_display = fmt
             else:
@@ -643,7 +667,7 @@ class PlanningEngine:
                 for fmt, skill in report_skills:
                     lines.append(
                         f"    • {skill}（{fmt}）→ depends_on 所有可视化层 + 汇总层任务；"
-                        f"estimated_seconds: 30；params 包含 report_metadata: {{title, author, date}}"
+                        f"estimated_seconds: 30；params 包含 intent + report_metadata: {{title, author, date}}"
                     )
                 layer5_spec = "\n".join(lines)
 
@@ -657,10 +681,12 @@ class PlanningEngine:
                 f"  Layer3 可视化层（≥3）: skill_chart_bar / skill_chart_line / skill_chart_waterfall 组合\n"
                 f"    → 每图 depends_on 1-2个数据层任务\n"
                 f"  Layer4 汇总层（1）: skill_summary_gen，depends_on 所有分析层任务\n"
+                f"    → params 只写 intent，禁止写 summary_style / topic / domain\n"
                 f"{layer5_spec}\n\n"
-                f"report_structure 必须填充，格式:\n"
-                f'  {{"sections": [{{"name": "章节名", "task_refs": ["T001", "T002"]}}, ...]}}\n'
-                f"建议章节：一、概览 | 二、趋势分析 | 三、结构分析 | 四、归因分析 | 五、结论建议"
+                f"report_structure 必须填充，sections 只写章节名，不写 task_refs（执行时自动关联）:\n"
+                f'  {{"sections": [{{"name": "章节名"}}, ...]}}\n'
+                f"建议章节：一、概览 | 二、趋势分析 | 三、结构分析 | 四、归因分析 | 五、结论建议\n\n"
+                f"报告技能 params 禁止出现：summary_style / topic / domain / template_id / task_refs"
             )
 
         # Build structured hints block

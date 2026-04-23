@@ -15,6 +15,7 @@ from backend.skills.report._content_collector import (
     ChartDataItem, DataFrameItem, SummaryTextItem,
     ReportContent,
 )
+from backend.skills.report._kpi_extractor import extract_kpis_llm
 
 logger = logging.getLogger("analytica.skills.report_markdown")
 
@@ -98,8 +99,22 @@ def _render_dataframe(df: Any) -> str:
     return "\n".join([header, separator] + rows) + extra
 
 
+def _render_kpi_md(kpis: list) -> str:
+    if not kpis:
+        return ""
+    lines = ["## 核心指标\n"]
+    for k in kpis:
+        trend = {"positive": "↑", "negative": "↓"}.get(k.trend or "", "")
+        sub = f" （{k.sub}）" if k.sub else ""
+        lines.append(f"- **{k.label}**：{trend}{k.value}{sub}")
+    return "\n".join(lines) + "\n"
+
+
 def _build_markdown_deterministic(report: ReportContent) -> str:
     content_parts: list[str] = []
+
+    if report.kpi_cards:
+        content_parts.append(_render_kpi_md(report.kpi_cards))
 
     for i, section in enumerate(report.sections, 1):
         content_parts.append(f"\n## {i}. {section.name}\n")
@@ -140,9 +155,15 @@ class MarkdownReportSkill(BaseSkill):
 
     async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
         try:
+            intent = inp.params.get("intent", "")
+            task_id = inp.params.get("__task_id__", "")
+
             report = collect_and_associate(
                 inp.params, context,
                 task_order=inp.params.get("_task_order"),
+            )
+            report.kpi_cards = await extract_kpis_llm(
+                intent, context, span_emit=inp.span_emit, task_id=task_id,
             )
 
             # Build markdown content

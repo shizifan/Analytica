@@ -154,6 +154,12 @@ export const api = {
         'DELETE',
         `/api/admin/apis/${encodeURIComponent(name)}`,
       ),
+    testApi: (name: string, params: Record<string, string>, mode: 'mock' | 'prod' = 'mock') =>
+      request<{ status_code: number; duration_ms: number; url: string; mode: string; data: unknown }>(
+        'POST',
+        `/api/admin/apis/${encodeURIComponent(name)}/test`,
+        { params, mode },
+      ),
 
     listSkills: () =>
       request<{ items: AdminSkill[]; count: number }>('GET', '/api/admin/skills'),
@@ -207,6 +213,7 @@ export interface AdminApi {
   tags: string[];
   required_params: string[];
   optional_params: string[];
+  param_note?: string | null;
   source: string;
   enabled: boolean;
   updated_at?: string;

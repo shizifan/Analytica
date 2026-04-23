@@ -14,8 +14,8 @@ Batch 4 changes:
 - Drop unmatched items (log a warning) instead of padding the least-full
   section, which produced the observed "wrong content in wrong chapter"
   effect.
-- Extract KPI cards via ``_kpi_extractor.extract_kpis`` using the template
-  metadata injected by the execution pipeline.
+- KPI cards are extracted asynchronously by each report generator via
+  ``_kpi_extractor.extract_kpis_llm`` after collect_and_associate() returns.
 - Normalise DataFrame items: unit-annotated headers, sort-by-first-numeric
   descending, Top-N + "其他" row merge.
 """
@@ -28,7 +28,7 @@ from typing import Any
 import pandas as pd
 
 from backend.skills._i18n import col_label
-from backend.skills.report._kpi_extractor import KPIItem, extract_kpis
+from backend.skills.report._kpi_extractor import KPIItem
 
 logger = logging.getLogger("analytica.skills.report._content_collector")
 
@@ -353,7 +353,6 @@ def collect_and_associate(
     report_structure = params.get("report_structure", {})
     if not isinstance(report_structure, dict):
         report_structure = {}
-    template_meta = params.get("_template_meta", {}) or {}
 
     title = report_metadata.get("title", "数据分析报告")
     author = report_metadata.get("author", "Analytica")
@@ -376,16 +375,13 @@ def collect_and_associate(
     items, summaries = _extract_items(context, task_order=task_order)
     associated = _associate(sections, items)
 
-    # Extract KPI cards from business-aware rules (batch 4)
-    kpi_cards = extract_kpis(template_meta, context)
-    if kpi_cards:
-        logger.info("Extracted %d KPI cards for report", len(kpi_cards))
-
+    # KPI cards are populated asynchronously by each report generator
+    # after collect_and_associate() returns, via extract_kpis_llm().
     return ReportContent(
         title=title,
         author=author,
         date=date,
         sections=associated,
         summary_items=summaries,
-        kpi_cards=kpi_cards,
+        kpi_cards=[],
     )

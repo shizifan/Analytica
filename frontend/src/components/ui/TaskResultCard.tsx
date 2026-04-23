@@ -56,7 +56,7 @@ export function TaskResultCard({ primary, tableSource }: Props) {
   const handleDownloadCSV = () => {
     if (!tableData) return;
     const source = hasChart ? tableSource! : primary;
-    const csv = tableToCSV(tableData);
+    const csv = tableToCSV(tableData, ['deptName', 'ownerLgZoneName']);
     downloadText(
       `${SanitizedCSVName(source.name || primary.name)}.csv`,
       csv,
@@ -131,7 +131,12 @@ export function TaskResultCard({ primary, tableSource }: Props) {
         {active === 'chart' && chartData && (
           <ChartView ref={chartRef} option={chartData.option} height={320} />
         )}
-        {active === 'table' && tableData && <DataTable data={tableData} />}
+        {active === 'table' && tableData && (
+          <DataTable
+            data={tableData}
+            priorityCols={['deptName', 'ownerLgZoneName']}
+          />
+        )}
         {active === 'text' && textData && (
           <div className="an-result-text">{textData.text}</div>
         )}

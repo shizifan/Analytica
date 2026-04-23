@@ -5,6 +5,8 @@ interface Props {
   data: TaskResultTable;
   /** Collapse after this many rows until "展开全部" is clicked. */
   collapseAfter?: number;
+  /** Pin these column names to the front, in order, before auto-sort. */
+  priorityCols?: string[];
 }
 
 const DEFAULT_COLLAPSE = 10;
@@ -36,13 +38,30 @@ function formatCell(v: unknown): string {
   return String(v);
 }
 
-export function DataTable({ data, collapseAfter = DEFAULT_COLLAPSE }: Props) {
+/** Sort order: pinned cols first, then non-numeric, then numeric. */
+function reorderColumns(
+  columns: string[],
+  rows: Array<Array<unknown>>,
+  priorityCols: string[] = [],
+): { orderedCols: string[]; colIndices: number[] } {
+  const pinned = priorityCols.filter((c) => columns.includes(c));
+  const pinnedSet = new Set(pinned);
+  const rest = columns.filter((c) => !pinnedSet.has(c));
+  const colIdx = (c: string) => columns.indexOf(c);
+  const nonNumeric = rest.filter((c) => !isNumericCol(rows, colIdx(c)));
+  const numeric = rest.filter((c) => isNumericCol(rows, colIdx(c)));
+  const orderedCols = [...pinned, ...nonNumeric, ...numeric];
+  return { orderedCols, colIndices: orderedCols.map(colIdx) };
+}
+
+export function DataTable({ data, collapseAfter = DEFAULT_COLLAPSE, priorityCols }: Props) {
   const [expanded, setExpanded] = useState(false);
   const total = data.total_rows ?? data.rows.length;
   const canCollapse = total > collapseAfter;
   const visibleRows = expanded || !canCollapse ? data.rows : data.rows.slice(0, collapseAfter);
 
-  const numericCols = data.columns.map((_, i) => isNumericCol(data.rows, i));
+  const { orderedCols, colIndices } = reorderColumns(data.columns, data.rows, priorityCols);
+  const numericCols = orderedCols.map((_, i) => isNumericCol(data.rows, colIndices[i]));
 
   return (
     <>
@@ -50,7 +69,7 @@ export function DataTable({ data, collapseAfter = DEFAULT_COLLAPSE }: Props) {
         <table className="an-data-table">
           <thead>
             <tr>
-              {data.columns.map((col) => (
+              {orderedCols.map((col) => (
                 <th key={col}>{col}</th>
               ))}
             </tr>
@@ -58,9 +77,9 @@ export function DataTable({ data, collapseAfter = DEFAULT_COLLAPSE }: Props) {
           <tbody>
             {visibleRows.map((row, i) => (
               <tr key={i}>
-                {row.map((cell, j) => (
+                {colIndices.map((ci, j) => (
                   <td key={j} className={numericCols[j] ? 'num' : ''}>
-                    {formatCell(cell)}
+                    {formatCell(row[ci])}
                   </td>
                 ))}
               </tr>
@@ -83,15 +102,16 @@ export function DataTable({ data, collapseAfter = DEFAULT_COLLAPSE }: Props) {
 }
 
 /** Convert a TaskResultTable to CSV string (UTF-8, Excel-friendly). */
-export function tableToCSV(data: TaskResultTable): string {
+export function tableToCSV(data: TaskResultTable, priorityCols?: string[]): string {
   const escape = (v: unknown): string => {
     if (v === null || v === undefined) return '';
     const s = String(v);
     if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
     return s;
   };
-  const header = data.columns.map(escape).join(',');
-  const body = data.rows.map((row) => row.map(escape).join(',')).join('\n');
+  const { orderedCols, colIndices } = reorderColumns(data.columns, data.rows, priorityCols);
+  const header = orderedCols.map(escape).join(',');
+  const body = data.rows.map((row) => colIndices.map((ci) => escape(row[ci])).join(',')).join('\n');
   return `${header}\n${body}`;
 }
 

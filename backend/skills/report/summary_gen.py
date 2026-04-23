@@ -1,76 +1,62 @@
-"""Summary Generation Skill — generates text summary paragraphs using LLM.
+"""Summary Generation Skill — intent-driven universal summary via LLM.
 
-Rewritten in batch 3 to:
-- route through backend.skills._llm.invoke_llm (unified retry/truncation/classification)
-- support ``summary_style`` (executive / analytical / narrative)
-- filter upstream narratives by structured ``[narrative_failed:*]`` tag
-  (replaces the old ``[自动生成失败]`` prefix that hid the real cause)
-- propagate llm_tokens + error_category to SkillOutput
+Architecture: Planning provides only `intent`. At execution time:
+  1. Collects upstream narrative texts from analysis skills.
+  2. Summarizes upstream DataFrames via _data_summarizer.
+  3. Single LLM call: intent + narratives + data_summary → summary paragraph.
 """
 from __future__ import annotations
 
 import logging
 from typing import Any
 
-from backend.skills._llm import infer_domain, invoke_llm, truncate
+from backend.skills._llm import invoke_llm, truncate
+from backend.skills.analysis._data_summarizer import summarize_sources
 from backend.skills.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
 from backend.skills.registry import register_skill
 
 logger = logging.getLogger("analytica.skills.summary_gen")
 
+_SUMMARY_SYSTEM = "你是资深商业分析师，擅长从多源分析结果中提炼核心洞察。"
 
-_STYLE_PROMPTS: dict[str, str] = {
-    "executive": (
-        "你是向高管汇报的业务分析师。基于以下分析结果，写一段面向决策层的经营摘要（中文, 220 字以内）。\n\n"
-        "主题: {topic}\n"
-        "业务域: {domain}\n"
-        "分析内容:\n{content}\n\n"
-        "要求:\n"
-        "- 结构: 先亮核心数字(完成率/同比/环比), 再指出最大风险, 最后给 1-2 条下一步建议\n"
-        "- 不要重复罗列各章节已有的细节\n"
-        "- 禁止提及: 缺失率、标准差、偏度、数据完整性\n"
-        "- 数字保留 1-2 位小数, 大数用万/亿\n"
-    ),
-    "analytical": (
-        "你是资深数据分析师。基于以下内容，写一段深度分析摘要（中文, 300 字以内）。\n\n"
-        "主题: {topic}\n"
-        "业务域: {domain}\n"
-        "分析内容:\n{content}\n\n"
-        "要求: 归纳 3 个关键发现, 指出驱动因素, 语言专业。"
-    ),
-    "narrative": (
-        "基于以下分析结果, 写一段叙述性摘要（中文, 200 字以内）。\n\n"
-        "主题: {topic}\n"
-        "分析内容:\n{content}\n\n"
-        "要求: 语言自然流畅, 不要机械复述数字。"
-    ),
-}
+_SUMMARY_PROMPT = """【报告意图】
+{intent}
+
+【上游分析叙述】
+{narratives}
+
+【上游数据摘要】
+{data_summary}
+
+请写一段报告摘要（中文，250 字以内）：
+- 先亮出核心数字或结论（完成率/同比/环比/绝对量）
+- 指出最重要的 2-3 个发现
+- 给出 1-2 条可操作建议
+- 数字保留 1-2 位小数，大数用万/亿
+- 禁止提及：缺失率、标准差、偏度、数据完整性等统计术语"""
 
 
 def _is_failed_narrative(text: str) -> bool:
-    """Detect the new structured ``[narrative_failed:*]`` tag and the legacy
-    ``[自动生成失败]`` prefix."""
     if not text:
         return True
     return text.startswith("[narrative_failed:") or text.startswith("[自动生成失败]")
 
 
 @register_skill("skill_summary_gen", SkillCategory.REPORT, "摘要生成（纯文本摘要段落）",
-                input_spec="data_refs + topic + summary_style + 上游数据引用",
+                input_spec="intent + 上游数据/分析引用",
                 output_spec="中文摘要文本")
 class SummaryGenSkill(BaseSkill):
 
     async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
         params = inp.params
-        data_refs = params.get("data_refs", [])
-        topic = params.get("topic", "数据分析")
-        summary_style = params.get("summary_style", "executive")
-        tmpl_meta = params.get("_template_meta", {}) or {}
-        domain = infer_domain(tmpl_meta.get("template_id"))
+        intent = params.get("intent") or params.get("topic", "数据分析")
+        task_id = params.get("__task_id__", "")
+        data_refs = params.get("data_refs") or []
 
-        # Collect all narratives/data from context
-        collected: list[str] = []
-        refs_to_check = data_refs if data_refs else inp.context_refs
+        refs_to_check = data_refs if data_refs else (inp.context_refs or [])
+
+        # Collect upstream narrative texts
+        narratives: list[str] = []
         for ref in refs_to_check:
             if ref not in context:
                 continue
@@ -80,48 +66,54 @@ class SummaryGenSkill(BaseSkill):
                 else (ctx_out.get("data") if isinstance(ctx_out, dict) else None)
             )
             if isinstance(data, dict) and "narrative" in data:
-                collected.append(data["narrative"])
-            elif isinstance(data, str):
-                collected.append(data)
+                text = data["narrative"]
+                if isinstance(text, str) and not _is_failed_narrative(text):
+                    narratives.append(text)
+            elif isinstance(data, str) and not _is_failed_narrative(data):
+                narratives.append(data)
 
-        # Drop upstream narratives that failed to generate
-        valid = [c for c in collected if not _is_failed_narrative(c)]
-        dropped = len(collected) - len(valid)
+        # Summarize upstream DataFrames and non-DataFrame outputs
+        data_summary = summarize_sources(context, refs_to_check)
 
-        if not valid:
+        if not narratives and data_summary == "（无可用数据）":
             return SkillOutput(
                 skill_id=self.skill_id,
                 status="partial",
                 output_type="text",
-                data=f"[摘要] 关于 {topic} 的分析已完成，详见各章节内容。",
-                metadata={
-                    "stub": True,
-                    "upstream_total": len(collected),
-                    "upstream_dropped_failed": dropped,
-                },
+                data=f"[摘要] 关于 {intent} 的分析已完成，详见各章节内容。",
+                metadata={"stub": True},
             )
 
-        # Cap total prompt content to protect against very long inputs
-        combined = truncate("\n---\n".join(valid), max_chars=6000)
-        style_key = summary_style if summary_style in _STYLE_PROMPTS else "executive"
-        prompt = _STYLE_PROMPTS[style_key].format(
-            topic=topic, domain=domain, content=combined,
+        narratives_text = truncate(
+            "\n---\n".join(narratives) if narratives else "（无叙述文本）",
+            max_chars=3000,
+        )
+        prompt = _SUMMARY_PROMPT.format(
+            intent=intent,
+            narratives=narratives_text,
+            data_summary=data_summary if data_summary != "（无可用数据）" else "（无数据摘要）",
         )
 
-        result = await invoke_llm(prompt, temperature=0.3, timeout=90)
+        result = await invoke_llm(
+            prompt,
+            system_prompt=_SUMMARY_SYSTEM,
+            temperature=0.3,
+            timeout=90,
+            span_emit=inp.span_emit,
+            task_id=task_id,
+        )
+
         if result["error"]:
-            # Fall back to first valid narrative so the report isn't empty
-            fallback = truncate(valid[0], max_chars=300)
+            fallback = truncate(
+                narratives[0] if narratives else f"关于 {intent} 的分析已完成。",
+                max_chars=300,
+            )
             return SkillOutput(
                 skill_id=self.skill_id,
                 status="partial",
                 output_type="text",
                 data=f"[摘要] {fallback}",
-                metadata={
-                    "fallback": True,
-                    "summary_style": style_key,
-                    "upstream_dropped_failed": dropped,
-                },
+                metadata={"fallback": True},
                 llm_tokens=result["tokens"],
                 error_category=result["error_category"],
                 error_message=result["error"],
@@ -132,11 +124,6 @@ class SummaryGenSkill(BaseSkill):
             status="success",
             output_type="text",
             data=result["text"],
-            metadata={
-                "source_count": len(valid),
-                "upstream_dropped_failed": dropped,
-                "summary_style": style_key,
-                "domain": domain,
-            },
+            metadata={"source_refs": refs_to_check, "narrative_count": len(narratives)},
             llm_tokens=result["tokens"],
         )

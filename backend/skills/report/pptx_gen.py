@@ -29,6 +29,7 @@ from backend.skills.report._content_collector import (
 )
 from backend.skills.report import _pptx_slides as S
 from backend.skills.report import _theme as T
+from backend.skills.report._kpi_extractor import extract_kpis_llm
 from backend.skills._i18n import metric_label
 
 logger = logging.getLogger("analytica.skills.report_pptx")
@@ -147,9 +148,15 @@ class PptxReportSkill(BaseSkill):
 
     async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
         try:
+            intent = inp.params.get("intent", "")
+            task_id = inp.params.get("__task_id__", "")
+
             report = collect_and_associate(
                 inp.params, context,
                 task_order=inp.params.get("_task_order"),
+            )
+            report.kpi_cards = await extract_kpis_llm(
+                intent, context, span_emit=inp.span_emit, task_id=task_id,
             )
 
             # ── Strategy 1: PptxGenJS (native charts, modern layouts) ──

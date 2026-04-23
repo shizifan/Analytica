@@ -90,11 +90,11 @@ def _parse_json(text: str) -> dict | None:
 def _fallback_selection(df: pd.DataFrame) -> dict[str, Any]:
     time_cols = [c for c in df.columns if _col_kind(c, df[c].dtype) == "time"]
     numeric_cols = [c for c in df.columns if _col_kind(c, df[c].dtype) == "numeric"]
-    cat_cols = [c for c in df.columns if _col_kind(c, df[c].dtype) == "categorical"]
     return {
         "target_columns": numeric_cols,
         "time_column": time_cols[0] if time_cols else None,
         "group_by": None,
+        "col_schema": "",
     }
 
 
@@ -111,11 +111,12 @@ async def select_analysis_columns(
         target_columns: list[str] — numeric columns to compute stats on
         time_column: str | None  — time axis column for growth rate calc
         group_by: str | None     — grouping dimension (e.g. portArea, cargoType)
+        col_schema: str          — human-readable schema description (for narrative prompts)
 
     Always returns valid selection — falls back to all numeric cols on failure.
     """
     if df is None or df.empty:
-        return {"target_columns": [], "time_column": None, "group_by": None}
+        return {"target_columns": [], "time_column": None, "group_by": None, "col_schema": ""}
 
     schema = _describe_schema(df)
     user_prompt = _SELECTOR_PROMPT.format(intent=intent or "数据分析", schema=schema)
@@ -133,12 +134,12 @@ async def select_analysis_columns(
     if result.get("error"):
         logger.warning("column selector LLM failed [%s]: %s — using fallback",
                        result.get("error_category"), result.get("error"))
-        return _fallback_selection(df)
+        return {**_fallback_selection(df), "col_schema": schema}
 
     parsed = _parse_json(result["text"])
     if parsed is None:
         logger.warning("column selector: JSON parse failed, text=%r", result["text"][:200])
-        return _fallback_selection(df)
+        return {**_fallback_selection(df), "col_schema": schema}
 
     # Validate: filter to columns actually in df
     cols = set(df.columns)
@@ -154,4 +155,4 @@ async def select_analysis_columns(
         group_by = None
 
     logger.info("column selector OK: target=%s time=%s group=%s", target, time_col, group_by)
-    return {"target_columns": target, "time_column": time_col, "group_by": group_by}
+    return {"target_columns": target, "time_column": time_col, "group_by": group_by, "col_schema": schema}

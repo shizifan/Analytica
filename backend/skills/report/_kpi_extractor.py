@@ -1,23 +1,21 @@
-"""Domain-aware KPI extraction for report cover blocks.
+"""LLM-powered KPI extraction for report cover blocks.
 
-The HTML/DOCX themes ship with a ``.kpi-card`` style that went entirely
-unused before batch 4 — nothing ever populated a KPI row. This module fills
-the gap by pattern-matching upstream task outputs against per-domain rules
-and emitting structured ``KPIItem``s that the renderers surface in the
-first section.
+Architecture: At execution time, examines actual upstream data summaries and
+uses LLM to discover the 3-4 most meaningful KPI metrics. No hardcoded domain
+rules, no task-id / field-name assumptions.
 
-Rules are intentionally narrow (task-id + field names specific to the port
-analytics templates) so the extractor stays deterministic and fast. Domains
-without explicit rules simply yield an empty list — the renderer skips the
-KPI block cleanly.
+Entry point: extract_kpis_llm(intent, context, *, span_emit, task_id)
 """
 from __future__ import annotations
 
+import json
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any
 
-import pandas as pd
+from backend.skills._llm import invoke_llm
+from backend.skills.analysis._data_summarizer import summarize_sources
 
 logger = logging.getLogger("analytica.skills.report.kpi")
 
@@ -38,179 +36,100 @@ class KPIItem:
     trend: str | None = None
 
 
-# ── Primitives used by rules ─────────────────────────────────────
+_KPI_SYSTEM = (
+    "你是数据分析专家，负责从分析结果中提炼最关键的KPI指标卡片。"
+    "严格输出 JSON 数组，不加 markdown 标记，不加解释文字。"
+)
 
-def _df_cell(output: Any, field: str) -> float | None:
-    """Extract the first row's ``field`` value from a DataFrame output."""
-    data = getattr(output, "data", None)
-    if not isinstance(data, pd.DataFrame) or data.empty or field not in data.columns:
+_KPI_PROMPT = """【报告意图】
+{intent}
+
+【可用数据摘要】
+{data_summary}
+
+请从以上数据中提炼 3-4 个最关键的 KPI 指标，输出 JSON 数组（严格 JSON，不加 markdown）：
+[
+  {{"label": "指标名称", "value": "123.4万吨", "sub": "目标150万吨（可选）", "trend": "positive"}}
+]
+
+规则：
+- 优先选择：完成率、同比/环比增长率、核心业务绝对量
+- value 格式化为人类可读（万/亿/百分比），保留 1-2 位小数
+- trend: "positive"=达成/增长, "negative"=未达成/下降, null=中性指标
+- sub 填辅助说明（如目标值、对比值），若无意义则填空字符串 ""
+- 若数据不足以支撑某类指标，宁可少写也不要编造"""
+
+
+def _parse_kpi_json(text: str) -> list[dict] | None:
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    text = re.sub(r"^```(?:json)?\s*", "", text).rstrip("` \n")
+    m = re.search(r"\[.*\]", text, re.DOTALL)
+    if not m:
         return None
     try:
-        return float(data.iloc[0][field])
-    except Exception:
-        return None
-
-
-def _df_column_mean(output: Any, field: str) -> float | None:
-    """Mean of ``field`` over all rows (skips NaNs)."""
-    data = getattr(output, "data", None)
-    if not isinstance(data, pd.DataFrame) or data.empty or field not in data.columns:
-        return None
-    series = pd.to_numeric(data[field], errors="coerce").dropna()
-    if series.empty:
-        return None
-    return float(series.mean())
-
-
-def _format_big_number(value: float, unit: str = "") -> str:
-    """Human-readable: 1.23亿 / 456.7万 / 123.45 / 0.123."""
-    if value is None:
-        return "-"
-    abs_v = abs(value)
-    if abs_v >= 1e8:
-        return f"{value / 1e8:.2f}亿{unit}"
-    if abs_v >= 1e4:
-        return f"{value / 1e4:.1f}万{unit}"
-    if abs_v >= 1:
-        return f"{value:,.2f}{unit}"
-    return f"{value:.4f}{unit}"
-
-
-def _format_percentage(ratio: float) -> str:
-    if ratio is None:
-        return "-"
-    return f"{ratio * 100:.1f}%" if abs(ratio) < 5 else f"{ratio:.1f}%"
-
-
-def _trend_of(value: float | None, positive_better: bool = True) -> str | None:
-    if value is None:
-        return None
-    if value > 0:
-        return "positive" if positive_better else "negative"
-    if value < 0:
-        return "negative" if positive_better else "positive"
+        result = json.loads(m.group())
+        if isinstance(result, list):
+            return result
+    except json.JSONDecodeError:
+        pass
     return None
 
 
-# ── Per-domain extractors ────────────────────────────────────────
+async def extract_kpis_llm(
+    intent: str,
+    context: dict[str, Any],
+    *,
+    span_emit=None,
+    task_id: str = "",
+) -> list[KPIItem]:
+    """Discover KPI cards from upstream data using LLM.
 
-def _extract_throughput(context: dict[str, Any]) -> list[KPIItem]:
-    """Throughput analyst template — expects T001 (吨 KPI), T002 (TEU KPI),
-    T003 (monthly throughput with yoyRate in some APIs)."""
+    Returns empty list on any failure — renderers skip the KPI block cleanly.
+    """
+    if not context:
+        return []
+
+    all_refs = list(context.keys())
+    data_summary = summarize_sources(context, all_refs)
+    if data_summary == "（无可用数据）":
+        return []
+
+    prompt = _KPI_PROMPT.format(
+        intent=intent or "数据分析报告",
+        data_summary=data_summary,
+    )
+
+    result = await invoke_llm(
+        prompt,
+        system_prompt=_KPI_SYSTEM,
+        temperature=0.1,
+        timeout=30,
+        span_emit=span_emit,
+        task_id=task_id,
+    )
+
+    if result.get("error"):
+        logger.warning("KPI LLM failed [%s]: %s", result.get("error_category"), result.get("error"))
+        return []
+
+    parsed = _parse_kpi_json(result["text"])
+    if not parsed:
+        logger.warning("KPI JSON parse failed, text=%r", result["text"][:200])
+        return []
+
     items: list[KPIItem] = []
-
-    # T001 / T002: completion rate = finishQty / targetQty
-    for task_id, label, unit in [
-        ("T001", "吞吐量完成率", "吨"),
-        ("T002", "TEU 完成率", "TEU"),
-    ]:
-        out = context.get(task_id)
-        if out is None or getattr(out, "status", "") not in ("success", "partial"):
+    for raw in parsed[:4]:
+        if not isinstance(raw, dict) or not raw.get("label") or not raw.get("value"):
             continue
-        finish = _df_cell(out, "finishQty")
-        target = _df_cell(out, "targetQty")
-        if target in (None, 0) or finish is None:
-            continue
-        ratio = finish / target
-        trend = "positive" if ratio >= 0.9 else "negative"
+        trend = raw.get("trend")
+        if trend not in ("positive", "negative"):
+            trend = None
         items.append(KPIItem(
-            label=label,
-            value=_format_percentage(ratio),
-            sub=f"实际 {_format_big_number(finish, unit)} / 目标 {_format_big_number(target, unit)}",
+            label=str(raw["label"]),
+            value=str(raw["value"]),
+            sub=str(raw.get("sub") or ""),
             trend=trend,
         ))
 
-    # T003: YoY growth rate (mean of yoyRate across months if available)
-    out = context.get("T003")
-    if out is not None and getattr(out, "status", "") in ("success", "partial"):
-        yoy_mean = _df_column_mean(out, "yoyRate")
-        if yoy_mean is not None:
-            items.append(KPIItem(
-                label="吞吐量同比",
-                value=_format_percentage(yoy_mean / 100 if abs(yoy_mean) > 1 else yoy_mean),
-                sub="月度 YoY 均值",
-                trend=_trend_of(yoy_mean, positive_better=True),
-            ))
-
+    logger.info("KPI extraction OK: %d cards for intent=%r", len(items), intent[:40])
     return items
-
-
-def _extract_customer(context: dict[str, Any]) -> list[KPIItem]:
-    """Customer insight template — expects client contribution data."""
-    items: list[KPIItem] = []
-    # Best-effort: look for common customer-related fields across T001-T005
-    for task_id in ("T001", "T002", "T003"):
-        out = context.get(task_id)
-        if out is None or getattr(out, "status", "") not in ("success", "partial"):
-            continue
-        for field, label in [
-            ("clientCount", "客户总数"),
-            ("yoyRate", "客户同比"),
-            ("contributionRate", "头部集中度"),
-        ]:
-            val = _df_cell(out, field)
-            if val is None:
-                continue
-            if "Rate" in field or "rate" in field:
-                items.append(KPIItem(
-                    label=label,
-                    value=_format_percentage(val / 100 if abs(val) > 1 else val),
-                    trend=_trend_of(val, positive_better=(field != "contributionRate")),
-                ))
-            else:
-                items.append(KPIItem(
-                    label=label,
-                    value=_format_big_number(val),
-                ))
-            if len(items) >= 4:
-                return items
-    return items
-
-
-def _extract_asset(context: dict[str, Any]) -> list[KPIItem]:
-    """Asset investment template — expects investment completion & ops metrics."""
-    items: list[KPIItem] = []
-    for task_id in ("T001", "T002"):
-        out = context.get(task_id)
-        if out is None or getattr(out, "status", "") not in ("success", "partial"):
-            continue
-        finish = _df_cell(out, "finishAmount") or _df_cell(out, "finishQty")
-        target = _df_cell(out, "targetAmount") or _df_cell(out, "targetQty")
-        if target and finish is not None:
-            ratio = finish / target
-            items.append(KPIItem(
-                label="投资完成率",
-                value=_format_percentage(ratio),
-                sub=f"实际 {_format_big_number(finish, '元')} / 目标 {_format_big_number(target, '元')}",
-                trend="positive" if ratio >= 0.9 else "negative",
-            ))
-    return items
-
-
-_DOMAIN_EXTRACTORS = {
-    "throughput": _extract_throughput,
-    "customer": _extract_customer,
-    "asset": _extract_asset,
-}
-
-
-# ── Public API ───────────────────────────────────────────────────
-
-def extract_kpis(template_meta: dict[str, Any], context: dict[str, Any]) -> list[KPIItem]:
-    """Run the domain-appropriate KPI extractor.
-
-    Returns an empty list when the domain is unknown or no rule matches —
-    the renderers interpret an empty list as "don't render the KPI block".
-    """
-    from backend.skills._llm import infer_domain
-
-    template_id = (template_meta or {}).get("template_id") or ""
-    domain = infer_domain(template_id)
-    extractor = _DOMAIN_EXTRACTORS.get(domain)
-    if extractor is None:
-        return []
-    try:
-        return extractor(context)
-    except Exception as e:
-        logger.warning("KPI extraction failed for domain=%s: %s", domain, e)
-        return []
