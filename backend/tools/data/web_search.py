@@ -10,7 +10,7 @@ from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
 from backend.tools.registry import register_skill
 
 
-@register_skill("skill_web_search", SkillCategory.SEARCH, "互联网检索，返回结构化摘要",
+@register_skill("tool_web_search", SkillCategory.SEARCH, "互联网检索，返回结构化摘要",
                 input_spec="搜索关键词",
                 output_spec="搜索结果摘要文本")
 class WebSearchSkill(BaseSkill):

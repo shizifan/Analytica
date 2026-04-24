@@ -33,9 +33,7 @@ endpoints:
   - planInvestAndPayYoy
   - getFinishProgressAndDeliveryRate
   - getInvestPlanByYear
-  - getCostProjectFinishByYear
   - getCostProjectAmtByOwnerLgZoneName
-  - getCostProjectCurrentStageQtyList
   - getOutOfPlanFinishProgressList
   - getOutOfPlanProjectQtyYoy
   - getPlanFinishByZone
@@ -76,24 +74,24 @@ endpoints:
 
 skills:
   # 数据获取
-  - skill_api_fetch
-  - skill_file_parse
-  - skill_web_search
+  - tool_api_fetch
+  - tool_file_parse
+  - tool_web_search
   # 分析
-  - skill_desc_analysis
-  - skill_anomaly
-  - skill_attribution
-  - skill_prediction
+  - tool_desc_analysis
+  - tool_anomaly
+  - tool_attribution
+  - tool_prediction
   # 可视化
-  - skill_chart_line
-  - skill_chart_bar
-  - skill_chart_waterfall
-  - skill_dashboard
+  - tool_chart_line
+  - tool_chart_bar
+  - tool_chart_waterfall
+  - tool_dashboard
   # 报告
-  - skill_summary_gen
-  - skill_report_html
-  - skill_report_docx
-  - skill_report_pptx
+  - tool_summary_gen
+  - tool_report_html
+  - tool_report_docx
+  - tool_report_pptx
 
 perception:
   domain_keywords:
@@ -153,11 +151,9 @@ planning:
 
     ### D6 投资分析策略
     - 历年投资趋势 → getInvestPlanByYear（dateYear/finishInvestAmt/planInvestAmt/...，7行2019-2025，可做趋势）
-    - 成本项目历年 → getCostProjectFinishByYear（dateYear/projectQty/realFinishPayAmt/...）
     - 各港区投资对比 → getPlanFinishByZone（ownerLgZoneName/planInvestAmt/finishInvestAmt/planPayAmt/finishPayAmt）
     - 各港区成本项目 → getCostProjectAmtByOwnerLgZoneName（ownerLgZoneName/investAmt/finishPayAmt）
-    - 项目阶段分布 → getCostProjectCurrentStageQtyList（projectQty/projectCurrentStage/ownerLgZoneName）
-    - 投资完成进度归因 → 用 skill_chart_waterfall 对各港区完成/未完成做归因分析
+    - 投资完成进度归因 → 用 tool_chart_waterfall 对各港区完成/未完成做归因分析
     - 注意：planInvestAndPayYoy 返回 dateYear/planInvestAmt/planPayAmt，是同比快照
 
     ### D7 设备分析策略
@@ -173,7 +169,7 @@ planning:
     - 注意：D7 很多 API 返回透视格式（num/typeName），需先按分组字段解析再分析
 
     ### 图表选择
-    - 资产/设备按港区或类型对比 → skill_chart_bar
-    - 投资完成进度归因 → skill_chart_waterfall
-    - 月度趋势曲线（利用率/完好率/台时/能耗） → skill_chart_line
-    - 历年趋势对比 → skill_chart_line
+    - 资产/设备按港区或类型对比 → tool_chart_bar
+    - 投资完成进度归因 → tool_chart_waterfall
+    - 月度趋势曲线（利用率/完好率/台时/能耗） → tool_chart_line
+    - 历年趋势对比 → tool_chart_line

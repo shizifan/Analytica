@@ -57,18 +57,21 @@ export function FileResultCard({ primary }: Props) {
   if (duration) metaBits.push(duration);
   if (primary.skill) metaBits.push(primary.skill);
 
-  const downloadUrl = artifactId ? `/api/reports/${artifactId}/download` : null;
-  const previewUrl = artifactId ? `/api/reports/${artifactId}/preview` : null;
+  const downloadUrl = artifactId ? `/analytica/api/reports/${artifactId}/download` : null;
+  const previewUrl = artifactId ? `/analytica/api/reports/${artifactId}/preview` : null;
 
-  const handleDownload = () => {
-    if (!downloadUrl) return;
+  const triggerDownload = (url: string) => {
     const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.target = '_blank';
-    a.rel = 'noopener';
+    a.href = url;
+    a.download = '';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  };
+
+  const handleDownload = () => {
+    if (!downloadUrl) return;
+    triggerDownload(downloadUrl);
   };
 
   const handlePreview = () => {
@@ -80,18 +83,19 @@ export function FileResultCard({ primary }: Props) {
     if (!artifactId || converting) return;
     setConvertError(null);
     setConverting(fmt);
+    // Open window inside user-gesture context to avoid popup blocker.
+    const win = window.open('', '_blank', 'noopener');
     try {
       const { artifact_id: newId } = await api.convertReport(artifactId, fmt);
       setConverted((m) => ({ ...m, [fmt]: newId }));
-      // Immediately trigger download — that's the user's intent.
-      const a = document.createElement('a');
-      a.href = `/api/reports/${newId}/download`;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const url = `/analytica/api/reports/${newId}/download`;
+      if (win) {
+        win.location.href = url;
+      } else {
+        triggerDownload(url);
+      }
     } catch (err) {
+      win?.close();
       const msg = err instanceof Error ? err.message : String(err);
       setConvertError(msg);
     } finally {
@@ -102,13 +106,7 @@ export function FileResultCard({ primary }: Props) {
   const handleDownloadConverted = (fmt: ExportFormat) => {
     const id = converted[fmt];
     if (!id) return;
-    const a = document.createElement('a');
-    a.href = `/api/reports/${id}/download`;
-    a.target = '_blank';
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    triggerDownload(`/analytica/api/reports/${id}/download`);
   };
 
   return (

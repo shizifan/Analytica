@@ -48,7 +48,7 @@
       "name": "获取客户总量概览",
       "description": "获取客户总量快照：totalQty/outPortQty/strategyClientQty/customerFilesNumber",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getCustomerQty"
       },
@@ -62,7 +62,7 @@
       "name": "获取客户类型分布",
       "description": "获取各客户类型数量分布，返回 clientType/qty",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getCustomerTypeAnalysis"
       },
@@ -76,7 +76,7 @@
       "name": "获取客户行业分布",
       "description": "获取客户行业维度分布，返回 indstryFieldName/qty",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getCustomerFieldAnalysis"
       },
@@ -90,7 +90,7 @@
       "name": "获取战略客户名录",
       "description": "获取当前战略客户列表（约37个），返回 displayCode/displayName",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getStrategicCustomers"
       },
@@ -104,7 +104,7 @@
       "name": "获取当月战略客户贡献排名",
       "description": "获取2026年4月战略客户吞吐量排名，返回 num/clientName",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getCurContributionRankOfStrategicCustomer",
         "date": "2026-04"
@@ -119,7 +119,7 @@
       "name": "获取当月战略客户按货类贡献",
       "description": "获取2026年4月战略客户各货类吞吐量，返回 num/categoryName",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getCurStrategicCustomerContributionByCargoTypeThroughput",
         "date": "2026-04"
@@ -134,7 +134,7 @@
       "name": "获取累计战略客户按货类贡献",
       "description": "获取年累计战略客户各货类贡献，返回 num/categoryName",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getSumStrategicCustomerContributionByCargoTypeThroughput",
         "date": "2026-04"
@@ -149,7 +149,7 @@
       "name": "获取战略客户累计趋势",
       "description": "获取战略客户累计月份序列指标，长期趋势数据",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getSumStrategyCustomerTrendAnalysis"
       },
@@ -163,7 +163,7 @@
       "name": "获取D2市场板块当月吞吐",
       "description": "获取2026年4月市场视角各业务板块吞吐量，返回 num/typeName 透视格式",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getCurBusinessDashboardThroughput",
         "date": "2026-04"
@@ -178,7 +178,7 @@
       "name": "获取集装箱板块重点企业排名",
       "description": "获取2026年4月集装箱板块重点企业贡献排名",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getKeyEnterprise",
         "businessSegment": "集装箱",
@@ -199,7 +199,7 @@
         "T002",
         "T003"
       ],
-      "skill": "skill_desc_analysis",
+      "skill": "tool_desc_analysis",
       "params": {
         "data_refs": [
           "T001",
@@ -226,7 +226,7 @@
         "T005",
         "T006"
       ],
-      "skill": "skill_desc_analysis",
+      "skill": "tool_desc_analysis",
       "params": {
         "data_refs": [
           "T005",
@@ -252,7 +252,7 @@
         "T006",
         "T007"
       ],
-      "skill": "skill_attribution",
+      "skill": "tool_attribution",
       "params": {
         "data_refs": [
           "T006",
@@ -281,7 +281,7 @@
         "T002",
         "T003"
       ],
-      "skill": "skill_chart_bar",
+      "skill": "tool_chart_bar",
       "params": {
         "data_refs": [
           "T002",
@@ -315,7 +315,7 @@
       "depends_on": [
         "T005"
       ],
-      "skill": "skill_chart_bar",
+      "skill": "tool_chart_bar",
       "params": {
         "data_refs": [
           "T005"
@@ -343,7 +343,7 @@
         "T006",
         "T007"
       ],
-      "skill": "skill_chart_bar",
+      "skill": "tool_chart_bar",
       "params": {
         "data_refs": [
           "T006",
@@ -379,7 +379,7 @@
       "depends_on": [
         "T008"
       ],
-      "skill": "skill_chart_line",
+      "skill": "tool_chart_line",
       "params": {
         "data_refs": [
           "T008"
@@ -404,7 +404,7 @@
         "T012",
         "T013"
       ],
-      "skill": "skill_summary_gen",
+      "skill": "tool_summary_gen",
       "params": {
         "data_refs": [
           "T011",
@@ -436,7 +436,7 @@
         "T017",
         "T018"
       ],
-      "skill": "skill_report_html",
+      "skill": "tool_report_html",
       "params": {
         "report_metadata": {
           "title": "2026年4月市场客户与战略客户洞察报告",

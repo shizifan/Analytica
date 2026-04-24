@@ -148,7 +148,7 @@ def _build_markdown_deterministic(report: ReportContent) -> str:
     return "\n".join(content_parts)
 
 
-@register_skill("skill_report_markdown", SkillCategory.REPORT, "Markdown 报告生成（.md 文件）",
+@register_skill("tool_report_markdown", SkillCategory.REPORT, "Markdown 报告生成（.md 文件）",
                 input_spec="report_metadata + report_structure + 上游数据/图表引用",
                 output_spec="Markdown 文件路径")
 class MarkdownReportSkill(BaseSkill):

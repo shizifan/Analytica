@@ -60,7 +60,7 @@ def _build_docx_deterministic(doc: Document, report: ReportContent) -> None:
 # Skill
 # ---------------------------------------------------------------------------
 
-@register_skill("skill_report_docx", SkillCategory.REPORT, "Word 报告生成（.docx 文件）",
+@register_skill("tool_report_docx", SkillCategory.REPORT, "Word 报告生成（.docx 文件）",
                 input_spec="report_metadata + report_structure + 上游数据/图表引用",
                 output_spec="DOCX 文件路径")
 class DocxReportSkill(BaseSkill):

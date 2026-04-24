@@ -80,7 +80,7 @@ def _extract_waterfall_from_context(
     return []
 
 
-@register_skill("skill_chart_waterfall", SkillCategory.VISUALIZATION, "瀑布图生成（归因可视化）",
+@register_skill("tool_chart_waterfall", SkillCategory.VISUALIZATION, "瀑布图生成（归因可视化）",
                 input_spec="waterfall_data OR config{category_field,value_field,filter}",
                 output_spec="ECharts option JSON")
 class WaterfallChartSkill(BaseSkill):

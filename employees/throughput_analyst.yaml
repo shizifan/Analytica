@@ -7,24 +7,24 @@ endpoints: []  # 空 = D1+D2 全部端点
 
 skills:
   # 数据获取
-  - skill_api_fetch
-  - skill_file_parse
-  - skill_web_search
+  - tool_api_fetch
+  - tool_file_parse
+  - tool_web_search
   # 分析
-  - skill_desc_analysis
-  - skill_anomaly
-  - skill_attribution
-  - skill_prediction
+  - tool_desc_analysis
+  - tool_anomaly
+  - tool_attribution
+  - tool_prediction
   # 可视化
-  - skill_chart_line
-  - skill_chart_bar
-  - skill_chart_waterfall
-  - skill_dashboard
+  - tool_chart_line
+  - tool_chart_bar
+  - tool_chart_waterfall
+  - tool_dashboard
   # 报告
-  - skill_summary_gen
-  - skill_report_html
-  - skill_report_docx
-  - skill_report_pptx
+  - tool_summary_gen
+  - tool_report_html
+  - tool_report_docx
+  - tool_report_pptx
 
 perception:
   domain_keywords:
@@ -94,7 +94,7 @@ planning:
     - 注意：D2 很多 API 返回 num/typeName 透视格式，需按 typeName 分组提取数值
 
     ### 图表选择
-    - 吞吐量目标完成分析 → skill_chart_bar（目标 vs 实际）
-    - 月度趋势分析 → skill_chart_line（当年 vs 上年曲线）
-    - 港区/业务结构对比 → skill_chart_bar
-    - 完成进度归因 → skill_chart_waterfall
+    - 吞吐量目标完成分析 → tool_chart_bar（目标 vs 实际）
+    - 月度趋势分析 → tool_chart_line（当年 vs 上年曲线）
+    - 港区/业务结构对比 → tool_chart_bar
+    - 完成进度归因 → tool_chart_waterfall

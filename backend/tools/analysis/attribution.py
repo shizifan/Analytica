@@ -85,7 +85,7 @@ _ATTRIBUTION_USER = """【分析意图】
 # ── Skill ──────────────────────────────────────────────────────────────────────
 
 @register_skill(
-    "skill_attribution", SkillCategory.ANALYSIS,
+    "tool_attribution", SkillCategory.ANALYSIS,
     "归因分析（变动因素拆解）",
     input_spec="intent + context_refs（上游数据任务）",
     output_spec="归因因素列表 JSON",

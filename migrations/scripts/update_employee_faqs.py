@@ -38,12 +38,12 @@ FAQ_SETS: dict[str, list[dict[str, Any]]] = {
         {
             "id": "tp-simple-1",
             **SIMPLE,
-            "question": "2026年4月全港吞吐量总量及各港区数量，以表格列出",
+            "question": "2026年3月全港吞吐量总量及各港区数量，以表格列出",
         },
         {
             "id": "tp-simple-2",
             **SIMPLE,
-            "question": "2026年4月各业务板块（集装箱、散杂货、油化品、商品车）吞吐量，以表格列出",
+            "question": "2026年3月各业务板块（集装箱、散杂货、油化品、商品车）吞吐量，以表格列出",
         },
         {
             "id": "tp-chart-1",
@@ -53,7 +53,7 @@ FAQ_SETS: dict[str, list[dict[str, Any]]] = {
         {
             "id": "tp-chart-2",
             **CHART,
-            "question": "2026年4月各港区吞吐量对比，以柱状图展示各港区差异",
+            "question": "2026年3月各港区吞吐量对比，以柱状图展示各港区差异",
         },
         {
             "id": "tp-report-q1",
@@ -71,7 +71,7 @@ FAQ_SETS: dict[str, list[dict[str, Any]]] = {
         {
             "id": "ci-simple-2",
             **SIMPLE,
-            "question": "2026年4月 TOP10 战略客户吞吐量，以表格列出客户名称与数值",
+            "question": "2026年3月 TOP10 战略客户吞吐量，以表格列出客户名称与数值",
         },
         {
             "id": "ci-chart-1",
@@ -81,7 +81,7 @@ FAQ_SETS: dict[str, list[dict[str, Any]]] = {
         {
             "id": "ci-chart-2",
             **CHART,
-            "question": "2026年4月各业务板块吞吐量占比，以饼图展示结构分布",
+            "question": "2026年3月各业务板块吞吐量占比，以饼图展示结构分布",
         },
         {
             "id": "ci-report-q1",

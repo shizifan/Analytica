@@ -94,7 +94,7 @@ def _build_series_for_axis(
     return series
 
 
-@register_skill("skill_chart_line", SkillCategory.VISUALIZATION, "折线图生成（ECharts option JSON）",
+@register_skill("tool_chart_line", SkillCategory.VISUALIZATION, "折线图生成（ECharts option JSON）",
                 input_spec="data_ref/data_refs + config{chart_type,left_y,right_y,...}",
                 output_spec="ECharts option JSON")
 class LineChartSkill(BaseSkill):

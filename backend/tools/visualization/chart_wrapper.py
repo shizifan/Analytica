@@ -7,7 +7,7 @@ from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
 from backend.tools.registry import register_skill
 
 
-@register_skill("skill_dashboard", SkillCategory.VISUALIZATION, "仪表盘（多图表组合 HTML）",
+@register_skill("tool_dashboard", SkillCategory.VISUALIZATION, "仪表盘（多图表组合 HTML）",
                 input_spec="chart_refs + title",
                 output_spec="组合 HTML 页面")
 class DashboardSkill(BaseSkill):

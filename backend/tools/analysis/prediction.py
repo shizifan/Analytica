@@ -7,7 +7,7 @@ from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
 from backend.tools.registry import register_skill
 
 
-@register_skill("skill_prediction", SkillCategory.ANALYSIS, "预测分析（基于历史趋势外推）",
+@register_skill("tool_prediction", SkillCategory.ANALYSIS, "预测分析（基于历史趋势外推）",
                 input_spec="历史数据 data_ref",
                 output_spec="预测值 + 置信区间 JSON")
 class PredictionSkill(BaseSkill):

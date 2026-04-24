@@ -119,7 +119,7 @@ def _body_to_dataframe(body: Any) -> pd.DataFrame:
     return pd.DataFrame()
 
 
-@register_skill("skill_api_fetch", SkillCategory.DATA_FETCH, "调用数据源 API 获取原始数据，返回 DataFrame",
+@register_skill("tool_api_fetch", SkillCategory.DATA_FETCH, "调用数据源 API 获取原始数据，返回 DataFrame",
                 input_spec="endpoint_id + 查询参数（日期/区域等）",
                 output_spec="DataFrame (JSON 数据)")
 class ApiDataFetchSkill(BaseSkill):

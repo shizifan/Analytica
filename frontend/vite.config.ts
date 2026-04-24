@@ -12,7 +12,23 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    {
+      name: 'redirect-base',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url === '/analytica') {
+            res.writeHead(301, { Location: '/analytica/' })
+            res.end()
+            return
+          }
+          next()
+        })
+      },
+    },
+  ],
   server: {
     host: "0.0.0.0",
     port: 3000,

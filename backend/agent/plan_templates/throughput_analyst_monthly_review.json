@@ -48,7 +48,7 @@
       "name": "获取全港吞吐量目标完成KPI（吨）",
       "description": "获取2026年吞吐量目标值与实际完成量（仅1行），返回targetQty/finishQty",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getThroughputAndTargetThroughputTon",
         "dateYear": "2026"
@@ -63,7 +63,7 @@
       "name": "获取集装箱TEU目标完成KPI",
       "description": "获取2026年集装箱TEU目标量与实际完成量（仅1行），返回targetQty/finishQty",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getThroughputAndTargetThroughputTeu",
         "dateYear": "2026"
@@ -78,7 +78,7 @@
       "name": "获取当年+上年月度吞吐量（吨）",
       "description": "获取2026年和2025年逐月吞吐量（16行），用于月度趋势对比",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getThroughputAnalysisByYear",
         "dateYear": "2026",
@@ -94,7 +94,7 @@
       "name": "获取当年+上年月度集装箱TEU",
       "description": "获取2026年和2025年逐月集装箱TEU量（16行），用于集装箱月度趋势对比",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getContainerThroughputAnalysisByYear",
         "dateYear": "2026",
@@ -110,7 +110,7 @@
       "name": "获取各港区同比环比数据",
       "description": "获取各港区2026年累计吞吐量同比/环比，返回 regionName/qty/statType/dateType 多维度",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getThroughputAnalysisYoyMomByYear",
         "date": "2026-04-01"
@@ -125,7 +125,7 @@
       "name": "获取各港区油化散杂货完成",
       "description": "各港区油化品、散杂货目标完成量对比，返回 regionName/targetQty/finishQty",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getOilsChemBreakBulkByBusinessType",
         "date": "2026-04"
@@ -140,7 +140,7 @@
       "name": "获取各港区集装箱完成",
       "description": "各港区集装箱目标完成量对比，返回 regionName/targetQty/finishQty",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getContainerByBusinessType",
         "date": "2026-04"
@@ -155,7 +155,7 @@
       "name": "获取各港区泊位占用率月度趋势",
       "description": "获取2026年各港区泊位占用率月度数据（多港区×多月），用于作业效率分析",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getBerthOccupancyRateByRegion",
         "startDate": "2026-01",
@@ -171,7 +171,7 @@
       "name": "获取D2市场板块当月吞吐",
       "description": "获取2026年4月市场视角各业务板块吞吐量，返回 num/typeName 透视格式",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getCurBusinessDashboardThroughput",
         "date": "2026-04"
@@ -186,7 +186,7 @@
       "name": "获取船舶作业效率月度趋势",
       "description": "获取2026年船舶作业效率按货类的月度趋势，返回 monthId/statCargoKind/tonQ/workTh",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getProductViewShipOperationRateTrend",
         "startDate": "2026-01",
@@ -205,7 +205,7 @@
         "T003",
         "T004"
       ],
-      "skill": "skill_desc_analysis",
+      "skill": "tool_desc_analysis",
       "params": {
         "data_refs": [
           "T003",
@@ -234,7 +234,7 @@
         "T006",
         "T007"
       ],
-      "skill": "skill_attribution",
+      "skill": "tool_attribution",
       "params": {
         "data_refs": [
           "T001",
@@ -271,7 +271,7 @@
         "T008",
         "T010"
       ],
-      "skill": "skill_desc_analysis",
+      "skill": "tool_desc_analysis",
       "params": {
         "data_refs": [
           "T008",
@@ -296,7 +296,7 @@
         "T001",
         "T002"
       ],
-      "skill": "skill_chart_bar",
+      "skill": "tool_chart_bar",
       "params": {
         "data_refs": [
           "T001",
@@ -333,7 +333,7 @@
         "T003",
         "T004"
       ],
-      "skill": "skill_chart_line",
+      "skill": "tool_chart_line",
       "params": {
         "data_refs": [
           "T003",
@@ -368,7 +368,7 @@
       "depends_on": [
         "T005"
       ],
-      "skill": "skill_chart_waterfall",
+      "skill": "tool_chart_waterfall",
       "params": {
         "data_refs": [
           "T005"
@@ -395,7 +395,7 @@
       "depends_on": [
         "T009"
       ],
-      "skill": "skill_chart_bar",
+      "skill": "tool_chart_bar",
       "params": {
         "data_refs": [
           "T009"
@@ -422,7 +422,7 @@
         "T012",
         "T013"
       ],
-      "skill": "skill_summary_gen",
+      "skill": "tool_summary_gen",
       "params": {
         "data_refs": [
           "T011",
@@ -454,7 +454,7 @@
         "T017",
         "T018"
       ],
-      "skill": "skill_report_html",
+      "skill": "tool_report_html",
       "params": {
         "report_metadata": {
           "title": "2026年一季度全港吞吐量经营综合分析报告",

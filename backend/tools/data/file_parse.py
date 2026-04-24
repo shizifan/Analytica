@@ -14,7 +14,7 @@ from backend.tools.registry import register_skill
 logger = logging.getLogger("analytica.tools.file_parse")
 
 
-@register_skill("skill_file_parse", SkillCategory.DATA_FETCH, "解析文件（CSV/Excel/JSON）为 DataFrame",
+@register_skill("tool_file_parse", SkillCategory.DATA_FETCH, "解析文件（CSV/Excel/JSON）为 DataFrame",
                 input_spec="文件路径 file_path",
                 output_spec="DataFrame (结构化数据)")
 class FileParseSkill(BaseSkill):

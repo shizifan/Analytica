@@ -215,7 +215,7 @@ def _build_html_deterministic(report: ReportContent) -> tuple[list[str], int]:
 # Skill
 # ---------------------------------------------------------------------------
 
-@register_skill("skill_report_html", SkillCategory.REPORT, "HTML 报告生成（单页 HTML 文件）",
+@register_skill("tool_report_html", SkillCategory.REPORT, "HTML 报告生成（单页 HTML 文件）",
                 input_spec="report_metadata + report_structure + 上游数据/图表引用",
                 output_spec="HTML 文件路径")
 class HtmlReportSkill(BaseSkill):

@@ -42,18 +42,6 @@ PATCHES = {
         chain_with=("getPlanFinishByZone",),
         analysis_note="按港区返回investAmt/finishPayAmt，适合港区间对比柱状图",
     ),
-    "getCostProjectCurrentStageQtyList": dict(
-        field_schema=(("projectQty","int",""),("projectCurrentStage","str",""),("ownerLgZoneName","str","")),
-        use_cases=("成本项目阶段分布分析","各港区在建/完工项目数量",),
-        chain_with=("getCostProjectFinishByYear",),
-        analysis_note="按projectCurrentStage×ownerLgZoneName分布，适合分组柱状图",
-    ),
-    "getCostProjectFinishByYear": dict(
-        field_schema=(("dateYear","int",""),("projectQty","int",""),("realFinishPayAmt","float",""),("costApplyInvestAmt","float","")),
-        use_cases=("成本项目历年完成趋势","年度成本投资完成量对比",),
-        chain_with=("getInvestPlanByYear",),
-        analysis_note="年度序列，包含projectQty/realFinishPayAmt，可做趋势折线",
-    ),
     "getCumulativeRegionalThroughput": dict(
         field_schema=(("num","float",""),("typeName","str",""),("zoneName","str","")),
         use_cases=("各港区年累计吞吐量对比","港区业务结构占比分析",),

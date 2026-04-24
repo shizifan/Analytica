@@ -49,7 +49,7 @@ def _resolve_cell(expr: str, context: dict[str, Any]) -> float | None:
     return None
 
 
-@register_skill("skill_chart_bar", SkillCategory.VISUALIZATION, "柱状图生成（ECharts option JSON）",
+@register_skill("tool_chart_bar", SkillCategory.VISUALIZATION, "柱状图生成（ECharts option JSON）",
                 input_spec="data_ref/data_refs + config{chart_type,series,filter,...}",
                 output_spec="ECharts option JSON")
 class BarChartSkill(BaseSkill):

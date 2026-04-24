@@ -20,7 +20,7 @@ const throughputAnalystFAQs: EmployeeFAQ = {
   faqs: [
     {
       id: 'tp-1',
-      question: '2026年4月各港区吞吐量数据，以柱状图展示各港区对比',
+      question: '2026年3月各港区吞吐量数据，以柱状图展示各港区对比',
     },
     {
       id: 'tp-2',
@@ -28,7 +28,7 @@ const throughputAnalystFAQs: EmployeeFAQ = {
     },
     {
       id: 'tp-3',
-      question: '2026年4月各港区泊位占用率，以折线图展示近6个月变化趋势',
+      question: '2026年3月各港区泊位占用率，以折线图展示近6个月变化趋势',
     },
     {
       id: 'tp-4',
@@ -36,7 +36,7 @@ const throughputAnalystFAQs: EmployeeFAQ = {
     },
     {
       id: 'tp-5',
-      question: '2026年4月散杂货和集装箱吞吐量结构占比，以饼图展示',
+      question: '2026年3月散杂货和集装箱吞吐量结构占比，以饼图展示',
     },
   ],
 };
@@ -47,11 +47,11 @@ const customerInsightFAQs: EmployeeFAQ = {
   faqs: [
     {
       id: 'ci-1',
-      question: '当前战略客户总数，2026年4月贡献占比前10名客户及占比，以表格列出',
+      question: '当前战略客户总数，2026年3月贡献占比前10名客户及占比，以表格列出',
     },
     {
       id: 'ci-2',
-      question: '2026年4月重点企业吞吐量排名，前10名企业名称和吞吐量，以表格+柱状图展示',
+      question: '2026年3月重点企业吞吐量排名，前10名企业名称和吞吐量，以表格+柱状图展示',
     },
     {
       id: 'ci-3',
@@ -59,11 +59,11 @@ const customerInsightFAQs: EmployeeFAQ = {
     },
     {
       id: 'ci-4',
-      question: '2026年4月全港吞吐量与2025年4月同比数据，与2026年3月环比数据，以表格对比',
+      question: '2026年3月全港吞吐量与2025年3月同比数据，与2026年2月环比数据，以表格对比',
     },
     {
       id: 'ci-5',
-      question: '2026年4月各业务板块（集装箱、散杂货、油化品、商品车）吞吐量及占比，以饼图展示',
+      question: '2026年3月各业务板块（集装箱、散杂货、油化品、商品车）吞吐量及占比，以饼图展示',
     },
   ],
 };
@@ -103,7 +103,7 @@ const universalFAQs: FAQ[] = [
   },
   {
     id: 'uni-2',
-    question: '2026年4月市场数据汇总，吞吐量、同比、环比，以表格+图表展示',
+    question: '2026年3月市场数据汇总，吞吐量、同比、环比，以表格+图表展示',
   },
   {
     id: 'uni-3',
@@ -111,7 +111,7 @@ const universalFAQs: FAQ[] = [
   },
   {
     id: 'uni-4',
-    question: '2026年4月各港区吞吐量对比，以柱状图展示',
+    question: '2026年3月各港区吞吐量对比，以柱状图展示',
   },
   {
     id: 'uni-5',

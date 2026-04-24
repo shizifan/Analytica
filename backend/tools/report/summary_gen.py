@@ -42,7 +42,7 @@ def _is_failed_narrative(text: str) -> bool:
     return text.startswith("[narrative_failed:") or text.startswith("[自动生成失败]")
 
 
-@register_skill("skill_summary_gen", SkillCategory.REPORT, "摘要生成（纯文本摘要段落）",
+@register_skill("tool_summary_gen", SkillCategory.REPORT, "摘要生成（纯文本摘要段落）",
                 input_spec="intent + 上游数据/分析引用",
                 output_spec="中文摘要文本")
 class SummaryGenSkill(BaseSkill):

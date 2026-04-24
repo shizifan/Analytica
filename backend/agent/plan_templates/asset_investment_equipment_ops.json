@@ -33,8 +33,8 @@
         "description": "2026年一季度"
       }
     },
-    "core_apis_covered": 13,
-    "task_count": 25
+    "core_apis_covered": 11,
+    "task_count": 20
   },
   "plan_id": "tpl-asset-invest-equip-full-001",
   "version": 1,
@@ -48,7 +48,7 @@
       "name": "获取各港区资产分布",
       "description": "获取各港区资产透视分布，返回 num/typeName/ownerZone",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getRegionalAnalysis",
         "dateYear": "2026"
@@ -63,7 +63,7 @@
       "name": "获取资产类别分布",
       "description": "获取资产按类别的透视分布，返回 num/typeName/assetTypeName",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getCategoryAnalysis",
         "dateYear": "2026"
@@ -78,7 +78,7 @@
       "name": "获取设备设施同比",
       "description": "设备设施年度同比数据，返回 num/typeName/dateYear 透视格式",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getEquipmentFacilityAnalysisYoy",
         "dateYear": "2026"
@@ -93,7 +93,7 @@
       "name": "获取房屋资产同比",
       "description": "房屋建筑面积与净值同比数据",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getHousingAnalysisYoy",
         "dateYear": "2026"
@@ -108,7 +108,7 @@
       "name": "获取土地海域同比",
       "description": "土地海域面积与净值同比数据",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getLandMaritimeAnalysisYoy",
         "dateYear": "2026"
@@ -123,7 +123,7 @@
       "name": "获取历年投资计划完成",
       "description": "获取2019-2025年投资计划完成明细（7行），返回 dateYear/finishInvestAmt/planInvestAmt",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getInvestPlanByYear"
       },
@@ -137,38 +137,9 @@
       "name": "获取各港区投资完成",
       "description": "各港区投资计划与完成量，返回 ownerLgZoneName/planInvestAmt/finishInvestAmt/planPayAmt/finishPayAmt",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getPlanFinishByZone",
-        "currYear": "2026"
-      },
-      "estimated_seconds": 8,
-      "status": "pending",
-      "output_ref": ""
-    },
-    {
-      "task_id": "T008",
-      "type": "data_fetch",
-      "name": "获取成本项目历年完成",
-      "description": "成本项目历年数据，返回 dateYear/projectQty/realFinishPayAmt/costApplyInvestAmt",
-      "depends_on": [],
-      "skill": "skill_api_fetch",
-      "params": {
-        "endpoint_id": "getCostProjectFinishByYear"
-      },
-      "estimated_seconds": 8,
-      "status": "pending",
-      "output_ref": ""
-    },
-    {
-      "task_id": "T009",
-      "type": "data_fetch",
-      "name": "获取成本项目阶段分布",
-      "description": "在建/完工/未开工项目按港区分布，返回 projectQty/projectCurrentStage/ownerLgZoneName",
-      "depends_on": [],
-      "skill": "skill_api_fetch",
-      "params": {
-        "endpoint_id": "getCostProjectCurrentStageQtyList",
         "currYear": "2026"
       },
       "estimated_seconds": 8,
@@ -181,7 +152,7 @@
       "name": "获取投资完成进度与交付率",
       "description": "整体投资完成率和交付情况",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getFinishProgressAndDeliveryRate",
         "currYear": "2026"
@@ -196,7 +167,7 @@
       "name": "获取月度设备利用率",
       "description": "2026年各月设备利用率曲线，返回 usageRate/dateMonth",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getEquipmentUsageRate",
         "dateYear": "2026"
@@ -211,7 +182,7 @@
       "name": "获取月度设备完好率",
       "description": "2026年各月设备完好率曲线，返回 serviceableRate/dateMonth",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getEquipmentServiceableRate",
         "dateYear": "2026"
@@ -226,7 +197,7 @@
       "name": "获取月度集装箱台时效率",
       "description": "2026年各月集装箱装卸台时效率，返回 machineHourRate/dateMonth",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getContainerMachineHourRate",
         "dateYear": "2026"
@@ -241,7 +212,7 @@
       "name": "获取设备故障月度分布",
       "description": "2026年各月设备故障次数透视，返回 num/dateMonth",
       "depends_on": [],
-      "skill": "skill_api_fetch",
+      "skill": "tool_api_fetch",
       "params": {
         "endpoint_id": "getProductionEquipmentFaultNum",
         "dateYear": "2026"
@@ -262,7 +233,7 @@
         "T004",
         "T005"
       ],
-      "skill": "skill_desc_analysis",
+      "skill": "tool_desc_analysis",
       "params": {
         "data_refs": [
           "T001",
@@ -290,17 +261,13 @@
       "depends_on": [
         "T006",
         "T007",
-        "T008",
-        "T009",
         "T010"
       ],
-      "skill": "skill_attribution",
+      "skill": "tool_attribution",
       "params": {
         "data_refs": [
           "T006",
           "T007",
-          "T008",
-          "T009",
           "T010"
         ],
         "target_kpi": [
@@ -309,12 +276,10 @@
         ],
         "drivers": [
           "各港区完成率(T007)",
-          "成本项目阶段(T009)",
-          "历年节奏对比(T006/T008)"
+          "历年节奏对比(T006)"
         ],
         "focus_points": [
           "完成率最低的港区及其主要阻碍",
-          "未开工项目占比过高的港区",
           "历史完成节奏与当前的偏差",
           "可能的项目审批/交付瓶颈"
         ]
@@ -334,7 +299,7 @@
         "T013",
         "T014"
       ],
-      "skill": "skill_desc_analysis",
+      "skill": "tool_desc_analysis",
       "params": {
         "data_refs": [
           "T011",
@@ -361,7 +326,7 @@
       "depends_on": [
         "T001"
       ],
-      "skill": "skill_chart_bar",
+      "skill": "tool_chart_bar",
       "params": {
         "data_refs": [
           "T001"
@@ -386,7 +351,7 @@
       "depends_on": [
         "T007"
       ],
-      "skill": "skill_chart_waterfall",
+      "skill": "tool_chart_waterfall",
       "params": {
         "data_refs": [
           "T007"
@@ -412,7 +377,7 @@
         "T012",
         "T013"
       ],
-      "skill": "skill_chart_line",
+      "skill": "tool_chart_line",
       "params": {
         "data_refs": [
           "T011",
@@ -449,31 +414,6 @@
       "output_ref": ""
     },
     {
-      "task_id": "T021",
-      "type": "visualization",
-      "name": "成本项目阶段分布图",
-      "description": "用T009数据绘制各港区按项目阶段的堆叠柱状图",
-      "depends_on": [
-        "T009"
-      ],
-      "skill": "skill_chart_bar",
-      "params": {
-        "data_refs": [
-          "T009"
-        ],
-        "config": {
-          "x_field": "ownerLgZoneName",
-          "y_field": "projectQty",
-          "group_by": "projectCurrentStage",
-          "stack": true,
-          "title": "各港区成本项目阶段分布"
-        }
-      },
-      "estimated_seconds": 6,
-      "status": "pending",
-      "output_ref": ""
-    },
-    {
       "task_id": "T022",
       "type": "analysis",
       "name": "生成综合管理摘要",
@@ -483,7 +423,7 @@
         "T016",
         "T017"
       ],
-      "skill": "skill_summary_gen",
+      "skill": "tool_summary_gen",
       "params": {
         "data_refs": [
           "T015",
@@ -512,10 +452,9 @@
         "T018",
         "T019",
         "T020",
-        "T021",
         "T022"
       ],
-      "skill": "skill_report_html",
+      "skill": "tool_report_html",
       "params": {
         "report_metadata": {
           "title": "2026年一季度资产价值、投资进度、设备效能综合分析报告",
@@ -552,7 +491,6 @@
         "name": "三、历年投资计划完成情况",
         "task_refs": [
           "T006",
-          "T008",
           "T010"
         ]
       },
@@ -562,13 +500,6 @@
           "T007",
           "T016",
           "T019"
-        ]
-      },
-      {
-        "name": "五、成本项目阶段分布",
-        "task_refs": [
-          "T009",
-          "T021"
         ]
       },
       {

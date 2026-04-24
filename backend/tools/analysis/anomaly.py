@@ -7,7 +7,7 @@ from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
 from backend.tools.registry import register_skill
 
 
-@register_skill("skill_anomaly", SkillCategory.ANALYSIS, "异常值检测",
+@register_skill("tool_anomaly", SkillCategory.ANALYSIS, "异常值检测",
                 input_spec="数据序列 data_ref",
                 output_spec="异常点及原因推测 JSON")
 class AnomalyDetectionSkill(BaseSkill):

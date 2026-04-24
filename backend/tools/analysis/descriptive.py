@@ -52,6 +52,16 @@ _NARRATIVE_PROMPT = """【分析意图】
 
 # ── Statistics helpers ─────────────────────────────────────────────────────────
 
+def _shift_month(time_str: str, months: int) -> str | None:
+    """Shift a YYYY-MM string by `months` months. Returns None if unparseable."""
+    try:
+        dt = pd.to_datetime(time_str)
+        shifted = dt + pd.DateOffset(months=months)
+        return shifted.strftime("%Y-%m") if len(str(time_str).strip()) == 7 else shifted.strftime("%Y-%m-%d")
+    except Exception:
+        return None
+
+
 def _compute_summary_stats(
     df: pd.DataFrame,
     target_columns: list[str],
@@ -88,11 +98,16 @@ def _compute_summary_stats(
     return stats
 
 
-def _compute_growth_rates(
+def _compute_growth_rates_single(
     df: pd.DataFrame,
     target_columns: list[str],
     time_column: str | None,
 ) -> dict:
+    """Compute YoY/MoM for a single-source DataFrame.
+
+    Uses date-string matching (YYYY-MM) for accuracy; falls back to positional
+    only when the time column cannot be parsed as a month string.
+    """
     growth: dict[str, dict[str, float | None]] = {}
 
     if not time_column or time_column not in df.columns:
@@ -100,27 +115,78 @@ def _compute_growth_rates(
 
     df_sorted = df.sort_values(time_column).reset_index(drop=True)
     n = len(df_sorted)
+    time_vals = df_sorted[time_column].astype(str)
+    latest_time = time_vals.iloc[-1]
 
     for col in target_columns:
         if col not in df_sorted.columns:
             growth[col] = {"yoy": None, "mom": None}
             continue
         series = pd.to_numeric(df_sorted[col], errors="coerce")
+        latest_val = series.iloc[-1]
 
+        if pd.isna(latest_val):
+            growth[col] = {"yoy": None, "mom": None}
+            continue
+
+        # ── MoM: match the entry exactly 1 month prior ──────────
         mom = None
-        if n >= 2:
-            last, prev = series.iloc[-1], series.iloc[-2]
-            if pd.notna(last) and pd.notna(prev) and prev != 0:
-                mom = round(float((last - prev) / prev), 4)
+        mom_time = _shift_month(latest_time, -1)
+        if mom_time:
+            mask = time_vals == mom_time
+            if mask.any():
+                prev_val = series[mask].iloc[-1]
+                if pd.notna(prev_val) and prev_val != 0:
+                    mom = round(float((latest_val - prev_val) / prev_val), 4)
+        if mom is None and n >= 2:          # positional fallback
+            prev = series.iloc[-2]
+            if pd.notna(prev) and prev != 0:
+                mom = round(float((latest_val - prev) / prev), 4)
 
+        # ── YoY: match the entry exactly 12 months prior ────────
         yoy = None
-        if n >= 13:
-            last, base = series.iloc[-1], series.iloc[-13]
-            if pd.notna(last) and pd.notna(base) and base != 0:
-                yoy = round(float((last - base) / base), 4)
+        yoy_time = _shift_month(latest_time, -12)
+        if yoy_time:
+            mask = time_vals == yoy_time
+            if mask.any():
+                base_val = series[mask].iloc[-1]
+                if pd.notna(base_val) and base_val != 0:
+                    yoy = round(float((latest_val - base_val) / base_val), 4)
+        if yoy is None and n >= 13:         # positional fallback
+            base = series.iloc[-13]
+            if pd.notna(base) and base != 0:
+                yoy = round(float((latest_val - base) / base), 4)
 
         growth[col] = {"yoy": yoy, "mom": mom}
     return growth
+
+
+def _compute_growth_rates(
+    df: pd.DataFrame,
+    target_columns: list[str],
+    time_column: str | None,
+) -> dict:
+    """Dispatch to per-source computation when multiple sources are merged.
+
+    When DataFrames from different tasks are concatenated (e.g. T003 万吨 +
+    T004 万箱, both with a ``qty`` column), a ``_src_ref`` marker column is
+    present.  Computing growth across the boundary would compare incompatible
+    units, so we split by source first.
+    """
+    if "_src_ref" in df.columns and df["_src_ref"].nunique() > 1:
+        combined: dict[str, dict[str, float | None]] = {}
+        for src, src_df in df.groupby("_src_ref"):
+            src_growth = _compute_growth_rates_single(
+                src_df.drop(columns=["_src_ref"]), target_columns, time_column
+            )
+            for col, rates in src_growth.items():
+                if any(v is not None for v in rates.values()):
+                    # Prefix with source ref to avoid key collisions
+                    combined[f"{src}_{col}"] = rates
+        return combined or {col: {"yoy": None, "mom": None} for col in target_columns}
+
+    clean_df = df.drop(columns=["_src_ref"], errors="ignore")
+    return _compute_growth_rates_single(clean_df, target_columns, time_column)
 
 
 # ── Narrative generation ───────────────────────────────────────────────────────
@@ -176,7 +242,7 @@ async def _generate_narrative(
 # ── Skill ──────────────────────────────────────────────────────────────────────
 
 @register_skill(
-    "skill_desc_analysis", SkillCategory.ANALYSIS,
+    "tool_desc_analysis", SkillCategory.ANALYSIS,
     "描述性统计分析（均值、同比、环比、占比）",
     input_spec="data_ref + intent",
     output_spec="统计摘要 JSON（含同比环比增幅）",
@@ -208,18 +274,25 @@ class DescriptiveAnalysisSkill(BaseSkill):
             if isinstance(raw, pd.DataFrame):
                 df = raw
         if df is None and inp.context_refs:
-            dfs = []
+            source_dfs: list[tuple[str, pd.DataFrame]] = []
             for ref in inp.context_refs:
                 if ref not in context:
                     continue
                 raw = context[ref]
                 raw = raw.data if hasattr(raw, "data") else raw
                 if isinstance(raw, pd.DataFrame) and not raw.empty:
-                    dfs.append(raw)
-            if len(dfs) == 1:
-                df = dfs[0]
-            elif len(dfs) > 1:
-                df = pd.concat(dfs, ignore_index=True)
+                    source_dfs.append((ref, raw))
+            if len(source_dfs) == 1:
+                df = source_dfs[0][1]
+            elif len(source_dfs) > 1:
+                # Tag each source so growth-rate computation stays within one
+                # series and never compares rows from different metrics/units.
+                tagged = []
+                for ref, d in source_dfs:
+                    d = d.copy()
+                    d["_src_ref"] = ref
+                    tagged.append(d)
+                df = pd.concat(tagged, ignore_index=True)
 
         if not isinstance(df, pd.DataFrame):
             return self._fail(f"数据引用 {data_ref or inp.context_refs} 不在执行上下文中")
@@ -232,11 +305,13 @@ class DescriptiveAnalysisSkill(BaseSkill):
                 df[col] = df[col].astype(str)
 
         # ── LLM selects columns (always runs; Planning hints as fallback) ──
+        # Drop internal marker before exposing schema to LLM
+        df_clean = df.drop(columns=["_src_ref"], errors="ignore")
         selection = await select_analysis_columns(
-            df, intent, span_emit=inp.span_emit, task_id=task_id,
+            df_clean, intent, span_emit=inp.span_emit, task_id=task_id,
         )
         target_columns = selection["target_columns"] or [
-            c for c in (hint_target_cols or []) if c in df.columns
+            c for c in (hint_target_cols or []) if c in df_clean.columns
         ]
         time_column = selection["time_column"] or hint_time_col
         group_by = selection["group_by"] or hint_group_by
@@ -246,7 +321,9 @@ class DescriptiveAnalysisSkill(BaseSkill):
             return self._fail("未找到可分析的数值列")
 
         # ── Compute statistics ───────────────────────────────────
-        summary_stats = _compute_summary_stats(df, target_columns, group_by)
+        # Summary stats use clean df (no cross-source contamination needed)
+        summary_stats = _compute_summary_stats(df_clean, target_columns, group_by)
+        # Growth rates use tagged df so per-source isolation kicks in
         growth_rates = _compute_growth_rates(df, target_columns, time_column)
 
         # ── Generate narrative ───────────────────────────────────
@@ -267,7 +344,7 @@ class DescriptiveAnalysisSkill(BaseSkill):
                 "narrative": nar["text"],
             },
             metadata={
-                "rows_analyzed": len(df),
+                "rows_analyzed": len(df_clean),
                 "columns_analyzed": target_columns,
                 "group_by": group_by,
                 "time_column": time_column,

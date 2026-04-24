@@ -69,11 +69,6 @@
 # getCostProjectAmtByOwnerLgZoneName  (7 rows)
     field_schema=((("investAmt", "float", ""), ("finishPayAmt", "float", ""), ("ownerLgZoneName", "str", "")),),
 
-# getCostProjectCurrentStageQtyList  (42 rows)
-    field_schema=((("projectQty", "int", ""), ("projectCurrentStage", "str", ""), ("ownerLgZoneName", "str", "")),),
-
-# getCostProjectFinishByYear  (2 rows)
-    field_schema=((("dateYear", "int", ""), ("projectQty", "int", ""), ("realFinishPayAmt", "float", ""), ("costApplyInvestAmt", "float", "")),),
 
 # getCostProjectQtyByProjectCmp  (97 rows)
     field_schema=((("projectCmp", "str", ""), ("projectQty", "int", ""), ("investAmt", "float", ""), ("finishPayAmt", "float", "")),),

@@ -901,7 +901,7 @@ async def _persist_file_artifacts(
             # and we can re-run the rendering skill without a full
             # graph execution.
             if (row.get("format") == "html"
-                    and (task.skill or "").startswith("skill_report_")):
+                    and (task.skill or "").startswith("tool_report_")):
                 try:
                     sub_ctx = _collect_report_context(
                         task, tasks, execution_context,
@@ -1326,9 +1326,29 @@ async def execution_node(
         # Still format and send results from successful tasks
         result_parts = _format_execution_results(tasks, execution_context, task_statuses)
         if result_parts:
+            artifacts_partial = await _persist_file_artifacts(
+                state.get("session_id", ""),
+                tasks, execution_context, task_statuses,
+            )
+            structured_partial = _build_task_results_payload(
+                tasks, execution_context, task_statuses, artifacts=artifacts_partial,
+            )
+            is_report_partial = structured_partial.get("pipeline") == "report"
+            if is_report_partial:
+                file_count = len(structured_partial.get("tasks", []))
+                done_count = sum(1 for v in task_statuses.values() if v == "done")
+                content = (
+                    f"已生成深度分析报告（{file_count} 份文件 · "
+                    f"{done_count}/{len(tasks)} 个子任务）。"
+                    f"可在下方预览 / 下载，或按需导出其它格式。"
+                )
+            else:
+                content = "\n\n---\n\n".join(result_parts)
             state["messages"].append({
                 "role": "assistant",
-                "content": "\n\n---\n\n".join(result_parts),
+                "type": "task_results",
+                "content": content,
+                "payload": structured_partial,
             })
 
     return state

@@ -28,24 +28,24 @@ endpoints:
 
 skills:
   # 数据获取
-  - skill_api_fetch
-  - skill_file_parse
-  - skill_web_search
+  - tool_api_fetch
+  - tool_file_parse
+  - tool_web_search
   # 分析
-  - skill_desc_analysis
-  - skill_anomaly
-  - skill_attribution
-  - skill_prediction
+  - tool_desc_analysis
+  - tool_anomaly
+  - tool_attribution
+  - tool_prediction
   # 可视化
-  - skill_chart_line
-  - skill_chart_bar
-  - skill_chart_waterfall
-  - skill_dashboard
+  - tool_chart_line
+  - tool_chart_bar
+  - tool_chart_waterfall
+  - tool_dashboard
   # 报告
-  - skill_summary_gen
-  - skill_report_html
-  - skill_report_docx
-  - skill_report_pptx
+  - tool_summary_gen
+  - tool_report_html
+  - tool_report_docx
+  - tool_report_pptx
 
 perception:
   domain_keywords:
@@ -114,7 +114,7 @@ planning:
     - 注意：D2 的透视格式 API 需按 typeName/zoneName 分组
 
     ### 图表选择
-    - 客户排名/贡献 → skill_chart_bar（横向排名柱状图）
-    - 客户类型/行业占比 → skill_chart_bar（堆叠或分组柱状图）
-    - 月度趋势分析 → skill_chart_line
-    - 客户洞察报告 → 优先使用 PPT 格式（skill_report_pptx）
+    - 客户排名/贡献 → tool_chart_bar（横向排名柱状图）
+    - 客户类型/行业占比 → tool_chart_bar（堆叠或分组柱状图）
+    - 月度趋势分析 → tool_chart_line
+    - 客户洞察报告 → 优先使用 PPT 格式（tool_report_pptx）
