@@ -157,11 +157,6 @@ class ApiDataFetchSkill(BaseSkill):
         # ── Step 1: LLM param resolution ─────────────────────
         if ep is not None:
             task_context = params.get("__task_name__", "")
-            if span_emit:
-                await span_emit(make_span("param_resolve", task_id, status="start", input={
-                    "endpoint_id": endpoint_id,
-                    "planned_params": query_params,
-                }))
             resolved_params, display_hint = await resolve_params_with_llm(
                 ep,
                 query_params,
@@ -169,11 +164,6 @@ class ApiDataFetchSkill(BaseSkill):
                 span_emit=span_emit,
                 task_id=task_id,
             )
-            if span_emit:
-                await span_emit(make_span("param_resolve", task_id, status="ok", output={
-                    "resolved_params": resolved_params,
-                    "display_hint": display_hint,
-                }))
         else:
             resolved_params = query_params
             display_hint = {}
@@ -210,12 +200,15 @@ class ApiDataFetchSkill(BaseSkill):
             _start = _time.monotonic()
 
             if span_emit:
-                await span_emit(make_span("api_call", task_id, status="start", input={
+                span_input: dict = {
                     "endpoint_id": endpoint_id,
                     "url": url,
                     "params": current_params,
                     "attempt": attempt,
-                }))
+                }
+                if attempt == 1 and current_params != query_params:
+                    span_input["planned_params"] = query_params
+                await span_emit(make_span("api_call", task_id, status="start", input=span_input))
 
             try:
                 status_code, body = await _http_get(url, current_params, headers, verify_ssl)

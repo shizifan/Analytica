@@ -5,11 +5,15 @@ import type { Span } from '../../../stores/traceStore';
 // ── Helpers ─────────────────────────────────────────────────────
 
 function spanIcon(type: string) {
-  return type === 'llm_call' ? '🤖' : '📡';
+  if (type === 'llm_call') return '🤖';
+  if (type === 'param_resolve') return '🔧';
+  return '📡';
 }
 
 function spanLabel(type: string) {
-  return type === 'llm_call' ? 'LLM 调用' : 'API 调用';
+  if (type === 'llm_call') return 'LLM 调用';
+  if (type === 'param_resolve') return '参数解析';
+  return 'API 调用';
 }
 
 function latencyFromSpans(spans: Span[]): number | null {

@@ -264,6 +264,7 @@ T = {
     "cur_strat_trend":    "B1DCE83DF425C3E5A76104B5E481F5350A1FAF0E78BC80A3EEA53AE7523963AF",
     "sum_strat_cargo":    "B1DCE83DF425C3E5A76104B5E481F5351268DD9BBE8AD8EE8690A057B3095C80",
     "sum_contrib_rank":   "B1DCE83DF425C3E5A76104B5E481F535A89C371E602AA48399CB5B88AF6FB552",
+    "strategic_customer_churn_risk": "B1DCE83DF425C3E5A76104B5E481F535C7D9E2F108B34A5629E87F3D56C10AB4",
     # D7设备域 + 司南商务驾驶舱（原硬编码token）
     "equipment_indicator_operation_qty":                    "B1DCE83DF425C3E5A76104B5E481F535FE95E6F21D4B554F35E3DA30CBBB7771",
     "equipment_indicator_use_cost":                    "B1DCE83DF425C3E5A76104B5E481F535A57695EE933FCD13AF102D89D33E4546",
@@ -3689,11 +3690,11 @@ async def get_cur_strategic_cargo(request: Request, date: str):
     year, month, _ = parse_date(date)
     r = rng({"d": date, "k": "strat_cargo"})
     base = month_throughput_ton(year, month, None, r) * 0.65  # 战略客户贡献约65%
-    cargo_w = {"集装箱":0.38,"散杂货":0.28,"油化品":0.20,"商品车":0.14}
+    cargo_w = {"集装箱": 0.38, "散杂货": 0.28, "油化品": 0.20, "商品车": 0.14}
     return ok([{
         "categoryName": cat,
-        "num": round(r.uniform(0, 500), 1),
-    } for cat in ["散杂货", "集装箱", "油化品", "商品车"]])
+        "num": round(base * w * r.uniform(0.95, 1.05), 1),
+    } for cat, w in cargo_w.items()])
 
 # [PROD_DATA]
 @app.get("/api/gateway/getCurContributionRankOfStrategicCustomer")
@@ -3702,13 +3703,7 @@ async def get_cur_contrib_rank(request: Request, date: str):
     year, month, _ = parse_date(date)
     r = rng({"d": date, "k": "cur_rank"})
     base = month_throughput_ton(year, month, None, r)
-    clients = r.choices(STRATEGIC_CLIENTS, k=10)
-    shares = sorted([r.uniform(2, 16) for _ in clients], reverse=True)
-    total_s = sum(shares)
-    return ok([{
-        "clientName": cl,
-        "num": round(r.uniform(0, 200), 1),
-    } for cl in STRATEGIC_CLIENTS + [
+    all_clients = STRATEGIC_CLIENTS + [
         "广州汽车集团股份有限公司", "华能国际电力股份有限公司",
         "中国华电集团有限公司", "国家电力投资集团有限公司",
         "中国铝业集团有限公司", "中粮集团有限公司",
@@ -3720,7 +3715,14 @@ async def get_cur_contrib_rank(request: Request, date: str):
         "北京建龙重工集团有限公司", "敬业钢铁有限公司",
         "福建三宝钢铁有限公司", "日照钢铁控股集团有限公司",
         "凌源钢铁集团有限责任公司", "东北特殊钢集团股份有限公司",
-    ]])
+    ]
+    # 使用幂律分布模拟头部客户集中效应
+    weights = sorted([r.uniform(0.5, 10.0) ** 1.5 for _ in all_clients], reverse=True)
+    total_w = sum(weights)
+    return ok([{
+        "clientName": cl,
+        "num": round(base * w / total_w, 1),
+    } for cl, w in zip(all_clients, weights)])
 
 # [PROD_DATA]
 @app.get("/api/gateway/getCurStrategyCustomerTrendAnalysis")
@@ -3812,6 +3814,41 @@ async def get_sum_strategy_trend(request: Request):
     # 2-row summary, which broke the strategic-customer trend chart.)
     return ok(series)
 
+
+
+# [NO_PROD_DATA]
+@app.get("/api/gateway/getStrategicCustomerChurnRisk")
+async def get_strategic_customer_churn_risk(request: Request, date: str = "2026-03"):
+    check_token(request, T["strategic_customer_churn_risk"])
+    year, month, _ = parse_date(date)
+    r = rng({"d": date, "k": "churn_risk"})
+    base = month_throughput_ton(year, month, None, r)
+    # 模拟流失风险评估：基于近3月吞吐量变化趋势判断风险等级
+    risk_clients = r.choices(STRATEGIC_CLIENTS, k=min(15, len(STRATEGIC_CLIENTS)))
+    result = []
+    for cl in risk_clients:
+        # 近3月吞吐趋势（负数=下降）
+        prev3 = [round(base * r.uniform(0.04, 0.12), 1) for _ in range(3)]
+        cur = round(prev3[-1] * r.uniform(0.6, 1.3), 1)
+        yoy = round((cur / (prev3[0] + 0.01) - 1) * 100, 1)
+        risk_score = round(max(0.0, min(1.0, 0.5 - yoy / 200 + r.uniform(-0.15, 0.15))), 2)
+        if risk_score >= 0.7:
+            risk_level = "高风险"
+        elif risk_score >= 0.4:
+            risk_level = "中风险"
+        else:
+            risk_level = "低风险"
+        result.append({
+            "clientName": cl,
+            "riskScore": risk_score,
+            "riskLevel": risk_level,
+            "curMonthThroughput": cur,
+            "yoyRate": yoy,
+            "trend3m": prev3 + [cur],
+            "date": date,
+        })
+    result.sort(key=lambda x: x["riskScore"], reverse=True)
+    return ok(result)
 
 
 # ════════════════════════════════════════════════════════════════

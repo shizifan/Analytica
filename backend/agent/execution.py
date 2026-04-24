@@ -1111,10 +1111,20 @@ def _format_execution_results(
                         parts.append(f"**{task_name}**\n\n*（查询结果为空）*")
                     else:
                         display_df = df.head(MAX_TABLE_ROWS) if row_count > MAX_TABLE_ROWS else df
-                        table_md = display_df.to_markdown(index=False)
+                        try:
+                            table_md = display_df.to_markdown(index=False)
+                        except Exception:
+                            table_md = display_df.to_csv(index=False)
                         if row_count > MAX_TABLE_ROWS:
                             table_md += f"\n\n*（仅展示前 {MAX_TABLE_ROWS} 行，共 {row_count} 行）*"
                         parts.append(f"**{task_name}**\n\n{table_md}")
+                else:
+                    # data 非 DataFrame（list/dict），降级为 JSON 展示
+                    try:
+                        formatted = _json.dumps(df, ensure_ascii=False, indent=2, default=str)
+                        parts.append(f"**{task_name}**\n\n```json\n{formatted}\n```")
+                    except Exception:
+                        parts.append(f"**{task_name}**\n\n*（数据已获取，格式化跳过）*")
 
             elif output.output_type == "chart" and output.data is not None:
                 chart_json = _json.dumps(output.data, ensure_ascii=False)
@@ -1136,7 +1146,9 @@ def _format_execution_results(
                 parts.append(f"**{task_name}**\n\n*已生成 {fmt} 报告。*")
 
         except Exception as exc:
-            logger.warning("格式化任务 %s 结果失败: %s", tid, exc)
+            logger.warning("格式化任务 %s 结果失败: %s | output_type=%s data_type=%s",
+                           tid, exc, getattr(output, "output_type", "?"),
+                           type(getattr(output, "data", None)).__name__)
             parts.append(f"**{task_name}**\n\n*（结果格式化失败）*")
 
     return parts
