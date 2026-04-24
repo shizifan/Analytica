@@ -50,7 +50,7 @@ export function useWebSocket(sessionId: string | null) {
     if (!sessionId || unmountedRef.current) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const url = `${protocol}//${window.location.host}/ws/chat/${sessionId}`;
+    const url = `${protocol}//${window.location.host}/analytica/ws/chat/${sessionId}`;
 
     // Capture session at connection time so handlers can detect staleness.
     const capturedSessionId = sessionId;

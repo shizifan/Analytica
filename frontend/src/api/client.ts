@@ -10,7 +10,7 @@ import type {
   ThinkingEvent,
 } from '../types';
 
-const BASE = '';
+const BASE = '/analytica';
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const opts: RequestInit = {
@@ -187,7 +187,7 @@ export const api = {
     uploadAgentSkill: async (file: File) => {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/admin/agent-skills', { method: 'POST', body: fd });
+      const res = await fetch('/analytica/api/admin/agent-skills', { method: 'POST', body: fd });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         throw new Error(`Upload failed → ${res.status}: ${text}`);
