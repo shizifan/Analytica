@@ -538,10 +538,13 @@ async def run_stream(
         finally:
             await _event_queue.put(("done", None))
 
+    # set_ws_callback MUST happen before create_task: asyncio.create_task copies
+    # the current context at task-creation time, so setting the contextvar after
+    # the task is created leaves _graph_producer (and every graph node it runs)
+    # with ws_callback=None, silently dropping all span emissions.
+    token = ws_ctx.set_ws_callback(ws_callback)
     _producer = asyncio.create_task(_graph_producer())
     _cancelled_early = False
-
-    token = ws_ctx.set_ws_callback(ws_callback)
     final_state = dict(state)
     visited_nodes: set[str] = set()
     try:
