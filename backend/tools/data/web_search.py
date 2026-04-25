@@ -6,23 +6,23 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
-from backend.tools.registry import register_skill
+from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
+from backend.tools.registry import register_tool
 
 
-@register_skill("tool_web_search", SkillCategory.SEARCH, "互联网检索，返回结构化摘要",
+@register_tool("tool_web_search", ToolCategory.SEARCH, "互联网检索，返回结构化摘要",
                 input_spec="搜索关键词",
                 output_spec="搜索结果摘要文本")
-class WebSearchSkill(BaseSkill):
+class WebSearchTool(BaseTool):
 
-    async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
+    async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         query = inp.params.get("query", "")
         if not query:
             return self._fail("缺少 query 参数")
 
         # Stub: return a placeholder indicating search is not configured
-        return SkillOutput(
-            skill_id=self.skill_id,
+        return ToolOutput(
+            tool_id=self.tool_id,
             status="partial",
             output_type="json",
             data={

@@ -15,7 +15,7 @@ def _plan(*task_types: str) -> AnalysisPlan:
             name=f"任务 {i}",
             description="",
             depends_on=[],
-            skill="skill_api_fetch" if t == "data_fetch" else f"skill_{t}",
+            tool="tool_api_fetch" if t == "data_fetch" else f"tool_{t}",
             params={},
             estimated_seconds=5,
         )
@@ -82,7 +82,7 @@ async def test_confirm_fast_path_does_not_rerun_perception(monkeypatch):
 
     monkeypatch.setattr(graph_mod, "perception_node", fake_perception)
 
-    # Stub execution to skip actual skill work.
+    # Stub execution to skip actual tool work.
     async def fake_exec(state):
         state["task_statuses"] = {"T001": "done"}
         return state
@@ -112,7 +112,7 @@ async def test_confirm_fast_path_does_not_rerun_perception(monkeypatch):
                       ' "title": "t", "analysis_goal": "g",'
                       ' "tasks": [{"task_id": "T001", "type": "data_fetch",'
                       ' "name": "n", "description": "", "depends_on": [],'
-                      ' "skill": "skill_api_fetch", "params": {},'
+                      ' "tool": "tool_api_fetch", "params": {},'
                       ' "estimated_seconds": 5}]},'
                       '"plan_confirmed": false,'
                       '"messages": []}',

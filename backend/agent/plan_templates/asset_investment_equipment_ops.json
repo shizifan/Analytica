@@ -48,7 +48,7 @@
       "name": "获取各港区资产分布",
       "description": "获取各港区资产透视分布，返回 num/typeName/ownerZone",
       "depends_on": [],
-      "skill": "tool_api_fetch",
+      "tool": "tool_api_fetch",
       "params": {
         "endpoint_id": "getRegionalAnalysis",
         "dateYear": "2026"
@@ -63,7 +63,7 @@
       "name": "获取资产类别分布",
       "description": "获取资产按类别的透视分布，返回 num/typeName/assetTypeName",
       "depends_on": [],
-      "skill": "tool_api_fetch",
+      "tool": "tool_api_fetch",
       "params": {
         "endpoint_id": "getCategoryAnalysis",
         "dateYear": "2026"
@@ -78,7 +78,7 @@
       "name": "获取设备设施同比",
       "description": "设备设施年度同比数据，返回 num/typeName/dateYear 透视格式",
       "depends_on": [],
-      "skill": "tool_api_fetch",
+      "tool": "tool_api_fetch",
       "params": {
         "endpoint_id": "getEquipmentFacilityAnalysisYoy",
         "dateYear": "2026"
@@ -93,7 +93,7 @@
       "name": "获取房屋资产同比",
       "description": "房屋建筑面积与净值同比数据",
       "depends_on": [],
-      "skill": "tool_api_fetch",
+      "tool": "tool_api_fetch",
       "params": {
         "endpoint_id": "getHousingAnalysisYoy",
         "dateYear": "2026"
@@ -108,7 +108,7 @@
       "name": "获取土地海域同比",
       "description": "土地海域面积与净值同比数据",
       "depends_on": [],
-      "skill": "tool_api_fetch",
+      "tool": "tool_api_fetch",
       "params": {
         "endpoint_id": "getLandMaritimeAnalysisYoy",
         "dateYear": "2026"
@@ -123,7 +123,7 @@
       "name": "获取历年投资计划完成",
       "description": "获取2019-2025年投资计划完成明细（7行），返回 dateYear/finishInvestAmt/planInvestAmt",
       "depends_on": [],
-      "skill": "tool_api_fetch",
+      "tool": "tool_api_fetch",
       "params": {
         "endpoint_id": "getInvestPlanByYear"
       },
@@ -137,7 +137,7 @@
       "name": "获取各港区投资完成",
       "description": "各港区投资计划与完成量，返回 ownerLgZoneName/planInvestAmt/finishInvestAmt/planPayAmt/finishPayAmt",
       "depends_on": [],
-      "skill": "tool_api_fetch",
+      "tool": "tool_api_fetch",
       "params": {
         "endpoint_id": "getPlanFinishByZone",
         "currYear": "2026"
@@ -152,7 +152,7 @@
       "name": "获取投资完成进度与交付率",
       "description": "整体投资完成率和交付情况",
       "depends_on": [],
-      "skill": "tool_api_fetch",
+      "tool": "tool_api_fetch",
       "params": {
         "endpoint_id": "getFinishProgressAndDeliveryRate",
         "currYear": "2026"
@@ -167,7 +167,7 @@
       "name": "获取月度设备利用率",
       "description": "2026年各月设备利用率曲线，返回 usageRate/dateMonth",
       "depends_on": [],
-      "skill": "tool_api_fetch",
+      "tool": "tool_api_fetch",
       "params": {
         "endpoint_id": "getEquipmentUsageRate",
         "dateYear": "2026"
@@ -182,7 +182,7 @@
       "name": "获取月度设备完好率",
       "description": "2026年各月设备完好率曲线，返回 serviceableRate/dateMonth",
       "depends_on": [],
-      "skill": "tool_api_fetch",
+      "tool": "tool_api_fetch",
       "params": {
         "endpoint_id": "getEquipmentServiceableRate",
         "dateYear": "2026"
@@ -197,7 +197,7 @@
       "name": "获取月度集装箱台时效率",
       "description": "2026年各月集装箱装卸台时效率，返回 machineHourRate/dateMonth",
       "depends_on": [],
-      "skill": "tool_api_fetch",
+      "tool": "tool_api_fetch",
       "params": {
         "endpoint_id": "getContainerMachineHourRate",
         "dateYear": "2026"
@@ -212,7 +212,7 @@
       "name": "获取设备故障月度分布",
       "description": "2026年各月设备故障次数透视，返回 num/dateMonth",
       "depends_on": [],
-      "skill": "tool_api_fetch",
+      "tool": "tool_api_fetch",
       "params": {
         "endpoint_id": "getProductionEquipmentFaultNum",
         "dateYear": "2026"
@@ -233,7 +233,7 @@
         "T004",
         "T005"
       ],
-      "skill": "tool_desc_analysis",
+      "tool": "tool_desc_analysis",
       "params": {
         "data_refs": [
           "T001",
@@ -263,7 +263,7 @@
         "T007",
         "T010"
       ],
-      "skill": "tool_attribution",
+      "tool": "tool_attribution",
       "params": {
         "data_refs": [
           "T006",
@@ -299,7 +299,7 @@
         "T013",
         "T014"
       ],
-      "skill": "tool_desc_analysis",
+      "tool": "tool_desc_analysis",
       "params": {
         "data_refs": [
           "T011",
@@ -326,7 +326,7 @@
       "depends_on": [
         "T001"
       ],
-      "skill": "tool_chart_bar",
+      "tool": "tool_chart_bar",
       "params": {
         "data_refs": [
           "T001"
@@ -351,7 +351,7 @@
       "depends_on": [
         "T007"
       ],
-      "skill": "tool_chart_waterfall",
+      "tool": "tool_chart_waterfall",
       "params": {
         "data_refs": [
           "T007"
@@ -377,7 +377,7 @@
         "T012",
         "T013"
       ],
-      "skill": "tool_chart_line",
+      "tool": "tool_chart_line",
       "params": {
         "data_refs": [
           "T011",
@@ -423,7 +423,7 @@
         "T016",
         "T017"
       ],
-      "skill": "tool_summary_gen",
+      "tool": "tool_summary_gen",
       "params": {
         "data_refs": [
           "T015",
@@ -454,7 +454,7 @@
         "T020",
         "T022"
       ],
-      "skill": "tool_report_html",
+      "tool": "tool_report_html",
       "params": {
         "report_metadata": {
           "title": "2026年一季度资产价值、投资进度、设备效能综合分析报告",

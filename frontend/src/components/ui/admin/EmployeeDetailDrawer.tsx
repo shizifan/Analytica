@@ -178,17 +178,17 @@ export function EmployeeDetailDrawer({ employeeId, onClose }: Props) {
                   <SectionLabel>资源绑定</SectionLabel>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                     <StatCard label="API 端点" value={String(detail.endpoints?.length ?? 0)} />
-                    <StatCard label="工具" value={String(detail.skills?.length ?? 0)} />
+                    <StatCard label="工具" value={String(detail.tools?.length ?? 0)} />
                     <StatCard label="FAQ" value={String(detail.faqs?.length ?? 0)} />
                   </div>
                 </section>
 
                 {/* 绑定工具列表 */}
-                {(detail.skills?.length ?? 0) > 0 && (
+                {(detail.tools?.length ?? 0) > 0 && (
                   <section>
                     <SectionLabel>绑定工具</SectionLabel>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {detail.skills.map((s) => (
+                      {detail.tools.map((s) => (
                         <span key={s} className="an-admin-chip"
                           style={{ fontFamily: 'var(--an-font-mono)', fontSize: 11 }}>{s}</span>
                       ))}

@@ -175,13 +175,13 @@ def normalize_dataframe_item(
     return DataFrameItem(df=df, source_task=item.source_task)
 
 
-# ── Extract: classifies upstream SkillOutput objects into content items ──
+# ── Extract: classifies upstream ToolOutput objects into content items ──
 
 def _extract_items(
     context: dict[str, Any],
     task_order: list[str] | None = None,
 ) -> tuple[list[ContentItem], list[SummaryTextItem]]:
-    """Walk *context* and classify every upstream SkillOutput.
+    """Walk *context* and classify every upstream ToolOutput.
 
     Iteration order:
       - ``task_order`` (when supplied) — preserves the template's logical
@@ -190,7 +190,7 @@ def _extract_items(
         which is the pre-batch-4 behaviour and is retained for callers that
         still don't thread ``task_order`` through.
 
-    Skips SkillOutputs whose ``status`` is ``failed`` or ``skipped`` —
+    Skips ToolOutputs whose ``status`` is ``failed`` or ``skipped`` —
     those outputs either carry None or stale data (and contained the
     ``[narrative_failed:*]`` tag when the LLM call failed).
     """
@@ -342,7 +342,7 @@ def collect_and_associate(
     Args:
         params: skill params — reads ``report_metadata``, ``report_structure``,
             and ``_template_meta`` (injected by execute_plan / test harness).
-        context: execution context mapping task_id → SkillOutput.
+        context: execution context mapping task_id → ToolOutput.
         task_order: optional ordered list of task_ids (from the original
             plan). Used for iteration in _extract_items so item ordering
             mirrors the template's logical flow instead of lexicographic.

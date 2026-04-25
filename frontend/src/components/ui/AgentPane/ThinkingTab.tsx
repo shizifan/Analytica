@@ -50,7 +50,7 @@ function PhaseRow({ evt }: { evt: ThinkingEvent }) {
     } else if (node === 'reflection') {
       pushIf('偏好', payload.preferences);
       pushIf('模板', payload.templates);
-      pushIf('技能反馈', payload.skill_feedback);
+      pushIf('工具反馈', payload.tool_feedback);
     }
   }
 
@@ -79,7 +79,7 @@ function PhaseRow({ evt }: { evt: ThinkingEvent }) {
 function ToolRow({ evt }: { evt: ThinkingEvent }) {
   const p = (evt.payload ?? {}) as Record<string, unknown>;
   const phase = (p.event as string) ?? '';
-  const skill = (p.skill_id as string) ?? '';
+  const tool = (p.tool_id as string) ?? '';
   const taskId = (p.task_id as string) ?? '';
   const status = (p.status as string) ?? (phase === 'tool_call_start' ? 'running' : '');
   const errorCategory = (p.error_category as string) ?? '';
@@ -99,7 +99,7 @@ function ToolRow({ evt }: { evt: ThinkingEvent }) {
         )}
       </div>
       <div className="an-think-body">
-        <strong>{skill || 'unknown_skill'}</strong>
+        <strong>{tool || 'unknown_tool'}</strong>
         {taskId && (
           <span className="an-mono" style={{ marginLeft: 6, color: 'var(--an-ink-4)', fontSize: 10 }}>
             {taskId}

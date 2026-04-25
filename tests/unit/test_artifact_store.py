@@ -44,7 +44,7 @@ async def test_persist_and_retrieve_html_artifact(
         db,
         session_id=sid,
         task_id="T004",
-        skill_id="skill_report_html",
+        tool_id="tool_report_html",
         fmt="html",
         title="Q1 港口经营分析报告",
         content="<h1>Hello</h1>",
@@ -80,7 +80,7 @@ async def test_binary_docx_bytes_preserved(
 
     blob = os.urandom(512)
     row = await artifact_store.persist_artifact(
-        db, session_id=sid, task_id="T005", skill_id="skill_report_docx",
+        db, session_id=sid, task_id="T005", tool_id="tool_report_docx",
         fmt="docx", title="T", content=blob, meta={"mode": "python_docx"},
     )
     assert row is not None
@@ -98,7 +98,7 @@ async def test_list_artifacts_scoped_to_session(
     for i in range(3):
         await artifact_store.persist_artifact(
             db, session_id=sid, task_id=f"T00{i}",
-            skill_id="skill_report_html", fmt="html",
+            tool_id="tool_report_html", fmt="html",
             title=f"Report {i}", content=f"body {i}", meta={},
         )
 
@@ -119,7 +119,7 @@ async def test_download_endpoint_returns_file(
 
     row = await artifact_store.persist_artifact(
         db, session_id=sid, task_id="T001",
-        skill_id="skill_report_markdown", fmt="markdown",
+        tool_id="tool_report_markdown", fmt="markdown",
         title="memo", content="# hello\n\n正文", meta={},
     )
     assert row is not None
@@ -162,7 +162,7 @@ async def test_missing_file_on_disk_returns_410(
     db = test_db_session
 
     row = await artifact_store.persist_artifact(
-        db, session_id=sid, task_id="T001", skill_id="skill_report_html",
+        db, session_id=sid, task_id="T001", tool_id="tool_report_html",
         fmt="html", title="gone", content="x", meta={},
     )
     assert row is not None

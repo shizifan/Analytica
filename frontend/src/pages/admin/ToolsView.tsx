@@ -37,7 +37,7 @@ export function ToolsView() {
     const q = query.trim().toLowerCase();
     if (!q) return items;
     return items.filter((it) =>
-      it.skill_id.toLowerCase().includes(q) ||
+      it.tool_id.toLowerCase().includes(q) ||
       (it.description ?? '').toLowerCase().includes(q),
     );
   }, [items, query]);
@@ -46,9 +46,9 @@ export function ToolsView() {
     try {
       await api.admin.toggleTool(id, enabled);
       setItems((arr) =>
-        arr.map((it) => (it.skill_id === id ? { ...it, enabled } : it)),
+        arr.map((it) => (it.tool_id === id ? { ...it, enabled } : it)),
       );
-      setSelected((prev) => prev?.skill_id === id ? { ...prev, enabled } : prev);
+      setSelected((prev) => prev?.tool_id === id ? { ...prev, enabled } : prev);
     } catch (e) {
       window.alert(`切换失败：${e instanceof Error ? e.message : String(e)}`);
     }
@@ -84,12 +84,12 @@ export function ToolsView() {
                   : 0;
                 return (
                   <tr
-                    key={it.skill_id}
+                    key={it.tool_id}
                     title={it.last_error_msg ?? undefined}
                     style={{ cursor: 'pointer' }}
                     onClick={() => setSelected(it)}
                   >
-                    <td className="mono">{it.skill_id}</td>
+                    <td className="mono">{it.tool_id}</td>
                     <td>
                       <span className="an-admin-chip">
                         {KIND_LABEL[it.kind] ?? it.kind}
@@ -110,7 +110,7 @@ export function ToolsView() {
                         type="button"
                         className={`an-admin-chip ${it.enabled ? 'ok' : 'err'}`}
                         style={{ cursor: 'pointer', border: 0 }}
-                        onClick={(e) => { e.stopPropagation(); handleToggle(it.skill_id, !it.enabled); }}
+                        onClick={(e) => { e.stopPropagation(); handleToggle(it.tool_id, !it.enabled); }}
                         title={`点击 ${it.enabled ? '停用' : '启用'}`}
                       >
                         {it.enabled ? '启用' : '停用'}

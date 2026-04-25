@@ -10,8 +10,8 @@ import json
 import logging
 from typing import Any
 
-from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
-from backend.tools.registry import register_skill
+from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
+from backend.tools.registry import register_tool
 from backend.tools.report._content_collector import (
     collect_and_associate,
     NarrativeItem, StatsTableItem, GrowthItem,
@@ -215,12 +215,12 @@ def _build_html_deterministic(report: ReportContent) -> tuple[list[str], int]:
 # Skill
 # ---------------------------------------------------------------------------
 
-@register_skill("tool_report_html", SkillCategory.REPORT, "HTML 报告生成（单页 HTML 文件）",
+@register_tool("tool_report_html", ToolCategory.REPORT, "HTML 报告生成（单页 HTML 文件）",
                 input_spec="report_metadata + report_structure + 上游数据/图表引用",
                 output_spec="HTML 文件路径")
-class HtmlReportSkill(BaseSkill):
+class HtmlReportTool(BaseTool):
 
-    async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
+    async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         try:
             intent = inp.params.get("intent", "")
             task_id = inp.params.get("__task_id__", "")
@@ -294,8 +294,8 @@ class HtmlReportSkill(BaseSkill):
                 text_dark=T.TEXT_DARK,
             )
 
-            return SkillOutput(
-                skill_id=self.skill_id,
+            return ToolOutput(
+                tool_id=self.tool_id,
                 status="success",
                 output_type="file",
                 data=html,

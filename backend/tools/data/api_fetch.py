@@ -18,8 +18,8 @@ import httpx
 import pandas as pd
 
 from backend.agent.api_registry import get_endpoint, get_endpoint_path, resolve_endpoint_id
-from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
-from backend.tools.registry import register_skill
+from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
+from backend.tools.registry import register_tool
 from backend.tracing import make_span
 
 logger = logging.getLogger("analytica.tools.api_fetch")
@@ -119,12 +119,12 @@ def _body_to_dataframe(body: Any) -> pd.DataFrame:
     return pd.DataFrame()
 
 
-@register_skill("tool_api_fetch", SkillCategory.DATA_FETCH, "调用数据源 API 获取原始数据，返回 DataFrame",
+@register_tool("tool_api_fetch", ToolCategory.DATA_FETCH, "调用数据源 API 获取原始数据，返回 DataFrame",
                 input_spec="endpoint_id + 查询参数（日期/区域等）",
                 output_spec="DataFrame (JSON 数据)")
-class ApiDataFetchSkill(BaseSkill):
+class ApiDataFetchTool(BaseTool):
 
-    async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
+    async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         from backend.tools.data._param_resolver import (
             MAX_FETCH_RETRIES,
             diagnose_and_fix_params,
@@ -194,7 +194,7 @@ class ApiDataFetchSkill(BaseSkill):
         import time as _time
 
         current_params = resolved_params
-        last_output: SkillOutput | None = None
+        last_output: ToolOutput | None = None
 
         for attempt in range(1, MAX_FETCH_RETRIES + 1):
             _start = _time.monotonic()
@@ -293,8 +293,8 @@ class ApiDataFetchSkill(BaseSkill):
                     }
                     if row_count < 10:
                         metadata["quality_warning"] = "low_data_volume"
-                    return SkillOutput(
-                        skill_id=self.skill_id,
+                    return ToolOutput(
+                        tool_id=self.tool_id,
                         status="success",
                         output_type="dataframe",
                         data=df,

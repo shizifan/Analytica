@@ -16,8 +16,8 @@ from typing import Any
 
 from backend.tools._llm import invoke_llm
 from backend.tools.analysis._data_summarizer import summarize_sources
-from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
-from backend.tools.registry import register_skill
+from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
+from backend.tools.registry import register_tool
 
 logger = logging.getLogger("analytica.tools.attribution")
 
@@ -84,15 +84,15 @@ _ATTRIBUTION_USER = """【分析意图】
 
 # ── Skill ──────────────────────────────────────────────────────────────────────
 
-@register_skill(
-    "tool_attribution", SkillCategory.ANALYSIS,
+@register_tool(
+    "tool_attribution", ToolCategory.ANALYSIS,
     "归因分析（变动因素拆解）",
     input_spec="intent + context_refs（上游数据任务）",
     output_spec="归因因素列表 JSON",
 )
-class AttributionAnalysisSkill(BaseSkill):
+class AttributionAnalysisTool(BaseTool):
 
-    async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
+    async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         params = inp.params
         intent = params.get("intent") or params.get("target_metric", "指标变化归因")
         task_id = params.get("__task_id__", "")
@@ -130,8 +130,8 @@ class AttributionAnalysisSkill(BaseSkill):
         )
 
         if result["error"]:
-            return SkillOutput(
-                skill_id=self.skill_id,
+            return ToolOutput(
+                tool_id=self.tool_id,
                 status="failed",
                 output_type="json",
                 data=None,
@@ -144,8 +144,8 @@ class AttributionAnalysisSkill(BaseSkill):
 
         if parsed is None:
             # Return raw narrative so downstream can still use it
-            return SkillOutput(
-                skill_id=self.skill_id,
+            return ToolOutput(
+                tool_id=self.tool_id,
                 status="partial",
                 output_type="json",
                 data={
@@ -160,8 +160,8 @@ class AttributionAnalysisSkill(BaseSkill):
                 error_category="PARSE_ERROR",
             )
 
-        return SkillOutput(
-            skill_id=self.skill_id,
+        return ToolOutput(
+            tool_id=self.tool_id,
             status="success",
             output_type="json",
             data={

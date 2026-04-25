@@ -17,7 +17,7 @@ export interface TaskItem {
   name: string;
   description: string;
   depends_on: string[];
-  skill: string;
+  tool: string;
   params: Record<string, unknown>;
   estimated_seconds: number;
   status: TaskStatus;
@@ -38,7 +38,7 @@ export interface AnalysisPlan {
 export interface ReflectionSummary {
   user_preferences: Record<string, unknown>;
   analysis_template: Record<string, unknown> | null;
-  skill_feedback: Record<string, unknown>;
+  tool_feedback: Record<string, unknown>;
   slot_quality_review: {
     slots_auto_filled_correctly: string[];
     slots_corrected: string[];
@@ -143,12 +143,12 @@ export interface EmployeeSummary {
   initials?: string | null;
   status?: string;
   faqs_count?: number;
-  skills_count?: number;
+  tools_count?: number;
   endpoints_count?: number;
 }
 
 export interface EmployeeDetail extends EmployeeSummary {
-  skills: string[];
+  tools: string[];
   endpoints: string[];
   faqs: EmployeeFAQ[];
   perception: Record<string, unknown>;
@@ -163,7 +163,7 @@ export interface EmployeeUpdatePayload {
   status?: string;
   domains?: string[];
   endpoints?: string[];
-  skills?: string[];
+  tools?: string[];
   faqs?: EmployeeFAQ[];
   perception?: Record<string, unknown>;
   planning?: Record<string, unknown>;
@@ -239,7 +239,7 @@ export interface TaskResultFile {
 export interface TaskResult {
   task_id: string;
   name: string;
-  skill: string;
+  tool: string;
   type: string;             // task.type — data_fetch / visualization / analysis / report_gen
   output_type: TaskOutputKind;
   depends_on: string[];

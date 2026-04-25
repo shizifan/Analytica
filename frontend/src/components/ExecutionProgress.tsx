@@ -35,7 +35,7 @@ export function ExecutionProgress() {
             <li key={task.task_id} className="flex items-center gap-2 pl-2">
               <span className={`font-mono ${color}`}>{icon}</span>
               <span className={ts === 'done' ? 'text-gray-600' : 'text-gray-500'}>
-                {task.name || task.skill}
+                {task.name || task.tool}
               </span>
               {ts === 'running' && <span className="text-blue-500">进行中...</span>}
             </li>

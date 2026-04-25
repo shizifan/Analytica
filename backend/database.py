@@ -72,7 +72,7 @@ class EmployeeModel(Base):
     status = Column(String(16), nullable=False, server_default="active")
     domains = Column(JSON, nullable=False)
     endpoints = Column(JSON, nullable=False)
-    skills = Column(JSON, nullable=False)
+    tools = Column(JSON, nullable=False)
     faqs = Column(JSON, nullable=False)
     perception = Column(JSON, nullable=True)
     planning = Column(JSON, nullable=True)
@@ -107,7 +107,7 @@ class ReportArtifactModel(Base):
     id = Column(String(36), primary_key=True)
     session_id = Column(String(36), nullable=False)
     task_id = Column(String(64), nullable=True)
-    skill_id = Column(String(100), nullable=True)
+    tool_id = Column(String(100), nullable=True)
     format = Column(String(16), nullable=False)
     title = Column(String(255), nullable=True)
     file_path = Column(String(512), nullable=False)
@@ -174,18 +174,18 @@ class AnalysisTemplate(Base):
     )
 
 
-class SkillNote(Base):
-    __tablename__ = "skill_notes"
+class ToolNote(Base):
+    __tablename__ = "tool_notes"
 
     id = Column(String(36), primary_key=True)
-    skill_id = Column(String(100), nullable=False)
+    tool_id = Column(String(100), nullable=False)
     user_id = Column(String(36), nullable=False)
     notes = Column(Text, nullable=True)
     performance_score = Column(Float, nullable=True)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (
-        UniqueConstraint("skill_id", "user_id", name="uq_skill_user"),
+        UniqueConstraint("tool_id", "user_id", name="uq_tool_user"),
     )
 
 

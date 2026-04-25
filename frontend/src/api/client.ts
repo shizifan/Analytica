@@ -53,7 +53,7 @@ export const api = {
 
   saveReflection: (
     sessionId: string,
-    opts: { save_preferences?: boolean; save_template?: boolean; save_skill_notes?: boolean } = {},
+    opts: { save_preferences?: boolean; save_template?: boolean; save_tool_notes?: boolean } = {},
   ) =>
     request<{ status: string; saved: Record<string, unknown> }>(
       'POST',
@@ -61,7 +61,7 @@ export const api = {
       {
         save_preferences: opts.save_preferences ?? true,
         save_template: opts.save_template ?? true,
-        save_skill_notes: opts.save_skill_notes ?? true,
+        save_tool_notes: opts.save_tool_notes ?? true,
       },
     ),
 
@@ -169,11 +169,11 @@ export const api = {
     listTools: () =>
       request<{ items: AdminTool[]; count: number }>('GET', '/api/admin/tools'),
     getToolSource: (id: string) =>
-      request<{ skill_id: string; file: string; source: string }>(
+      request<{ tool_id: string; file: string; source: string }>(
         'GET', `/api/admin/tools/${encodeURIComponent(id)}/source`,
       ),
     toggleTool: (id: string, enabled: boolean) =>
-      request<{ status: string; skill_id: string; enabled: boolean }>(
+      request<{ status: string; tool_id: string; enabled: boolean }>(
         'POST',
         `/api/admin/tools/${encodeURIComponent(id)}/toggle?enabled=${enabled}`,
       ),
@@ -214,7 +214,7 @@ export const api = {
       return request<{
         preferences: Array<Record<string, unknown>>;
         templates: Array<Record<string, unknown>>;
-        skill_notes: Array<Record<string, unknown>>;
+        tool_notes: Array<Record<string, unknown>>;
       }>('GET', `/api/admin/memories?${p.toString()}`);
     },
     deleteMemory: (kind: string, entryId: string) =>
@@ -255,7 +255,7 @@ export interface AdminApi {
 }
 
 export interface AdminTool {
-  skill_id: string;
+  tool_id: string;
   name: string;
   kind: string;
   description?: string | null;

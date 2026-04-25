@@ -8,18 +8,18 @@ from typing import Any
 
 import pandas as pd
 
-from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
-from backend.tools.registry import register_skill
+from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
+from backend.tools.registry import register_tool
 
 logger = logging.getLogger("analytica.tools.file_parse")
 
 
-@register_skill("tool_file_parse", SkillCategory.DATA_FETCH, "解析文件（CSV/Excel/JSON）为 DataFrame",
+@register_tool("tool_file_parse", ToolCategory.DATA_FETCH, "解析文件（CSV/Excel/JSON）为 DataFrame",
                 input_spec="文件路径 file_path",
                 output_spec="DataFrame (结构化数据)")
-class FileParseSkill(BaseSkill):
+class FileParseTool(BaseTool):
 
-    async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
+    async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         file_path = inp.params.get("file_path", "")
         if not file_path:
             return self._fail("缺少 file_path 参数")
@@ -46,8 +46,8 @@ class FileParseSkill(BaseSkill):
             else:
                 return self._fail(f"不支持的文件格式: {suffix}")
 
-            return SkillOutput(
-                skill_id=self.skill_id,
+            return ToolOutput(
+                tool_id=self.tool_id,
                 status="success",
                 output_type="dataframe",
                 data=df,

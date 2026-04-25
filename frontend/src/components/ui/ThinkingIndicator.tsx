@@ -56,26 +56,26 @@ function describeEvent(evt: ThinkingEvent | undefined): { tag: string; text: str
   }
 
   if (evt.kind === 'tool') {
-    const skill = (p.skill_id as string) ?? 'skill';
+    const tool = (p.tool_id as string) ?? 'tool';
     if (p.event === 'tool_call_start') {
-      return { tag: 'TOOL', text: `调用 ${skill}…` };
+      return { tag: 'TOOL', text: `调用 ${tool}…` };
     }
     if (p.event === 'tool_call_end') {
       const preview = p.preview as Record<string, unknown> | undefined;
       const status = (p.status as string) ?? '';
       if (status === 'failed' || status === 'error') {
-        return { tag: 'TOOL', text: `${skill} 失败` };
+        return { tag: 'TOOL', text: `${tool} 失败` };
       }
       if (preview?.rows !== undefined) {
-        return { tag: 'TOOL', text: `${skill} · ${preview.rows} 行 × ${preview.cols ?? '?'} 列` };
+        return { tag: 'TOOL', text: `${tool} · ${preview.rows} 行 × ${preview.cols ?? '?'} 列` };
       }
       if (preview?.count !== undefined) {
-        return { tag: 'TOOL', text: `${skill} · ${preview.count} 条` };
+        return { tag: 'TOOL', text: `${tool} · ${preview.count} 条` };
       }
       if (preview?.char_count !== undefined) {
-        return { tag: 'TOOL', text: `${skill} · ${preview.char_count} 字` };
+        return { tag: 'TOOL', text: `${tool} · ${preview.char_count} 字` };
       }
-      return { tag: 'TOOL', text: `${skill} 完成` };
+      return { tag: 'TOOL', text: `${tool} 完成` };
     }
   }
 
@@ -132,7 +132,7 @@ export function ThinkingIndicator() {
     if (running) {
       liveSub = {
         tag: 'RUN',
-        text: `${doneCount + 1}/${plan.tasks.length} · ${running.name || running.skill}`,
+        text: `${doneCount + 1}/${plan.tasks.length} · ${running.name || running.tool}`,
       };
     }
   }

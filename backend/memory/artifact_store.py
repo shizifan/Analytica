@@ -1,6 +1,6 @@
 """Phase 5 — persist generated report files to disk + DB.
 
-Report skills return file bytes / strings inline in ``SkillOutput.data``.
+Report tools return file bytes / strings inline in ``ToolOutput.data``.
 This module turns those into durable artifacts under ``REPORTS_DIR``,
 writes a ``report_artifacts`` row, and returns the ID so downstream
 payloads / REST endpoints can reference it.
@@ -54,7 +54,7 @@ def _safe_filename(title: str | None, fallback: str, ext: str) -> str:
 
 
 def _content_to_bytes(content: Any, fmt: str) -> bytes:
-    """Normalise skill output data into bytes. Skills vary:
+    """Normalise tool output data into bytes. Tools vary:
     - html / markdown → str
     - docx / pptx     → bytes (already binary)
     """
@@ -76,7 +76,7 @@ async def persist_artifact(
     *,
     session_id: str,
     task_id: str | None,
-    skill_id: str | None,
+    tool_id: str | None,
     fmt: str,
     title: str | None,
     content: Any,
@@ -97,7 +97,7 @@ async def persist_artifact(
         logger.exception("report dir create failed: %s", session_dir)
         return None
 
-    filename = _safe_filename(title, task_id or skill_id or artifact_id, ext)
+    filename = _safe_filename(title, task_id or tool_id or artifact_id, ext)
     # Prefix with artifact id to avoid duplicate-name collisions across turns.
     fs_path = session_dir / f"{artifact_id[:8]}_{filename}"
     raw_bytes = _content_to_bytes(content, fmt_norm)
@@ -114,10 +114,10 @@ async def persist_artifact(
         text(
             """
             INSERT INTO report_artifacts
-                (id, session_id, task_id, skill_id, format, title,
+                (id, session_id, task_id, tool_id, format, title,
                  file_path, size_bytes, status, meta)
             VALUES
-                (:id, :sid, :tid, :skill, :fmt, :title,
+                (:id, :sid, :tid, :tool, :fmt, :title,
                  :path, :size, 'ready', :meta)
             """
         ),
@@ -125,7 +125,7 @@ async def persist_artifact(
             "id": artifact_id,
             "sid": session_id,
             "tid": task_id,
-            "skill": skill_id,
+            "tool": tool_id,
             "fmt": fmt_norm,
             "title": (title or "")[:255] if title else None,
             "path": rel_path,
@@ -139,7 +139,7 @@ async def persist_artifact(
         "id": artifact_id,
         "session_id": session_id,
         "task_id": task_id,
-        "skill_id": skill_id,
+        "tool_id": tool_id,
         "format": fmt_norm,
         "title": title,
         "file_path": rel_path,
@@ -154,7 +154,7 @@ async def list_artifacts(
 ) -> list[dict[str, Any]]:
     rows = await db.execute(
         text(
-            "SELECT id, session_id, task_id, skill_id, format, title, "
+            "SELECT id, session_id, task_id, tool_id, format, title, "
             "file_path, size_bytes, status, meta, created_at "
             "FROM report_artifacts WHERE session_id = :sid "
             "ORDER BY created_at ASC"
@@ -174,7 +174,7 @@ async def list_artifacts(
                 "id": r[0],
                 "session_id": r[1],
                 "task_id": r[2],
-                "skill_id": r[3],
+                "tool_id": r[3],
                 "format": r[4],
                 "title": r[5],
                 "file_path": r[6],
@@ -192,7 +192,7 @@ async def get_artifact(
 ) -> Optional[dict[str, Any]]:
     rows = await db.execute(
         text(
-            "SELECT id, session_id, task_id, skill_id, format, title, "
+            "SELECT id, session_id, task_id, tool_id, format, title, "
             "file_path, size_bytes, status, meta, created_at "
             "FROM report_artifacts WHERE id = :aid"
         ),
@@ -211,7 +211,7 @@ async def get_artifact(
         "id": row[0],
         "session_id": row[1],
         "task_id": row[2],
-        "skill_id": row[3],
+        "tool_id": row[3],
         "format": row[4],
         "title": row[5],
         "file_path": row[6],
@@ -238,7 +238,7 @@ def ensure_reports_dir() -> Path:
 # ── Phase 5.7: conversion context ──────────────────────────────
 #
 # For on-demand DOCX / PPTX generation we pickle the execution context
-# + task params that produced the HTML report, so the rendering skill
+# + task params that produced the HTML report, so the rendering tool
 # can be re-invoked later without re-running the whole graph.
 
 def _context_dir() -> Path:

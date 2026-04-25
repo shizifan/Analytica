@@ -55,7 +55,7 @@ export function FileResultCard({ primary }: Props) {
   if (size) metaBits.push(size);
   const duration = durationLabel(primary.duration_ms);
   if (duration) metaBits.push(duration);
-  if (primary.skill) metaBits.push(primary.skill);
+  if (primary.tool) metaBits.push(primary.tool);
 
   const downloadUrl = artifactId ? `/analytica/api/reports/${artifactId}/download` : null;
   const previewUrl = artifactId ? `/analytica/api/reports/${artifactId}/preview` : null;

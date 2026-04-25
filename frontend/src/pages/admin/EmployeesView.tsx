@@ -108,7 +108,7 @@ export function EmployeesView() {
                   </td>
                   <td className="num mono">v{emp.version}</td>
                   <td className="num">{emp.endpoints_count ?? '—'}</td>
-                  <td className="num">{emp.skills_count ?? '—'}</td>
+                  <td className="num">{emp.tools_count ?? '—'}</td>
                   <td className="num">{emp.faqs_count ?? '—'}</td>
                 </tr>
               ))}

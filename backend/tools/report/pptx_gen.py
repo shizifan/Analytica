@@ -20,8 +20,8 @@ from typing import Any
 from pptx import Presentation
 from pptx.util import Inches
 
-from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
-from backend.tools.registry import register_skill
+from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
+from backend.tools.registry import register_tool
 from backend.tools.report._content_collector import (
     collect_and_associate,
     NarrativeItem, StatsTableItem, GrowthItem,
@@ -141,12 +141,12 @@ def _build_pptx_deterministic(prs: Presentation, report: ReportContent) -> None:
 # Skill
 # ---------------------------------------------------------------------------
 
-@register_skill("tool_report_pptx", SkillCategory.REPORT, "PPTX 报告生成（封面/目录/图表/总结）",
+@register_tool("tool_report_pptx", ToolCategory.REPORT, "PPTX 报告生成（封面/目录/图表/总结）",
                 input_spec="report_metadata + report_structure + 上游数据/图表引用",
                 output_spec="PPTX 文件字节")
-class PptxReportSkill(BaseSkill):
+class PptxReportTool(BaseTool):
 
-    async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
+    async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         try:
             intent = inp.params.get("intent", "")
             task_id = inp.params.get("__task_id__", "")
@@ -177,8 +177,8 @@ class PptxReportSkill(BaseSkill):
                         "PPTX generated via PptxGenJS: %d bytes, %d slides, %d sections",
                         len(pptx_bytes), _slide_count, len(report.sections),
                     )
-                    return SkillOutput(
-                        skill_id=self.skill_id,
+                    return ToolOutput(
+                        tool_id=self.tool_id,
                         status="success",
                         output_type="file",
                         data=pptx_bytes,
@@ -208,8 +208,8 @@ class PptxReportSkill(BaseSkill):
             prs.save(buffer)
             pptx_bytes = buffer.getvalue()
 
-            return SkillOutput(
-                skill_id=self.skill_id,
+            return ToolOutput(
+                tool_id=self.tool_id,
                 status="success",
                 output_type="file",
                 data=pptx_bytes,

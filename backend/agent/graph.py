@@ -208,7 +208,7 @@ async def execution_node(state: AgentState) -> AgentState:
 
 
 async def reflection_node(state: AgentState) -> AgentState:
-    """Reflection node: extract preferences, templates, and skill feedback."""
+    """Reflection node: extract preferences, templates, and tool feedback."""
     from backend.agent.reflection import reflection_node as _reflect_node
     return await _reflect_node(state)
 
@@ -349,7 +349,7 @@ def _summarize_node_exit(
         return {
             "preferences": len(rs.get("user_preferences") or []),
             "templates": 1 if rs.get("analysis_template") else 0,
-            "skill_feedback": len(rs.get("skill_feedback") or []),
+            "tool_feedback": len(rs.get("tool_feedback") or []),
         }
 
     return None

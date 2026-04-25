@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from backend.skills.visualization._config_parser import (
+from backend.tools.visualization._config_parser import (
     apply_row_filter,
     parse_chart_params,
 )
@@ -11,7 +11,7 @@ from backend.skills.visualization._config_parser import (
 
 def test_filter_coerces_string_to_empty_dict():
     """Bug 2026-04-21: LLM generated ``"filter": "port=全港"`` (a string)
-    which crashed the line chart skill with
+    which crashed the line chart tool with
     ``'str' object has no attribute 'items'``."""
     parsed = parse_chart_params({
         "config": {"filter": "port=全港"},
@@ -20,7 +20,7 @@ def test_filter_coerces_string_to_empty_dict():
 
 
 def test_apply_row_filter_ignores_string_input():
-    """Defense in depth — skills may bypass parse_chart_params."""
+    """Defense in depth — tools may bypass parse_chart_params."""
     df = pd.DataFrame({"a": [1, 2, 3]})
     # String input must not crash — just return df unchanged.
     result = apply_row_filter(df, "port=全港")

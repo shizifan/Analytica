@@ -3,16 +3,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
-from backend.tools.registry import register_skill
+from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
+from backend.tools.registry import register_tool
 
 
-@register_skill("tool_dashboard", SkillCategory.VISUALIZATION, "仪表盘（多图表组合 HTML）",
+@register_tool("tool_dashboard", ToolCategory.VISUALIZATION, "仪表盘（多图表组合 HTML）",
                 input_spec="chart_refs + title",
                 output_spec="组合 HTML 页面")
-class DashboardSkill(BaseSkill):
+class DashboardTool(BaseTool):
 
-    async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
+    async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         params = inp.params
         chart_refs = params.get("chart_refs", [])
         title = params.get("title", "数据仪表盘")
@@ -39,8 +39,8 @@ h1{{color:#1E3A5F;text-align:center;}}.chart-container{{max-width:1200px;margin:
 {''.join(charts_html) if charts_html else '<p>暂无图表数据</p>'}
 </div></body></html>"""
 
-        return SkillOutput(
-            skill_id=self.skill_id,
+        return ToolOutput(
+            tool_id=self.tool_id,
             status="success",
             output_type="file",
             data=html,

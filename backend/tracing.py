@@ -1,7 +1,7 @@
 """Lightweight span instrumentation for API and LLM call tracing.
 
 Spans are emitted via an async callable (span_emit) that is created per-task
-in execution.py and threaded through SkillInput. Each span is:
+in execution.py and threaded through ToolInput. Each span is:
   - broadcast over WebSocket as {"event": "trace_span", "span": {...}}
   - persisted to thinking_events with kind="span" by main.py's _ws_callback
 

@@ -23,7 +23,7 @@ def load_template(employee_id: str) -> AnalysisPlan:
         TaskItem(
             task_id=t["task_id"], type=t["type"], name=t["name"],
             description=t.get("description", ""), depends_on=t.get("depends_on", []),
-            skill=t["skill"], params=t.get("params", {}),
+            tool=t["tool"], params=t.get("params", {}),
             estimated_seconds=t.get("estimated_seconds", 10),
             status=t.get("status", "pending"), output_ref=t.get("output_ref", ""),
         )
@@ -60,7 +60,7 @@ def get_template_skeleton(employee_id: str) -> str:
         deps = ", ".join(t.get("depends_on", [])) or "—"
         ep = t.get("params", {}).get("endpoint_id", "")
         lines.append(
-            f"  {t['task_id']} | {t['type']:12s} | {t['skill']:25s} | [{deps}] | {t['name']}"
+            f"  {t['task_id']} | {t['type']:12s} | {t['tool']:25s} | [{deps}] | {t['name']}"
             + (f" (API:{ep})" if ep else "")
         )
     if sections:

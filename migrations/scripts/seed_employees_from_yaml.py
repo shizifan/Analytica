@@ -128,7 +128,7 @@ def _build_row(
         "status": "active",
         "domains": yaml_data.get("domains") or [],
         "endpoints": yaml_data.get("endpoints") or [],
-        "skills": yaml_data.get("skills") or [],
+        "tools": yaml_data.get("tools") or [],
         "faqs": faqs,
         "perception": yaml_data.get("perception"),
         "planning": yaml_data.get("planning"),

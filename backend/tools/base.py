@@ -1,7 +1,7 @@
-"""Skill base classes and unified output model.
+"""Tool base classes and unified output model.
 
-Defines BaseSkill (abstract), SkillInput, SkillOutput, SkillCategory,
-ErrorCategory enum, classify_exception helper, and the async skill_executor
+Defines BaseTool (abstract), ToolInput, ToolOutput, ToolCategory,
+ErrorCategory enum, classify_exception helper, and the async tool_executor
 with timeout support.
 """
 from __future__ import annotations
@@ -19,7 +19,7 @@ from pydantic import BaseModel
 logger = logging.getLogger("analytica.tools")
 
 
-class SkillCategory(str, Enum):
+class ToolCategory(str, Enum):
     DATA_FETCH = "data_fetch"
     ANALYSIS = "analysis"
     VISUALIZATION = "visualization"
@@ -30,7 +30,7 @@ class SkillCategory(str, Enum):
 class ErrorCategory(str, Enum):
     """Normalized error categories used by the retry policy and observability.
 
-    A string enum so SkillOutput.error_category round-trips cleanly through
+    A string enum so ToolOutput.error_category round-trips cleanly through
     JSON/pydantic without custom encoders.
     """
     TIMEOUT       = "TIMEOUT"         # asyncio/httpx/openai timeout (incl LLM)
@@ -98,14 +98,14 @@ def classify_exception(e: BaseException) -> ErrorCategory:
     return ErrorCategory.UNKNOWN
 
 
-class SkillInput(BaseModel):
+class ToolInput(BaseModel):
     params: dict[str, Any] = {}
     context_refs: list[str] = []
     span_emit: Any = None  # Callable[[dict], Awaitable[None]] | None
 
 
-class SkillOutput(BaseModel):
-    skill_id: str
+class ToolOutput(BaseModel):
+    tool_id: str
     status: str  # success | partial | failed | skipped
     output_type: str  # dataframe | chart | text | file | json
     data: Any = None
@@ -113,7 +113,7 @@ class SkillOutput(BaseModel):
     metadata: dict[str, Any] = {}
     error_message: Optional[str] = None
     # ── Observability fields (batch 2) ─────────────────────
-    # These are populated by skill_executor (elapsed) and execute_plan
+    # These are populated by tool_executor (elapsed) and execute_plan
     # (attempt_count, retry metadata). llm_tokens is reserved for batch 3
     # (unified LLM wrapper).
     elapsed_seconds: float = 0.0
@@ -124,21 +124,21 @@ class SkillOutput(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
 
-class BaseSkill(ABC):
-    skill_id: str = ""
-    category: SkillCategory = SkillCategory.DATA_FETCH
+class BaseTool(ABC):
+    tool_id: str = ""
+    category: ToolCategory = ToolCategory.DATA_FETCH
     description: str = ""
     input_spec: str = ""    # 供规划层 prompt 使用，如 "endpoint_id + 查询参数"
     output_spec: str = ""   # 供规划层 prompt 使用，如 "DataFrame (JSON 数据)"
     planner_visible: bool = True  # 是否出现在规划层 prompt 中
 
     @abstractmethod
-    async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
+    async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         ...
 
-    def _fail(self, message: str) -> SkillOutput:
-        return SkillOutput(
-            skill_id=self.skill_id,
+    def _fail(self, message: str) -> ToolOutput:
+        return ToolOutput(
+            tool_id=self.tool_id,
             status="failed",
             output_type="json",
             data=None,
@@ -146,34 +146,34 @@ class BaseSkill(ABC):
         )
 
 
-async def skill_executor(
-    skill: BaseSkill,
-    inp: SkillInput,
+async def tool_executor(
+    tool: BaseTool,
+    inp: ToolInput,
     context: dict[str, Any],
     timeout_seconds: float = 60.0,
-) -> SkillOutput:
-    """Execute a skill with timeout. Always returns a SkillOutput with
+) -> ToolOutput:
+    """Execute a tool with timeout. Always returns a ToolOutput with
     elapsed_seconds populated; on failure also populates error_category."""
     start = time.monotonic()
     try:
         result = await asyncio.wait_for(
-            skill.execute(inp, context),
+            tool.execute(inp, context),
             timeout=timeout_seconds,
         )
         elapsed = time.monotonic() - start
-        # Preserve any elapsed already set by the skill (rare); otherwise record
+        # Preserve any elapsed already set by the tool (rare); otherwise record
         if not result.elapsed_seconds:
             result.elapsed_seconds = elapsed
         logger.info(
-            "Skill %s completed in %.2fs with status=%s",
-            skill.skill_id, elapsed, result.status,
+            "Tool %s completed in %.2fs with status=%s",
+            tool.tool_id, elapsed, result.status,
         )
         return result
     except asyncio.TimeoutError:
         elapsed = time.monotonic() - start
-        logger.warning("Skill %s timed out after %.2fs", skill.skill_id, elapsed)
-        return SkillOutput(
-            skill_id=skill.skill_id,
+        logger.warning("Tool %s timed out after %.2fs", tool.tool_id, elapsed)
+        return ToolOutput(
+            tool_id=tool.tool_id,
             status="failed",
             output_type="json",
             data=None,
@@ -185,11 +185,11 @@ async def skill_executor(
         elapsed = time.monotonic() - start
         category = classify_exception(e)
         logger.exception(
-            "Skill %s failed after %.2fs [%s]: %s",
-            skill.skill_id, elapsed, category.value, e,
+            "Tool %s failed after %.2fs [%s]: %s",
+            tool.tool_id, elapsed, category.value, e,
         )
-        return SkillOutput(
-            skill_id=skill.skill_id,
+        return ToolOutput(
+            tool_id=tool.tool_id,
             status="failed",
             output_type="json",
             data=None,

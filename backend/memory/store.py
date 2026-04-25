@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 class MemoryStore:
     """Handles MySQL operations for user preferences, slot history,
-    analysis templates, and skill notes.
+    analysis templates, and tool notes.
 
     Phase 4: Full CRUD with three-level fallback template query,
     correction rate with lookback, and upsert semantics.
@@ -207,18 +207,18 @@ class MemoryStore:
 
     # ── Skill Notes ──────────────────────────────────────────
 
-    async def upsert_skill_note(
+    async def upsert_tool_note(
         self,
         user_id: str,
-        skill_id: str,
+        tool_id: str,
         notes: str,
         performance_score: float | None = None,
     ) -> None:
-        """Insert or update a skill note (relies on UNIQUE(skill_id, user_id))."""
+        """Insert or update a tool note (relies on UNIQUE(tool_id, user_id))."""
         await self.session.execute(
             text("""
-                INSERT INTO skill_notes (id, skill_id, user_id, notes, performance_score, updated_at)
-                VALUES (:id, :skill, :uid, :notes, :score, NOW())
+                INSERT INTO tool_notes (id, tool_id, user_id, notes, performance_score, updated_at)
+                VALUES (:id, :tool, :uid, :notes, :score, NOW())
                 ON DUPLICATE KEY UPDATE
                     notes = VALUES(notes),
                     performance_score = VALUES(performance_score),
@@ -226,7 +226,7 @@ class MemoryStore:
             """),
             {
                 "id": str(uuid4()),
-                "skill": skill_id,
+                "tool": tool_id,
                 "uid": user_id,
                 "notes": notes,
                 "score": performance_score,
@@ -234,10 +234,10 @@ class MemoryStore:
         )
         await self.session.commit()
 
-    async def get_skill_notes(self, user_id: str) -> dict[str, dict]:
-        """Get all skill notes for a user, keyed by skill_id."""
+    async def get_tool_notes(self, user_id: str) -> dict[str, dict]:
+        """Get all tool notes for a user, keyed by tool_id."""
         result = await self.session.execute(
-            text("SELECT skill_id, notes, performance_score FROM skill_notes WHERE user_id = :uid"),
+            text("SELECT tool_id, notes, performance_score FROM tool_notes WHERE user_id = :uid"),
             {"uid": user_id},
         )
         notes: dict[str, dict] = {}

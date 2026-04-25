@@ -85,9 +85,9 @@ REFLECTION_PROMPT_B = """你是一个数据分析技能评审专家。根据本�
 
 【输出格式】（严格 JSON，无 markdown 包裹，无 <think> 块）
 {{
-  "skill_feedback": {{
-    "well_performed": ["<skill_id>", ...],
-    "issues_found": [{{"skill": "<skill_id>", "issue": "<问题描述>"}}],
+  "tool_feedback": {{
+    "well_performed": ["<tool_id>", ...],
+    "issues_found": [{{"tool": "<tool_id>", "issue": "<问题描述>"}}],
     "suggestions": ["<改进建议>"]
   }}
 }}
@@ -185,14 +185,14 @@ def _build_task_list(state: dict) -> str:
         if isinstance(t, dict):
             tid = t.get("task_id", "?")
             name = t.get("name", "")
-            skill = t.get("skill", "")
+            tool = t.get("tool", "")
             ttype = t.get("type", "")
         else:
             tid = getattr(t, "task_id", "?")
             name = getattr(t, "name", "")
-            skill = getattr(t, "skill", "")
+            tool = getattr(t, "tool", "")
             ttype = getattr(t, "type", "")
-        lines.append(f"- {tid}: {name} (skill={skill}, type={ttype})")
+        lines.append(f"- {tid}: {name} (tool={tool}, type={ttype})")
     return "\n".join(lines) if lines else "（无任务）"
 
 
@@ -217,15 +217,15 @@ def _build_task_statuses_json(state: dict) -> str:
     for t in tasks:
         if isinstance(t, dict):
             tid = t.get("task_id", "?")
-            skill = t.get("skill", "")
+            tool = t.get("tool", "")
             est = t.get("estimated_seconds", 0)
         else:
             tid = getattr(t, "task_id", "?")
-            skill = getattr(t, "skill", "")
+            tool = getattr(t, "tool", "")
             est = getattr(t, "estimated_seconds", 0)
         status_list.append({
             "task_id": tid,
-            "skill": skill,
+            "tool": tool,
             "status": task_statuses.get(tid, "unknown"),
             "estimated_seconds": est,
         })
@@ -293,7 +293,7 @@ async def call_llm_a(llm: Any, state: dict, max_retries: int = 2) -> Optional[di
 
 
 async def call_llm_b(llm: Any, state: dict, max_retries: int = 2) -> Optional[dict]:
-    """Call LLM for skill feedback extraction (Call B).
+    """Call LLM for tool feedback extraction (Call B).
 
     Retries on invalid JSON up to max_retries times.
     """
@@ -386,8 +386,8 @@ def format_reflection_card(reflection_summary: dict) -> str:
         lines.append("**技能反馈：** 技能评审暂时不可用")
         lines.append("")
 
-    # Skill feedback section
-    feedback = reflection_summary.get("skill_feedback", {})
+    # Tool feedback section
+    feedback = reflection_summary.get("tool_feedback", {})
     if feedback:
         lines.append("**本次 AI 质量反馈：**")
         well = feedback.get("well_performed", [])
@@ -396,7 +396,7 @@ def format_reflection_card(reflection_summary: dict) -> str:
         issues = feedback.get("issues_found", [])
         for item in issues:
             if isinstance(item, dict):
-                lines.append(f"- WARN {item.get('skill', '?')}：{item.get('issue', '')}")
+                lines.append(f"- WARN {item.get('tool', '?')}：{item.get('issue', '')}")
             else:
                 lines.append(f"- WARN {item}")
         suggestions = feedback.get("suggestions", [])
@@ -433,7 +433,7 @@ async def reflection_node(state: dict) -> dict:
 
     Two parallel LLM calls:
     - Call A: preferences + templates + slot quality review
-    - Call B: skill feedback
+    - Call B: tool feedback
 
     Results are merged into reflection_summary and formatted as a
     Markdown reflection card. The node then pauses for user confirmation
@@ -466,7 +466,7 @@ async def reflection_node(state: dict) -> dict:
                 "slots_corrected": [],
                 "slots_corrected_detail": {},
             },
-            "skill_feedback": {},
+            "tool_feedback": {},
             "_llm_a_failed": True,
             "_llm_b_failed": True,
         }
@@ -515,9 +515,9 @@ async def reflection_node(state: dict) -> dict:
         reflection_summary["_llm_a_failed"] = True
 
     if result_b is not None:
-        reflection_summary["skill_feedback"] = result_b.get("skill_feedback", {})
+        reflection_summary["tool_feedback"] = result_b.get("tool_feedback", {})
     else:
-        reflection_summary["skill_feedback"] = {}
+        reflection_summary["tool_feedback"] = {}
         reflection_summary["_llm_b_failed"] = True
 
     state["reflection_summary"] = reflection_summary
@@ -538,7 +538,7 @@ async def save_reflection(
     reflection_summary: dict,
     save_preferences: bool = True,
     save_template: bool = True,
-    save_skill_notes: bool = True,
+    save_tool_notes: bool = True,
     user_id: str | None = None,
     db_session: Any = None,
 ) -> dict[str, Any]:
@@ -554,12 +554,12 @@ async def save_reflection(
         async with factory() as session:
             return await _do_save(
                 session, session_id, reflection_summary,
-                save_preferences, save_template, save_skill_notes, user_id,
+                save_preferences, save_template, save_tool_notes, user_id,
             )
     else:
         return await _do_save(
             db_session, session_id, reflection_summary,
-            save_preferences, save_template, save_skill_notes, user_id,
+            save_preferences, save_template, save_tool_notes, user_id,
         )
 
 
@@ -569,14 +569,14 @@ async def _do_save(
     reflection_summary: dict,
     save_preferences: bool,
     save_template: bool,
-    save_skill_notes: bool,
+    save_tool_notes: bool,
     user_id: str | None,
 ) -> dict[str, Any]:
     """Internal save implementation."""
     from backend.memory.store import MemoryStore
 
     store = MemoryStore(session=db_session)
-    saved = {"preferences": 0, "template": False, "skill_notes": 0, "slots_corrected": 0}
+    saved = {"preferences": 0, "template": False, "tool_notes": 0, "slots_corrected": 0}
 
     # Determine user_id from session if not provided
     if user_id is None:
@@ -610,21 +610,21 @@ async def _do_save(
             )
             saved["template"] = True
 
-    # Save skill notes
-    if save_skill_notes:
-        feedback = reflection_summary.get("skill_feedback", {})
+    # Save tool notes
+    if save_tool_notes:
+        feedback = reflection_summary.get("tool_feedback", {})
         well = feedback.get("well_performed", [])
-        for skill_id in well:
-            await store.upsert_skill_note(user_id, skill_id, "表现良好", 1.0)
-            saved["skill_notes"] += 1
+        for tool_id in well:
+            await store.upsert_tool_note(user_id, tool_id, "表现良好", 1.0)
+            saved["tool_notes"] += 1
         issues = feedback.get("issues_found", [])
         for item in issues:
             if isinstance(item, dict):
-                sid = item.get("skill", "")
+                sid = item.get("tool", "")
                 issue = item.get("issue", "")
                 if sid:
-                    await store.upsert_skill_note(user_id, sid, f"问题：{issue}", 0.5)
-                    saved["skill_notes"] += 1
+                    await store.upsert_tool_note(user_id, sid, f"问题：{issue}", 0.5)
+                    saved["tool_notes"] += 1
 
     # Mark corrected slots
     slot_review = reflection_summary.get("slot_quality_review", {})

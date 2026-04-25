@@ -28,13 +28,13 @@ import pytest
 
 from backend.agent.execution import execute_plan
 from backend.models.schemas import TaskItem
-from backend.skills.loader import load_all_skills
+from backend.tools.loader import load_all_tools
 
 # 导入 Mock LLM 模块
 from tests.mock_llm_responses import mock_invoke_llm_async
 
 # 确保所有技能已注册
-load_all_skills()
+load_all_tools()
 
 logger = logging.getLogger("test.json_template_execution.mock")
 
@@ -131,7 +131,7 @@ def json_to_task_items(template: dict[str, Any]) -> list[TaskItem]:
             task_id=task_def["task_id"],
             type=task_def["type"],
             name=task_def["name"],
-            skill=task_def["skill"],
+            tool=task_def["tool"],
             params=params,
             depends_on=task_def.get("depends_on", []),
             estimated_seconds=task_def.get("estimated_seconds", 10),
@@ -176,7 +176,7 @@ def mock_api_gateway():
                     return await mc.post(parsed.path, **kwargs)
             return await super().post(url, **kwargs)
 
-    with patch("backend.skills.data.api_fetch.httpx.AsyncClient", _PatchedAsyncClient):
+    with patch("backend.tools.data.api_fetch.httpx.AsyncClient", _PatchedAsyncClient):
         yield
 
 
@@ -187,7 +187,7 @@ def mock_api_gateway():
 @contextmanager
 def mock_llm():
     """替换 invoke_llm 为 Mock 版本。"""
-    with patch("backend.skills._llm.invoke_llm", mock_invoke_llm_async):
+    with patch("backend.tools._llm.invoke_llm", mock_invoke_llm_async):
         yield
 
 
@@ -195,56 +195,56 @@ def mock_llm():
 # 员工技能白名单
 # ════════════════════════════════════════════════════════════════
 
-THROUGHPUT_ANALYST_SKILLS = frozenset([
-    "skill_api_fetch",
-    "skill_chart_line",
-    "skill_chart_bar",
-    "skill_chart_pie",
-    "skill_chart_waterfall",
-    "skill_desc_analysis",
-    "skill_attribution",
-    "skill_summary_gen",
-    "skill_report_html",
-    "skill_report_markdown",
-    "skill_report_docx",
-    "skill_report_pptx",
-    "skill_prediction",
+THROUGHPUT_ANALYST_TOOLS = frozenset([
+    "tool_api_fetch",
+    "tool_chart_line",
+    "tool_chart_bar",
+    "tool_chart_pie",
+    "tool_chart_waterfall",
+    "tool_desc_analysis",
+    "tool_attribution",
+    "tool_summary_gen",
+    "tool_report_html",
+    "tool_report_markdown",
+    "tool_report_docx",
+    "tool_report_pptx",
+    "tool_prediction",
 ])
 
-CUSTOMER_INSIGHT_SKILLS = frozenset([
-    "skill_api_fetch",
-    "skill_chart_line",
-    "skill_chart_bar",
-    "skill_chart_pie",
-    "skill_chart_waterfall",
-    "skill_desc_analysis",
-    "skill_attribution",
-    "skill_summary_gen",
-    "skill_report_html",
-    "skill_report_markdown",
-    "skill_report_docx",
-    "skill_report_pptx",
+CUSTOMER_INSIGHT_TOOLS = frozenset([
+    "tool_api_fetch",
+    "tool_chart_line",
+    "tool_chart_bar",
+    "tool_chart_pie",
+    "tool_chart_waterfall",
+    "tool_desc_analysis",
+    "tool_attribution",
+    "tool_summary_gen",
+    "tool_report_html",
+    "tool_report_markdown",
+    "tool_report_docx",
+    "tool_report_pptx",
 ])
 
-ASSET_INVESTMENT_SKILLS = frozenset([
-    "skill_api_fetch",
-    "skill_chart_line",
-    "skill_chart_bar",
-    "skill_chart_pie",
-    "skill_chart_waterfall",
-    "skill_desc_analysis",
-    "skill_attribution",
-    "skill_summary_gen",
-    "skill_report_html",
-    "skill_report_markdown",
-    "skill_report_docx",
-    "skill_report_pptx",
+ASSET_INVESTMENT_TOOLS = frozenset([
+    "tool_api_fetch",
+    "tool_chart_line",
+    "tool_chart_bar",
+    "tool_chart_pie",
+    "tool_chart_waterfall",
+    "tool_desc_analysis",
+    "tool_attribution",
+    "tool_summary_gen",
+    "tool_report_html",
+    "tool_report_markdown",
+    "tool_report_docx",
+    "tool_report_pptx",
 ])
 
-EMPLOYEE_SKILLS_MAP = {
-    "throughput_analyst": THROUGHPUT_ANALYST_SKILLS,
-    "customer_insight": CUSTOMER_INSIGHT_SKILLS,
-    "asset_investment": ASSET_INVESTMENT_SKILLS,
+EMPLOYEE_TOOLS_MAP = {
+    "throughput_analyst": THROUGHPUT_ANALYST_TOOLS,
+    "customer_insight": CUSTOMER_INSIGHT_TOOLS,
+    "asset_investment": ASSET_INVESTMENT_TOOLS,
 }
 
 
@@ -254,7 +254,7 @@ EMPLOYEE_SKILLS_MAP = {
 
 async def execute_template_plan(
     template: dict[str, Any],
-    allowed_skills: frozenset[str],
+    allowed_tools: frozenset[str],
     max_tasks: int | None = None,
     template_name: str | None = None,
 ) -> tuple[dict[str, str], dict[str, Any]]:
@@ -270,7 +270,7 @@ async def execute_template_plan(
 
     with mock_api_gateway(), mock_llm():
         statuses, context, _ = await execute_plan(
-            task_items, allowed_skills=allowed_skills, report_dir=report_dir,
+            task_items, allowed_tools=allowed_tools, report_dir=report_dir,
         )
 
     return statuses, context
@@ -283,24 +283,24 @@ async def generate_report(
     section_names: list[str] | None = None,
 ) -> tuple[Any, str]:
     """生成指定格式的报告。"""
-    from backend.skills.registry import SkillRegistry
-    from backend.skills.base import SkillInput
+    from backend.tools.registry import ToolRegistry
+    from backend.tools.base import ToolInput
 
-    skill_map = {
-        "markdown": "skill_report_markdown",
-        "html": "skill_report_html",
-        "docx": "skill_report_docx",
-        "pptx": "skill_report_pptx",
+    tool_map = {
+        "markdown": "tool_report_markdown",
+        "html": "tool_report_html",
+        "docx": "tool_report_docx",
+        "pptx": "tool_report_pptx",
     }
 
-    skill_id = skill_map.get(report_format)
-    if not skill_id:
+    tool_id = tool_map.get(report_format)
+    if not tool_id:
         return None, f"Unknown format: {report_format}"
 
-    registry = SkillRegistry.get_instance()
-    skill = registry.get_skill(skill_id)
-    if not skill:
-        return None, f"Skill not registered: {skill_id}"
+    registry = ToolRegistry.get_instance()
+    tool = registry.get_tool(tool_id)
+    if not tool:
+        return None, f"Tool not registered: {tool_id}"
 
     meta = template.get("_meta", {})
     title = template.get("title", "分析报告")
@@ -342,11 +342,11 @@ async def generate_report(
         "_template_meta": template_meta,
     }
 
-    inp = SkillInput(params=params, context_refs=context_refs)
+    inp = ToolInput(params=params, context_refs=context_refs)
 
     try:
         with mock_llm():
-            output = await skill.execute(inp, context)
+            output = await tool.execute(inp, context)
         return output, ""
     except Exception as e:
         return None, str(e)
@@ -394,7 +394,7 @@ class TestTemplateLoading:
             assert task.task_id
             assert task.type
             assert task.name
-            assert task.skill
+            assert task.tool
 
 
 # ════════════════════════════════════════════════════════════════
@@ -414,13 +414,13 @@ class TestTemplateDataFetch:
         """验证各模板的数据获取任务能正确执行。"""
         template = load_template(template_name)
         employee_id = template["_meta"]["employee_id"]
-        skills = EMPLOYEE_SKILLS_MAP.get(employee_id, THROUGHPUT_ANALYST_SKILLS)
+        tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
         data_fetch_tasks = [t for t in template["tasks"] if t["type"] == "data_fetch"]
         max_fetch = min(5, len(data_fetch_tasks))
 
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=max_fetch, template_name=template_name
+            template, tools, max_tasks=max_fetch, template_name=template_name
         )
 
         for i in range(max_fetch):
@@ -446,7 +446,7 @@ class TestTemplateAnalysis:
         template = load_template("throughput_analyst_monthly_review")
 
         statuses, context = await execute_template_plan(
-            template, THROUGHPUT_ANALYST_SKILLS, max_tasks=10,
+            template, THROUGHPUT_ANALYST_TOOLS, max_tasks=10,
             template_name="throughput_analyst_monthly_review",
         )
 
@@ -461,7 +461,7 @@ class TestTemplateAnalysis:
         template = load_template("asset_investment_equipment_ops")
 
         statuses, context = await execute_template_plan(
-            template, ASSET_INVESTMENT_SKILLS, max_tasks=15,
+            template, ASSET_INVESTMENT_TOOLS, max_tasks=15,
             template_name="asset_investment_equipment_ops",
         )
 
@@ -486,10 +486,10 @@ class TestReportGenerationMarkdown:
     async def test_markdown_report_generation(self, template_name: str, employee_id: str):
         """验证各模板能正确生成 Markdown 报告。"""
         template = load_template(template_name)
-        skills = EMPLOYEE_SKILLS_MAP.get(employee_id, THROUGHPUT_ANALYST_SKILLS)
+        tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=18
+            template, tools, max_tasks=18
         )
 
         successful_refs = [tid for tid, status in statuses.items() if status == "done"]
@@ -530,10 +530,10 @@ class TestReportGenerationHTML:
     async def test_html_report_generation(self, template_name: str, employee_id: str):
         """验证各模板能正确生成 HTML 报告。"""
         template = load_template(template_name)
-        skills = EMPLOYEE_SKILLS_MAP.get(employee_id, THROUGHPUT_ANALYST_SKILLS)
+        tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=18, template_name=template_name
+            template, tools, max_tasks=18, template_name=template_name
         )
 
         output, error = await generate_report(
@@ -572,10 +572,10 @@ class TestReportGenerationDOCX:
     async def test_docx_report_generation(self, template_name: str, employee_id: str):
         """验证各模板能正确生成 DOCX 报告。"""
         template = load_template(template_name)
-        skills = EMPLOYEE_SKILLS_MAP.get(employee_id, THROUGHPUT_ANALYST_SKILLS)
+        tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=18, template_name=template_name
+            template, tools, max_tasks=18, template_name=template_name
         )
 
         output, error = await generate_report(
@@ -614,10 +614,10 @@ class TestReportGenerationPPTX:
     async def test_pptx_report_generation(self, template_name: str, employee_id: str):
         """验证各模板能正确生成 PPTX 报告。"""
         template = load_template(template_name)
-        skills = EMPLOYEE_SKILLS_MAP.get(employee_id, THROUGHPUT_ANALYST_SKILLS)
+        tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=18, template_name=template_name
+            template, tools, max_tasks=18, template_name=template_name
         )
 
         output, error = await generate_report(
@@ -663,10 +663,10 @@ class TestFullReportPipeline:
     async def test_all_formats_generation(self, template_name: str, employee_id: str):
         """验证单个模板能生成所有四种格式报告。"""
         template = load_template(template_name)
-        skills = EMPLOYEE_SKILLS_MAP.get(employee_id, THROUGHPUT_ANALYST_SKILLS)
+        tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=18, template_name=template_name
+            template, tools, max_tasks=18, template_name=template_name
         )
 
         report_formats = ["markdown", "html", "docx", "pptx"]
@@ -709,7 +709,7 @@ class TestReportGenerationPerformance:
 
         start = time.time()
         statuses, context = await execute_template_plan(
-            template, THROUGHPUT_ANALYST_SKILLS, max_tasks=10,
+            template, THROUGHPUT_ANALYST_TOOLS, max_tasks=10,
             template_name="throughput_analyst_monthly_review",
         )
         execution_time = time.time() - start

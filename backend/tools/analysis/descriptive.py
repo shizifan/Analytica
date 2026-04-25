@@ -16,8 +16,8 @@ import pandas as pd
 
 from backend.tools._llm import compact_stats_dict, invoke_llm
 from backend.tools.analysis._column_selector import select_analysis_columns
-from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
-from backend.tools.registry import register_skill
+from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
+from backend.tools.registry import register_tool
 
 logger = logging.getLogger("analytica.tools.descriptive")
 
@@ -241,15 +241,15 @@ async def _generate_narrative(
 
 # ── Skill ──────────────────────────────────────────────────────────────────────
 
-@register_skill(
-    "tool_desc_analysis", SkillCategory.ANALYSIS,
+@register_tool(
+    "tool_desc_analysis", ToolCategory.ANALYSIS,
     "描述性统计分析（均值、同比、环比、占比）",
     input_spec="data_ref + intent",
     output_spec="统计摘要 JSON（含同比环比增幅）",
 )
-class DescriptiveAnalysisSkill(BaseSkill):
+class DescriptiveAnalysisTool(BaseTool):
 
-    async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
+    async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         params = inp.params
         data_ref = params.get("data_ref")
         intent = params.get("intent") or params.get("analysis_goal", "数据分析")
@@ -334,8 +334,8 @@ class DescriptiveAnalysisSkill(BaseSkill):
 
         status = "partial" if nar["error_category"] else "success"
 
-        return SkillOutput(
-            skill_id=self.skill_id,
+        return ToolOutput(
+            tool_id=self.tool_id,
             status=status,
             output_type="json",
             data={

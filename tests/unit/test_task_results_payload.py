@@ -5,10 +5,10 @@ import pandas as pd
 
 from backend.agent.execution import _build_task_results_payload
 from backend.models.schemas import TaskItem
-from backend.skills.base import SkillOutput
+from backend.tools.base import ToolOutput
 
 
-def _task(tid: str, skill: str, ttype: str, deps: list[str] | None = None,
+def _task(tid: str, tool: str, ttype: str, deps: list[str] | None = None,
           params: dict | None = None) -> TaskItem:
     return TaskItem(
         task_id=tid,
@@ -16,17 +16,17 @@ def _task(tid: str, skill: str, ttype: str, deps: list[str] | None = None,
         name=f"name-{tid}",
         description="",
         depends_on=deps or [],
-        skill=skill,
+        tool=tool,
         params=params or {},
         estimated_seconds=1,
     )
 
 
 def test_dataframe_becomes_table_with_full_rows_for_csv():
-    tasks = [_task("T001", "skill_api_fetch", "data_fetch", params={"endpoint_id": "getFoo"})]
+    tasks = [_task("T001", "tool_api_fetch", "data_fetch", params={"endpoint_id": "getFoo"})]
     df = pd.DataFrame({"dateMonth": ["2026-01", "2026-02"], "qty": [100.0, 200.5]})
-    out = SkillOutput(
-        skill_id="skill_api_fetch",
+    out = ToolOutput(
+        tool_id="tool_api_fetch",
         status="success",
         output_type="dataframe",
         data=df,
@@ -43,14 +43,14 @@ def test_dataframe_becomes_table_with_full_rows_for_csv():
 
 def test_chart_output_preserves_depends_on_and_option():
     tasks = [
-        _task("T001", "skill_api_fetch", "data_fetch"),
-        _task("T002", "skill_chart_line", "visualization", deps=["T001"]),
+        _task("T001", "tool_api_fetch", "data_fetch"),
+        _task("T002", "tool_chart_line", "visualization", deps=["T001"]),
     ]
     df = pd.DataFrame({"dateMonth": ["2026-01"], "qty": [100]})
     ctx = {
-        "T001": SkillOutput(skill_id="skill_api_fetch", status="success", output_type="dataframe", data=df),
-        "T002": SkillOutput(
-            skill_id="skill_chart_line",
+        "T001": ToolOutput(tool_id="tool_api_fetch", status="success", output_type="dataframe", data=df),
+        "T002": ToolOutput(
+            tool_id="tool_chart_line",
             status="success",
             output_type="chart",
             data={"title": {"text": "Trend"}, "series": [{"type": "line", "data": [100]}]},
@@ -65,13 +65,13 @@ def test_chart_output_preserves_depends_on_and_option():
 
 def test_text_and_json_narrative_become_text():
     tasks = [
-        _task("T001", "skill_desc_analysis", "analysis"),
-        _task("T002", "skill_attribution", "analysis"),
+        _task("T001", "tool_desc_analysis", "analysis"),
+        _task("T002", "tool_attribution", "analysis"),
     ]
     ctx = {
-        "T001": SkillOutput(skill_id="skill_desc_analysis", status="success", output_type="text", data="dataset mean 3123"),
-        "T002": SkillOutput(
-            skill_id="skill_attribution", status="success", output_type="json",
+        "T001": ToolOutput(tool_id="tool_desc_analysis", status="success", output_type="text", data="dataset mean 3123"),
+        "T002": ToolOutput(
+            tool_id="tool_attribution", status="success", output_type="json",
             data={"narrative": "因 A 增长 5% 贡献 60%", "raw": {"A": 5, "B": 2}},
         ),
     }
@@ -83,8 +83,8 @@ def test_text_and_json_narrative_become_text():
 
 
 def test_failed_and_skipped_tasks_filtered_out():
-    tasks = [_task("T001", "skill_api_fetch", "data_fetch")]
-    out = SkillOutput(skill_id="skill_api_fetch", status="failed", output_type="dataframe", data=None)
+    tasks = [_task("T001", "tool_api_fetch", "data_fetch")]
+    out = ToolOutput(tool_id="tool_api_fetch", status="failed", output_type="dataframe", data=None)
     payload = _build_task_results_payload(tasks, {"T001": out}, {"T001": "failed"})
     assert payload["tasks"] == []
 
@@ -94,17 +94,17 @@ def test_report_pipeline_hides_intermediate_tasks():
     payload must omit the upstream table / chart / text cards — all that
     info lives in the rendered report file."""
     tasks = [
-        _task("T001", "skill_api_fetch", "data_fetch"),
-        _task("T002", "skill_desc_analysis", "analysis", deps=["T001"]),
-        _task("T003", "skill_chart_line", "visualization", deps=["T001"]),
-        _task("T004", "skill_report_html", "report_gen", deps=["T001", "T002", "T003"]),
+        _task("T001", "tool_api_fetch", "data_fetch"),
+        _task("T002", "tool_desc_analysis", "analysis", deps=["T001"]),
+        _task("T003", "tool_chart_line", "visualization", deps=["T001"]),
+        _task("T004", "tool_report_html", "report_gen", deps=["T001", "T002", "T003"]),
     ]
     df = pd.DataFrame({"month": ["2026-01"], "qty": [100]})
     ctx = {
-        "T001": SkillOutput(skill_id="skill_api_fetch", status="success", output_type="dataframe", data=df),
-        "T002": SkillOutput(skill_id="skill_desc_analysis", status="success", output_type="text", data="均值 100"),
-        "T003": SkillOutput(skill_id="skill_chart_line", status="success", output_type="chart", data={"series": []}),
-        "T004": SkillOutput(skill_id="skill_report_html", status="success", output_type="file",
+        "T001": ToolOutput(tool_id="tool_api_fetch", status="success", output_type="dataframe", data=df),
+        "T002": ToolOutput(tool_id="tool_desc_analysis", status="success", output_type="text", data="均值 100"),
+        "T003": ToolOutput(tool_id="tool_chart_line", status="success", output_type="chart", data={"series": []}),
+        "T004": ToolOutput(tool_id="tool_report_html", status="success", output_type="file",
                             data="<html/>", metadata={"format": "html", "title": "Q1 报告"}),
     }
     statuses = {t.task_id: "done" for t in tasks}
@@ -122,13 +122,13 @@ def test_report_pipeline_hides_intermediate_tasks():
 def test_non_report_pipeline_keeps_all_entries():
     """Without any file output, the normal structured payload wins."""
     tasks = [
-        _task("T001", "skill_api_fetch", "data_fetch"),
-        _task("T002", "skill_chart_line", "visualization", deps=["T001"]),
+        _task("T001", "tool_api_fetch", "data_fetch"),
+        _task("T002", "tool_chart_line", "visualization", deps=["T001"]),
     ]
     df = pd.DataFrame({"month": ["2026-01"], "qty": [100]})
     ctx = {
-        "T001": SkillOutput(skill_id="skill_api_fetch", status="success", output_type="dataframe", data=df),
-        "T002": SkillOutput(skill_id="skill_chart_line", status="success", output_type="chart", data={"series": []}),
+        "T001": ToolOutput(tool_id="tool_api_fetch", status="success", output_type="dataframe", data=df),
+        "T002": ToolOutput(tool_id="tool_chart_line", status="success", output_type="chart", data={"series": []}),
     }
     statuses = {t.task_id: "done" for t in tasks}
     payload = _build_task_results_payload(tasks, ctx, statuses)
@@ -139,9 +139,9 @@ def test_non_report_pipeline_keeps_all_entries():
 def test_nulls_preserved_in_table_rows():
     """NaN in the DataFrame should serialize as JSON null (not 'NaN'
     string) so the frontend can render em-dash consistently."""
-    tasks = [_task("T001", "skill_api_fetch", "data_fetch")]
+    tasks = [_task("T001", "tool_api_fetch", "data_fetch")]
     df = pd.DataFrame({"a": [1, None], "b": ["x", None]})
-    ctx = {"T001": SkillOutput(skill_id="skill_api_fetch", status="success", output_type="dataframe", data=df)}
+    ctx = {"T001": ToolOutput(tool_id="tool_api_fetch", status="success", output_type="dataframe", data=df)}
     payload = _build_task_results_payload(tasks, ctx, {"T001": "done"})
     rows = payload["tasks"][0]["data"]["rows"]
     assert rows[1][0] is None

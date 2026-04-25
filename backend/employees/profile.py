@@ -68,7 +68,7 @@ class EmployeeProfile(BaseModel):
     version: str = "1.0"
     domains: list[str]
     endpoints: list[str] = Field(default_factory=list)
-    skills: list[str]
+    tools: list[str]
     perception: PerceptionConfig = Field(default_factory=PerceptionConfig)
     planning: PlanningConfig = Field(default_factory=PlanningConfig)
     # ── Phase 4 additions (DB-first fields) ──
@@ -88,20 +88,31 @@ class EmployeeProfile(BaseModel):
     # ── 派生属性 ──
 
     def get_endpoint_names(self) -> frozenset[str]:
-        """返回端点白名单。若 endpoints 为空，从 domains 自动推导。"""
-        if self.endpoints:
-            return frozenset(self.endpoints)
-        # 从 api_registry 按域自动推导
-        from backend.agent.api_registry import BY_DOMAIN
-        names: set[str] = set()
-        for domain in self.domains:
-            for ep in BY_DOMAIN.get(domain, []):
-                names.add(ep.name)
-        return frozenset(names)
+        """返回端点白名单。若 endpoints 为空，从 domains 自动推导。
 
-    def get_skill_ids(self) -> frozenset[str]:
-        """返回技能白名单。"""
-        return frozenset(self.skills)
+        无论来源是 yaml/DB 显式列出，还是从 domains 自动推导，结果都会
+        与运行时 api_registry (BY_NAME) 取交集 —— 自动剔除已下线/重命名
+        但 DB 还未同步的陈旧引用，避免它们进入 LLM prompt 与计划验证链路。
+        """
+        from backend.agent.api_registry import BY_NAME, BY_DOMAIN
+
+        if self.endpoints:
+            raw_names: set[str] = set(self.endpoints)
+        else:
+            raw_names = {ep.name for d in self.domains for ep in BY_DOMAIN.get(d, [])}
+
+        valid = raw_names & set(BY_NAME.keys())
+        stale = raw_names - valid
+        if stale:
+            logger.warning(
+                "[%s] dropping %d stale endpoint(s) not in api_registry: %s",
+                self.employee_id, len(stale), sorted(stale),
+            )
+        return frozenset(valid)
+
+    def get_tool_ids(self) -> frozenset[str]:
+        """返回工具白名单。"""
+        return frozenset(self.tools)
 
     def get_extra_slot_names(self) -> list[str]:
         """返回所有额外槽位名。"""
@@ -118,7 +129,7 @@ class EmployeeProfile(BaseModel):
         return self
 
     def validate_against_registry(self) -> list[str]:
-        """启动时校验端点和技能是否存在于运行时注册表。返回错误列表。"""
+        """启动时校验端点和工具是否存在于运行时注册表。返回错误列表。"""
         errors: list[str] = []
 
         # 校验端点
@@ -127,12 +138,12 @@ class EmployeeProfile(BaseModel):
             if ep_name not in BY_NAME:
                 errors.append(f"[{self.employee_id}] Unknown endpoint: {ep_name}")
 
-        # 校验技能
-        from backend.tools.registry import SkillRegistry
-        runtime_ids = SkillRegistry.get_instance().skill_ids
-        for sid in self.skills:
-            if sid not in runtime_ids:
-                errors.append(f"[{self.employee_id}] Unknown skill: {sid}")
+        # 校验工具
+        from backend.tools.registry import ToolRegistry
+        runtime_ids = ToolRegistry.get_instance().tool_ids
+        for tid in self.tools:
+            if tid not in runtime_ids:
+                errors.append(f"[{self.employee_id}] Unknown tool: {tid}")
 
         # 校验 extra_slots 不与基础槽位冲突
         from backend.models.schemas import ALL_SLOT_NAMES

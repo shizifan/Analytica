@@ -230,7 +230,7 @@ export function EmployeeDetail({
           <div className="an-emp-detail-stats">
             <div className="stat-card">
               <div className="label">SKILLS</div>
-              <div className="value">{detail.skills.length}</div>
+              <div className="value">{detail.tools.length}</div>
             </div>
             <div className="stat-card">
               <div className="label">APIS</div>

@@ -76,14 +76,14 @@ class TaskItem(BaseModel):
     name: str = ""
     description: str = ""
     depends_on: list[str] = Field(default_factory=list)
-    skill: str = ""
+    tool: str = ""
     params: dict[str, Any] = Field(default_factory=dict)
     estimated_seconds: int = 10
     # Execution-phase fields (Phase 3)
     status: str = "pending"
     output_ref: str = ""
     # Intent field: human-readable goal for this task (visualization/analysis)
-    # Skills use this at execution time to drive LLM-powered decisions.
+    # Tools use this at execution time to drive LLM-powered decisions.
     intent: str = ""
 
 
@@ -98,10 +98,10 @@ class AnalysisPlan(BaseModel):
     revision_log: list[dict[str, Any]] = Field(default_factory=list)
 
 
-# ── Skill Result (placeholder for Phase 3) ───────────────────
+# ── Tool Result (placeholder for Phase 3) ────────────────────
 
-class SkillResult(BaseModel):
-    skill_id: str = ""
+class ToolResult(BaseModel):
+    tool_id: str = ""
     status: str = "pending"
     output: Any = None
     error: Optional[str] = None

@@ -33,10 +33,10 @@ import pytest
 
 from backend.agent.execution import execute_plan
 from backend.models.schemas import TaskItem
-from backend.skills.loader import load_all_skills
+from backend.tools.loader import load_all_tools
 
 # 确保所有技能已注册（包括新增的 markdown_gen）
-load_all_skills()
+load_all_tools()
 
 logger = logging.getLogger("test.json_template_execution")
 
@@ -148,7 +148,7 @@ def json_to_task_items(template: dict[str, Any]) -> list[TaskItem]:
             task_id=task_def["task_id"],
             type=task_def["type"],
             name=task_def["name"],
-            skill=task_def["skill"],
+            tool=task_def["tool"],
             params=params,
             depends_on=task_def.get("depends_on", []),
             estimated_seconds=task_def.get("estimated_seconds", 10),
@@ -193,7 +193,7 @@ def mock_api_gateway():
                     return await mc.post(parsed.path, **kwargs)
             return await super().post(url, **kwargs)
 
-    with patch("backend.skills.data.api_fetch.httpx.AsyncClient", _PatchedAsyncClient):
+    with patch("backend.tools.data.api_fetch.httpx.AsyncClient", _PatchedAsyncClient):
         yield
 
 
@@ -201,56 +201,56 @@ def mock_api_gateway():
 # 员工技能白名单
 # ════════════════════════════════════════════════════════════════
 
-THROUGHPUT_ANALYST_SKILLS = frozenset([
-    "skill_api_fetch",
-    "skill_chart_line",
-    "skill_chart_bar",
-    "skill_chart_pie",
-    "skill_chart_waterfall",
-    "skill_desc_analysis",
-    "skill_attribution",
-    "skill_summary_gen",
-    "skill_report_html",
-    "skill_report_markdown",
-    "skill_report_docx",
-    "skill_report_pptx",
-    "skill_prediction",
+THROUGHPUT_ANALYST_TOOLS = frozenset([
+    "tool_api_fetch",
+    "tool_chart_line",
+    "tool_chart_bar",
+    "tool_chart_pie",
+    "tool_chart_waterfall",
+    "tool_desc_analysis",
+    "tool_attribution",
+    "tool_summary_gen",
+    "tool_report_html",
+    "tool_report_markdown",
+    "tool_report_docx",
+    "tool_report_pptx",
+    "tool_prediction",
 ])
 
-CUSTOMER_INSIGHT_SKILLS = frozenset([
-    "skill_api_fetch",
-    "skill_chart_line",
-    "skill_chart_bar",
-    "skill_chart_pie",
-    "skill_chart_waterfall",
-    "skill_desc_analysis",
-    "skill_attribution",
-    "skill_summary_gen",
-    "skill_report_html",
-    "skill_report_markdown",
-    "skill_report_docx",
-    "skill_report_pptx",
+CUSTOMER_INSIGHT_TOOLS = frozenset([
+    "tool_api_fetch",
+    "tool_chart_line",
+    "tool_chart_bar",
+    "tool_chart_pie",
+    "tool_chart_waterfall",
+    "tool_desc_analysis",
+    "tool_attribution",
+    "tool_summary_gen",
+    "tool_report_html",
+    "tool_report_markdown",
+    "tool_report_docx",
+    "tool_report_pptx",
 ])
 
-ASSET_INVESTMENT_SKILLS = frozenset([
-    "skill_api_fetch",
-    "skill_chart_line",
-    "skill_chart_bar",
-    "skill_chart_pie",
-    "skill_chart_waterfall",
-    "skill_desc_analysis",
-    "skill_attribution",
-    "skill_summary_gen",
-    "skill_report_html",
-    "skill_report_markdown",
-    "skill_report_docx",
-    "skill_report_pptx",
+ASSET_INVESTMENT_TOOLS = frozenset([
+    "tool_api_fetch",
+    "tool_chart_line",
+    "tool_chart_bar",
+    "tool_chart_pie",
+    "tool_chart_waterfall",
+    "tool_desc_analysis",
+    "tool_attribution",
+    "tool_summary_gen",
+    "tool_report_html",
+    "tool_report_markdown",
+    "tool_report_docx",
+    "tool_report_pptx",
 ])
 
-EMPLOYEE_SKILLS_MAP = {
-    "throughput_analyst": THROUGHPUT_ANALYST_SKILLS,
-    "customer_insight": CUSTOMER_INSIGHT_SKILLS,
-    "asset_investment": ASSET_INVESTMENT_SKILLS,
+EMPLOYEE_TOOLS_MAP = {
+    "throughput_analyst": THROUGHPUT_ANALYST_TOOLS,
+    "customer_insight": CUSTOMER_INSIGHT_TOOLS,
+    "asset_investment": ASSET_INVESTMENT_TOOLS,
 }
 
 
@@ -260,7 +260,7 @@ EMPLOYEE_SKILLS_MAP = {
 
 async def execute_template_plan(
     template: dict[str, Any],
-    allowed_skills: frozenset[str],
+    allowed_tools: frozenset[str],
     max_tasks: int | None = None,
     template_name: str | None = None,
 ) -> tuple[dict[str, str], dict[str, Any]]:
@@ -268,7 +268,7 @@ async def execute_template_plan(
 
     Args:
         template: JSON 模板字典
-        allowed_skills: 技能白名单
+        allowed_tools: 技能白名单
         max_tasks: 最大执行任务数（用于测试部分执行）
         template_name: 模板名（若提供，触发 execution_report.json 落盘）
 
@@ -288,7 +288,7 @@ async def execute_template_plan(
 
     with mock_api_gateway():
         statuses, context, _ = await execute_plan(
-            task_items, allowed_skills=allowed_skills, report_dir=report_dir,
+            task_items, allowed_tools=allowed_tools, report_dir=report_dir,
         )
 
     return statuses, context
@@ -299,7 +299,7 @@ async def generate_report(
     context: dict[str, Any],
     report_format: str,
     section_names: list[str] | None = None,
-) -> tuple[SkillOutput | None, str]:
+) -> tuple[ToolOutput | None, str]:
     """生成指定格式的报告。
 
     Args:
@@ -309,33 +309,33 @@ async def generate_report(
         section_names: 要包含的章节名称；传 None 使用模板全部章节（批次 4 默认）
 
     Returns:
-        (SkillOutput, error_message) 元组
+        (ToolOutput, error_message) 元组
     """
-    from backend.skills.registry import SkillRegistry
-    from backend.skills.base import SkillInput
+    from backend.tools.registry import ToolRegistry
+    from backend.tools.base import ToolInput
 
-    skill_map = {
-        "markdown": "skill_report_markdown",
-        "html": "skill_report_html",
-        "docx": "skill_report_docx",
-        "pptx": "skill_report_pptx",
+    tool_map = {
+        "markdown": "tool_report_markdown",
+        "html": "tool_report_html",
+        "docx": "tool_report_docx",
+        "pptx": "tool_report_pptx",
     }
 
-    skill_id = skill_map.get(report_format)
-    if not skill_id:
+    tool_id = tool_map.get(report_format)
+    if not tool_id:
         return None, f"Unknown format: {report_format}"
 
-    registry = SkillRegistry.get_instance()
-    skill = registry.get_skill(skill_id)
-    if not skill:
-        return None, f"Skill not registered: {skill_id}"
+    registry = ToolRegistry.get_instance()
+    tool = registry.get_tool(tool_id)
+    if not tool:
+        return None, f"Tool not registered: {tool_id}"
 
     # 构建报告参数
     meta = template.get("_meta", {})
     title = template.get("title", "分析报告")
 
     # 模板的完整章节配置（带 task_refs）— 批次 4 后不再自己拼接 context_refs,
-    # 直接把模板的 report_structure 原样传给 report skill，
+    # 直接把模板的 report_structure 原样传给 report tool，
     # 让 _content_collector 按 section.task_refs 精确归属各条目。
     report_structure = template.get("report_structure", {})
     all_sections = report_structure.get("sections", [])
@@ -380,10 +380,10 @@ async def generate_report(
         "_template_meta": template_meta,
     }
 
-    inp = SkillInput(params=params, context_refs=context_refs)
+    inp = ToolInput(params=params, context_refs=context_refs)
 
     try:
-        output = await skill.execute(inp, context)
+        output = await tool.execute(inp, context)
         return output, ""
     except Exception as e:
         return None, str(e)
@@ -433,7 +433,7 @@ class TestTemplateLoading:
             assert task.task_id
             assert task.type
             assert task.name
-            assert task.skill
+            assert task.tool
 
 
 class TestTemplateDataFetch:
@@ -449,14 +449,14 @@ class TestTemplateDataFetch:
         """验证各模板的数据获取任务能正确执行。"""
         template = load_template(template_name)
         employee_id = template["_meta"]["employee_id"]
-        skills = EMPLOYEE_SKILLS_MAP.get(employee_id, THROUGHPUT_ANALYST_SKILLS)
+        tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
         # 只执行数据获取任务（前N个）
         data_fetch_tasks = [t for t in template["tasks"] if t["type"] == "data_fetch"]
         max_fetch = min(5, len(data_fetch_tasks))  # 执行前5个数据获取任务
 
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=max_fetch, template_name=template_name
+            template, tools, max_tasks=max_fetch, template_name=template_name
         )
 
         # 验证数据获取任务都成功
@@ -480,7 +480,7 @@ class TestTemplateAnalysis:
 
         # 执行前10个任务（覆盖数据获取到分析）
         statuses, context = await execute_template_plan(
-            template, THROUGHPUT_ANALYST_SKILLS, max_tasks=10,
+            template, THROUGHPUT_ANALYST_TOOLS, max_tasks=10,
             template_name="throughput_analyst_monthly_review",
         )
 
@@ -497,7 +497,7 @@ class TestTemplateAnalysis:
 
         # 执行前15个任务
         statuses, context = await execute_template_plan(
-            template, ASSET_INVESTMENT_SKILLS, max_tasks=15,
+            template, ASSET_INVESTMENT_TOOLS, max_tasks=15,
             template_name="asset_investment_equipment_ops",
         )
 
@@ -523,11 +523,11 @@ class TestReportGenerationMarkdown:
     async def test_markdown_report_generation(self, template_name: str, employee_id: str):
         """验证各模板能正确生成 Markdown 报告。"""
         template = load_template(template_name)
-        skills = EMPLOYEE_SKILLS_MAP.get(employee_id, THROUGHPUT_ANALYST_SKILLS)
+        tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
         # 执行完整计划（数据获取 + 分析 + 图表）
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=18  # 不包含最后的报告生成任务
+            template, tools, max_tasks=18  # 不包含最后的报告生成任务
         )
 
         # 收集成功的任务
@@ -570,11 +570,11 @@ class TestReportGenerationHTML:
     async def test_html_report_generation(self, template_name: str, employee_id: str):
         """验证各模板能正确生成 HTML 报告。"""
         template = load_template(template_name)
-        skills = EMPLOYEE_SKILLS_MAP.get(employee_id, THROUGHPUT_ANALYST_SKILLS)
+        tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
         # 执行完整计划
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=18, template_name=template_name
+            template, tools, max_tasks=18, template_name=template_name
         )
 
         # 生成 HTML 报告 — 使用模板定义的全部章节
@@ -614,11 +614,11 @@ class TestReportGenerationDOCX:
     async def test_docx_report_generation(self, template_name: str, employee_id: str):
         """验证各模板能正确生成 DOCX 报告。"""
         template = load_template(template_name)
-        skills = EMPLOYEE_SKILLS_MAP.get(employee_id, THROUGHPUT_ANALYST_SKILLS)
+        tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
         # 执行完整计划
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=18, template_name=template_name
+            template, tools, max_tasks=18, template_name=template_name
         )
 
         # 生成 DOCX 报告 — 使用模板定义的全部章节
@@ -658,11 +658,11 @@ class TestReportGenerationPPTX:
     async def test_pptx_report_generation(self, template_name: str, employee_id: str):
         """验证各模板能正确生成 PPTX 报告。"""
         template = load_template(template_name)
-        skills = EMPLOYEE_SKILLS_MAP.get(employee_id, THROUGHPUT_ANALYST_SKILLS)
+        tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
         # 执行完整计划
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=18, template_name=template_name
+            template, tools, max_tasks=18, template_name=template_name
         )
 
         # 生成 PPTX 报告 — 使用模板定义的全部章节
@@ -710,11 +710,11 @@ class TestFullReportPipeline:
     async def test_all_formats_generation(self, template_name: str, employee_id: str):
         """验证单个模板能生成所有四种格式报告。"""
         template = load_template(template_name)
-        skills = EMPLOYEE_SKILLS_MAP.get(employee_id, THROUGHPUT_ANALYST_SKILLS)
+        tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
         # 执行完整计划
         statuses, context = await execute_template_plan(
-            template, skills, max_tasks=18, template_name=template_name
+            template, tools, max_tasks=18, template_name=template_name
         )
 
         report_formats = ["markdown", "html", "docx", "pptx"]
@@ -759,7 +759,7 @@ class TestReportGenerationPerformance:
 
         start = time.time()
         statuses, context = await execute_template_plan(
-            template, THROUGHPUT_ANALYST_SKILLS, max_tasks=10,
+            template, THROUGHPUT_ANALYST_TOOLS, max_tasks=10,
             template_name="throughput_analyst_monthly_review",
         )
         execution_time = time.time() - start

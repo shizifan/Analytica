@@ -24,7 +24,7 @@ EMPLOYEE_COLUMNS = (
     "status",
     "domains",
     "endpoints",
-    "skills",
+    "tools",
     "faqs",
     "perception",
     "planning",
@@ -55,7 +55,7 @@ def _row_to_dict(row: Any) -> dict[str, Any]:
         "status": row[5],
         "domains": _parse_json_field(row[6]),
         "endpoints": _parse_json_field(row[7]),
-        "skills": _parse_json_field(row[8]),
+        "tools": _parse_json_field(row[8]),
         "faqs": _parse_json_field(row[9]),
         "perception": _parse_json_field(row[10]),
         "planning": _parse_json_field(row[11]),
@@ -73,7 +73,7 @@ async def list_employees(
     where = "" if include_archived else "WHERE status != 'archived'"
     sql = (
         "SELECT employee_id, name, description, version, initials, status, "
-        "domains, endpoints, skills, faqs, perception, planning, "
+        "domains, endpoints, tools, faqs, perception, planning, "
         "created_at, updated_at FROM employees "
         f"{where} ORDER BY name"
     )
@@ -88,7 +88,7 @@ async def get_employee(
     rows = await db.execute(
         text(
             "SELECT employee_id, name, description, version, initials, status, "
-            "domains, endpoints, skills, faqs, perception, planning, "
+            "domains, endpoints, tools, faqs, perception, planning, "
             "created_at, updated_at FROM employees WHERE employee_id = :eid"
         ),
         {"eid": employee_id},
@@ -110,7 +110,7 @@ async def upsert_employee(
     status: str,
     domains: list[str],
     endpoints: list[str],
-    skills: list[str],
+    tools: list[str],
     faqs: list[dict[str, Any]],
     perception: dict[str, Any] | None,
     planning: dict[str, Any] | None,
@@ -125,7 +125,7 @@ async def upsert_employee(
         "status": status,
         "domains": json.dumps(domains or [], ensure_ascii=False),
         "endpoints": json.dumps(endpoints or [], ensure_ascii=False),
-        "skills": json.dumps(skills or [], ensure_ascii=False),
+        "tools": json.dumps(tools or [], ensure_ascii=False),
         "faqs": json.dumps(faqs or [], ensure_ascii=False),
         "perception": (
             json.dumps(perception, ensure_ascii=False) if perception is not None else None
@@ -139,10 +139,10 @@ async def upsert_employee(
             """
             INSERT INTO employees
                 (employee_id, name, description, version, initials, status,
-                 domains, endpoints, skills, faqs, perception, planning)
+                 domains, endpoints, tools, faqs, perception, planning)
             VALUES
                 (:eid, :name, :description, :version, :initials, :status,
-                 :domains, :endpoints, :skills, :faqs, :perception, :planning)
+                 :domains, :endpoints, :tools, :faqs, :perception, :planning)
             ON DUPLICATE KEY UPDATE
                 name = VALUES(name),
                 description = VALUES(description),
@@ -151,7 +151,7 @@ async def upsert_employee(
                 status = VALUES(status),
                 domains = VALUES(domains),
                 endpoints = VALUES(endpoints),
-                skills = VALUES(skills),
+                tools = VALUES(tools),
                 faqs = VALUES(faqs),
                 perception = VALUES(perception),
                 planning = VALUES(planning),

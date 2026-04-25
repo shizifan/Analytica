@@ -5,7 +5,7 @@ version: "1.1"
 domains: [D1, D2]
 endpoints: []  # 空 = D1+D2 全部端点
 
-skills:
+tools:
   # 数据获取
   - tool_api_fetch
   - tool_file_parse

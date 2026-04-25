@@ -24,7 +24,7 @@ export function ReflectionCard({ summary, sessionId }: Props) {
       await api.saveReflection(sessionId, {
         save_preferences: true,
         save_template: true,
-        save_skill_notes: true,
+        save_tool_notes: true,
       });
       setSaved(true);
     } catch {
@@ -39,7 +39,7 @@ export function ReflectionCard({ summary, sessionId }: Props) {
       await api.saveReflection(sessionId, {
         save_preferences: false,
         save_template: false,
-        save_skill_notes: false,
+        save_tool_notes: false,
       });
     } catch {
       /* noop */
@@ -56,7 +56,7 @@ export function ReflectionCard({ summary, sessionId }: Props) {
     !(typeof v === 'object' && !Array.isArray(v) && Object.keys(v as Record<string, unknown>).length === 0),
   );
   const template = summary.analysis_template as Record<string, string> | undefined;
-  const feedback = summary.skill_feedback as Record<string, string[]> | undefined;
+  const feedback = summary.tool_feedback as Record<string, string[]> | undefined;
   const slotReview = summary.slot_quality_review ?? {
     slots_corrected: [],
     slots_corrected_detail: {},
@@ -126,7 +126,7 @@ export function ReflectionCard({ summary, sessionId }: Props) {
 
           {feedback?.well_performed?.length ? (
             <div style={{ fontSize: 12, color: 'var(--an-ink-3)' }}>
-              <strong style={{ color: 'var(--an-ink-2)' }}>技能反馈：</strong>{' '}
+              <strong style={{ color: 'var(--an-ink-2)' }}>工具反馈：</strong>{' '}
               {feedback.well_performed.join(', ')} 表现良好
             </div>
           ) : null}

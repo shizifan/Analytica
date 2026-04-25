@@ -57,18 +57,18 @@ export function PlanCard() {
                 return (
                   <div key={task.task_id}
                     className="flex items-start gap-2 rounded px-2 py-1 text-xs hover:bg-gray-50"
-                    title={`skill: ${task.skill}\ndepends: ${task.depends_on.join(', ') || 'none'}`}
+                    title={`tool: ${task.tool}\ndepends: ${task.depends_on.join(', ') || 'none'}`}
                   >
                     <span className={`mt-0.5 font-mono ${colorClass}`}>{icon}</span>
                     <div className="min-w-0 flex-1">
                       <span className="font-medium text-gray-700">
-                        {i + 1}. {task.name || task.skill}
+                        {i + 1}. {task.name || task.tool}
                       </span>
                       {task.description && (
                         <p className="truncate text-gray-500">{task.description}</p>
                       )}
                     </div>
-                    <span className="shrink-0 text-gray-400">{task.skill}</span>
+                    <span className="shrink-0 text-gray-400">{task.tool}</span>
                   </div>
                 );
               })}

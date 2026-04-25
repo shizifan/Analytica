@@ -88,20 +88,20 @@ export function PlanTab() {
             <div
               key={task.task_id}
               className={statusClass(s)}
-              title={`tool: ${task.skill}\ndeps: ${task.depends_on.join(', ') || 'none'}`}
+              title={`tool: ${task.tool}\ndeps: ${task.depends_on.join(', ') || 'none'}`}
             >
               <span className="an-plan-idx">
                 {s === 'running' ? <span className="an-spinner" /> : mark || String(i + 1).padStart(2, '0')}
               </span>
               <div className="an-plan-body">
                 <div className="an-plan-name">
-                  {i + 1}. {task.name || task.skill}
+                  {i + 1}. {task.name || task.tool}
                 </div>
                 {task.description && (
                   <div className="an-plan-desc">{task.description}</div>
                 )}
               </div>
-              <span className="an-plan-skill">{task.skill.replace(/^skill_/, 'tool_')}</span>
+              <span className="an-plan-tool">{task.tool}</span>
             </div>
           );
         })}

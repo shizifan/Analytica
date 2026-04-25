@@ -1,8 +1,8 @@
 """Phase 6 — DAL for the admin console.
 
-Groups together CRUD for api_endpoints / skills / domains / audit_logs.
+Groups together CRUD for api_endpoints / tools / domains / audit_logs.
 Memory / preference reads are aggregated views on top of existing tables
-(user_preferences, analysis_templates, skill_notes) — see
+(user_preferences, analysis_templates, tool_notes) — see
 `list_memory_entries` below.
 """
 from __future__ import annotations
@@ -231,7 +231,7 @@ async def record_api_call(
     duration_ms: int,
     success: bool,
 ) -> None:
-    """Idempotent daily roll-up upsert, called from skill_api_fetch."""
+    """Idempotent daily roll-up upsert, called from tool_api_fetch."""
     await db.execute(
         text(
             """
@@ -250,144 +250,6 @@ async def record_api_call(
             """
         ),
         {"n": api_name, "err": 0 if success else 1, "ms": int(duration_ms)},
-    )
-    await db.commit()
-
-
-# ── skills ────────────────────────────────────────────────────
-
-async def list_skills(db: AsyncSession) -> list[dict[str, Any]]:
-    rows = await db.execute(
-        text(
-            "SELECT skill_id, name, kind, description, input_spec, output_spec, "
-            "domains, enabled, run_count, error_count, avg_latency_ms, "
-            "last_error_at, last_error_msg, updated_at FROM skills "
-            "ORDER BY kind, skill_id"
-        )
-    )
-    return [_skill_row(r) for r in rows]
-
-
-def _skill_row(r: Any) -> dict[str, Any]:
-    return {
-        "skill_id": r[0],
-        "name": r[1],
-        "kind": r[2],
-        "description": r[3],
-        "input_spec": r[4],
-        "output_spec": r[5],
-        "domains": _json_field(r[6]),
-        "enabled": bool(r[7]),
-        "run_count": int(r[8] or 0),
-        "error_count": int(r[9] or 0),
-        "avg_latency_ms": int(r[10]) if r[10] is not None else None,
-        "last_error_at": _iso(r[11]),
-        "last_error_msg": r[12],
-        "updated_at": _iso(r[13]),
-    }
-
-
-async def get_skill(db: AsyncSession, skill_id: str) -> Optional[dict[str, Any]]:
-    rows = await db.execute(
-        text(
-            "SELECT skill_id, name, kind, description, input_spec, output_spec, "
-            "domains, enabled, run_count, error_count, avg_latency_ms, "
-            "last_error_at, last_error_msg, updated_at FROM skills "
-            "WHERE skill_id = :sid"
-        ),
-        {"sid": skill_id},
-    )
-    row = rows.first()
-    if row is None:
-        return None
-    return _skill_row(row)
-
-
-async def upsert_skill(
-    db: AsyncSession,
-    *,
-    skill_id: str,
-    name: str,
-    kind: str,
-    description: str | None = None,
-    input_spec: str | None = None,
-    output_spec: str | None = None,
-    domains: list[str] | None = None,
-    enabled: bool = True,
-) -> None:
-    await db.execute(
-        text(
-            """
-            INSERT INTO skills
-                (skill_id, name, kind, description, input_spec, output_spec,
-                 domains, enabled)
-            VALUES
-                (:sid, :name, :kind, :desc, :ins, :outs, :doms, :en)
-            ON DUPLICATE KEY UPDATE
-                name = VALUES(name),
-                kind = VALUES(kind),
-                description = VALUES(description),
-                input_spec = VALUES(input_spec),
-                output_spec = VALUES(output_spec),
-                domains = VALUES(domains),
-                enabled = VALUES(enabled),
-                updated_at = NOW()
-            """
-        ),
-        {
-            "sid": skill_id,
-            "name": name,
-            "kind": kind,
-            "desc": description,
-            "ins": input_spec,
-            "outs": output_spec,
-            "doms": json.dumps(domains or [], ensure_ascii=False),
-            "en": 1 if enabled else 0,
-        },
-    )
-    await db.commit()
-
-
-async def toggle_skill(
-    db: AsyncSession, skill_id: str, enabled: bool,
-) -> bool:
-    result = await db.execute(
-        text("UPDATE skills SET enabled = :en WHERE skill_id = :sid"),
-        {"en": 1 if enabled else 0, "sid": skill_id},
-    )
-    await db.commit()
-    return bool(result.rowcount)
-
-
-async def record_skill_run(
-    db: AsyncSession,
-    *,
-    skill_id: str,
-    duration_ms: int,
-    success: bool,
-    error_message: str | None = None,
-) -> None:
-    """Running average for avg_latency_ms — cheap approximation."""
-    await db.execute(
-        text(
-            """
-            UPDATE skills SET
-                run_count = run_count + 1,
-                error_count = error_count + :err,
-                avg_latency_ms = ROUND(
-                    (COALESCE(avg_latency_ms, 0) * run_count + :ms) / (run_count + 1)
-                ),
-                last_error_at = CASE WHEN :err = 1 THEN NOW() ELSE last_error_at END,
-                last_error_msg = CASE WHEN :err = 1 THEN :msg ELSE last_error_msg END
-            WHERE skill_id = :sid
-            """
-        ),
-        {
-            "sid": skill_id,
-            "err": 0 if success else 1,
-            "ms": int(duration_ms),
-            "msg": (error_message or "")[:500] if error_message else None,
-        },
     )
     await db.commit()
 
@@ -548,7 +410,7 @@ async def list_memory_entries(
     user_id: Optional[str] = None,
     limit: int = 100,
 ) -> dict[str, list[dict[str, Any]]]:
-    """Aggregate `user_preferences` + `analysis_templates` + `skill_notes`
+    """Aggregate `user_preferences. + .analysis_templates. + .tool_notes.
     into a single read-only view."""
     where = "" if user_id is None else "WHERE user_id = :uid"
     params: dict[str, Any] = {"lim": limit}
@@ -572,8 +434,8 @@ async def list_memory_entries(
     )
     notes = await db.execute(
         text(
-            f"SELECT id, skill_id, user_id, notes, performance_score, updated_at "
-            f"FROM skill_notes {where} ORDER BY updated_at DESC LIMIT :lim"
+            f"SELECT id, tool_id, user_id, notes, performance_score, updated_at "
+            f"FROM tool_notes {where} ORDER BY updated_at DESC LIMIT :lim"
         ),
         params,
     )
@@ -601,10 +463,10 @@ async def list_memory_entries(
             }
             for t in templates
         ],
-        "skill_notes": [
+        "tool_notes": [
             {
                 "id": n[0],
-                "skill_id": n[1],
+                "tool_id": n[1],
                 "user_id": n[2],
                 "notes": n[3],
                 "performance_score": float(n[4]) if n[4] is not None else None,
@@ -618,11 +480,11 @@ async def list_memory_entries(
 async def delete_memory_entry(
     db: AsyncSession, kind: str, entry_id: str,
 ) -> bool:
-    """kind: 'preference' | 'template' | 'skill_note'"""
+    """kind: 'preference' | 'template' | 'tool_note'"""
     table_pk = {
         "preference": ("user_preferences", "id"),
         "template": ("analysis_templates", "template_id"),
-        "skill_note": ("skill_notes", "id"),
+        "tool_note": ("tool_notes", "id"),
     }.get(kind)
     if not table_pk:
         return False
@@ -637,38 +499,57 @@ async def delete_memory_entry(
 
 # ── tools (renamed from skills) ───────────────────────────────
 
+def _tool_row(r: Any) -> dict[str, Any]:
+    return {
+        "tool_id": r[0],
+        "name": r[1],
+        "kind": r[2],
+        "description": r[3],
+        "input_spec": r[4],
+        "output_spec": r[5],
+        "domains": _json_field(r[6]),
+        "enabled": bool(r[7]),
+        "run_count": int(r[8] or 0),
+        "error_count": int(r[9] or 0),
+        "avg_latency_ms": int(r[10]) if r[10] is not None else None,
+        "last_error_at": _iso(r[11]),
+        "last_error_msg": r[12],
+        "updated_at": _iso(r[13]),
+    }
+
+
 async def list_tools(db: AsyncSession) -> list[dict[str, Any]]:
     rows = await db.execute(
         text(
-            "SELECT skill_id, name, kind, description, input_spec, output_spec, "
+            "SELECT tool_id, name, kind, description, input_spec, output_spec, "
             "domains, enabled, run_count, error_count, avg_latency_ms, "
             "last_error_at, last_error_msg, updated_at FROM tools "
-            "ORDER BY kind, skill_id"
+            "ORDER BY kind, tool_id"
         )
     )
-    return [_skill_row(r) for r in rows]
+    return [_tool_row(r) for r in rows]
 
 
-async def get_tool(db: AsyncSession, skill_id: str) -> Optional[dict[str, Any]]:
+async def get_tool(db: AsyncSession, tool_id: str) -> Optional[dict[str, Any]]:
     rows = await db.execute(
         text(
-            "SELECT skill_id, name, kind, description, input_spec, output_spec, "
+            "SELECT tool_id, name, kind, description, input_spec, output_spec, "
             "domains, enabled, run_count, error_count, avg_latency_ms, "
             "last_error_at, last_error_msg, updated_at FROM tools "
-            "WHERE skill_id = :sid"
+            "WHERE tool_id = :sid"
         ),
-        {"sid": skill_id},
+        {"sid": tool_id},
     )
     row = rows.first()
     if row is None:
         return None
-    return _skill_row(row)
+    return _tool_row(row)
 
 
 async def upsert_tool(
     db: AsyncSession,
     *,
-    skill_id: str,
+    tool_id: str,
     name: str,
     kind: str,
     description: str | None = None,
@@ -681,7 +562,7 @@ async def upsert_tool(
         text(
             """
             INSERT INTO tools
-                (skill_id, name, kind, description, input_spec, output_spec,
+                (tool_id, name, kind, description, input_spec, output_spec,
                  domains, enabled)
             VALUES
                 (:sid, :name, :kind, :desc, :ins, :outs, :doms, :en)
@@ -697,7 +578,7 @@ async def upsert_tool(
             """
         ),
         {
-            "sid": skill_id,
+            "sid": tool_id,
             "name": name,
             "kind": kind,
             "desc": description,
@@ -711,11 +592,11 @@ async def upsert_tool(
 
 
 async def toggle_tool(
-    db: AsyncSession, skill_id: str, enabled: bool,
+    db: AsyncSession, tool_id: str, enabled: bool,
 ) -> bool:
     result = await db.execute(
-        text("UPDATE tools SET enabled = :en WHERE skill_id = :sid"),
-        {"en": 1 if enabled else 0, "sid": skill_id},
+        text("UPDATE tools SET enabled = :en WHERE tool_id = :sid"),
+        {"en": 1 if enabled else 0, "sid": tool_id},
     )
     await db.commit()
     return bool(result.rowcount)
@@ -724,7 +605,7 @@ async def toggle_tool(
 async def record_tool_run(
     db: AsyncSession,
     *,
-    skill_id: str,
+    tool_id: str,
     duration_ms: int,
     success: bool,
     error_message: str | None = None,
@@ -740,11 +621,11 @@ async def record_tool_run(
                 ),
                 last_error_at = CASE WHEN :err = 1 THEN NOW() ELSE last_error_at END,
                 last_error_msg = CASE WHEN :err = 1 THEN :msg ELSE last_error_msg END
-            WHERE skill_id = :sid
+            WHERE tool_id = :sid
             """
         ),
         {
-            "sid": skill_id,
+            "sid": tool_id,
             "err": 0 if success else 1,
             "ms": int(duration_ms),
             "msg": (error_message or "")[:500] if error_message else None,

@@ -198,7 +198,7 @@ def _extract_display_hint_from_context(
     chart_type: str,
     df: pd.DataFrame,
 ) -> dict[str, Any] | None:
-    """Check upstream data_fetch SkillOutputs for a matching display_hint.
+    """Check upstream data_fetch ToolOutputs for a matching display_hint.
 
     api_fetch stores a display_hint in metadata when it resolves params with
     LLM. If that hint names valid columns for the requested chart type, reuse

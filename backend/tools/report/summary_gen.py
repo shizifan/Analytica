@@ -12,8 +12,8 @@ from typing import Any
 
 from backend.tools._llm import invoke_llm, truncate
 from backend.tools.analysis._data_summarizer import summarize_sources
-from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
-from backend.tools.registry import register_skill
+from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
+from backend.tools.registry import register_tool
 
 logger = logging.getLogger("analytica.tools.summary_gen")
 
@@ -42,12 +42,12 @@ def _is_failed_narrative(text: str) -> bool:
     return text.startswith("[narrative_failed:") or text.startswith("[自动生成失败]")
 
 
-@register_skill("tool_summary_gen", SkillCategory.REPORT, "摘要生成（纯文本摘要段落）",
+@register_tool("tool_summary_gen", ToolCategory.REPORT, "摘要生成（纯文本摘要段落）",
                 input_spec="intent + 上游数据/分析引用",
                 output_spec="中文摘要文本")
-class SummaryGenSkill(BaseSkill):
+class SummaryGenTool(BaseTool):
 
-    async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
+    async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         params = inp.params
         intent = params.get("intent") or params.get("topic", "数据分析")
         task_id = params.get("__task_id__", "")
@@ -76,8 +76,8 @@ class SummaryGenSkill(BaseSkill):
         data_summary = summarize_sources(context, refs_to_check)
 
         if not narratives and data_summary == "（无可用数据）":
-            return SkillOutput(
-                skill_id=self.skill_id,
+            return ToolOutput(
+                tool_id=self.tool_id,
                 status="partial",
                 output_type="text",
                 data=f"[摘要] 关于 {intent} 的分析已完成，详见各章节内容。",
@@ -108,8 +108,8 @@ class SummaryGenSkill(BaseSkill):
                 narratives[0] if narratives else f"关于 {intent} 的分析已完成。",
                 max_chars=300,
             )
-            return SkillOutput(
-                skill_id=self.skill_id,
+            return ToolOutput(
+                tool_id=self.tool_id,
                 status="partial",
                 output_type="text",
                 data=f"[摘要] {fallback}",
@@ -119,8 +119,8 @@ class SummaryGenSkill(BaseSkill):
                 error_message=result["error"],
             )
 
-        return SkillOutput(
-            skill_id=self.skill_id,
+        return ToolOutput(
+            tool_id=self.tool_id,
             status="success",
             output_type="text",
             data=result["text"],

@@ -1,6 +1,6 @@
 """员工图工厂 — 为指定 EmployeeProfile 构建参数化的 LangGraph。
 
-核心思路：通过 Python 闭包将 profile / allowed_endpoints / allowed_skills
+核心思路：通过 Python 闭包将 profile / allowed_endpoints / allowed_tools
 注入到每个节点函数中，节点内部逻辑几乎不变。
 """
 from __future__ import annotations
@@ -20,7 +20,7 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
     from backend.agent.graph import AgentState, route_after_perception, route_after_planning, route_after_execution
 
     allowed_endpoints = profile.get_endpoint_names()
-    allowed_skills = profile.get_skill_ids()
+    allowed_tools = profile.get_tool_ids()
     planning_prompt_suffix = profile.planning.prompt_suffix or ""
 
     # ── 闭包节点 ──
@@ -54,7 +54,7 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
             plan = await engine.generate_plan(
                 intent,
                 allowed_endpoints=allowed_endpoints,
-                allowed_skills=allowed_skills,
+                allowed_tools=allowed_tools,
                 prompt_suffix=planning_prompt_suffix,
                 employee_id=profile.employee_id,
             )
@@ -82,7 +82,7 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
 
     async def emp_execution_node(state: AgentState) -> AgentState:
         from backend.agent.execution import execution_node as _exec_node
-        return await _exec_node(state, allowed_skills=allowed_skills)
+        return await _exec_node(state, allowed_tools=allowed_tools)
 
     async def emp_reflection_node(state: AgentState) -> AgentState:
         """反思节点 — 复用通用逻辑。"""
@@ -123,8 +123,8 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
     graph.add_edge("reflection", END)
 
     logger.info(
-        "[%s] Built employee graph (endpoints=%d, skills=%d)",
-        profile.employee_id, len(allowed_endpoints), len(allowed_skills),
+        "[%s] Built employee graph (endpoints=%d, tools=%d)",
+        profile.employee_id, len(allowed_endpoints), len(allowed_tools),
     )
 
     return graph.compile()

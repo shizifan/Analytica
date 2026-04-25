@@ -72,7 +72,7 @@ endpoints:
   - getProductEquipmentUnitConsumptionByYear
   - getProductEquipmentUnitConsumptionByMonth
 
-skills:
+tools:
   # 数据获取
   - tool_api_fetch
   - tool_file_parse

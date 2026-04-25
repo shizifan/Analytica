@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { AdminListShell } from '../../components/ui/admin/AdminListShell';
 import { api } from '../../api/client';
 
-type Tab = 'preferences' | 'templates' | 'skill_notes';
+type Tab = 'preferences' | 'templates' | 'tool_notes';
 
 interface Bundle {
   preferences: Array<Record<string, unknown>>;
   templates: Array<Record<string, unknown>>;
-  skill_notes: Array<Record<string, unknown>>;
+  tool_notes: Array<Record<string, unknown>>;
 }
 
 function str(v: unknown): string {
@@ -39,7 +39,7 @@ export function MemoriesView() {
   const handleDelete = async (kind: string, id: string) => {
     if (!window.confirm(`删除 ${kind} 记录 ${id}？`)) return;
     try {
-      await api.admin.deleteMemory(kind === 'skill_notes' ? 'skill_note' : kind.replace(/s$/, ''), id);
+      await api.admin.deleteMemory(kind === 'tool_notes' ? 'tool_note' : kind.replace(/s$/, ''), id);
       await load();
     } catch (e) {
       window.alert(`删除失败：${e instanceof Error ? e.message : String(e)}`);
@@ -49,14 +49,14 @@ export function MemoriesView() {
   const counts = {
     preferences: data?.preferences.length ?? 0,
     templates: data?.templates.length ?? 0,
-    skill_notes: data?.skill_notes.length ?? 0,
+    tool_notes: data?.tool_notes.length ?? 0,
   };
   const activeCount = counts[tab];
 
   return (
     <AdminListShell title="记忆 / 偏好" count={activeCount}>
       <nav className="an-memory-tabs" role="tablist">
-        {(['preferences', 'templates', 'skill_notes'] as const).map((k) => (
+        {(['preferences', 'templates', 'tool_notes'] as const).map((k) => (
           <button
             key={k}
             type="button"
@@ -65,7 +65,7 @@ export function MemoriesView() {
           >
             {k === 'preferences' ? '用户偏好'
               : k === 'templates' ? '分析模板'
-              : '技能反馈'}
+              : '工具反馈'}
             <span className="count">{counts[k]}</span>
           </button>
         ))}
@@ -138,7 +138,7 @@ export function MemoriesView() {
         </table>
       )}
 
-      {!loading && !err && data && tab === 'skill_notes' && (
+      {!loading && !err && data && tab === 'tool_notes' && (
         <table className="an-admin-table">
           <thead>
             <tr>
@@ -151,16 +151,16 @@ export function MemoriesView() {
             </tr>
           </thead>
           <tbody>
-            {data.skill_notes.map((n) => (
+            {data.tool_notes.map((n) => (
               <tr key={str(n.id)}>
-                <td className="mono">{str(n.skill_id)}</td>
+                <td className="mono">{str(n.tool_id)}</td>
                 <td className="mono">{str(n.user_id)}</td>
                 <td>{str(n.notes)}</td>
                 <td className="num">{str(n.performance_score)}</td>
                 <td className="mono">{(str(n.updated_at) || '').slice(0, 19)}</td>
                 <td style={{ textAlign: 'right' }}>
                   <button className="an-btn ghost" style={{ padding: '2px 8px', fontSize: 11 }}
-                    onClick={() => handleDelete('skill_notes', str(n.id))}>
+                    onClick={() => handleDelete('tool_notes', str(n.id))}>
                     删除
                   </button>
                 </td>

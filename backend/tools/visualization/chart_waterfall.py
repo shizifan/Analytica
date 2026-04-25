@@ -5,8 +5,8 @@ from typing import Any
 
 import pandas as pd
 
-from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
-from backend.tools.registry import register_skill
+from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
+from backend.tools.registry import register_tool
 from backend.tools.visualization._config_parser import (
     apply_row_filter,
     get_df_from_context,
@@ -80,12 +80,12 @@ def _extract_waterfall_from_context(
     return []
 
 
-@register_skill("tool_chart_waterfall", SkillCategory.VISUALIZATION, "瀑布图生成（归因可视化）",
+@register_tool("tool_chart_waterfall", ToolCategory.VISUALIZATION, "瀑布图生成（归因可视化）",
                 input_spec="waterfall_data OR config{category_field,value_field,filter}",
                 output_spec="ECharts option JSON")
-class WaterfallChartSkill(BaseSkill):
+class WaterfallChartTool(BaseTool):
 
-    async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
+    async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         params = inp.params
         intent = params.get("intent") or params.get("_task_name", "")
         task_id = params.get("__task_id__", "")
@@ -171,8 +171,8 @@ class WaterfallChartSkill(BaseSkill):
             {"data": [v["value"] for v in value_series]},
         ]
         if not has_valid_series_data(check_series):
-            return SkillOutput(
-                skill_id=self.skill_id, status="skipped", output_type="chart",
+            return ToolOutput(
+                tool_id=self.tool_id, status="skipped", output_type="chart",
                 error_message="waterfall: 所有增量值均为 0",
                 metadata={"skip_reason": "ALL_ZERO", "chart_subtype": "waterfall"},
             )
@@ -202,8 +202,8 @@ class WaterfallChartSkill(BaseSkill):
             ],
         }
 
-        return SkillOutput(
-            skill_id=self.skill_id,
+        return ToolOutput(
+            tool_id=self.tool_id,
             status="success",
             output_type="chart",
             data=option,

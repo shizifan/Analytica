@@ -51,7 +51,7 @@ async def test_dal_upsert_get_list_delete(clean_employees, test_db_session):
         status="active",
         domains=["D1"],
         endpoints=[],
-        skills=["skill_api_fetch"],
+        tools=["tool_api_fetch"],
         faqs=[{"id": "q1", "question": "hello?"}],
         perception={"system_prompt_suffix": "hi"},
         planning={"prompt_suffix": "plan"},
@@ -86,7 +86,7 @@ async def test_dal_version_snapshots(clean_employees, test_db_session):
     await employee_store.upsert_employee(
         db, employee_id=eid, name="Alpha", description="", version="1.0",
         initials=None, status="active",
-        domains=["D1"], endpoints=[], skills=[], faqs=[],
+        domains=["D1"], endpoints=[], tools=[], faqs=[],
         perception=None, planning=None,
     )
     await employee_store.create_version_snapshot(
@@ -120,7 +120,7 @@ async def test_manager_upsert_refreshes_cache(clean_employees, test_db_session):
         status="active",
         domains=["D1"],
         endpoints=[],
-        skills=["skill_api_fetch"],
+        tools=["tool_api_fetch"],
         faqs=[],
         perception={"system_prompt_suffix": ""},
         planning={"prompt_suffix": ""},
@@ -140,7 +140,7 @@ async def test_manager_upsert_refreshes_cache(clean_employees, test_db_session):
         status="active",
         domains=["D1"],
         endpoints=[],
-        skills=["skill_api_fetch"],
+        tools=["tool_api_fetch"],
         faqs=[],
         perception={"system_prompt_suffix": ""},
         planning={"prompt_suffix": ""},
@@ -157,7 +157,7 @@ async def test_manager_yaml_mode_rejects_db_writes(clean_employees):
 
     with pytest.raises(RuntimeError):
         await mgr.upsert_employee(
-            "whatever", name="x", domains=["D1"], endpoints=[], skills=[],
+            "whatever", name="x", domains=["D1"], endpoints=[], tools=[],
         )
     with pytest.raises(RuntimeError):
         await mgr.archive_employee("whatever")

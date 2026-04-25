@@ -6,8 +6,8 @@ from typing import Any
 import pandas as pd
 
 from backend.tools._i18n import col_label
-from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
-from backend.tools.registry import register_skill
+from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
+from backend.tools.registry import register_tool
 from backend.tools.visualization._config_parser import (
     apply_row_filter,
     get_df_from_context,
@@ -94,12 +94,12 @@ def _build_series_for_axis(
     return series
 
 
-@register_skill("tool_chart_line", SkillCategory.VISUALIZATION, "折线图生成（ECharts option JSON）",
+@register_tool("tool_chart_line", ToolCategory.VISUALIZATION, "折线图生成（ECharts option JSON）",
                 input_spec="data_ref/data_refs + config{chart_type,left_y,right_y,...}",
                 output_spec="ECharts option JSON")
-class LineChartSkill(BaseSkill):
+class LineChartTool(BaseTool):
 
-    async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
+    async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         params = inp.params
         intent = params.get("intent") or params.get("_task_name", "")
         task_id = params.get("__task_id__", "")
@@ -135,8 +135,8 @@ class LineChartSkill(BaseSkill):
 
         df = apply_row_filter(df, parsed["filter"])
         if df.empty:
-            return SkillOutput(
-                skill_id=self.skill_id, status="skipped", output_type="chart",
+            return ToolOutput(
+                tool_id=self.tool_id, status="skipped", output_type="chart",
                 error_message=f"filter 后无数据: {parsed['filter']}",
                 metadata={"skip_reason": "EMPTY_AFTER_FILTER"},
             )
@@ -153,7 +153,7 @@ class LineChartSkill(BaseSkill):
         return self._render_with_mapping(df, mapping)
 
     # ── LLM-mapped single-axis line ───────────────────────────
-    def _render_with_mapping(self, df: pd.DataFrame, mapping: dict[str, Any]) -> SkillOutput:
+    def _render_with_mapping(self, df: pd.DataFrame, mapping: dict[str, Any]) -> ToolOutput:
         x_field = mapping["x_field"]
         y_fields = mapping["y_fields"]
         series_by = mapping.get("series_by")
@@ -198,8 +198,8 @@ class LineChartSkill(BaseSkill):
                 })
 
         if not has_valid_series_data(series):
-            return SkillOutput(
-                skill_id=self.skill_id, status="skipped", output_type="chart",
+            return ToolOutput(
+                tool_id=self.tool_id, status="skipped", output_type="chart",
                 error_message="所有数值均为 null",
                 metadata={"skip_reason": "ALL_NULL"},
             )
@@ -213,8 +213,8 @@ class LineChartSkill(BaseSkill):
             "series": series,
             "color": SERIES_COLORS[:len(series)],
         }
-        return SkillOutput(
-            skill_id=self.skill_id, status="success", output_type="chart",
+        return ToolOutput(
+            tool_id=self.tool_id, status="success", output_type="chart",
             data=option,
             metadata={"chart_type": "line", "chart_subtype": "single_y",
                       "series_count": len(series), "rows": len(df)},
@@ -225,7 +225,7 @@ class LineChartSkill(BaseSkill):
         self,
         parsed: dict[str, Any],
         context: dict[str, Any],
-    ) -> SkillOutput:
+    ) -> ToolOutput:
         left_spec = parsed["left_y"]
         right_spec = parsed["right_y"]
         x_field = parsed["x_field"]
@@ -274,8 +274,8 @@ class LineChartSkill(BaseSkill):
         series = series_left + series_right
 
         if not has_valid_series_data(series):
-            return SkillOutput(
-                skill_id=self.skill_id, status="skipped", output_type="chart",
+            return ToolOutput(
+                tool_id=self.tool_id, status="skipped", output_type="chart",
                 error_message="dual_y_line: 所有序列数据均为空",
                 metadata={"skip_reason": "ALL_NULL", "chart_subtype": "dual_y_line"},
             )
@@ -293,8 +293,8 @@ class LineChartSkill(BaseSkill):
             "series": series,
         }
 
-        return SkillOutput(
-            skill_id=self.skill_id, status="success", output_type="chart",
+        return ToolOutput(
+            tool_id=self.tool_id, status="success", output_type="chart",
             data=option,
             metadata={
                 "chart_type": "line",

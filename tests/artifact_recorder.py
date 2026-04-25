@@ -68,7 +68,7 @@ def _get_run_dir() -> Path:
 def _save_file_artifact(
     output_dir: Path, task_id: str, output: Any,
 ) -> str | None:
-    """Save a file-type SkillOutput to disk. Returns filename or None."""
+    """Save a file-type ToolOutput to disk. Returns filename or None."""
     fmt = output.metadata.get("format", "")
     data = output.data
 
@@ -152,14 +152,14 @@ def _render_plan_table(plan: dict) -> str:
     if not tasks:
         return "_No tasks in plan_\n"
 
-    lines = ["| # | Task ID | Type | Skill | Name |",
-             "|---|---------|------|-------|------|"]
+    lines = ["| # | Task ID | Type | Tool | Name |",
+             "|---|---------|------|------|------|"]
     for i, t in enumerate(tasks, 1):
         tid = t.get("task_id", "?")
         ttype = t.get("type", "?")
-        skill = t.get("skill", "-")
+        tool = t.get("tool", "-")
         name = t.get("name", "-")
-        lines.append(f"| {i} | {tid} | {ttype} | {skill} | {name} |")
+        lines.append(f"| {i} | {tid} | {ttype} | {tool} | {name} |")
     return "\n".join(lines) + "\n"
 
 
@@ -169,7 +169,7 @@ def _render_task_content(
     """Render per-task execution detail for Markdown."""
     status_icon = "done" if output.status == "success" else output.status
     lines = [
-        f"- **Skill**: `{output.skill_id}`",
+        f"- **Tool**: `{output.tool_id}`",
         f"- **Status**: {status_icon}",
         f"- **Output Type**: `{output.output_type}`",
     ]

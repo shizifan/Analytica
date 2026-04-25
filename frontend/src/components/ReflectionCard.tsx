@@ -18,7 +18,7 @@ export function ReflectionCard({ summary, sessionId }: Props) {
       await api.saveReflection(sessionId, {
         save_preferences: true,
         save_template: true,
-        save_skill_notes: true,
+        save_tool_notes: true,
       });
       setSavedKeys(new Set(['all']));
     } catch {
@@ -33,7 +33,7 @@ export function ReflectionCard({ summary, sessionId }: Props) {
       await api.saveReflection(sessionId, {
         save_preferences: false,
         save_template: false,
-        save_skill_notes: false,
+        save_tool_notes: false,
       });
     } catch {
       // ok
@@ -48,7 +48,7 @@ export function ReflectionCard({ summary, sessionId }: Props) {
     ([, v]) => v != null && v !== '' && !(Array.isArray(v) && v.length === 0) && !(typeof v === 'object' && !Array.isArray(v) && Object.keys(v as Record<string, unknown>).length === 0),
   );
   const template = summary.analysis_template;
-  const feedback = summary.skill_feedback ?? {};
+  const feedback = summary.tool_feedback ?? {};
   const slotReview = summary.slot_quality_review ?? { slots_corrected: [], slots_corrected_detail: {} };
 
   const allSaved = savedKeys.has('all');
@@ -91,10 +91,10 @@ export function ReflectionCard({ summary, sessionId }: Props) {
           </div>
         )}
 
-        {/* Skill feedback */}
+        {/* Tool feedback */}
         {(feedback as Record<string, unknown[]>).well_performed?.length ? (
           <div className="mb-3 text-xs text-gray-600">
-            <span className="font-medium">技能反馈：</span>{' '}
+            <span className="font-medium">工具反馈：</span>{' '}
             {((feedback as Record<string, string[]>).well_performed ?? []).join(', ')} 表现良好
           </div>
         ) : null}

@@ -36,16 +36,16 @@ export function ToolDetailDrawer({ item, onClose, onToggle }: Props) {
     if (tab !== 'source' || source !== null || sourceLoading) return;
     setSourceLoading(true);
     setSourceErr(null);
-    api.admin.getToolSource(item.skill_id)
+    api.admin.getToolSource(item.tool_id)
       .then((r) => { setSource(r.source); setSourceFile(r.file); })
       .catch((e) => setSourceErr(e instanceof Error ? e.message : String(e)))
       .finally(() => setSourceLoading(false));
-  }, [tab, item.skill_id, source, sourceLoading]);
+  }, [tab, item.tool_id, source, sourceLoading]);
 
   const handleToggle = async () => {
     try {
-      await api.admin.toggleTool(item.skill_id, !item.enabled);
-      onToggle(item.skill_id, !item.enabled);
+      await api.admin.toggleTool(item.tool_id, !item.enabled);
+      onToggle(item.tool_id, !item.enabled);
     } catch (e) {
       window.alert(`切换失败：${e instanceof Error ? e.message : String(e)}`);
     }
@@ -69,7 +69,7 @@ export function ToolDetailDrawer({ item, onClose, onToggle }: Props) {
               {KIND_LABEL[item.kind] ?? item.kind}
             </span>
             <span style={{ fontFamily: 'var(--an-font-mono)', fontSize: 13 }}>
-              {item.skill_id}
+              {item.tool_id}
             </span>
           </div>
           <div className="an-drawer-actions">
@@ -106,7 +106,7 @@ export function ToolDetailDrawer({ item, onClose, onToggle }: Props) {
               <SectionLabel>基本信息</SectionLabel>
               <div className="an-admin-kv">
                 <span className="k">名称</span>
-                <span className="v">{item.name || item.skill_id}</span>
+                <span className="v">{item.name || item.tool_id}</span>
                 <span className="k">类别</span>
                 <span className="v">{KIND_LABEL[item.kind] ?? item.kind}</span>
                 {item.updated_at && (

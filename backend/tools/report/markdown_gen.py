@@ -7,8 +7,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
-from backend.tools.registry import register_skill
+from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
+from backend.tools.registry import register_tool
 from backend.tools.report._content_collector import (
     collect_and_associate,
     NarrativeItem, StatsTableItem, GrowthItem,
@@ -148,12 +148,12 @@ def _build_markdown_deterministic(report: ReportContent) -> str:
     return "\n".join(content_parts)
 
 
-@register_skill("tool_report_markdown", SkillCategory.REPORT, "Markdown 报告生成（.md 文件）",
+@register_tool("tool_report_markdown", ToolCategory.REPORT, "Markdown 报告生成（.md 文件）",
                 input_spec="report_metadata + report_structure + 上游数据/图表引用",
                 output_spec="Markdown 文件路径")
-class MarkdownReportSkill(BaseSkill):
+class MarkdownReportTool(BaseTool):
 
-    async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
+    async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         try:
             intent = inp.params.get("intent", "")
             task_id = inp.params.get("__task_id__", "")
@@ -177,8 +177,8 @@ class MarkdownReportSkill(BaseSkill):
                 content=content,
             )
 
-            return SkillOutput(
-                skill_id=self.skill_id,
+            return ToolOutput(
+                tool_id=self.tool_id,
                 status="success",
                 output_type="file",
                 data=md,

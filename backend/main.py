@@ -31,9 +31,9 @@ async def lifespan(app: FastAPI):
         logger.exception("REPORTS_DIR setup failed — downloads will 410")
 
     # 加载技能
-    from backend.tools.loader import load_all_skills
-    skill_count = load_all_skills()
-    logger.info("Loaded %d skill modules", skill_count)
+    from backend.tools.loader import load_all_tools
+    tool_count = load_all_tools()
+    logger.info("Loaded %d tool modules", tool_count)
 
     # 加载员工配置 — Phase 4: picks DB or YAML based on FF.
     from pathlib import Path
@@ -110,7 +110,7 @@ class UpsertEmployeeRequest(BaseModel):
     status: str = "active"
     domains: list[str] = Field(default_factory=list)
     endpoints: list[str] = Field(default_factory=list)
-    skills: list[str] = Field(default_factory=list)
+    tools: list[str] = Field(default_factory=list)
     faqs: list[FAQItemPayload] = Field(default_factory=list)
     perception: Optional[dict[str, Any]] = None
     planning: Optional[dict[str, Any]] = None
@@ -127,7 +127,7 @@ class PatchEmployeeRequest(BaseModel):
     status: Optional[str] = None
     domains: Optional[list[str]] = None
     endpoints: Optional[list[str]] = None
-    skills: Optional[list[str]] = None
+    tools: Optional[list[str]] = None
     faqs: Optional[list[FAQItemPayload]] = None
     perception: Optional[dict[str, Any]] = None
     planning: Optional[dict[str, Any]] = None
@@ -144,7 +144,7 @@ def _profile_to_detail(profile: Any) -> dict[str, Any]:
         "status": profile.status,
         "domains": profile.domains,
         "endpoints": profile.endpoints,
-        "skills": profile.skills,
+        "tools": profile.tools,
         "faqs": [f.model_dump() for f in profile.faqs],
         "perception": profile.perception.model_dump(),
         "planning": profile.planning.model_dump(),
@@ -166,7 +166,7 @@ def _profile_to_summary(profile: Any) -> dict[str, Any]:
         "initials": profile.initials,
         "status": profile.status,
         "faqs_count": len(profile.faqs),
-        "skills_count": len(profile.skills),
+        "tools_count": len(profile.tools),
         "endpoints_count": ep_count,
     }
 
@@ -275,7 +275,7 @@ async def update_employee(employee_id: str, req: PatchEmployeeRequest):
         "status": patch.get("status", current.status),
         "domains": patch.get("domains", current.domains),
         "endpoints": patch.get("endpoints", current.endpoints),
-        "skills": patch.get("skills", current.skills),
+        "tools": patch.get("tools", current.tools),
         "faqs": faqs,
         "perception": patch.get("perception", current.perception.model_dump()),
         "planning": patch.get("planning", current.planning.model_dump()),
@@ -485,13 +485,13 @@ async def convert_report(
     generated HTML report.
 
     Reads the conversion context pickled during the original execution,
-    re-invokes the matching report skill, writes a new artifact row,
+    re-invokes the matching report tool, writes a new artifact row,
     and returns the new `artifact_id`. Seconds instead of minutes
     because no data-fetch / analysis re-runs.
     """
     from backend.memory import artifact_store
-    from backend.tools.base import SkillInput, skill_executor
-    from backend.tools.registry import SkillRegistry
+    from backend.tools.base import ToolInput, tool_executor
+    from backend.tools.registry import ToolRegistry
 
     fmt = format.lower()
     if fmt not in ("docx", "pptx"):
@@ -511,32 +511,32 @@ async def convert_report(
             detail="Conversion context missing — original generation may have been purged",
         )
 
-    # Ensure all skills are registered (lazy-loaded at app startup, but
+    # Ensure all tools are registered (lazy-loaded at app startup, but
     # an uvicorn --reload cycle can leave the registry bound to a fresh
     # module copy without the decorators re-running).
     import backend.tools.loader  # noqa: F401
 
-    # Re-invoke the docx / pptx skill with the same params + saved context.
-    skill_id = f"skill_report_{fmt}"
-    skill = SkillRegistry.get_instance().get_skill(skill_id)
-    if skill is None:
+    # Re-invoke the docx / pptx tool with the same params + saved context.
+    tool_id = f"tool_report_{fmt}"
+    tool = ToolRegistry.get_instance().get_tool(tool_id)
+    if tool is None:
         raise HTTPException(
-            status_code=500, detail=f"Skill not available: {skill_id}",
+            status_code=500, detail=f"Tool not available: {tool_id}",
         )
 
     params = dict(ctx.get("params") or {})
     context = ctx.get("context") or {}
-    inp = SkillInput(
+    inp = ToolInput(
         params=params,
         context_refs=list(params.get("_task_order") or context.keys()),
     )
 
     try:
-        output = await skill_executor(skill, inp, context, timeout_seconds=120.0)
+        output = await tool_executor(tool, inp, context, timeout_seconds=120.0)
     except Exception as e:
-        logger.exception("convert_report skill execution failed")
+        logger.exception("convert_report tool execution failed")
         raise HTTPException(
-            status_code=500, detail=f"Skill raised: {type(e).__name__}: {e}",
+            status_code=500, detail=f"Tool raised: {type(e).__name__}: {e}",
         )
     if output.status not in ("success", "partial"):
         raise HTTPException(
@@ -551,7 +551,7 @@ async def convert_report(
         db,
         session_id=session_id,
         task_id=source.get("task_id"),
-        skill_id=skill_id,
+        tool_id=tool_id,
         fmt=fmt,
         title=title,
         content=output.data,
@@ -796,7 +796,7 @@ async def regenerate_plan_endpoint(
 class ReflectionSaveRequest(BaseModel):
     save_preferences: bool = True
     save_template: bool = True
-    save_skill_notes: bool = True
+    save_tool_notes: bool = True
 
 
 @app.post("/api/sessions/{session_id}/reflection/save")
@@ -828,7 +828,7 @@ async def save_reflection_endpoint(
         reflection_summary=reflection_summary,
         save_preferences=req.save_preferences,
         save_template=req.save_template,
-        save_skill_notes=req.save_skill_notes,
+        save_tool_notes=req.save_tool_notes,
         user_id=user_id,
         db_session=db,
     )
@@ -1006,15 +1006,15 @@ async def admin_tool_source(tool_id: str):
     """Return the Python source file of a registered tool."""
     import inspect
     from pathlib import Path
-    from backend.tools.registry import SkillRegistry
-    skill = SkillRegistry.get_instance().get_skill(tool_id)
-    if skill is None:
+    from backend.tools.registry import ToolRegistry
+    tool = ToolRegistry.get_instance().get_tool(tool_id)
+    if tool is None:
         raise HTTPException(status_code=404, detail="Tool not found or not loaded")
     try:
-        src_path = Path(inspect.getfile(type(skill)))
+        src_path = Path(inspect.getfile(type(tool)))
         source = src_path.read_text(encoding="utf-8")
         return {
-            "skill_id": tool_id,
+            "tool_id": tool_id,
             "file": str(src_path.relative_to(Path(__file__).parent.parent)),
             "source": source,
         }
@@ -1027,7 +1027,7 @@ async def admin_upsert_tool(
     tool_id: str, req: ToolUpsert, db=Depends(get_db_session),
 ):
     from backend.memory import admin_store
-    await admin_store.upsert_tool(db, skill_id=tool_id, **req.model_dump())
+    await admin_store.upsert_tool(db, tool_id=tool_id, **req.model_dump())
     await admin_store.append_audit(
         db, action="update", resource_type="tool", resource_id=tool_id,
         diff=req.model_dump(),
@@ -1047,7 +1047,7 @@ async def admin_toggle_tool(
         db, action="toggle", resource_type="tool", resource_id=tool_id,
         diff={"enabled": enabled},
     )
-    return {"status": "ok", "skill_id": tool_id, "enabled": enabled}
+    return {"status": "ok", "tool_id": tool_id, "enabled": enabled}
 
 
 # ── Agent Skills (SKILL.md workflow instructions) ─────────────
@@ -1102,7 +1102,7 @@ async def admin_upload_agent_skill(
     from backend.memory import admin_store
     await admin_store.upsert_agent_skill(
         db,
-        skill_id=skill_id,
+        tool_id=tool_id,
         name=name,
         description=description,
         content=content,

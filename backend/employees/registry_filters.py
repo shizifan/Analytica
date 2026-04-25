@@ -1,6 +1,6 @@
 """员工域过滤工具 — 纯函数，无状态。
 
-将 api_registry 和 agent/skills 的描述生成逻辑
+将 api_registry 和 agent/tools 的描述生成逻辑
 包装为按员工白名单过滤的版本。
 """
 from __future__ import annotations
@@ -30,8 +30,8 @@ def filter_endpoints_description(
     )
 
 
-def filter_skills_description(allowed: frozenset[str]) -> str:
-    """生成仅包含白名单内技能的 LLM Prompt 描述文本。"""
-    from backend.agent.skills import get_skills_description
+def filter_tools_description(allowed: frozenset[str]) -> str:
+    """生成仅包含白名单内工具的 LLM Prompt 描述文本。"""
+    from backend.agent.tools import get_tools_description
 
-    return get_skills_description(allowed_skills=allowed)
+    return get_tools_description(allowed_tools=allowed)

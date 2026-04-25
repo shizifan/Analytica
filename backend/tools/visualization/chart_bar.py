@@ -6,8 +6,8 @@ from typing import Any
 import pandas as pd
 
 from backend.tools._i18n import col_label
-from backend.tools.base import BaseSkill, SkillCategory, SkillInput, SkillOutput
-from backend.tools.registry import register_skill
+from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
+from backend.tools.registry import register_tool
 from backend.tools.visualization._config_parser import (
     apply_row_filter,
     format_label_as_percentage,
@@ -49,12 +49,12 @@ def _resolve_cell(expr: str, context: dict[str, Any]) -> float | None:
     return None
 
 
-@register_skill("tool_chart_bar", SkillCategory.VISUALIZATION, "柱状图生成（ECharts option JSON）",
+@register_tool("tool_chart_bar", ToolCategory.VISUALIZATION, "柱状图生成（ECharts option JSON）",
                 input_spec="data_ref/data_refs + config{chart_type,series,filter,...}",
                 output_spec="ECharts option JSON")
-class BarChartSkill(BaseSkill):
+class BarChartTool(BaseTool):
 
-    async def execute(self, inp: SkillInput, context: dict[str, Any]) -> SkillOutput:
+    async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         params = inp.params
         intent = params.get("intent") or params.get("_task_name", "")
         task_id = params.get("__task_id__", "")
@@ -91,8 +91,8 @@ class BarChartSkill(BaseSkill):
 
         df = apply_row_filter(df, parsed["filter"])
         if df.empty:
-            return SkillOutput(
-                skill_id=self.skill_id, status="skipped", output_type="chart",
+            return ToolOutput(
+                tool_id=self.tool_id, status="skipped", output_type="chart",
                 error_message=f"filter 后无数据: {parsed['filter']}",
                 metadata={"skip_reason": "EMPTY_AFTER_FILTER"},
             )
@@ -109,7 +109,7 @@ class BarChartSkill(BaseSkill):
         return self._render_with_mapping(df, mapping)
 
     # ── LLM-mapped single-source bar ──────────────────────────
-    def _render_with_mapping(self, df: pd.DataFrame, mapping: dict[str, Any]) -> SkillOutput:
+    def _render_with_mapping(self, df: pd.DataFrame, mapping: dict[str, Any]) -> ToolOutput:
         x_field = mapping["x_field"]
         y_fields = mapping["y_fields"]
         series_by = mapping.get("series_by")
@@ -153,8 +153,8 @@ class BarChartSkill(BaseSkill):
                 })
 
         if not has_valid_series_data(series):
-            return SkillOutput(
-                skill_id=self.skill_id, status="skipped", output_type="chart",
+            return ToolOutput(
+                tool_id=self.tool_id, status="skipped", output_type="chart",
                 error_message="所有数值均为 null",
                 metadata={"skip_reason": "ALL_NULL"},
             )
@@ -172,8 +172,8 @@ class BarChartSkill(BaseSkill):
             option["yAxis"] = {"type": "value"}
         option["series"] = series
 
-        return SkillOutput(
-            skill_id=self.skill_id, status="success", output_type="chart",
+        return ToolOutput(
+            tool_id=self.tool_id, status="success", output_type="chart",
             data=option,
             metadata={"chart_type": "bar",
                       "chart_subtype": "horizontal" if is_horizontal else "vertical",
@@ -185,7 +185,7 @@ class BarChartSkill(BaseSkill):
         self,
         parsed: dict[str, Any],
         context: dict[str, Any],
-    ) -> SkillOutput:
+    ) -> ToolOutput:
         """Two grouped-bar patterns are supported:
 
         A. **KPI target-vs-actual** (one row per label from a single task):
@@ -238,8 +238,8 @@ class BarChartSkill(BaseSkill):
             }
 
         if not has_valid_series_data(series):
-            return SkillOutput(
-                skill_id=self.skill_id, status="skipped", output_type="chart",
+            return ToolOutput(
+                tool_id=self.tool_id, status="skipped", output_type="chart",
                 error_message="grouped_bar: 所有目标/实际值均为 null",
                 metadata={"skip_reason": "ALL_NULL", "chart_subtype": "grouped_bar"},
             )
@@ -254,8 +254,8 @@ class BarChartSkill(BaseSkill):
             "series": series,
         }
 
-        return SkillOutput(
-            skill_id=self.skill_id, status="success", output_type="chart",
+        return ToolOutput(
+            tool_id=self.tool_id, status="success", output_type="chart",
             data=option,
             metadata={
                 "chart_type": "bar",
@@ -270,7 +270,7 @@ class BarChartSkill(BaseSkill):
         self,
         parsed: dict[str, Any],
         context: dict[str, Any],
-    ) -> SkillOutput:
+    ) -> ToolOutput:
         """Pattern B: one series per upstream task, bars grouped by x_field.
 
         Example template:
@@ -317,8 +317,8 @@ class BarChartSkill(BaseSkill):
             per_series.append({"label": label, "map": value_map})
 
         if not all_categories:
-            return SkillOutput(
-                skill_id=self.skill_id, status="skipped", output_type="chart",
+            return ToolOutput(
+                tool_id=self.tool_id, status="skipped", output_type="chart",
                 error_message="多源 grouped_bar: 未找到共同类别",
                 metadata={"skip_reason": "NO_CATEGORIES", "chart_subtype": "grouped_bar"},
             )
@@ -335,8 +335,8 @@ class BarChartSkill(BaseSkill):
             })
 
         if not has_valid_series_data(series):
-            return SkillOutput(
-                skill_id=self.skill_id, status="skipped", output_type="chart",
+            return ToolOutput(
+                tool_id=self.tool_id, status="skipped", output_type="chart",
                 error_message="多源 grouped_bar: 所有系列数据均为 null",
                 metadata={"skip_reason": "ALL_NULL", "chart_subtype": "grouped_bar"},
             )
@@ -351,8 +351,8 @@ class BarChartSkill(BaseSkill):
             "series": series,
         }
 
-        return SkillOutput(
-            skill_id=self.skill_id, status="success", output_type="chart",
+        return ToolOutput(
+            tool_id=self.tool_id, status="success", output_type="chart",
             data=option,
             metadata={
                 "chart_type": "bar",

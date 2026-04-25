@@ -171,7 +171,7 @@ describe('TC-UI07: ReflectionCard save preferences', () => {
   const mockSummary: ReflectionSummary = {
     user_preferences: { output_format: 'chart_text', time_granularity: 'monthly' },
     analysis_template: { template_name: 'port_analysis' },
-    skill_feedback: { well_performed: ['data_fetch'] },
+    tool_feedback: { well_performed: ['data_fetch'] },
     slot_quality_review: {
       slots_auto_filled_correctly: ['analysis_subject'],
       slots_corrected: [],
@@ -199,7 +199,7 @@ describe('TC-UI08: ReflectionCard dismiss', () => {
   const mockSummary: ReflectionSummary = {
     user_preferences: { output_format: 'chart_text' },
     analysis_template: null,
-    skill_feedback: {},
+    tool_feedback: {},
     slot_quality_review: {
       slots_auto_filled_correctly: [],
       slots_corrected: [],

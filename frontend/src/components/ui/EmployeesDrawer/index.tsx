@@ -113,7 +113,7 @@ export function EmployeesDrawer({ open, selectedId, onSelect, onClose }: Props) 
                 initials: updated.initials,
                 status: updated.status,
                 faqs_count: updated.faqs.length,
-                skills_count: updated.skills.length,
+                tools_count: updated.tools.length,
                 endpoints_count: updated.endpoints.length,
               });
             }}
@@ -148,7 +148,7 @@ export function EmployeesDrawer({ open, selectedId, onSelect, onClose }: Props) 
                       {(e.domains ?? []).map((d) => (
                         <span key={d} className="stat">{d}</span>
                       ))}
-                      <span className="stat">Skills {e.skills_count ?? '—'}</span>
+                      <span className="stat">Tools {e.tools_count ?? '—'}</span>
                       <span className="stat">FAQs {e.faqs_count ?? '—'}</span>
                     </div>
                   </button>

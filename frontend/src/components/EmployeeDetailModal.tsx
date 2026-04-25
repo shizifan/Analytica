@@ -125,7 +125,7 @@ export function EmployeeDetailModal({ detail, loading, onClose, onSave }: Props)
                 <div>
                   <span className="text-xs text-gray-400">关联技能</span>
                   <div className="mt-1 flex flex-wrap gap-1.5">
-                    {detail.skills.map((s) => (
+                    {detail.tools.map((s) => (
                       <span key={s} className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-600">
                         {s}
                       </span>

@@ -26,14 +26,14 @@ from typing import Any, Callable, Coroutine
 import pandas as pd
 
 from backend.models.schemas import TaskItem
-from backend.tools.base import ErrorCategory, SkillInput, SkillOutput, skill_executor
-from backend.tools.registry import SkillRegistry
+from backend.tools.base import ErrorCategory, ToolInput, ToolOutput, tool_executor
+from backend.tools.registry import ToolRegistry
 from backend.tracing import make_span_emit
 
 logger = logging.getLogger("analytica.execution")
 
 
-def _summarize_skill_output(output: SkillOutput) -> dict[str, Any]:
+def _summarize_tool_output(output: ToolOutput) -> dict[str, Any]:
     """Compact preview for the thinking stream's tool_call_end event.
 
     Must be small enough to post over WS hundreds of times per minute —
@@ -146,7 +146,7 @@ def _classify_error_for_retry(error_message: str | None) -> str:
     AUTH / DEP_FAILED / UNKNOWN.
 
     NOTE: This is intentionally a string-matching classifier — batch 2 will
-    replace it with exception-type classification at skill_executor level.
+    replace it with exception-type classification at tool_executor level.
     """
     if not error_message:
         return "UNKNOWN"
@@ -174,7 +174,7 @@ def _classify_error_for_retry(error_message: str | None) -> str:
 
 def _deps_have_data(
     task: TaskItem,
-    context: dict[str, SkillOutput],
+    context: dict[str, ToolOutput],
 ) -> tuple[bool, str]:
     """Check whether upstream deps contain usable data for this task.
 
@@ -187,7 +187,7 @@ def _deps_have_data(
         return True, ""
 
     if not task.depends_on:
-        # No deps means the skill itself fetches/produces data (or uses full context)
+        # No deps means the tool itself fetches/produces data (or uses full context)
         return True, ""
 
     checked = 0
@@ -285,7 +285,7 @@ class DataFetchCheckResult:
 def check_data_fetch_threshold(
     tasks: list[TaskItem],
     task_statuses: dict[str, str],
-    execution_context: dict[str, SkillOutput] | None = None,
+    execution_context: dict[str, ToolOutput] | None = None,
 ) -> DataFetchCheckResult:
     """检查 data_fetch 任务的成功率是否达标。
 
@@ -409,34 +409,34 @@ def _topological_layers(tasks: list[TaskItem]) -> list[list[TaskItem]]:
 
 async def _execute_single_task(
     task: TaskItem,
-    context: dict[str, SkillOutput],
+    context: dict[str, ToolOutput],
     ws_callback: Callable | None = None,
-    allowed_skills: frozenset[str] | None = None,
-) -> tuple[str, SkillOutput]:
+    allowed_tools: frozenset[str] | None = None,
+) -> tuple[str, ToolOutput]:
     """Execute a single task with concurrency limit, timeout, retry, and data gate.
 
     Returns (task_id, output). Output.status may be one of:
-      - "success" / "partial"  — skill succeeded
-      - "failed"               — skill failed (after retries exhausted)
+      - "success" / "partial"  — tool succeeded
+      - "failed"               — tool failed (after retries exhausted)
       - "skipped"              — pre-flight check determined task cannot run
     """
     task_id = task.task_id
-    skill_id = task.skill
+    tool_id = task.tool
 
-    # ── Pre-flight 1: skill whitelist ─────────────────────
-    if allowed_skills is not None and skill_id not in allowed_skills:
-        return task_id, SkillOutput(
-            skill_id=skill_id, status="failed", output_type="json",
-            error_message=f"技能 {skill_id} 不在当前员工范围内",
+    # ── Pre-flight 1: tool whitelist ─────────────────────
+    if allowed_tools is not None and tool_id not in allowed_tools:
+        return task_id, ToolOutput(
+            tool_id=tool_id, status="failed", output_type="json",
+            error_message=f"技能 {tool_id} 不在当前员工范围内",
         )
 
-    # ── Pre-flight 2: skill registration ──────────────────
-    registry = SkillRegistry.get_instance()
-    skill = registry.get_skill(skill_id)
-    if skill is None:
-        return task_id, SkillOutput(
-            skill_id=skill_id, status="failed", output_type="json",
-            error_message=f"技能 {skill_id} 未注册",
+    # ── Pre-flight 2: tool registration ──────────────────
+    registry = ToolRegistry.get_instance()
+    tool = registry.get_tool(tool_id)
+    if tool is None:
+        return task_id, ToolOutput(
+            tool_id=tool_id, status="failed", output_type="json",
+            error_message=f"技能 {tool_id} 未注册",
         )
 
     # ── Pre-flight 3: data gate (viz/analysis only) ────────
@@ -449,12 +449,12 @@ async def _execute_single_task(
                     "event": "task_update",
                     "task_id": task_id,
                     "status": "skipped",
-                    "message": f"跳过 {task.name or skill_id}: {reason}",
+                    "message": f"跳过 {task.name or tool_id}: {reason}",
                 })
             except Exception:
                 pass
-        return task_id, SkillOutput(
-            skill_id=skill_id, status="skipped", output_type="json",
+        return task_id, ToolOutput(
+            tool_id=tool_id, status="skipped", output_type="json",
             error_message=reason,
             metadata={"skip_reason": "EMPTY_DEPS"},
         )
@@ -466,7 +466,7 @@ async def _execute_single_task(
                 "event": "task_update",
                 "task_id": task_id,
                 "status": "running",
-                "message": f"正在执行 {task.name or skill_id}...",
+                "message": f"正在执行 {task.name or tool_id}...",
             })
         except Exception:
             pass
@@ -480,9 +480,9 @@ async def _execute_single_task(
 
     span_emit = make_span_emit(task_id, ws_callback)
 
-    output: SkillOutput | None = None
+    output: ToolOutput | None = None
     for attempt in range(1, max_attempts + 1):
-        inp = SkillInput(
+        inp = ToolInput(
             params={**task.params, "__task_id__": task_id},
             context_refs=task.depends_on,
             span_emit=span_emit,
@@ -500,7 +500,7 @@ async def _execute_single_task(
                     "event": "tool_call_start",
                     "call_id": call_id,
                     "task_id": task_id,
-                    "skill_id": skill_id,
+                    "tool_id": tool_id,
                     "attempt": attempt,
                     "args": args_preview,
                 })
@@ -508,19 +508,19 @@ async def _execute_single_task(
                 pass
 
         async with sem:
-            output = await skill_executor(skill, inp, context, timeout_seconds=timeout)
+            output = await tool_executor(tool, inp, context, timeout_seconds=timeout)
 
         output.attempt_count = attempt
 
         # ── tool_call_end (Phase 2 + 3.5 preview) ──────────
         if ws_callback:
             try:
-                preview = _summarize_skill_output(output)
+                preview = _summarize_tool_output(output)
                 await ws_callback({
                     "event": "tool_call_end",
                     "call_id": call_id,
                     "task_id": task_id,
-                    "skill_id": skill_id,
+                    "tool_id": tool_id,
                     "status": output.status,
                     "error": output.error_message,
                     "error_category": output.error_category,
@@ -532,9 +532,9 @@ async def _execute_single_task(
         if output.status in ("success", "partial"):
             break
 
-        # Prefer the exception-based classification from skill_executor; fall
+        # Prefer the exception-based classification from tool_executor; fall
         # back to string matching for errors bubbled up without a category
-        # (e.g. skills that emit self._fail("...") with no exception context).
+        # (e.g. tools that emit self._fail("...") with no exception context).
         category = output.error_category or _classify_error_for_retry(
             output.error_message,
         )
@@ -558,17 +558,17 @@ async def _execute_single_task(
 async def execute_plan(
     tasks: list[TaskItem],
     ws_callback: Callable | None = None,
-    allowed_skills: frozenset[str] | None = None,
+    allowed_tools: frozenset[str] | None = None,
     report_dir: Path | str | None = None,
     persist_snapshot: Callable[[dict[str, str]], Any] | None = None,
     cancel_event: asyncio.Event | None = None,
-) -> tuple[dict[str, str], dict[str, SkillOutput], bool]:
+) -> tuple[dict[str, str], dict[str, ToolOutput], bool]:
     """Execute an analysis plan.
 
     Args:
         tasks: topologically ordered TaskItem list
         ws_callback: optional websocket notifier
-        allowed_skills: per-employee skill whitelist
+        allowed_tools: per-employee tool whitelist
         report_dir: if provided, dump execution_report.json here after execution
         persist_snapshot: optional async callback invoked after each layer
             with a copy of the current task_statuses. Used by the graph
@@ -578,10 +578,10 @@ async def execute_plan(
 
     Returns:
         task_statuses: dict mapping task_id → "done"/"failed"/"skipped"
-        execution_context: dict mapping task_id → SkillOutput
+        execution_context: dict mapping task_id → ToolOutput
         needs_replan: whether dynamic re-planning is needed
     """
-    import backend.tools.loader  # noqa: F401 — ensure all skills are registered
+    import backend.tools.loader  # noqa: F401 — ensure all tools are registered
 
     _reset_semaphores()  # rebind to current event loop
 
@@ -592,7 +592,7 @@ async def execute_plan(
     global_task_order = [t.task_id for t in tasks]
 
     task_statuses: dict[str, str] = {}
-    execution_context: dict[str, SkillOutput] = {}
+    execution_context: dict[str, ToolOutput] = {}
     needs_replan = False
 
     for layer_idx, layer in enumerate(layers):
@@ -602,8 +602,8 @@ async def execute_plan(
             for task in tasks:
                 if task.task_id not in task_statuses:
                     task_statuses[task.task_id] = "skipped"
-                    execution_context[task.task_id] = SkillOutput(
-                        skill_id=task.skill, status="skipped", output_type="json",
+                    execution_context[task.task_id] = ToolOutput(
+                        tool_id=task.tool, status="skipped", output_type="json",
                         error_message="用户终止执行",
                         metadata={"skip_reason": "CANCELLED"},
                     )
@@ -620,8 +620,8 @@ async def execute_plan(
                 )
                 if not df_check.passed:
                     task_statuses[task.task_id] = "failed"
-                    execution_context[task.task_id] = SkillOutput(
-                        skill_id=task.skill, status="failed", output_type="json",
+                    execution_context[task.task_id] = ToolOutput(
+                        tool_id=task.tool, status="failed", output_type="json",
                         error_message=format_data_fetch_error(df_check),
                     )
                     logger.warning(
@@ -640,8 +640,8 @@ async def execute_plan(
                 runnable.append(task)
             else:
                 task_statuses[task.task_id] = "failed"
-                execution_context[task.task_id] = SkillOutput(
-                    skill_id=task.skill, status="failed", output_type="json",
+                execution_context[task.task_id] = ToolOutput(
+                    tool_id=task.tool, status="failed", output_type="json",
                     error_message="依赖任务失败",
                     metadata={"error_category": "DEP_FAILED"},
                 )
@@ -651,7 +651,7 @@ async def execute_plan(
                             "event": "task_update",
                             "task_id": task.task_id,
                             "status": "failed",
-                            "message": f"跳过：{task.name or task.skill}（上游任务失败）",
+                            "message": f"跳过：{task.name or task.tool}（上游任务失败）",
                         })
                     except Exception:
                         pass
@@ -663,7 +663,7 @@ async def execute_plan(
         layer_start = time.monotonic()
         results = await asyncio.gather(
             *[
-                _execute_single_task(t, execution_context, ws_callback, allowed_skills)
+                _execute_single_task(t, execution_context, ws_callback, allowed_tools)
                 for t in runnable
             ],
             return_exceptions=True,
@@ -673,14 +673,14 @@ async def execute_plan(
             task = runnable[i]
             if isinstance(result, Exception):
                 task_statuses[task.task_id] = "failed"
-                execution_context[task.task_id] = SkillOutput(
-                    skill_id=task.skill, status="failed", output_type="json",
+                execution_context[task.task_id] = ToolOutput(
+                    tool_id=task.tool, status="failed", output_type="json",
                     error_message=str(result),
                 )
             else:
                 tid, output = result
                 # Preserve partial / skipped in the bucket so downstream
-                # content_collector / report skills can filter on it.
+                # content_collector / report tools can filter on it.
                 if output.status in ("success", "partial"):
                     task_statuses[tid] = "done"
                 elif output.status == "skipped":
@@ -708,7 +708,7 @@ async def execute_plan(
                         "event": "task_update",
                         "task_id": task.task_id,
                         "status": st,
-                        "message": f"{label}: {task.name or task.skill}",
+                        "message": f"{label}: {task.name or task.tool}",
                     })
                 except Exception:
                     pass
@@ -757,7 +757,7 @@ async def execute_plan(
 def build_execution_report(
     tasks: list[TaskItem],
     task_statuses: dict[str, str],
-    execution_context: dict[str, SkillOutput],
+    execution_context: dict[str, ToolOutput],
 ) -> dict[str, Any]:
     """Build a structured execution report for observability / regression diffs.
 
@@ -783,7 +783,7 @@ def build_execution_report(
         rec = {
             "task_id": t.task_id,
             "type": t.type,
-            "skill": t.skill,
+            "tool": t.tool,
             "name": t.name or "",
             "status": status,
             "elapsed_seconds": elapsed,
@@ -824,7 +824,7 @@ def build_execution_report(
 def _dump_execution_report(
     tasks: list[TaskItem],
     task_statuses: dict[str, str],
-    execution_context: dict[str, SkillOutput],
+    execution_context: dict[str, ToolOutput],
     report_dir: Path,
 ) -> Path:
     """Persist the execution report to ``report_dir / execution_report.json``."""
@@ -847,7 +847,7 @@ MAX_TABLE_ROWS = 20
 async def _persist_file_artifacts(
     session_id: str,
     tasks: list[TaskItem],
-    execution_context: dict[str, SkillOutput],
+    execution_context: dict[str, ToolOutput],
     task_statuses: dict[str, str],
 ) -> dict[str, dict[str, Any]]:
     """Phase 5 — write every successful file-output task to REPORTS_DIR
@@ -880,7 +880,7 @@ async def _persist_file_artifacts(
                     db,
                     session_id=session_id,
                     task_id=tid,
-                    skill_id=task.skill,
+                    tool_id=task.tool,
                     fmt=fmt,
                     title=title,
                     content=output.data,
@@ -898,10 +898,10 @@ async def _persist_file_artifacts(
 
             # Phase 5.7 — for HTML reports, save the upstream context
             # alongside so the user can click "生成 DOCX / PPTX" later
-            # and we can re-run the rendering skill without a full
+            # and we can re-run the rendering tool without a full
             # graph execution.
             if (row.get("format") == "html"
-                    and (task.skill or "").startswith("tool_report_")):
+                    and (task.tool or "").startswith("tool_report_")):
                 try:
                     sub_ctx = _collect_report_context(
                         task, tasks, execution_context,
@@ -927,10 +927,10 @@ async def _persist_file_artifacts(
 def _collect_report_context(
     report_task: TaskItem,
     all_tasks: list[TaskItem],
-    execution_context: dict[str, SkillOutput],
+    execution_context: dict[str, ToolOutput],
 ) -> dict[str, Any]:
     """Walk transitively from the report task through `depends_on` and
-    build a minimal context dict for later skill re-invocation."""
+    build a minimal context dict for later tool re-invocation."""
     needed: set[str] = set()
     frontier: list[str] = list(report_task.depends_on or [])
     by_id = {t.task_id: t for t in all_tasks}
@@ -951,7 +951,7 @@ def _collect_report_context(
 
 def _build_task_results_payload(
     tasks: list[TaskItem],
-    execution_context: dict[str, SkillOutput],
+    execution_context: dict[str, ToolOutput],
     task_statuses: dict[str, str],
     artifacts: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
@@ -977,8 +977,8 @@ def _build_task_results_payload(
 
         entry: dict[str, Any] = {
             "task_id": tid,
-            "name": task.name or task.skill,
-            "skill": task.skill,
+            "name": task.name or task.tool,
+            "tool": task.tool,
             "type": task.type,
             "depends_on": list(task.depends_on or []),
             "output_type": "unknown",
@@ -1075,7 +1075,7 @@ def _build_task_results_payload(
 
 def _format_execution_results(
     tasks: list[TaskItem],
-    execution_context: dict[str, SkillOutput],
+    execution_context: dict[str, ToolOutput],
     task_statuses: dict[str, str],
 ) -> list[str]:
     """将 execution_context 中的成功结果格式化为 markdown 内容块。
@@ -1100,7 +1100,7 @@ def _format_execution_results(
         if output is None or output.status not in ("success", "partial"):
             continue
 
-        task_name = task.name or task.skill
+        task_name = task.name or task.tool
 
         try:
             if output.output_type == "dataframe" and output.data is not None:
@@ -1156,12 +1156,12 @@ def _format_execution_results(
 
 async def execution_node(
     state: dict[str, Any],
-    allowed_skills: frozenset[str] | None = None,
+    allowed_tools: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     """LangGraph execution node — runs the analysis plan.
 
     Reads state["analysis_plan"]["tasks"], executes them, and updates state.
-    allowed_skills: 员工技能白名单，由图工厂闭包注入。
+    allowed_tools: 员工技能白名单，由图工厂闭包注入。
     """
     import backend.tools.loader  # noqa: F401
 
@@ -1221,7 +1221,7 @@ async def execution_node(
     task_statuses, execution_context, needs_replan = await execute_plan(
         tasks,
         ws_callback=ws_callback,
-        allowed_skills=allowed_skills,
+        allowed_tools=allowed_tools,
         persist_snapshot=_persist_layer_snapshot if session_id else None,
         cancel_event=cancel_event,
     )
@@ -1324,7 +1324,7 @@ async def execution_node(
             if task_statuses.get(t.task_id) == "failed":
                 ctx = execution_context.get(t.task_id)
                 err_msg = ctx.error_message if ctx and ctx.error_message else "未知错误"
-                error_details.append(f"  - {t.name or t.task_id} ({t.skill}): {err_msg}")
+                error_details.append(f"  - {t.name or t.task_id} ({t.tool}): {err_msg}")
         detail_text = "\n".join(error_details) if error_details else ""
         state["messages"] = state.get("messages", [])
         skipped_suffix = f"，{skipped_count} 个跳过" if skipped_count else ""

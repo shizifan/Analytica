@@ -15,7 +15,7 @@ type IconName =
   | 'x'
   | 'users'       // Employees
   | 'terminal'    // APIs
-  | 'bolt'        // Skills
+  | 'bolt'        // Tools
   | 'layers'      // Domains
   | 'database'    // Memories
   | 'clipboard'   // Audit

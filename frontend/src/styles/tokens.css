@@ -824,7 +824,7 @@ html.analytica-v2 [data-density="spacious"] { font-size: 14px; }
   margin-top: 2px;
   word-break: break-word;
 }
-.an-plan-task .an-plan-skill {
+.an-plan-task .an-plan-tool {
   flex-shrink: 0;
   padding: 2px 6px;
   border-radius: 3px;

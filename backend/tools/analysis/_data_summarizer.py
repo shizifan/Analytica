@@ -87,7 +87,7 @@ def _summarize_df(ref: str, df: pd.DataFrame) -> str:
 
 
 def _extract_df(ctx_output: Any) -> pd.DataFrame | None:
-    """Pull a DataFrame out of a SkillOutput or raw value."""
+    """Pull a DataFrame out of a ToolOutput or raw value."""
     if hasattr(ctx_output, "data"):
         val = ctx_output.data
     elif isinstance(ctx_output, dict):
