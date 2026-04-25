@@ -86,6 +86,10 @@ class ReportContent:
     sections: list[SectionContent] = field(default_factory=list)
     summary_items: list[SummaryTextItem] = field(default_factory=list)
     kpi_cards: list[KPIItem] = field(default_factory=list)  # batch 4
+    # Records what _associate had to fall back on (items reassigned to "其他",
+    # missing source data, etc.). Populated by _associate so downstream
+    # report tools can surface degradation in their ToolOutput.metadata.
+    degradations: list[dict[str, Any]] = field(default_factory=list)
 
 # ---------------------------------------------------------------------------
 # Section normalisation
@@ -270,18 +274,22 @@ def _extract_items(
 # Core: associate items to sections via task_refs or sequential fallback
 # ---------------------------------------------------------------------------
 
-def _associate(sections: list[dict[str, Any]], items: list[ContentItem]) -> list[SectionContent]:
-    """Assign *items* to *sections* based on ``task_refs``.
+def _associate(
+    sections: list[dict[str, Any]],
+    items: list[ContentItem],
+    degradations: list[dict[str, Any]] | None = None,
+) -> list[SectionContent]:
+    """Assign *items* to *sections* based on ``task_refs`` with no-loss fallback.
 
     Strategy:
       - If **any** section carries ``task_refs`` → *direct mapping*: each item
         is placed in the section whose ``task_refs`` list contains its
-        ``source_task``. Unmatched items are **dropped with a warning log**
-        (batch 4 change — previously they were stuffed into the least-full
-        section, which produced cross-section misassignment).
+        ``source_task``. **Unmatched items are reassigned to a fallback section**
+        (the first empty section, or a new "其他" section appended at the end)
+        — never dropped silently.
       - Otherwise (no task_refs declared anywhere) → *sequential distribution*:
         items are grouped by ``source_task`` order, then groups are assigned
-        to sections round-robin (backward-compatible fallback).
+        to sections round-robin.
     """
     if not sections:
         sections = [{"name": "数据概览", "task_refs": []}]
@@ -302,15 +310,40 @@ def _associate(sections: list[dict[str, Any]], items: list[ContentItem]) -> list
                     result[sec_idx].items.append(item)
                     assigned.add(item_idx)
 
-        # Unmatched items → drop with log (batch 4 change)
+        # Unmatched items → reassign, don't drop. Prefer the first section
+        # that has no task_refs declared (it's a "catch-all" by design);
+        # otherwise the first empty section; otherwise append a new "其他".
         unmatched = [items[i] for i in range(len(items)) if i not in assigned]
         if unmatched:
+            target_idx: int | None = None
+            for idx, sec in enumerate(sections):
+                if not sec.get("task_refs"):
+                    target_idx = idx
+                    break
+            if target_idx is None:
+                for idx, sc in enumerate(result):
+                    if not sc.items:
+                        target_idx = idx
+                        break
+            if target_idx is None:
+                result.append(SectionContent(name="其他"))
+                target_idx = len(result) - 1
+
+            for it in unmatched:
+                result[target_idx].items.append(it)
             dropped_sources = sorted({it.source_task for it in unmatched})
             logger.warning(
-                "Dropping %d unmatched report items (sources=%s); "
-                "check report_structure.task_refs coverage",
-                len(unmatched), dropped_sources,
+                "Reassigned %d unmatched report items (sources=%s) to section %r — "
+                "this is recoverable, but report_structure.task_refs coverage is incomplete",
+                len(unmatched), dropped_sources, result[target_idx].name,
             )
+            if degradations is not None:
+                degradations.append({
+                    "kind": "report_items_reassigned",
+                    "count": len(unmatched),
+                    "sources": dropped_sources,
+                    "fallback_section": result[target_idx].name,
+                })
     else:
         # ── Fallback: sequential by task order ──
         from collections import OrderedDict
@@ -373,7 +406,8 @@ def collect_and_associate(
             sections = [{"name": "数据概览", "task_refs": []}, {"name": "分析总结", "task_refs": []}]
 
     items, summaries = _extract_items(context, task_order=task_order)
-    associated = _associate(sections, items)
+    degradations: list[dict[str, Any]] = []
+    associated = _associate(sections, items, degradations=degradations)
 
     # KPI cards are populated asynchronously by each report generator
     # after collect_and_associate() returns, via extract_kpis_llm().
@@ -384,4 +418,5 @@ def collect_and_associate(
         sections=associated,
         summary_items=summaries,
         kpi_cards=[],
+        degradations=degradations,
     )

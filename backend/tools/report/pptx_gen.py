@@ -208,18 +208,21 @@ class PptxReportTool(BaseTool):
             prs.save(buffer)
             pptx_bytes = buffer.getvalue()
 
+            meta: dict[str, Any] = {
+                "format": "pptx",
+                "slide_count": len(prs.slides),
+                "title": report.title,
+                "file_size_bytes": len(pptx_bytes),
+                "mode": "python_pptx_fallback",
+            }
+            if report.degradations:
+                meta["degradations"] = report.degradations
             return ToolOutput(
                 tool_id=self.tool_id,
                 status="success",
                 output_type="file",
                 data=pptx_bytes,
-                metadata={
-                    "format": "pptx",
-                    "slide_count": len(prs.slides),
-                    "title": report.title,
-                    "file_size_bytes": len(pptx_bytes),
-                    "mode": "python_pptx_fallback",
-                },
+                metadata=meta,
             )
 
         except Exception as e:

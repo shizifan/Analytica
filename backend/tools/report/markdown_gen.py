@@ -177,18 +177,21 @@ class MarkdownReportTool(BaseTool):
                 content=content,
             )
 
+            meta: dict[str, Any] = {
+                "format": "markdown",
+                "title": report.title,
+                "char_count": len(md),
+                "line_count": len(md.splitlines()),
+                "mode": "deterministic",
+            }
+            if report.degradations:
+                meta["degradations"] = report.degradations
             return ToolOutput(
                 tool_id=self.tool_id,
                 status="success",
                 output_type="file",
                 data=md,
-                metadata={
-                    "format": "markdown",
-                    "title": report.title,
-                    "char_count": len(md),
-                    "line_count": len(md.splitlines()),
-                    "mode": "deterministic",
-                },
+                metadata=meta,
             )
 
         except Exception as e:

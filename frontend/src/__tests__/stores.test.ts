@@ -16,7 +16,7 @@ function makePlan(taskIds: string[]): AnalysisPlan {
     name: `Task ${id}`,
     description: `Description for ${id}`,
     depends_on: [],
-    skill: 'mock_skill',
+    tool: 'mock_tool',
     params: {},
     estimated_seconds: 10,
     status: 'pending',

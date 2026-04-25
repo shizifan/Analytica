@@ -159,6 +159,20 @@ async def planning_node(state: AgentState) -> AgentState:
         state["analysis_plan"] = plan_dict
         state["plan_version"] = plan.version
 
+        # Surface validator drops as DegradationEvents (cross-cutting channel).
+        from backend.agent.degradation import DegradationEvent, record, SEVERITY_WARN
+        for entry in plan.revision_log:
+            if entry.get("phase") == "validation" and entry.get("dropped"):
+                record(state, DegradationEvent(
+                    layer="planning",
+                    severity=SEVERITY_WARN,
+                    reason=(
+                        f"规划阶段过滤了 {len(entry['dropped'])} 个任务"
+                        f"（原 {entry.get('original_count', '?')} → 留 {entry.get('kept_count', '?')}）"
+                    ),
+                    affected={"dropped": entry["dropped"]},
+                ))
+
         # Simple plans auto-execute: no confirmation card, graph flows
         # directly into execution on the next routing step.
         auto_confirmed = is_simple_plan(plan)

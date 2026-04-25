@@ -8,10 +8,12 @@ import { ThinkingTab } from './ThinkingTab';
 import { StatusTab } from './StatusTab';
 import { PlanTab } from './PlanTab';
 import { TraceTab } from './TraceTab';
+import { DegradationsTab } from './DegradationsTab';
 import { useTraceStore } from '../../../stores/traceStore';
+import { useDegradationStore } from '../../../stores/degradationStore';
 import { downloadSessionJSON } from '../../../utils/exportSession';
 
-type TabKey = 'thinking' | 'status' | 'plan' | 'trace';
+type TabKey = 'thinking' | 'status' | 'plan' | 'trace' | 'degradations';
 
 interface Props {
   collapsed: boolean;
@@ -39,6 +41,7 @@ export function AgentPane({ collapsed, onToggle, phaseLabel }: Props) {
   const planTaskCount = usePlanStore((s) => s.plan?.tasks?.length ?? 0);
   const thinkingCount = useThinkingStore((s) => s.events.length);
   const traceTaskCount = useTraceStore((s) => Object.keys(s.spansByTask).length);
+  const degradationCount = useDegradationStore((s) => s.events.length);
 
   // Auto-focus the tab that matches the current phase — but only until
   // the user clicks a tab manually; then we stop moving the focus.
@@ -122,6 +125,12 @@ export function AgentPane({ collapsed, onToggle, phaseLabel }: Props) {
           label="追踪"
           badge={traceTaskCount}
         />
+        <TabButton
+          active={active === 'degradations'}
+          onClick={() => pickTab('degradations')}
+          label="降级"
+          badge={degradationCount}
+        />
       </nav>
 
       <div className="an-tab-body" role="tabpanel">
@@ -129,6 +138,7 @@ export function AgentPane({ collapsed, onToggle, phaseLabel }: Props) {
         {active === 'status' && <StatusTab />}
         {active === 'plan' && <PlanTab />}
         {active === 'trace' && <TraceTab />}
+        {active === 'degradations' && <DegradationsTab />}
       </div>
     </aside>
   );

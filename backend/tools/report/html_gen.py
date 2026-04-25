@@ -294,17 +294,20 @@ class HtmlReportTool(BaseTool):
                 text_dark=T.TEXT_DARK,
             )
 
+            meta: dict[str, Any] = {
+                "format": "html",
+                "title": report.title,
+                "chart_count": chart_counter[0],
+                "mode": mode,
+            }
+            if report.degradations:
+                meta["degradations"] = report.degradations
             return ToolOutput(
                 tool_id=self.tool_id,
                 status="success",
                 output_type="file",
                 data=html,
-                metadata={
-                    "format": "html",
-                    "title": report.title,
-                    "chart_count": chart_counter[0],
-                    "mode": mode,
-                },
+                metadata=meta,
             )
 
         except Exception as e:

@@ -64,7 +64,26 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
             state["plan_confirmed"] = False
             state["plan_version"] = plan.version
 
+            # Surface validator drops (recorded in plan.revision_log) as
+            # DegradationEvents on state so downstream layers / chat bubble
+            # can show what the validator silently filtered.
+            from backend.agent.degradation import DegradationEvent, record, summarize, SEVERITY_WARN
+            for entry in plan.revision_log:
+                if entry.get("phase") == "validation" and entry.get("dropped"):
+                    record(state, DegradationEvent(
+                        layer="planning",
+                        severity=SEVERITY_WARN,
+                        reason=(
+                            f"规划阶段过滤了 {len(entry['dropped'])} 个任务"
+                            f"（原 {entry.get('original_count', '?')} → 留 {entry.get('kept_count', '?')}）"
+                        ),
+                        affected={"dropped": entry["dropped"]},
+                    ))
+
             md = format_plan_as_markdown(plan)
+            degradation_summary = summarize(state)
+            if degradation_summary:
+                md = f"{md}\n\n---\n{degradation_summary}"
             state["messages"].append({
                 "role": "assistant",
                 "content": md,

@@ -18,6 +18,8 @@ import { useSlotStore } from '../stores/slotStore';
 import { usePlanStore } from '../stores/planStore';
 import { useThinkingStore } from '../stores/thinkingStore';
 import { useTraceStore } from '../stores/traceStore';
+import { useDegradationStore } from '../stores/degradationStore';
+import type { DegradationEvent } from '../stores/degradationStore';
 import type {
   AnalysisPlan,
   ChatMessage,
@@ -140,6 +142,13 @@ export async function hydrateSession(sessionId: string): Promise<void> {
               derivePlanStatus(taskStatuses, analysisPlan.tasks.length),
             );
           }
+        }
+
+        // Cross-cutting degradation channel — surface anything backend
+        // recorded (validator drops, collector reassigns, axis fallbacks).
+        const degradations = stateJson.degradations as DegradationEvent[] | undefined;
+        if (Array.isArray(degradations) && degradations.length > 0) {
+          useDegradationStore.getState().setEvents(degradations);
         }
       }
     }

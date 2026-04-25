@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import re
+import time
 from copy import deepcopy
 from datetime import datetime
 from typing import Any, Optional
@@ -261,6 +262,31 @@ def _is_multi_month_range(time_range_value: dict | None) -> tuple[bool, int]:
         return month_count >= 2, month_count
     except (ValueError, IndexError):
         return False, 0
+
+
+def _sanitize_report_structure(rs: Any) -> Any:
+    """与 prompt 承诺对齐：sections 只保留 name/description，剥离 task_refs。
+
+    LLM 偶尔会自作主张给某个 section 加 task_refs，触发 collector 的 strict
+    匹配模式，导致其他 section 的任务输出被丢。统一在 plan 落盘前 strip 掉，
+    强制走 round-robin 兜底分配。
+    """
+    if not isinstance(rs, dict):
+        return rs
+    sections = rs.get("sections")
+    if not isinstance(sections, list):
+        return rs
+    stripped = 0
+    for s in sections:
+        if isinstance(s, dict) and "task_refs" in s:
+            s.pop("task_refs", None)
+            stripped += 1
+    if stripped:
+        logger.info(
+            "[planning] sanitize_report_structure: stripped task_refs from %d/%d sections",
+            stripped, len(sections),
+        )
+    return rs
 
 
 def parse_planning_llm_output(raw: str) -> dict:
@@ -833,7 +859,7 @@ class PlanningEngine:
                 intent=t_dict.get("intent", ""),
             ))
 
-        report_structure = plan_dict.get("report_structure")
+        report_structure = _sanitize_report_structure(plan_dict.get("report_structure"))
 
         return AnalysisPlan(
             plan_id=str(uuid4()),
@@ -846,6 +872,43 @@ class PlanningEngine:
             revision_log=[],
         )
 
+    def _task_drop_reason(
+        self,
+        task: TaskItem,
+        valid_tools: set[str],
+        valid_endpoints: set[str],
+    ) -> str | None:
+        """Return a human-readable drop reason, or None to keep the task.
+
+        Side effect: M-code endpoints get rewritten in-place to their canonical
+        form when resolvable.
+        """
+        if task.tool and task.tool not in valid_tools:
+            return f"hallucinated tool '{task.tool}'"
+
+        endpoint_id = task.params.get("endpoint_id")
+        if endpoint_id and endpoint_id not in valid_endpoints:
+            resolved = resolve_endpoint_id(endpoint_id)
+            if resolved and resolved in valid_endpoints:
+                logger.info(
+                    "Resolved M-code '%s' → '%s' for task %s",
+                    endpoint_id, resolved, task.task_id,
+                )
+                task.params["endpoint_id"] = resolved
+                endpoint_id = resolved
+            else:
+                return f"hallucinated endpoint '{endpoint_id}'"
+
+        if task.type == "data_fetch" and endpoint_id:
+            ep = get_endpoint(endpoint_id)
+            if ep and ep.required:
+                query_params = {k: v for k, v in task.params.items() if k != "endpoint_id"}
+                missing = [p for p in ep.required if p not in query_params]
+                if missing:
+                    return f"endpoint {endpoint_id} missing required params: {', '.join(missing)}"
+
+        return None
+
     def _validate_tasks(
         self,
         plan: AnalysisPlan,
@@ -853,87 +916,143 @@ class PlanningEngine:
         valid_endpoints: set[str],
         complexity: str,
     ) -> AnalysisPlan:
-        """Validate tasks: filter hallucinated tools/endpoints, cap count, break cycles."""
+        """Validate tasks: filter hallucinated tools/endpoints, cap count, break cycles.
+
+        Cascade behaviour: when a task is dropped, every downstream task that
+        transitively depends on it is also dropped (with reason
+        ``"upstream dropped: <ids>"``). Empty result sets that violate the
+        complexity contract raise PlanningError to trigger a regeneration
+        attempt — silent degradation here was the source of the
+        "T002 orphan visualization" bug class.
+
+        All drops are recorded in ``plan.revision_log`` so downstream layers
+        (chat bubble, reflection) can surface them to the user instead of
+        them disappearing into log files.
+        """
         original_count = len(plan.tasks)
-        filtered_tasks = []
+        drop_reasons: dict[str, str] = {}
 
+        # Phase 1 — direct violations
         for task in plan.tasks:
-            # Check tool validity
-            if task.tool and task.tool not in valid_tools:
-                logger.warning(
-                    "Filtering task %s: hallucinated tool '%s'",
-                    task.task_id, task.tool,
-                )
-                continue
+            reason = self._task_drop_reason(task, valid_tools, valid_endpoints)
+            if reason:
+                drop_reasons[task.task_id] = reason
 
-            # Check endpoint validity (with M-code resolution)
-            endpoint_id = task.params.get("endpoint_id")
-            if endpoint_id and endpoint_id not in valid_endpoints:
-                # Try resolving M-code (e.g. "M03" → "getThroughputTrendByMonth")
-                resolved = resolve_endpoint_id(endpoint_id)
-                if resolved and resolved in valid_endpoints:
-                    logger.info(
-                        "Resolved M-code '%s' → '%s' for task %s",
-                        endpoint_id, resolved, task.task_id,
-                    )
-                    task.params["endpoint_id"] = resolved
-                else:
-                    logger.warning(
-                        "Filtering task %s: hallucinated endpoint '%s'",
-                        task.task_id, endpoint_id,
-                    )
+        # Phase 2 — cascade: any task whose dependency was dropped is also dropped
+        changed = True
+        while changed:
+            changed = False
+            for task in plan.tasks:
+                if task.task_id in drop_reasons:
                     continue
+                broken = [d for d in task.depends_on if d in drop_reasons]
+                if broken:
+                    drop_reasons[task.task_id] = (
+                        f"upstream dropped: {','.join(broken)}"
+                    )
+                    changed = True
 
-            # Validate required params for data_fetch tasks
-            if task.type == "data_fetch" and endpoint_id:
-                ep = get_endpoint(endpoint_id)
-                if ep and ep.required:
-                    query_params = {k: v for k, v in task.params.items() if k != "endpoint_id"}
-                    missing = [p for p in ep.required if p not in query_params]
-                    if missing:
-                        logger.warning(
-                            "Filtering task %s: endpoint %s missing required params: %s",
-                            task.task_id, endpoint_id, ", ".join(missing),
-                        )
-                        continue
+        # Phase 3 — apply
+        kept = [t for t in plan.tasks if t.task_id not in drop_reasons]
 
-            filtered_tasks.append(task)
-
-        if len(filtered_tasks) < original_count:
+        if drop_reasons:
             logger.warning(
-                "Filtered %d hallucinated tasks (from %d to %d)",
-                original_count - len(filtered_tasks),
-                original_count,
-                len(filtered_tasks),
+                "Plan validation dropped %d/%d tasks: %s",
+                len(drop_reasons), original_count, drop_reasons,
             )
 
-        # Cap task count at max for complexity, preserving report_gen tasks
+        # Phase 4 — cap task count (preserve report_gen)
         _, max_count = TASK_COUNT_LIMITS.get(complexity, (1, 8))
-        if len(filtered_tasks) > max_count:
-            # Separate report_gen tasks from other tasks so they aren't truncated
-            report_tasks = [t for t in filtered_tasks if t.type == "report_gen"]
-            non_report_tasks = [t for t in filtered_tasks if t.type != "report_gen"]
-            # Reserve slots for report tasks, cap non-report tasks
+        cap_dropped: list[str] = []
+        if len(kept) > max_count:
+            report_tasks = [t for t in kept if t.type == "report_gen"]
+            non_report_tasks = [t for t in kept if t.type != "report_gen"]
             non_report_cap = max(max_count - len(report_tasks), 1)
             if len(non_report_tasks) > non_report_cap:
+                cap_dropped = [t.task_id for t in non_report_tasks[non_report_cap:]]
                 non_report_tasks = non_report_tasks[:non_report_cap]
-            filtered_tasks = non_report_tasks + report_tasks
+            kept = non_report_tasks + report_tasks
+            for tid in cap_dropped:
+                drop_reasons[tid] = f"truncated by complexity cap ({complexity}: max {max_count})"
             logger.warning(
                 "Capped task count from %d to %d (max for %s, preserved %d report_gen tasks)",
-                original_count, len(filtered_tasks), complexity, len(report_tasks),
+                original_count, len(kept), complexity, len(report_tasks),
             )
 
-        # Fix dependency references (remove deps to filtered-out tasks)
-        valid_task_ids = {t.task_id for t in filtered_tasks}
-        for task in filtered_tasks:
+        # Phase 5 — record structured drops on the plan
+        if drop_reasons:
+            plan.revision_log.append({
+                "phase": "validation",
+                "ts": int(time.time()),
+                "original_count": original_count,
+                "kept_count": len(kept),
+                "dropped": drop_reasons,
+            })
+
+        # Phase 6 — clean stale dep references on kept tasks
+        valid_task_ids = {t.task_id for t in kept}
+        for task in kept:
             task.depends_on = [d for d in task.depends_on if d in valid_task_ids]
 
-        plan.tasks = filtered_tasks
+        plan.tasks = kept
 
-        # Break cycles
+        # Phase 7 — complexity hard-constraint enforcement
+        # Raise PlanningError to trigger regeneration; the surrounding retry
+        # loop in generate_plan will catch and retry. After max_retries,
+        # surfaces to the user as a planning failure rather than a silently
+        # broken plan that crashes during execution.
+        self._enforce_complexity_constraints(plan, complexity)
+
+        # Phase 8 — break cycles
         plan.tasks = _break_cycles(plan.tasks)
 
         return plan
+
+    def _enforce_complexity_constraints(
+        self,
+        plan: AnalysisPlan,
+        complexity: str,
+    ) -> None:
+        """Validate that surviving tasks still satisfy complexity invariants.
+
+        These checks mirror the prompt-level rules in `__SYSTEM_PROMPT_TEMPLATE`
+        but are enforced programmatically so that filtering can never silently
+        produce a broken plan (e.g. an orphan visualization with no upstream
+        data fetch).
+        """
+        tasks = plan.tasks
+        if not tasks:
+            raise PlanningError(
+                f"规划失败：过滤后没有剩余任务（complexity={complexity}）"
+            )
+
+        tools_used = {t.tool for t in tasks if t.tool}
+        chart_tools = {"tool_chart_bar", "tool_chart_line", "tool_chart_waterfall", "tool_dashboard"}
+
+        if complexity == "chart_text":
+            if "tool_api_fetch" not in tools_used and "tool_file_parse" not in tools_used:
+                raise PlanningError(
+                    "chart_text 复杂度要求至少 1 个数据获取任务（tool_api_fetch / tool_file_parse），过滤后剩 0 个"
+                )
+            if not tools_used & chart_tools:
+                raise PlanningError(
+                    "chart_text 复杂度要求至少 1 个图表工具（tool_chart_bar/line/waterfall/dashboard），过滤后剩 0 个"
+                )
+        elif complexity == "full_report":
+            fetch_count = sum(1 for t in tasks if t.tool == "tool_api_fetch")
+            if fetch_count < 1:
+                raise PlanningError(
+                    f"full_report 复杂度要求至少 1 个 tool_api_fetch，过滤后剩 {fetch_count} 个"
+                )
+            chart_count = sum(1 for t in tasks if t.tool in chart_tools)
+            if chart_count < 1:
+                raise PlanningError(
+                    f"full_report 复杂度要求至少 1 个图表工具，过滤后剩 {chart_count} 个"
+                )
+            if not any(t.type == "report_gen" for t in tasks):
+                raise PlanningError(
+                    "full_report 复杂度要求至少 1 个 report_gen 任务，过滤后剩 0 个"
+                )
 
     async def _call_llm_with_retry(self, prompt: str) -> str:
         """Call LLM with timeout and retry logic."""

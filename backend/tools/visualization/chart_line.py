@@ -21,6 +21,30 @@ THEME_ACCENT = "#F0A500"
 SERIES_COLORS = [THEME_PRIMARY, THEME_ACCENT, "#E85454", "#4CAF50", "#9C27B0", "#FF5722"]
 
 
+def _expand_axis_subspecs(axis_spec: Any) -> list[dict[str, Any]]:
+    """Return a list of single-series sub-specs from an axis spec.
+
+    Handles both shapes produced by :func:`_normalize_axis_spec`:
+      • single-series dict (e.g. ``{"source": "T003", "y_field": "qty"}``)
+        → ``[axis_spec]``
+      • multi-series wrapper (``{"label": ..., "series": [{...}, ...]}``)
+        → each sub-spec, with the axis-level label inherited as fallback
+    """
+    if not isinstance(axis_spec, dict):
+        return []
+    inner = axis_spec.get("series")
+    if isinstance(inner, list) and inner:
+        parent_label = axis_spec.get("label", "")
+        out: list[dict[str, Any]] = []
+        for sub in inner:
+            if not isinstance(sub, dict):
+                continue
+            merged = {"label": parent_label, **sub}
+            out.append(merged)
+        return out
+    return [axis_spec]
+
+
 def _build_series_for_axis(
     df: pd.DataFrame,
     axis_spec: dict[str, Any],
@@ -226,52 +250,62 @@ class LineChartTool(BaseTool):
         parsed: dict[str, Any],
         context: dict[str, Any],
     ) -> ToolOutput:
-        left_spec = parsed["left_y"]
-        right_spec = parsed["right_y"]
+        left_subs = _expand_axis_subspecs(parsed.get("left_y"))
+        right_subs = _expand_axis_subspecs(parsed.get("right_y"))
         x_field = parsed["x_field"]
 
-        df_left = None
-        df_right = None
-        if left_spec.get("source") and left_spec["source"] in context:
-            d = context[left_spec["source"]].data
-            if isinstance(d, pd.DataFrame) and not d.empty:
-                df_left = d
-        if right_spec.get("source") and right_spec["source"] in context:
-            d = context[right_spec["source"]].data
-            if isinstance(d, pd.DataFrame) and not d.empty:
-                df_right = d
+        # Resolve each sub-spec to (sub, df, axis_idx). Drop sub-specs whose
+        # source can't be found / is empty; carry on with the rest rather
+        # than failing the whole chart.
+        resolved: list[tuple[dict[str, Any], pd.DataFrame, int]] = []
+        unresolved_sources: list[str] = []
+        for axis_idx, subs in ((0, left_subs), (1, right_subs)):
+            for sub in subs:
+                src = sub.get("source")
+                if not src:
+                    continue
+                ctx_out = context.get(src)
+                d = getattr(ctx_out, "data", None)
+                if isinstance(d, pd.DataFrame) and not d.empty:
+                    resolved.append((sub, d, axis_idx))
+                else:
+                    unresolved_sources.append(src)
 
-        if df_left is None or df_right is None:
+        if not resolved:
             return self._fail(
-                f"dual_y_line: 无法解析 source (left={left_spec.get('source')}, "
-                f"right={right_spec.get('source')})"
+                f"dual_y_line: 无法解析任何 axis source "
+                f"(left={[s.get('source') for s in left_subs]}, "
+                f"right={[s.get('source') for s in right_subs]})"
             )
 
-        # Resolve per-axis x_field. Different APIs on the left/right sources
-        # may return different time-axis column names (e.g. T003 uses
-        # ``dateMonth`` while T004 uses ``month``). Prefer the axis-spec
-        # override > top-level x_field > auto-detected date-ish column.
-        left_x = (left_spec.get("x_field") or x_field) if isinstance(left_spec, dict) else x_field
-        right_x = (right_spec.get("x_field") or x_field) if isinstance(right_spec, dict) else x_field
-        if not left_x or left_x not in df_left.columns:
-            left_x = self._auto_detect_time(df_left)
-        if not right_x or right_x not in df_right.columns:
-            right_x = self._auto_detect_time(df_right)
-        if not left_x or not right_x:
+        # Build union of x categories across all resolved frames (string-cast
+        # for consistency). Each frame may use a different x column name.
+        x_set: set[str] = set()
+        per_sub_x: list[str] = []
+        for sub, df, _ in resolved:
+            sub_x = sub.get("x_field") or x_field
+            if not sub_x or sub_x not in df.columns:
+                sub_x = self._auto_detect_time(df) or ""
+            per_sub_x.append(sub_x)
+            if sub_x and sub_x in df.columns:
+                x_set |= set(df[sub_x].astype(str))
+        x_values = sorted(x_set)
+
+        if not x_values:
             return self._fail(
-                f"dual_y_line: 无法确定时间轴。left.columns={list(df_left.columns)[:6]}, "
-                f"right.columns={list(df_right.columns)[:6]}"
+                f"dual_y_line: 无法确定时间轴。columns sampled: "
+                f"{[list(df.columns)[:6] for _, df, _ in resolved]}"
             )
 
-        # Union of x categories from both frames (string-cast for consistency)
-        x_values = sorted(
-            set(df_left[left_x].astype(str)) | set(df_right[right_x].astype(str))
-        )
-
-        series_left = _build_series_for_axis(df_left, left_spec, x_values, left_x, 0, 0)
-        series_right = _build_series_for_axis(df_right, right_spec, x_values, right_x, 1,
-                                              len(series_left))
-        series = series_left + series_right
+        # Build all series, accumulating colour offset across both axes.
+        series: list[dict[str, Any]] = []
+        color_idx = 0
+        for (sub, df, axis_idx), sub_x in zip(resolved, per_sub_x):
+            if not sub_x or sub_x not in df.columns:
+                continue
+            new_series = _build_series_for_axis(df, sub, x_values, sub_x, axis_idx, color_idx)
+            series.extend(new_series)
+            color_idx += len(new_series)
 
         if not has_valid_series_data(series):
             return ToolOutput(
@@ -280,6 +314,12 @@ class LineChartTool(BaseTool):
                 metadata={"skip_reason": "ALL_NULL", "chart_subtype": "dual_y_line"},
             )
 
+        # Axis labels: prefer wrapper-level label, else first sub-spec's label.
+        def _axis_label(spec: Any, subs: list[dict[str, Any]]) -> str:
+            if isinstance(spec, dict) and spec.get("label"):
+                return spec["label"]
+            return subs[0].get("label", "") if subs else ""
+
         option = {
             "title": {"text": parsed["title"] or "双轴趋势", "left": "center",
                       "textStyle": {"color": THEME_PRIMARY}},
@@ -287,20 +327,26 @@ class LineChartTool(BaseTool):
             "legend": {"data": [s["name"] for s in series], "bottom": 0},
             "xAxis": {"type": "category", "data": x_values},
             "yAxis": [
-                {"type": "value", "name": left_spec.get("label", "")},
-                {"type": "value", "name": right_spec.get("label", "")},
+                {"type": "value", "name": _axis_label(parsed.get("left_y"), left_subs)},
+                {"type": "value", "name": _axis_label(parsed.get("right_y"), right_subs)},
             ],
             "series": series,
         }
 
+        meta: dict[str, Any] = {
+            "chart_type": "line",
+            "chart_subtype": "dual_y_line",
+            "series_count": len(series),
+            "left_subspecs": len(left_subs),
+            "right_subspecs": len(right_subs),
+        }
+        if unresolved_sources:
+            meta["unresolved_sources"] = unresolved_sources
+            meta["degraded"] = True
+
         return ToolOutput(
             tool_id=self.tool_id, status="success", output_type="chart",
-            data=option,
-            metadata={
-                "chart_type": "line",
-                "chart_subtype": "dual_y_line",
-                "series_count": len(series),
-            },
+            data=option, metadata=meta,
         )
 
     @staticmethod

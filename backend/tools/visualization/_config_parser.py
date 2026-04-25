@@ -22,6 +22,37 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
+def _normalize_axis_spec(value: Any, field: str) -> dict[str, Any] | None:
+    """Normalise dual-axis spec (left_y / right_y) into a single shape.
+
+    Accepted inputs:
+      • ``dict``       — single-series axis (e.g. ``{"label": "%", "y_field": "rate"}``)
+                         passed through unchanged.
+      • ``list[dict]`` — multi-series sharing one axis (e.g. utilisation +
+                         serviceable rate both on the left axis). Wrapped as
+                         ``{"label": joined_labels, "series": list}`` so
+                         downstream renderers can iterate ``spec["series"]``.
+      • ``None``       — returns None.
+      • anything else  — log + drop (returns None). Caller should treat None
+                         as "no axis spec; fall back to default".
+    """
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, list) and value and all(isinstance(x, dict) for x in value):
+        labels = [x.get("label", "") for x in value if x.get("label")]
+        return {
+            "label": " / ".join(labels) if labels else None,
+            "series": value,
+        }
+    logger.warning(
+        "chart param %r expected dict or list[dict], got %s (%r) — dropping (axis will fall back to default)",
+        field, type(value).__name__, value,
+    )
+    return None
+
+
 def _coerce_mapping(value: Any, field: str) -> dict[str, Any]:
     """Best-effort coerce an LLM-generated value into a dict.
 
@@ -119,13 +150,9 @@ def parse_chart_params(params: dict[str, Any], task_name: str = "") -> dict[str,
     if isinstance(y_fields, str):
         y_fields = [y_fields]
 
-    # left_y / right_y / filter must be dicts; LLM sometimes emits strings.
-    left_y = cfg.get("left_y")
-    right_y = cfg.get("right_y")
-    if left_y is not None and not isinstance(left_y, dict):
-        left_y = _coerce_mapping(left_y, "config.left_y") or None
-    if right_y is not None and not isinstance(right_y, dict):
-        right_y = _coerce_mapping(right_y, "config.right_y") or None
+    # left_y / right_y: normalise into {label, series: [...]} form.
+    left_y = _normalize_axis_spec(cfg.get("left_y"), "config.left_y")
+    right_y = _normalize_axis_spec(cfg.get("right_y"), "config.right_y")
 
     # `series` must be a list of descriptors; tolerate a single-dict shape.
     series = cfg.get("series") or []

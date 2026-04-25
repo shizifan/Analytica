@@ -131,17 +131,20 @@ class DocxReportTool(BaseTool):
             doc.save(buffer)
             docx_bytes = buffer.getvalue()
 
+            meta: dict[str, Any] = {
+                "format": "docx",
+                "title": report.title,
+                "file_size_bytes": len(docx_bytes),
+                "mode": mode,
+            }
+            if report.degradations:
+                meta["degradations"] = report.degradations
             return ToolOutput(
                 tool_id=self.tool_id,
                 status="success",
                 output_type="file",
                 data=docx_bytes,
-                metadata={
-                    "format": "docx",
-                    "title": report.title,
-                    "file_size_bytes": len(docx_bytes),
-                    "mode": mode,
-                },
+                metadata=meta,
             )
 
         except Exception as e:

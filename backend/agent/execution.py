@@ -1229,6 +1229,42 @@ async def execution_node(
     state["task_statuses"] = task_statuses
     state["execution_context"] = execution_context
 
+    # ── Surface tool-level degradations to the cross-cutting channel ──
+    # Each tool may stash {"degradations": [...]} or {"degraded": True} in
+    # its ToolOutput.metadata when a fallback path was taken (e.g. report
+    # collector reassigning items, chart parser normalising axis specs).
+    # Lift these into state["degradations"] so chat / Trace tab can show.
+    from backend.agent.degradation import DegradationEvent, record, SEVERITY_WARN
+    for tid, output in execution_context.items():
+        meta = getattr(output, "metadata", None) or {}
+        # 1. Structured degradations list (from collector / aggregated tools)
+        for d in meta.get("degradations", []) or []:
+            kind = d.get("kind", "tool_degradation")
+            reason = (
+                f"[{tid}] 报告生成将 {d.get('count')} 项内容归并到「{d.get('fallback_section')}」章节"
+                if kind == "report_items_reassigned"
+                else f"[{tid}] {kind}"
+            )
+            record(state, DegradationEvent(
+                layer=meta.get("format", "execution"),
+                severity=SEVERITY_WARN,
+                reason=reason,
+                affected={"task_id": tid, **d},
+            ))
+        # 2. Coarse "degraded" flag (e.g. dual_y_line could not resolve some sources)
+        if meta.get("degraded"):
+            unresolved = meta.get("unresolved_sources") or []
+            record(state, DegradationEvent(
+                layer="visualization",
+                severity=SEVERITY_WARN,
+                reason=(
+                    f"[{tid}] 图表降级渲染（无法解析 source: {unresolved}）"
+                    if unresolved
+                    else f"[{tid}] 图表降级渲染"
+                ),
+                affected={"task_id": tid, "unresolved_sources": unresolved},
+            ))
+
     # ── Cancellation: short-circuit before result formatting ───
     if cancel_event and cancel_event.is_set():
         registry.clear_cancel(session_id)
@@ -1305,6 +1341,14 @@ async def execution_node(
             state["messages"].append({
                 "role": "assistant",
                 "content": f"[Execution] 所有 {len(tasks)} 个任务执行完成。",
+            })
+        # Append degradation summary (if any) so user knows what fell back.
+        from backend.agent.degradation import summarize as _summarize_degradations
+        _deg_summary = _summarize_degradations(state)
+        if _deg_summary:
+            state["messages"].append({
+                "role": "assistant",
+                "content": f"---\n{_deg_summary}",
             })
         # Signal to graph: proceed to reflection
         state.setdefault("next_action", "reflection")
