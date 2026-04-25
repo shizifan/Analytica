@@ -6,8 +6,9 @@ in execution.py and threaded through SkillInput. Each span is:
   - persisted to thinking_events with kind="span" by main.py's _ws_callback
 
 Span types:
-  "api_call"  — data API HTTP request (api_fetch.py)
-  "llm_call"  — LLM invocation (skills/_llm.py)
+  "api_call"      — data API HTTP request (api_fetch.py)
+  "llm_call"      — LLM invocation (tools/_llm.py)
+  "param_resolve" — LLM-driven API parameter resolution (api_fetch.py)
 """
 from __future__ import annotations
 

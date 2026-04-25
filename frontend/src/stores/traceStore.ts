@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export type SpanStatus = 'start' | 'ok' | 'error';
-export type SpanType = 'api_call' | 'llm_call';
+export type SpanType = 'api_call' | 'llm_call' | 'param_resolve';
 
 export interface Span {
   span_id: string;
