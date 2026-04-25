@@ -8,12 +8,11 @@ import { ThinkingTab } from './ThinkingTab';
 import { StatusTab } from './StatusTab';
 import { PlanTab } from './PlanTab';
 import { TraceTab } from './TraceTab';
-import { DegradationsTab } from './DegradationsTab';
 import { useTraceStore } from '../../../stores/traceStore';
 import { useDegradationStore } from '../../../stores/degradationStore';
 import { downloadSessionJSON } from '../../../utils/exportSession';
 
-type TabKey = 'thinking' | 'status' | 'plan' | 'trace' | 'degradations';
+type TabKey = 'thinking' | 'status' | 'plan' | 'trace';
 
 interface Props {
   collapsed: boolean;
@@ -123,13 +122,11 @@ export function AgentPane({ collapsed, onToggle, phaseLabel }: Props) {
           active={active === 'trace'}
           onClick={() => pickTab('trace')}
           label="追踪"
-          badge={traceTaskCount}
-        />
-        <TabButton
-          active={active === 'degradations'}
-          onClick={() => pickTab('degradations')}
-          label="降级"
-          badge={degradationCount}
+          badge={
+            degradationCount > 0
+              ? `${traceTaskCount} ⚠${degradationCount}`
+              : traceTaskCount
+          }
         />
       </nav>
 
@@ -138,7 +135,6 @@ export function AgentPane({ collapsed, onToggle, phaseLabel }: Props) {
         {active === 'status' && <StatusTab />}
         {active === 'plan' && <PlanTab />}
         {active === 'trace' && <TraceTab />}
-        {active === 'degradations' && <DegradationsTab />}
       </div>
     </aside>
   );

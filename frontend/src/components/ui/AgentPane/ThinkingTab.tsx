@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useThinkingStore } from '../../../stores/thinkingStore';
 import type { ThinkingEvent } from '../../../types';
+import { SmartJSON, SmartValue } from './_primitives';
 
 const STATUS_LABEL: Record<string, string> = {
   success: '成功',
@@ -11,70 +12,108 @@ const STATUS_LABEL: Record<string, string> = {
   running: '运行中',
 };
 
-function formatKV(pairs: Array<[string, unknown]>): Array<[string, string]> {
-  return pairs
-    .filter(([, v]) => v !== undefined && v !== null && v !== '')
-    .map(([k, v]) => [
-      k,
-      typeof v === 'object' ? JSON.stringify(v) : String(v),
-    ]);
+// ── Time formatting ────────────────────────────────────────────
+
+function formatTimestamp(evt: ThinkingEvent): { short: string; full: string } {
+  // Prefer created_at (ISO from DB) when present, otherwise ts_ms.
+  let date: Date | null = null;
+  if (evt.created_at) {
+    const d = new Date(evt.created_at);
+    if (!isNaN(d.getTime())) date = d;
+  }
+  if (!date && evt.ts_ms) {
+    // ts_ms from backend is monotonic clock, not wall time — best-effort.
+    const d = new Date(evt.ts_ms);
+    if (!isNaN(d.getTime()) && d.getFullYear() > 2020) date = d;
+  }
+  if (!date) return { short: '--:--:--', full: '' };
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  const ms = String(date.getMilliseconds()).padStart(3, '0');
+  return { short: `${hh}:${mm}:${ss}`, full: `${hh}:${mm}:${ss}.${ms}` };
 }
+
+// ── Inline KV (small key-value pairs in headers/summaries) ─────
+
+function InlineKV({ pairs }: { pairs: Array<[string, unknown]> }) {
+  const visible = pairs.filter(([, v]) => v !== undefined && v !== null && v !== '');
+  if (visible.length === 0) return null;
+  return (
+    <div className="an-think-kv">
+      {visible.map(([k, v]) => (
+        <div key={k} className="an-think-kv-row">
+          <span className="k">{k}</span>
+          <SmartValue value={v} maxStringLen={80} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Row time prefix (consistent left column) ────────────────────
+
+function TimePrefix({ evt }: { evt: ThinkingEvent }) {
+  const { short, full } = formatTimestamp(evt);
+  return (
+    <span className="an-think-time" title={full || undefined}>
+      {short}
+    </span>
+  );
+}
+
+// ── PHASE row ───────────────────────────────────────────────────
 
 function PhaseRow({ evt }: { evt: ThinkingEvent }) {
   const payload = (evt.payload ?? {}) as Record<string, unknown>;
-  const eventName = payload.event === 'phase_exit' ? '完成' : '进入';
+  const isExit = payload.event === 'phase_exit';
   const node = (payload.node as string) ?? evt.phase ?? '';
 
-  // Build an optional summary line for phase_exit events.
-  const kv: Array<[string, string]> = [];
-  const pushIf = (k: string, v: unknown, formatter?: (x: unknown) => string) => {
-    if (v === undefined || v === null || v === '') return;
-    kv.push([k, formatter ? formatter(v) : String(v)]);
-  };
-  if (payload.event === 'phase_exit') {
+  // Build a compact summary line for phase_exit events.
+  const pairs: Array<[string, unknown]> = [];
+  if (isExit) {
     if (node === 'perception') {
-      pushIf('槽位', payload.slot_total, (v) => `${payload.slot_filled ?? 0}/${v}`);
-      pushIf('意图', payload.intent_ready, (v) => (v ? '就绪' : '未完成'));
-      pushIf('追问', payload.asking_slot);
-      if (payload.clarification_round) pushIf('轮次', payload.clarification_round);
+      if (payload.slot_total != null)
+        pairs.push(['槽位', `${payload.slot_filled ?? 0}/${payload.slot_total}`]);
+      if (payload.intent_ready != null)
+        pairs.push(['意图', payload.intent_ready ? '就绪' : '未完成']);
+      if (payload.asking_slot) pairs.push(['追问', payload.asking_slot]);
+      if (payload.clarification_round) pairs.push(['轮次', payload.clarification_round]);
     } else if (node === 'planning') {
-      pushIf('任务', payload.task_count);
-      pushIf('版本', payload.plan_version, (v) => `v${v}`);
-      pushIf('预估', payload.estimated_duration, (v) => `${v}s`);
+      if (payload.task_count != null) pairs.push(['任务', payload.task_count]);
+      if (payload.plan_version != null) pairs.push(['版本', `v${payload.plan_version}`]);
+      if (payload.estimated_duration != null)
+        pairs.push(['预估', `${payload.estimated_duration}s`]);
     } else if (node === 'execution') {
-      pushIf('完成', payload.done);
-      pushIf('失败', payload.failed);
-      pushIf('跳过', payload.skipped);
-      pushIf('总计', payload.task_total);
-      if (payload.needs_replan) pushIf('需重规划', '是');
+      if (payload.done != null) pairs.push(['完成', payload.done]);
+      if (payload.failed != null) pairs.push(['失败', payload.failed]);
+      if (payload.skipped != null) pairs.push(['跳过', payload.skipped]);
+      if (payload.task_total != null) pairs.push(['总计', payload.task_total]);
+      if (payload.needs_replan) pairs.push(['需重规划', '是']);
     } else if (node === 'reflection') {
-      pushIf('偏好', payload.preferences);
-      pushIf('模板', payload.templates);
-      pushIf('工具反馈', payload.tool_feedback);
+      if (payload.preferences != null) pairs.push(['偏好', payload.preferences]);
+      if (payload.templates != null) pairs.push(['模板', payload.templates]);
+      if (payload.tool_feedback != null) pairs.push(['工具反馈', payload.tool_feedback]);
     }
   }
 
   return (
     <div className="an-think-row kind-phase">
-      <div className="an-think-head">
-        <span className="an-think-kind">
-          PHASE · {eventName === '完成' ? 'EXIT' : 'ENTER'}
-        </span>
-        <span>#{Math.abs(evt.id)}</span>
-      </div>
-      <div className="an-think-body">
-        {eventName === '进入' ? '进入' : '完成'} <strong>{node}</strong> 节点
-      </div>
-      {kv.length > 0 && (
-        <div className="an-think-kv">
-          {kv.map(([k, v]) => (
-            <FragmentKV key={k} k={k} v={v} />
-          ))}
+      <TimePrefix evt={evt} />
+      <div className="an-think-content">
+        <div className="an-think-head">
+          <span className="an-think-kind">PHASE · {isExit ? 'EXIT' : 'ENTER'}</span>
         </div>
-      )}
+        <div className="an-think-body">
+          {isExit ? '完成' : '进入'} <strong>{node}</strong> 节点
+        </div>
+        {pairs.length > 0 && <InlineKV pairs={pairs} />}
+      </div>
     </div>
   );
 }
+
+// ── TOOL row ────────────────────────────────────────────────────
 
 function ToolRow({ evt }: { evt: ThinkingEvent }) {
   const p = (evt.payload ?? {}) as Record<string, unknown>;
@@ -85,113 +124,118 @@ function ToolRow({ evt }: { evt: ThinkingEvent }) {
   const errorCategory = (p.error_category as string) ?? '';
   const isStart = phase === 'tool_call_start';
   const args = (p.args as Record<string, unknown>) ?? null;
-  const argEntries = args ? formatKV(Object.entries(args)) : [];
   const preview = (p.preview as Record<string, unknown>) ?? null;
+
+  // Inline summary for preview (single line).
+  const previewPairs: Array<[string, unknown]> = [];
+  if (preview) {
+    if (preview.rows != null)
+      previewPairs.push(['行/列', `${preview.rows}×${preview.cols ?? '?'}`]);
+    else if (preview.count != null)
+      previewPairs.push(['条数', preview.count]);
+    if (Array.isArray(preview.columns))
+      previewPairs.push(['字段', preview.columns]);
+    else if (Array.isArray(preview.keys))
+      previewPairs.push(['键', preview.keys]);
+    if (preview.char_count != null)
+      previewPairs.push(['字符', preview.char_count]);
+    if (preview.output_type != null)
+      previewPairs.push(['类型', preview.output_type]);
+  }
 
   return (
     <div className="an-think-row kind-tool">
-      <div className="an-think-head">
-        <span className="an-think-kind">TOOL · {isStart ? '开始' : '结束'}</span>
-        {status && (
-          <span className={`an-think-status ${status}`}>
-            {STATUS_LABEL[status] ?? status}
-          </span>
+      <TimePrefix evt={evt} />
+      <div className="an-think-content">
+        <div className="an-think-head">
+          <span className="an-think-kind">TOOL · {isStart ? '开始' : '结束'}</span>
+          {status && (
+            <span className={`an-think-status ${status}`}>
+              {STATUS_LABEL[status] ?? status}
+            </span>
+          )}
+        </div>
+        <div className="an-think-body">
+          <strong>{tool || 'unknown_tool'}</strong>
+          {taskId && (
+            <span className="an-think-tid">{taskId}</span>
+          )}
+        </div>
+
+        {/* Args (start event) — collapse via SmartJSON */}
+        {isStart && args && Object.keys(args).length > 0 && (
+          <div className="an-think-collapsible">
+            <SmartJSON data={args} initialOpen={false} label="入参" />
+          </div>
+        )}
+
+        {/* Preview (end event) — inline summary, full JSON via SmartJSON */}
+        {!isStart && previewPairs.length > 0 && <InlineKV pairs={previewPairs} />}
+
+        {!isStart && errorCategory && (
+          <InlineKV pairs={[['错误类型', errorCategory]]} />
         )}
       </div>
-      <div className="an-think-body">
-        <strong>{tool || 'unknown_tool'}</strong>
-        {taskId && (
-          <span className="an-mono" style={{ marginLeft: 6, color: 'var(--an-ink-4)', fontSize: 10 }}>
-            {taskId}
-          </span>
-        )}
-      </div>
-      {isStart && argEntries.length > 0 && (
-        <div className="an-think-kv">
-          {argEntries.slice(0, 5).map(([k, v]) => (
-            <FragmentKV key={k} k={k} v={v} />
-          ))}
-        </div>
-      )}
-      {!isStart && preview && (
-        <div className="an-think-kv">
-          {preview.rows !== undefined && (
-            <FragmentKV k="行/列" v={`${preview.rows}×${preview.cols ?? '?'}`} />
-          )}
-          {preview.count !== undefined && preview.rows === undefined && (
-            <FragmentKV k="条数" v={String(preview.count)} />
-          )}
-          {preview.columns !== undefined && Array.isArray(preview.columns) && (
-            <FragmentKV k="字段" v={(preview.columns as string[]).join(', ')} />
-          )}
-          {preview.keys !== undefined && Array.isArray(preview.keys) && (
-            <FragmentKV k="键" v={(preview.keys as string[]).join(', ')} />
-          )}
-          {preview.char_count !== undefined && (
-            <FragmentKV k="字符" v={String(preview.char_count)} />
-          )}
-          {preview.output_type !== undefined && preview.output_type !== null && (
-            <FragmentKV k="类型" v={String(preview.output_type)} />
-          )}
-        </div>
-      )}
-      {!isStart && errorCategory && (
-        <div className="an-think-kv">
-          <FragmentKV k="错误类型" v={errorCategory} />
-        </div>
-      )}
     </div>
   );
 }
 
-function FragmentKV({ k, v }: { k: string; v: string }) {
-  return (
-    <>
-      <span className="k">{k}</span>
-      <span className="v" title={v}>
-        {v.length > 60 ? `${v.slice(0, 60)}…` : v}
-      </span>
-    </>
-  );
-}
+// ── DECISION row ────────────────────────────────────────────────
 
 function DecisionRow({ evt }: { evt: ThinkingEvent }) {
   const p = (evt.payload ?? {}) as Record<string, unknown>;
   const branch = (p.branch as string) ?? '';
+  const reason = (p.reason as string) ?? '';
   return (
     <div className="an-think-row kind-decision">
-      <div className="an-think-head">
-        <span className="an-think-kind">DECISION</span>
-        {branch && (
-          <span className="an-think-status" style={{ textTransform: 'uppercase' }}>
-            {branch}
-          </span>
-        )}
-      </div>
-      <div className="an-think-body">
-        {(p.reason as string) ?? branch ?? '决策点'}
+      <TimePrefix evt={evt} />
+      <div className="an-think-content">
+        <div className="an-think-head">
+          <span className="an-think-kind">DECISION</span>
+          {branch && (
+            <span className="an-think-status" style={{ textTransform: 'uppercase' }}>
+              {branch}
+            </span>
+          )}
+        </div>
+        <div className="an-think-body">
+          {reason || branch || '决策点'}
+        </div>
       </div>
     </div>
   );
 }
 
+// ── THINKING (catch-all) row ────────────────────────────────────
+
 function ThinkingRow({ evt }: { evt: ThinkingEvent }) {
   const p = (evt.payload ?? {}) as Record<string, unknown>;
+  const text = (p.text as string) ?? '';
   return (
     <div className="an-think-row kind-thinking">
-      <div className="an-think-head">
-        <span className="an-think-kind">THINKING</span>
-        <span>#{Math.abs(evt.id)}</span>
+      <TimePrefix evt={evt} />
+      <div className="an-think-content">
+        <div className="an-think-head">
+          <span className="an-think-kind">THINKING</span>
+        </div>
+        {text ? (
+          <div className="an-think-body">{text}</div>
+        ) : (
+          <div className="an-think-collapsible">
+            <SmartJSON data={p} initialOpen={false} label="payload" />
+          </div>
+        )}
       </div>
-      <div className="an-think-body">{(p.text as string) ?? JSON.stringify(p)}</div>
     </div>
   );
 }
+
+// ── ThinkingTab ─────────────────────────────────────────────────
 
 export function ThinkingTab() {
   const events = useThinkingStore((s) => s.events);
 
-  // Dedupe by id, keep insertion order (WS + replay may overlap).
+  // Dedupe by id, preserve insertion order.
   const ordered = useMemo(() => {
     const seen = new Set<number>();
     const out: ThinkingEvent[] = [];
@@ -216,7 +260,7 @@ export function ThinkingTab() {
   }
 
   return (
-    <div>
+    <div className="an-think-list">
       {ordered.map((evt) => {
         const key = `${evt.id}_${evt.kind}`;
         if (evt.kind === 'phase') return <PhaseRow key={key} evt={evt} />;

@@ -1,6 +1,7 @@
 import { useSlotStore } from '../../../stores/slotStore';
 import { Icon } from '../Icon';
 import type { SlotState } from '../../../types';
+import { SmartValue, SourceTag } from './_primitives';
 
 const SLOT_LABELS: Record<string, string> = {
   analysis_subject: '分析对象',
@@ -15,48 +16,35 @@ const SLOT_LABELS: Record<string, string> = {
   region: '区域',
   data_granularity: '数据粒度',
   domain_glossary: '业务术语',
+  business_type: '业务类型',
+  cargo_type: '货类',
+  asset_category: '资产类别',
+  project_type: '项目类型',
+  project_status: '项目状态',
+  equipment_type: '设备分类',
 };
 
 const REQUIRED_SLOTS = new Set(['analysis_subject', 'time_range', 'output_complexity']);
 
-const SOURCE_TAG: Record<string, string> = {
-  user_input: 'USER',
-  memory: 'MEM',
-  memory_low_confidence: 'MEM·L',
-  inferred: 'INF',
-  default: 'DEF',
-  history: 'HIST',
-};
+function isFilled(slot: SlotState): boolean {
+  const v = slot.value;
+  return v !== null && v !== undefined && v !== '' &&
+    !(Array.isArray(v) && v.length === 0);
+}
 
-function classFor(slot: SlotState, asking: boolean): string {
-  const base = 'an-slot-row';
+function rowClass(slot: SlotState, asking: boolean, filled: boolean): string {
+  const base = 'an-slot-row-v2';
   if (asking) return `${base} asking`;
-  if (slot.value === null || slot.value === undefined || slot.value === '') {
-    return base;
-  }
+  if (!filled) return `${base} empty`;
   if (slot.source === 'memory' || slot.source === 'memory_low_confidence') return `${base} memory`;
   if (slot.source === 'inferred' || slot.source === 'default') return `${base} inferred`;
   return `${base} filled`;
 }
 
-function formatValue(v: unknown): string {
-  if (v === null || v === undefined || v === '') return '—';
-  if (typeof v === 'object') return JSON.stringify(v);
-  return String(v);
-}
-
-/**
- * Phase 3.5 — Slot status rendered with new design tokens (replaces the
- * v1 Tailwind card that was shown inside the Inspector until now).
- */
 export function StatusTab() {
   const slots = useSlotStore((s) => s.slots);
   const currentAsking = useSlotStore((s) => s.currentAsking);
   const entries = Object.entries(slots);
-
-  const requiredFilled = [...REQUIRED_SLOTS].every(
-    (n) => slots[n]?.value != null && slots[n].value !== '',
-  );
 
   if (entries.length === 0) {
     return (
@@ -70,12 +58,18 @@ export function StatusTab() {
     );
   }
 
-  // Group required first, then the rest — keeps user eye on the must-haves.
+  const requiredFilled = [...REQUIRED_SLOTS].every(
+    (n) => slots[n] && isFilled(slots[n]),
+  );
+
+  // Group: required (always show), then filled-optional, then empty-optional.
   const required = entries.filter(([k]) => REQUIRED_SLOTS.has(k));
   const optional = entries.filter(([k]) => !REQUIRED_SLOTS.has(k));
+  const optFilled = optional.filter(([, s]) => isFilled(s));
+  const optEmpty = optional.filter(([, s]) => !isFilled(s));
 
   return (
-    <div className="an-slot-group" data-testid="slot-status-card">
+    <div className="an-slot-group-v2" data-testid="slot-status-card">
       {requiredFilled && (
         <div className="an-slot-summary" data-testid="slot-complete-banner">
           <Icon name="check" size={12} />
@@ -84,8 +78,7 @@ export function StatusTab() {
       )}
 
       {required.length > 0 && (
-        <>
-          <div className="an-slot-section-label">必填</div>
+        <Section title={`必填 · ${required.filter(([, s]) => isFilled(s)).length}/${required.length}`}>
           {required.map(([name, slot]) => (
             <SlotRow
               key={name}
@@ -94,13 +87,12 @@ export function StatusTab() {
               asking={currentAsking === name}
             />
           ))}
-        </>
+        </Section>
       )}
 
-      {optional.length > 0 && (
-        <>
-          <div className="an-slot-section-label">可选 / 推断</div>
-          {optional.map(([name, slot]) => (
+      {optFilled.length > 0 && (
+        <Section title={`已填 · ${optFilled.length}`}>
+          {optFilled.map(([name, slot]) => (
             <SlotRow
               key={name}
               name={name}
@@ -108,8 +100,38 @@ export function StatusTab() {
               asking={currentAsking === name}
             />
           ))}
-        </>
+        </Section>
       )}
+
+      {optEmpty.length > 0 && (
+        <Section title={`未填 · ${optEmpty.length}`} muted>
+          {optEmpty.map(([name, slot]) => (
+            <SlotRow
+              key={name}
+              name={name}
+              slot={slot}
+              asking={currentAsking === name}
+            />
+          ))}
+        </Section>
+      )}
+    </div>
+  );
+}
+
+function Section({
+  title,
+  children,
+  muted = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  muted?: boolean;
+}) {
+  return (
+    <div className={`an-slot-section${muted ? ' is-muted' : ''}`}>
+      <div className="an-slot-section-label-v2">{title}</div>
+      <div className="an-slot-section-body">{children}</div>
     </div>
   );
 }
@@ -124,22 +146,23 @@ function SlotRow({
   asking: boolean;
 }) {
   const label = SLOT_LABELS[name] ?? name;
-  const value = formatValue(slot.value);
-  const srcTag = SOURCE_TAG[slot.source] ?? slot.source.toUpperCase();
+  const filled = isFilled(slot);
+
   return (
     <div
-      className={classFor(slot, asking)}
+      className={rowClass(slot, asking, filled)}
       data-testid={`slot-${name}`}
       data-source={slot.source}
-      data-value={typeof slot.value === 'string' ? slot.value : undefined}
       data-confidence-low={slot.source === 'memory_low_confidence' ? 'true' : undefined}
-      title={value.length > 40 ? value : undefined}
     >
-      <span className="an-slot-name">{label}</span>
-      <span className="an-slot-value">{value}</span>
-      {slot.value != null && slot.value !== '' && (
-        <span className="an-slot-source">{srcTag}</span>
-      )}
+      <div className="an-slot-name-v2">{label}</div>
+      <div className="an-slot-value-v2">
+        {filled ? <SmartValue value={slot.value} /> : <span className="an-slot-empty-mark">—</span>}
+      </div>
+      <div className="an-slot-src-v2">
+        {filled && <SourceTag source={slot.source} />}
+        {asking && <span className="an-slot-asking-tag">询问中</span>}
+      </div>
     </div>
   );
 }
