@@ -268,3 +268,98 @@ def mock_server_settings(monkeypatch, mock_server_url):
     monkeypatch.setenv("MOCK_SERVER_URL", mock_server_url)
     monkeypatch.setenv("API_MODE", "mock")
     yield mock_server_url
+
+
+# ── LLM record / replay ──────────────────────────────────────
+#
+# Two LLM entry points exist in the codebase:
+#   1) backend.agent.graph.build_llm()  → LangChain ChatOpenAI
+#   2) backend.tools._llm.invoke_llm()  → openai SDK call
+# The `recorded_llm` fixture patches both and routes through a shared
+# JSON cache so tests can replay deterministic responses without real
+# LLM calls. Modes (set via CLI):
+#   --llm-mode=replay          (default) cache-only; miss → CacheMissError
+#   --llm-mode=record-missing  cache hits; misses → call real + store
+#   --llm-mode=record-all      always call real + overwrite cache
+#   --llm-mode=passthrough     always call real, never write cache
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--llm-mode",
+        default="replay",
+        choices=["replay", "record-missing", "record-all", "passthrough"],
+        help=(
+            "LLM call mode: replay (default — cache-only), record-missing "
+            "(record on miss), record-all (overwrite all), passthrough (no cache)."
+        ),
+    )
+
+
+@pytest.fixture(scope="session")
+def llm_mode(request):
+    return request.config.getoption("--llm-mode")
+
+
+@pytest.fixture(scope="session")
+def llm_cache_dir():
+    from pathlib import Path
+    p = Path(__file__).parent / "llm_cache"
+    p.mkdir(exist_ok=True)
+    return p
+
+
+@pytest.fixture
+def recorded_llm(monkeypatch, llm_mode, llm_cache_dir, request):
+    """Patch both LLM entry points to route through the JSON cache.
+
+    Yields the LangChain wrapper (so tests can inspect `.calls`).
+    The `invoke_llm` patch is transparent — tools call it as before.
+    """
+    from tests.lib.llm_recorder import (
+        RecordingMode, RecordedLangChainLLM, RecordedInvokeLLM,
+    )
+
+    mode = RecordingMode(llm_mode)
+    test_id = request.node.nodeid
+
+    # Capture the real build_llm BEFORE patching — otherwise our wrapper's
+    # internal call recurses into itself.
+    from backend.agent import graph as _g
+    _real_build_llm = _g.build_llm
+
+    # ── Patch graph.build_llm ──
+    def _fake_build_llm(model_key="qwen3-235b", *, request_timeout=200):
+        real = None
+        if mode != RecordingMode.REPLAY:
+            try:
+                real = _real_build_llm(model_key, request_timeout=request_timeout)
+            except Exception:
+                real = None
+        return RecordedLangChainLLM(
+            real, cache_dir=llm_cache_dir / "langchain", mode=mode,
+            model=model_key, temperature=0.1, test_id=test_id,
+        )
+
+    monkeypatch.setattr(_g, "build_llm", _fake_build_llm)
+    # Also patch the import in employees.graph_factory which does
+    # `from backend.agent.graph import build_llm`
+    import backend.employees.graph_factory as _gf
+    if hasattr(_gf, "build_llm"):
+        monkeypatch.setattr(_gf, "build_llm", _fake_build_llm)
+
+    # ── Patch tools._llm.invoke_llm ──
+    from backend.tools import _llm as _tllm
+    real_invoke = _tllm.invoke_llm
+    recorder = RecordedInvokeLLM(
+        real_invoke if mode != RecordingMode.REPLAY else None,
+        cache_dir=llm_cache_dir / "invoke_llm", mode=mode,
+        model="qwen-default", test_id=test_id,
+    )
+    monkeypatch.setattr(_tllm, "invoke_llm", recorder)
+
+    # Yield a handle so tests can inspect what was called.
+    yield {
+        "build_llm": _fake_build_llm,
+        "invoke_llm_recorder": recorder,
+        "mode": mode,
+    }

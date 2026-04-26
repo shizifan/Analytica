@@ -1,41 +1,34 @@
 """Perception layer minimum sanity check.
 
-Goal: with a deterministic mock LLM, perception produces a structured intent
-with the right shape. NOT asserting specific slot values for specific
-queries — that's a scenario test.
+Uses the `recorded_llm` fixture (record/replay) so the test exercises the
+real LLM behaviour for slot extraction without paying for an LLM call on
+every CI run.
+
+To refresh cache: `pytest tests/health/test_perception_health.py --llm-mode=record-missing`
 """
 from __future__ import annotations
-
-import json
 
 import pytest
 
 pytestmark = pytest.mark.health
 
 
-async def test_perception_runs_with_minimal_state(mock_llm, monkeypatch):
+async def test_perception_runs_with_minimal_state(recorded_llm, test_db_session):
     """Perception node accepts a state with raw_query and returns a state
-    with structured_intent populated."""
-    # Patch the LLM builder so perception uses our mock.
-    from backend.agent import graph as graph_mod
-    monkeypatch.setattr(graph_mod, "build_llm", lambda *a, **kw: mock_llm)
+    with structured_intent populated.
 
-    # Mock LLM responses for the two perception calls (slot extract + clarify).
-    mock_llm.set_response("槽位提取专家", json.dumps({
-        "extracted": {
-            "analysis_subject": {"value": ["集装箱吞吐量"], "evidence": "x", "confidence": "explicit"},
-            "time_range": {"value": {"start": "2026-01-01", "end": "2026-12-31", "description": "2026年"}, "evidence": "x", "confidence": "explicit"},
-            "output_complexity": {"value": "simple_table", "evidence": "x", "confidence": "explicit"},
-        },
-    }))
-    mock_llm.set_response("clarify", "请明确分析对象")
-
+    Wiring proven:
+      - `build_llm` patched and reachable from `run_perception`
+      - DB session usable
+      - LLM ainvoke goes through cache
+    """
     from backend.agent.perception import run_perception
 
     state = {
         "messages": [{"role": "user", "content": "查 2026 年集装箱吞吐量"}],
         "raw_query": "查 2026 年集装箱吞吐量",
-        "session_id": "smoke-perception",
+        "session_id": "perception-health-1",
+        "user_id": "perception_health",
     }
     out = await run_perception(state)
     intent = out.get("structured_intent")
