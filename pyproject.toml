@@ -36,8 +36,18 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 testpaths = ["tests"]
 pythonpath = ["."]
+# Default deselects:
+#   - scenario: business-specific paths (run on demand / pre-release)
+#   - llm_real: hits real LLM API (run nightly / manual)
+#   - slow:    > 5s
+addopts = "-m 'not scenario and not llm_real and not slow'"
 markers = [
-    "llm_real: tests that call real LLM API",
-    "integration: integration tests (real LLM + mock server)",
-    "probe: boundary probe tests (always pass, output report)",
+    "contract: schema/registry/config invariants — must pass on every PR",
+    "health: per-layer minimal sanity check",
+    "smoke: full-chain canonical path, mock LLM, mock server",
+    "probe: external surface health checks (mock_server routes, TS build)",
+    "scenario: business-specific (NOT in regression suite — run with -m scenario)",
+    "slow: > 5s — opt-in via -m slow",
+    "llm_real: hits real LLM API — opt-in via -m llm_real",
+    "integration: deprecated, kept for back-compat with legacy tests",
 ]

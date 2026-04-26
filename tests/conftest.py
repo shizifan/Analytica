@@ -206,3 +206,65 @@ def mock_api_routes():
         ).mock(return_value=httpx.Response(200, json=MOCK_TP_BY_YEAR_RESPONSE))
 
         yield router
+
+
+# ── Mock Server fixture (session-scoped, real HTTP) ────────────
+#
+# Starts the full mock_server_all.py FastAPI app on a random local port for
+# integration / smoke tests that want to exercise the real 226 routes
+# rather than respx-stubbed handfuls. Sessions auto-shut on test exit.
+
+@pytest.fixture(scope="session")
+def mock_server_url():
+    """Spin up mock_server_all.py on a random port; yield base URL.
+
+    Only started on demand — pytest fixtures are lazy, so unit tests that
+    don't request this fixture pay no startup cost.
+    """
+    import socket
+    import threading
+    import time
+    import uvicorn
+
+    # Pick a free port
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+
+    from mock_server.mock_server_all import app as mock_app
+    config = uvicorn.Config(mock_app, host="127.0.0.1", port=port, log_level="warning")
+    server = uvicorn.Server(config)
+
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+
+    # Wait up to 5s for server to come up
+    base_url = f"http://127.0.0.1:{port}"
+    for _ in range(50):
+        try:
+            with httpx.Client(timeout=0.5) as client:
+                r = client.get(f"{base_url}/")
+                if r.status_code in (200, 404):  # any HTTP response means server ready
+                    break
+        except Exception:
+            time.sleep(0.1)
+    else:
+        server.should_exit = True
+        raise RuntimeError(f"mock_server failed to start on {base_url}")
+
+    yield base_url
+
+    server.should_exit = True
+    thread.join(timeout=3)
+
+
+@pytest.fixture
+def mock_server_settings(monkeypatch, mock_server_url):
+    """Point backend.config settings at the running mock_server.
+
+    Use this in any test that wants real HTTP calls to flow through
+    mock_server (instead of respx stubs).
+    """
+    monkeypatch.setenv("MOCK_SERVER_URL", mock_server_url)
+    monkeypatch.setenv("API_MODE", "mock")
+    yield mock_server_url

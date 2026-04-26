@@ -1052,9 +1052,19 @@ def _build_task_results_payload(
                     "size_bytes": artifact.get("size_bytes") if artifact else None,
                 }
             else:
-                continue  # Unknown shape; don't surface to UI
+                # Unknown output_type — emit a degraded text card rather
+                # than silently dropping. Frontend renders any output_type
+                # it doesn't recognise as a fallback message.
+                entry["output_type"] = "text"
+                preview = repr(data)[:500] if data is not None else "（无数据）"
+                entry["data"] = {
+                    "text": f"（结果类型 `{output.output_type}` 暂不支持渲染）\n\n{preview}"
+                }
         except Exception:
-            logger.exception("task_results payload failed for %s", tid)
+            logger.exception(
+                "task_results payload failed for %s | output_type=%s",
+                tid, getattr(output, "output_type", "?"),
+            )
             continue
 
         out_tasks.append(entry)
@@ -1142,8 +1152,16 @@ def _format_execution_results(
                     parts.append(f"**{task_name}**\n\n```json\n{formatted}\n```")
 
             elif output.output_type == "file":
-                fmt = output.metadata.get("format", "file").upper()
+                fmt = (output.metadata or {}).get("format", "file").upper()
                 parts.append(f"**{task_name}**\n\n*已生成 {fmt} 报告。*")
+
+            else:
+                # Unknown output_type — must NOT silently drop. Emit a
+                # placeholder so the user sees the task name and a
+                # degradation marker.
+                parts.append(
+                    f"**{task_name}**\n\n*（结果类型 `{output.output_type}` 暂不支持文本展示）*"
+                )
 
         except Exception as exc:
             logger.warning("格式化任务 %s 结果失败: %s | output_type=%s data_type=%s",

@@ -1,0 +1,73 @@
+name: Regression suite
+
+# Runs the contract / health / smoke / probe layers — the "is the project
+# as a whole still healthy?" suite. Scenario tests (per-FAQ, per-template
+# specifics) are NOT part of this; run them on demand or pre-release.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch: {}
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+          MYSQL_DATABASE: analytica
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+
+    env:
+      DATABASE_URL: mysql+aiomysql://root@127.0.0.1:3306/analytica
+      DATABASE_URL_SYNC: mysql+pymysql://root@127.0.0.1:3306/analytica
+      API_MODE: mock
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: latest
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Apply migrations
+        run: uv run alembic upgrade head
+
+      - name: Seed employees from YAML
+        run: uv run python -m migrations.scripts.seed_employees_from_yaml --force
+
+      - name: Set up Node (for frontend probe)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      # ── Run regression suite (contract + health + smoke + probe) ──
+      # `addopts` in pyproject.toml already deselects scenario / llm_real / slow.
+      - name: Run regression suite
+        run: uv run pytest -v --tb=short
+
+      # ── Optional: surface skipped tests in summary ──
+      - name: Surface skipped tests
+        if: always()
+        run: uv run pytest --collect-only -q || true

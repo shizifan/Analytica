@@ -1,24 +1,24 @@
-"""JSON任务模板执行测试 — 使用3个JSON模板生成4种格式报告。
+"""JSON任务模板执行测试 — 使用 Mock LLM 替代真实 API 调用。
 
-基于 test_execution_only.py 框架，扩展支持 JSON 任务模板的完整执行链路。
+基于 test_json_template_execution.py 框架，将 LLM 调用替换为固化的 Mock 响应。
 
 设计原则：
-1. 加载 JSON 模板文件，解析任务计划
-2. 使用 Mock Server 提供 API 数据
-3. 执行完整 DAG 任务链：数据获取 → 分析 → 图表 → 报告生成
-4. 支持生成 markdown/html/docx/pptx 四种格式
-5. 报告保存到 reports/full_report_tests/
+1. 复用 test_json_template_execution.py 的所有测试结构
+2. 使用 mock_llm_responses.py 中的固化响应
+3. API 数据获取仍使用 mock_server_all.py（保持不变）
+4. 测试执行速度更快，不依赖真实 LLM API
 
 运行：
-    pytest tests/test_json_template_execution.py -v                    # 全部用例
-    pytest tests/test_json_template_execution.py -v -k "throughput"   # 仅吞吐量模板
-    pytest tests/test_json_template_execution.py -v -k "customer"      # 仅客户洞察模板
-    pytest tests/test_json_template_execution.py -v -k "asset"         # 仅资产投资模板
-    pytest tests/test_json_template_execution.py -v -k "markdown"      # 仅 markdown 格式
+    pytest tests/test_json_template_execution_by_mock_llm.py -v                    # 全部用例
+    pytest tests/test_json_template_execution_by_mock_llm.py -v -k "throughput"   # 仅吞吐量模板
+    pytest tests/test_json_template_execution_by_mock_llm.py -v -k "markdown"      # 仅 markdown 格式
 """
 from __future__ import annotations
 
-import asyncio
+import pytest
+pytestmark = pytest.mark.scenario
+
+
 import json
 import logging
 from contextlib import contextmanager
@@ -28,17 +28,19 @@ from typing import Any
 from unittest.mock import patch
 
 import httpx
-import pandas as pd
 import pytest
 
 from backend.agent.execution import execute_plan
 from backend.models.schemas import TaskItem
 from backend.tools.loader import load_all_tools
 
-# 确保所有技能已注册（包括新增的 markdown_gen）
+# 导入 Mock LLM 模块
+from tests.mock_llm_responses import mock_invoke_llm_async
+
+# 确保所有技能已注册
 load_all_tools()
 
-logger = logging.getLogger("test.json_template_execution")
+logger = logging.getLogger("test.json_template_execution.mock")
 
 # ════════════════════════════════════════════════════════════════
 # 报告输出目录配置
@@ -46,7 +48,7 @@ logger = logging.getLogger("test.json_template_execution")
 
 PROJECT_ROOT = Path(__file__).parent.parent
 TEMPLATES_DIR = PROJECT_ROOT / "backend" / "agent" / "plan_templates"
-REPORTS_BASE = PROJECT_ROOT / "reports" / "full_report_tests"
+REPORTS_BASE = PROJECT_ROOT / "reports" / "full_report_tests_mock"
 _RUN_TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
@@ -63,17 +65,7 @@ def save_report_artifact(
     content: Any,
     filename: str,
 ) -> Path | None:
-    """保存报告工件到磁盘。
-
-    Args:
-        template_name: 模板名称
-        report_format: 报告格式（markdown/html/docx/pptx）
-        content: 报告内容（字符串或字节）
-        filename: 文件名
-
-    Returns:
-        保存的文件路径，或 None（保存失败时）
-    """
+    """保存报告工件到磁盘。"""
     output_dir = _get_run_dir(template_name, report_format)
 
     try:
@@ -127,12 +119,7 @@ def load_template(template_name: str) -> dict[str, Any]:
 
 
 def json_to_task_items(template: dict[str, Any]) -> list[TaskItem]:
-    """将 JSON 模板转换为 TaskItem 列表。
-
-    将 ``template._meta`` 注入到每个任务的 params._template_meta，以便下游技能
-    （descriptive/summary_gen/attribution）据此切换业务域 prompt、识别时间窗、
-    读取 comparison_type 等业务上下文。生产环境的 planning 层会做同样的事。
-    """
+    """将 JSON 模板转换为 TaskItem 列表。"""
     tmpl_meta = template.get("_meta", {}) or {}
     meta_inject = {
         "template_id": tmpl_meta.get("template_id") or "",
@@ -158,7 +145,7 @@ def json_to_task_items(template: dict[str, Any]) -> list[TaskItem]:
 
 
 # ════════════════════════════════════════════════════════════════
-# Mock Server 配置（与 test_execution_only 相同）
+# Mock Server 配置（与 test_json_template_execution 相同）
 # ════════════════════════════════════════════════════════════════
 
 from mock_server.mock_server_all import app as mock_app
@@ -194,6 +181,17 @@ def mock_api_gateway():
             return await super().post(url, **kwargs)
 
     with patch("backend.tools.data.api_fetch.httpx.AsyncClient", _PatchedAsyncClient):
+        yield
+
+
+# ════════════════════════════════════════════════════════════════
+# Mock LLM 上下文管理器
+# ════════════════════════════════════════════════════════════════
+
+@contextmanager
+def mock_llm():
+    """替换 invoke_llm 为 Mock 版本。"""
+    with patch("backend.tools._llm.invoke_llm", mock_invoke_llm_async):
         yield
 
 
@@ -264,29 +262,17 @@ async def execute_template_plan(
     max_tasks: int | None = None,
     template_name: str | None = None,
 ) -> tuple[dict[str, str], dict[str, Any]]:
-    """执行模板计划，返回状态和上下文。
-
-    Args:
-        template: JSON 模板字典
-        allowed_tools: 技能白名单
-        max_tasks: 最大执行任务数（用于测试部分执行）
-        template_name: 模板名（若提供，触发 execution_report.json 落盘）
-
-    Returns:
-        (statuses, context) 元组
-    """
+    """执行模板计划，返回状态和上下文。"""
     task_items = json_to_task_items(template)
 
-    # 限制执行任务数（用于快速测试）
     if max_tasks is not None:
         task_items = task_items[:max_tasks]
 
-    # 让执行器把 execution_report.json 落到本次运行目录，便于事后排查
     report_dir = None
     if template_name:
         report_dir = REPORTS_BASE / _RUN_TIMESTAMP / template_name
 
-    with mock_api_gateway():
+    with mock_api_gateway(), mock_llm():
         statuses, context, _ = await execute_plan(
             task_items, allowed_tools=allowed_tools, report_dir=report_dir,
         )
@@ -299,18 +285,8 @@ async def generate_report(
     context: dict[str, Any],
     report_format: str,
     section_names: list[str] | None = None,
-) -> tuple[ToolOutput | None, str]:
-    """生成指定格式的报告。
-
-    Args:
-        template: JSON 模板
-        context: 执行上下文
-        report_format: 报告格式（markdown/html/docx/pptx）
-        section_names: 要包含的章节名称；传 None 使用模板全部章节（批次 4 默认）
-
-    Returns:
-        (ToolOutput, error_message) 元组
-    """
+) -> tuple[Any, str]:
+    """生成指定格式的报告。"""
     from backend.tools.registry import ToolRegistry
     from backend.tools.base import ToolInput
 
@@ -330,26 +306,19 @@ async def generate_report(
     if not tool:
         return None, f"Tool not registered: {tool_id}"
 
-    # 构建报告参数
     meta = template.get("_meta", {})
     title = template.get("title", "分析报告")
 
-    # 模板的完整章节配置（带 task_refs）— 批次 4 后不再自己拼接 context_refs,
-    # 直接把模板的 report_structure 原样传给 report tool，
-    # 让 _content_collector 按 section.task_refs 精确归属各条目。
     report_structure = template.get("report_structure", {})
     all_sections = report_structure.get("sections", [])
     if section_names is not None:
         selected_sections = [s for s in all_sections if s["name"] in section_names]
-        # 若完全不匹配，回退到全量章节而不是空结构
         if not selected_sections:
             selected_sections = all_sections
     else:
         selected_sections = all_sections
 
-    # 从模板的全部任务拿执行顺序（T001..T019），作为内容迭代基准
     task_order = [t["task_id"] for t in template.get("tasks", [])]
-    # _template_meta 供 KPI 抽取 + 域 prompt 使用
     template_meta = {
         "template_id": meta.get("template_id") or "",
         "employee_id": meta.get("employee_id") or "",
@@ -357,7 +326,6 @@ async def generate_report(
         "title": title,
     }
 
-    # 上下文引用：用于 inp.context_refs，合并所有章节的 task_refs
     context_refs = list(dict.fromkeys(
         [ref for s in selected_sections for ref in s.get("task_refs", [])]
     ))
@@ -369,13 +337,11 @@ async def generate_report(
             "date": datetime.now().strftime("%Y-%m-%d"),
         },
         "report_structure": {
-            # 按模板原始 sections（每个章节保留自己的 task_refs）
             "sections": [
                 {"name": s["name"], "task_refs": list(s.get("task_refs", []))}
                 for s in selected_sections
             ]
         },
-        # 批次 4: 显式传入任务顺序 + 模板元数据
         "_task_order": task_order,
         "_template_meta": template_meta,
     }
@@ -383,14 +349,15 @@ async def generate_report(
     inp = ToolInput(params=params, context_refs=context_refs)
 
     try:
-        output = await tool.execute(inp, context)
+        with mock_llm():
+            output = await tool.execute(inp, context)
         return output, ""
     except Exception as e:
         return None, str(e)
 
 
 # ════════════════════════════════════════════════════════════════
-# 测试类
+# 测试类 — 模板加载测试
 # ════════════════════════════════════════════════════════════════
 
 class TestTemplateLoading:
@@ -409,7 +376,6 @@ class TestTemplateLoading:
         assert "tasks" in template
         assert "report_structure" in template
 
-        # 验证元数据
         meta = template["_meta"]
         assert meta.get("employee_id") is not None
         assert meta.get("template_id") is not None
@@ -428,13 +394,16 @@ class TestTemplateLoading:
         assert len(tasks) > 0
         assert all(isinstance(t, TaskItem) for t in tasks)
 
-        # 验证必要字段
         for task in tasks:
             assert task.task_id
             assert task.type
             assert task.name
             assert task.tool
 
+
+# ════════════════════════════════════════════════════════════════
+# 测试类 — 数据获取测试
+# ════════════════════════════════════════════════════════════════
 
 class TestTemplateDataFetch:
     """模板数据获取测试 — 验证数据获取任务能正确执行。"""
@@ -451,15 +420,13 @@ class TestTemplateDataFetch:
         employee_id = template["_meta"]["employee_id"]
         tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
-        # 只执行数据获取任务（前N个）
         data_fetch_tasks = [t for t in template["tasks"] if t["type"] == "data_fetch"]
-        max_fetch = min(5, len(data_fetch_tasks))  # 执行前5个数据获取任务
+        max_fetch = min(5, len(data_fetch_tasks))
 
         statuses, context = await execute_template_plan(
             template, tools, max_tasks=max_fetch, template_name=template_name
         )
 
-        # 验证数据获取任务都成功
         for i in range(max_fetch):
             task_id = f"T{i+1:03d}"
             if task_id in statuses:
@@ -470,6 +437,10 @@ class TestTemplateDataFetch:
                 )
 
 
+# ════════════════════════════════════════════════════════════════
+# 测试类 — 分析任务测试
+# ════════════════════════════════════════════════════════════════
+
 class TestTemplateAnalysis:
     """模板分析任务测试 — 验证分析任务能正确执行。"""
 
@@ -478,14 +449,12 @@ class TestTemplateAnalysis:
         """验证吞吐量模板的分析任务链。"""
         template = load_template("throughput_analyst_monthly_review")
 
-        # 执行前10个任务（覆盖数据获取到分析）
         statuses, context = await execute_template_plan(
             template, THROUGHPUT_ANALYST_TOOLS, max_tasks=10,
             template_name="throughput_analyst_monthly_review",
         )
 
-        # 验证关键分析任务
-        analysis_tasks = ["T011", "T012", "T013"]  # 分析类任务
+        analysis_tasks = ["T011", "T012", "T013"]
         for task_id in analysis_tasks:
             if task_id in statuses:
                 logger.info(f"Task {task_id} status: {statuses[task_id]}")
@@ -495,20 +464,18 @@ class TestTemplateAnalysis:
         """验证资产投资模板的分析任务链。"""
         template = load_template("asset_investment_equipment_ops")
 
-        # 执行前15个任务
         statuses, context = await execute_template_plan(
             template, ASSET_INVESTMENT_TOOLS, max_tasks=15,
             template_name="asset_investment_equipment_ops",
         )
 
-        # 验证分析任务
         for task_id in ["T015", "T016", "T017"]:
             if task_id in statuses:
                 logger.info(f"Task {task_id} status: {statuses[task_id]}")
 
 
 # ════════════════════════════════════════════════════════════════
-# 报告生成测试 — 核心测试类
+# 测试类 — 报告生成测试（核心）
 # ════════════════════════════════════════════════════════════════
 
 class TestReportGenerationMarkdown:
@@ -525,15 +492,12 @@ class TestReportGenerationMarkdown:
         template = load_template(template_name)
         tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
-        # 执行完整计划（数据获取 + 分析 + 图表）
         statuses, context = await execute_template_plan(
-            template, tools, max_tasks=18  # 不包含最后的报告生成任务
+            template, tools, max_tasks=18
         )
 
-        # 收集成功的任务
         successful_refs = [tid for tid, status in statuses.items() if status == "done"]
 
-        # 生成 Markdown 报告 — 使用模板定义的全部章节（批次 4 后的默认行为）
         output, error = await generate_report(
             template, context, "markdown",
         )
@@ -572,12 +536,10 @@ class TestReportGenerationHTML:
         template = load_template(template_name)
         tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
-        # 执行完整计划
         statuses, context = await execute_template_plan(
             template, tools, max_tasks=18, template_name=template_name
         )
 
-        # 生成 HTML 报告 — 使用模板定义的全部章节
         output, error = await generate_report(
             template, context, "html",
         )
@@ -616,12 +578,10 @@ class TestReportGenerationDOCX:
         template = load_template(template_name)
         tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
-        # 执行完整计划
         statuses, context = await execute_template_plan(
             template, tools, max_tasks=18, template_name=template_name
         )
 
-        # 生成 DOCX 报告 — 使用模板定义的全部章节
         output, error = await generate_report(
             template, context, "docx",
         )
@@ -660,12 +620,10 @@ class TestReportGenerationPPTX:
         template = load_template(template_name)
         tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
-        # 执行完整计划
         statuses, context = await execute_template_plan(
             template, tools, max_tasks=18, template_name=template_name
         )
 
-        # 生成 PPTX 报告 — 使用模板定义的全部章节
         output, error = await generate_report(
             template, context, "pptx",
         )
@@ -683,7 +641,6 @@ class TestReportGenerationPPTX:
         assert len(pptx_content) > 1000, "PPTX file too small"
         assert pptx_content[:2] == b"PK", "PPTX should be ZIP format"
 
-        # 验证幻灯片数量
         slide_count = output.metadata.get("slide_count", 0)
         assert slide_count > 0, "No slides generated"
 
@@ -695,7 +652,7 @@ class TestReportGenerationPPTX:
 
 
 # ════════════════════════════════════════════════════════════════
-# 全格式端到端测试
+# 测试类 — 全格式端到端测试
 # ════════════════════════════════════════════════════════════════
 
 class TestFullReportPipeline:
@@ -712,7 +669,6 @@ class TestFullReportPipeline:
         template = load_template(template_name)
         tools = EMPLOYEE_TOOLS_MAP.get(employee_id, THROUGHPUT_ANALYST_TOOLS)
 
-        # 执行完整计划
         statuses, context = await execute_template_plan(
             template, tools, max_tasks=18, template_name=template_name
         )
@@ -726,7 +682,6 @@ class TestFullReportPipeline:
             )
             results[fmt] = (output, error)
 
-        # 验证所有格式都成功生成
         successful_formats = []
         for fmt, (output, error) in results.items():
             if output and output.status in ("success", "partial"):
@@ -735,7 +690,6 @@ class TestFullReportPipeline:
             else:
                 logger.warning(f"[{template_name}] {fmt.upper()} generation: FAILED - {error}")
 
-        # 至少要成功生成一种格式
         assert len(successful_formats) > 0, (
             f"Failed to generate any report format for {template_name}"
         )
@@ -744,7 +698,7 @@ class TestFullReportPipeline:
 
 
 # ════════════════════════════════════════════════════════════════
-# 性能与边界测试
+# 测试类 — 性能与边界测试
 # ════════════════════════════════════════════════════════════════
 
 class TestReportGenerationPerformance:
@@ -752,7 +706,7 @@ class TestReportGenerationPerformance:
 
     @pytest.mark.asyncio
     async def test_execution_time_for_full_pipeline(self):
-        """验证完整执行管道的时间消耗。"""
+        """验证完整执行管道的时间消耗（Mock LLM 应该更快）。"""
         import time
 
         template = load_template("throughput_analyst_monthly_review")
@@ -766,26 +720,88 @@ class TestReportGenerationPerformance:
 
         logger.info(f"Full pipeline (10 tasks) execution time: {execution_time:.2f}s")
 
-        # 验证至少有一些任务成功
         done_count = sum(1 for s in statuses.values() if s == "done")
         assert done_count > 0, "No tasks completed successfully"
 
 
 # ════════════════════════════════════════════════════════════════
-# 辅助命令（直接运行脚本时执行）
+# 测试类 — Mock LLM 特定测试
+# ════════════════════════════════════════════════════════════════
+
+class TestMockLLMResponses:
+    """Mock LLM 响应测试 — 验证固化响应是否正确返回。"""
+
+    @pytest.mark.asyncio
+    async def test_descriptive_narrative_mock(self):
+        """验证描述性分析的 Mock 响应包含正确的业务洞察。"""
+        from tests.mock_llm_responses import mock_invoke_llm_async
+
+        # 测试吞吐量领域
+        result = await mock_invoke_llm_async(
+            "你是港口生产运营分析师。基于以下统计数据写分析...",
+            system_prompt=None,
+        )
+        assert result["error_category"] is None
+        assert "吞吐量" in result["text"] or "完成率" in result["text"]
+        assert len(result["text"]) > 50
+
+    @pytest.mark.asyncio
+    async def test_attribution_mock(self):
+        """验证归因分析的 Mock 响应包含 JSON 结构。"""
+        from tests.mock_llm_responses import mock_invoke_llm_async
+        import json
+
+        ATTRIBUTION_PROMPT = """业务域: throughput
+目标指标: 吞吐量增长
+分析时段: 2026年Q1
+
+请以严格的 JSON 格式返回结果"""
+
+        SYSTEM_PROMPT = """你是资深数据分析师，擅长从多源数据推断因果关系。要求：
+- 区分直接原因与背景原因
+- 对不确定的归因必须说明置信度"""
+
+        result = await mock_invoke_llm_async(
+            ATTRIBUTION_PROMPT,
+            system_prompt=SYSTEM_PROMPT,
+        )
+
+        assert result["error_category"] is None
+        # 应该能解析为 JSON
+        parsed = json.loads(result["text"])
+        assert "primary_drivers" in parsed
+        assert "narrative" in parsed
+
+    @pytest.mark.asyncio
+    async def test_summary_mock(self):
+        """验证摘要生成的 Mock 响应。"""
+        from tests.mock_llm_responses import mock_invoke_llm_async
+
+        result = await mock_invoke_llm_async(
+            "你是向高管汇报的业务分析师。基于以下分析结果，写一段面向决策层的经营摘要...",
+            system_prompt=None,
+        )
+
+        assert result["error_category"] is None
+        assert len(result["text"]) > 50
+        assert "核心数字" in result["text"] or "同比" in result["text"]
+
+
+# ════════════════════════════════════════════════════════════════
+# 辅助命令
 # ════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
     import sys
 
     print("=" * 60)
-    print("JSON 任务模板报告生成测试")
+    print("JSON 任务模板报告生成测试 (Mock LLM)")
     print("=" * 60)
     print(f"\n模板目录: {TEMPLATES_DIR}")
     print(f"报告目录: {REPORTS_BASE}")
     print(f"运行时间戳: {_RUN_TIMESTAMP}")
     print("\n使用方法:")
-    print("  pytest tests/test_json_template_execution.py -v                    # 全部测试")
-    print("  pytest tests/test_json_template_execution.py -v -k 'throughput'     # 仅吞吐量模板")
-    print("  pytest tests/test_json_template_execution.py -v -k 'markdown'       # 仅 markdown 格式")
+    print("  pytest tests/test_json_template_execution_by_mock_llm.py -v              # 全部测试")
+    print("  pytest tests/test_json_template_execution_by_mock_llm.py -v -k 'throughput'  # 仅吞吐量模板")
+    print("  pytest tests/test_json_template_execution_by_mock_llm.py -v -k 'markdown'    # 仅 markdown 格式")
     print("=" * 60)
