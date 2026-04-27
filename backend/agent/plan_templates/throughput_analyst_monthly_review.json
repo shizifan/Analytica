@@ -414,7 +414,7 @@
     },
     {
       "task_id": "T018",
-      "type": "analysis",
+      "type": "summary",
       "name": "生成综合经营摘要",
       "description": "汇总所有分析结论，生成面向管理层的经营摘要，包含关键数字、趋势判断、风险提示",
       "depends_on": [

@@ -415,7 +415,7 @@
     },
     {
       "task_id": "T022",
-      "type": "analysis",
+      "type": "summary",
       "name": "生成综合管理摘要",
       "description": "整合资产、投资、设备三域结论，生成面向管理层的综合报告摘要",
       "depends_on": [

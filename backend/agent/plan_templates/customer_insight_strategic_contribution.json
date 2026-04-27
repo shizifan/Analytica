@@ -396,7 +396,7 @@
     },
     {
       "task_id": "T018",
-      "type": "analysis",
+      "type": "summary",
       "name": "生成市场客户洞察摘要",
       "description": "汇总客户结构、战略客户集中度、货类变化、市场板块联动，生成PPT主线摘要",
       "depends_on": [
