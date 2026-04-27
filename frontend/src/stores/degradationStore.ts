@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create } from 'zustand/react';
 
 export type DegradationSeverity = 'info' | 'warn' | 'error';
 export type DegradationLayer =

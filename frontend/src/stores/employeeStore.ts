@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create } from 'zustand/react';
 import { api } from '../api/client';
 import type { EmployeeSummary, EmployeeDetail } from '../types';
 

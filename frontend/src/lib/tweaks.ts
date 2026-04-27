@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create } from 'zustand/react';
 
 export type TweakTheme = 'light' | 'dark';
 export type TweakDensity = 'compact' | 'comfortable' | 'spacious';

@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create } from 'zustand/react';
 
 export type SpanStatus = 'start' | 'ok' | 'error';
 export type SpanType = 'api_call' | 'llm_call' | 'param_resolve';

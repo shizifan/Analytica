@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create } from 'zustand/react';
 import type { AgentPhase, ChatMessage } from '../types';
 
 interface SessionState {
