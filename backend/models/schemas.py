@@ -66,7 +66,7 @@ class StructuredIntent(BaseModel):
 # ── Analysis Plan ─────────────────────────────────────────────
 
 TaskType = Literal[
-    "data_fetch", "search", "analysis", "visualization", "report_gen"
+    "data_fetch", "search", "analysis", "visualization", "summary", "report_gen"
 ]
 
 
