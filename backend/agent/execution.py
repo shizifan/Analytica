@@ -73,6 +73,7 @@ _CONCURRENCY_LIMITS: dict[str, int] = {
     "data_fetch":    8,
     "analysis":      2,
     "visualization": 4,
+    "summary":       1,
     "report_gen":    1,
     "_default":      3,
 }
@@ -87,6 +88,7 @@ _TIMEOUT_PROFILE: dict[str, tuple[int, int, float]] = {
     "data_fetch":    (15, 90,  3.0),
     "analysis":      (60, 150, 2.5),   # LLM 调用通常 30-90s, 留足余量
     "visualization": (5,  20,  2.0),
+    "summary":       (30, 120, 2.0),
     "report_gen":    (30, 120, 2.0),
     "_default":      (15, 90,  3.0),
 }
@@ -96,6 +98,7 @@ _RETRY_POLICY: dict[str, tuple[int, frozenset[str]]] = {
     "data_fetch":    (3, frozenset({"TIMEOUT", "SERVER_ERROR", "RATE_LIMIT"})),
     "analysis":      (2, frozenset({"RATE_LIMIT", "TIMEOUT"})),
     "visualization": (1, frozenset()),
+    "summary":       (2, frozenset({"TIMEOUT", "RATE_LIMIT"})),
     "report_gen":    (2, frozenset({"TIMEOUT", "RATE_LIMIT"})),
     "_default":      (1, frozenset()),
 }
@@ -109,6 +112,7 @@ _DEP_POLICY: dict[str, str] = {
     "data_fetch":    "all",
     "analysis":      "majority",
     "visualization": "any",
+    "summary":       "majority",
     "report_gen":    "any_global",
     "_default":      "all",
 }

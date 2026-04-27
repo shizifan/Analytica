@@ -1107,11 +1107,12 @@ TYPE_LABELS = {
     "search": "信息检索",
     "analysis": "分析处理",
     "visualization": "可视化",
+    "summary": "汇总",
     "report_gen": "报告生成",
 }
 
 
-_LAYER_ORDER = ["data_fetch", "search", "analysis", "visualization", "report_gen"]
+_LAYER_ORDER = ["data_fetch", "search", "analysis", "visualization", "summary", "report_gen"]
 
 _REPORT_TOOL_TO_FORMAT = {
     "tool_report_html": "HTML",
