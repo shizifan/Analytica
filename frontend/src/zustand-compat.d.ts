@@ -28,6 +28,7 @@ interface ZustandStoreApi<T> {
 
 type ZustandUseBoundStore<T> = {
   (): T;
+  <U>(selector: (state: T) => U): U;
 } & ZustandStoreApi<T>;
 
 declare module 'zustand/react' {
