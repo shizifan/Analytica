@@ -200,11 +200,19 @@ function TaskGroup({
   // Hide group entirely if filter would leave it empty.
   if (visiblePairs.length === 0 && visibleDegs.length === 0) return null;
 
+  // Prefer the human-readable task_name from the first span; fall back to
+  // task_id so legacy spans (no task_name field) still render their group
+  // header. When both are present, show "T001 · 拉取吞吐量".
+  const taskName = spans.find((s) => s.task_name)?.task_name;
+  const headerLabel = taskName
+    ? `${taskId} · ${taskName}`
+    : taskId;
+
   return (
     <div className={`an-trace-group${hasError ? ' s-error' : ''}`}>
       <button type="button" className="an-trace-group-head" onClick={() => setOpen((o) => !o)}>
         <span className="an-trace-group-chevron">{open ? '▾' : '▸'}</span>
-        <span className="an-trace-group-id">{taskId}</span>
+        <span className="an-trace-group-id" title={taskId}>{headerLabel}</span>
         <span className="an-trace-group-meta">
           {allPairs.length} 次调用
           {latency != null && <> · {latency}ms</>}

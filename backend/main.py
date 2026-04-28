@@ -1371,12 +1371,18 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                                     logger.exception("thinking_events insert failed")
                         elif evt == "trace_span":
                             try:
+                                span = payload.get("span") or {}
+                                # Persist using the span's declared phase so
+                                # planning / perception spans land in their
+                                # own phase bucket. Legacy spans without a
+                                # phase field still default to "execution".
+                                span_phase = span.get("phase") or "execution"
                                 async with factory() as tx:
                                     await session_log.append_thinking_event(
                                         tx, session_id,
                                         kind="span",
-                                        payload=payload.get("span"),
-                                        phase="execution",
+                                        payload=span,
+                                        phase=span_phase,
                                     )
                             except Exception:
                                 logger.exception("trace_span persist failed")

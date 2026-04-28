@@ -478,7 +478,11 @@ async def _execute_single_task(
     )
     sem = _get_semaphore(task.type)
 
-    span_emit = make_span_emit(task_id, ws_callback)
+    span_emit = make_span_emit(
+        task_id, ws_callback,
+        task_name=task.name or tool_id,
+        phase="execution",
+    )
 
     output: ToolOutput | None = None
     for attempt in range(1, max_attempts + 1):
