@@ -144,8 +144,9 @@ def test_stitch_tolerates_partial_failure(engine):
     section_names = [s["name"] for s in plan.report_structure["sections"]]
     assert "sec1" not in section_names
     assert len(section_names) == 4
-    # revision_log records the drop
+    # revision_log records the drop with the contract the graph layer relies on
     log_entry = plan.revision_log[0]
+    assert log_entry["phase"] == "multi_round_stitch"
     assert log_entry["sections_kept"] == 4
     assert log_entry["sections_total"] == 5
     assert any("S1" in sid for sid, _ in log_entry["failed_sections"])

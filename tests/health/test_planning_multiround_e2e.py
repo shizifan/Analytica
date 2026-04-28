@@ -166,6 +166,17 @@ async def test_multiround_falls_back_when_skeleton_times_out(monkeypatch):
     assert all(not t.task_id.startswith("S1.") for t in plan.tasks)
     assert plan.title == "fallback"
 
+    # Fallback must be recorded so graph.planning_node can surface it as
+    # a DegradationEvent — silent fallback is a regression we explicitly
+    # want to prevent.
+    fb = next(
+        (e for e in plan.revision_log if e.get("phase") == "multi_round_fallback"),
+        None,
+    )
+    assert fb is not None, "fallback to single-round was not recorded"
+    assert fb["error_type"] == "TimeoutError"
+    assert "skeleton timeout" in fb["error"]
+
 
 async def test_multiround_tolerates_one_section_failure(monkeypatch):
     """If one of two sections raises, stitch still produces a plan but the

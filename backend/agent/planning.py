@@ -582,7 +582,10 @@ class PlanningEngine:
 
         # Multi-round planning is the default for full_report. On any failure
         # (timeout / parse / validation) we fall through to the single-round
-        # path below — the user always gets a plan.
+        # path below — the user always gets a plan. The triggering error is
+        # captured so the fallback gets recorded in the resulting plan's
+        # revision_log (graph layer turns it into a DegradationEvent).
+        multi_round_fallback_error: Exception | None = None
         if complexity == "full_report":
             try:
                 return await self._generate_plan_multiround(
@@ -592,10 +595,12 @@ class PlanningEngine:
                 logger.warning(
                     "[planning] multi-round failed, fallback to single-round: %s", e,
                 )
+                multi_round_fallback_error = e
             except Exception as e:
                 logger.exception(
                     "[planning] multi-round unexpected error, fallback to single-round: %s", e,
                 )
+                multi_round_fallback_error = e
 
         # Template hint: 优先 JSON 模板骨架，其次查 DB 历史模板
         if ENABLE_TEMPLATE_HINT:
@@ -636,6 +641,13 @@ class PlanningEngine:
                 plan_dict = parse_planning_llm_output(raw_output)
                 plan = self._build_plan(plan_dict, complexity, intent)
                 plan = self._validate_tasks(plan, valid_tools, valid_endpoints, complexity)
+                if multi_round_fallback_error is not None:
+                    plan.revision_log.append({
+                        "phase": "multi_round_fallback",
+                        "ts": int(time.time()),
+                        "error_type": type(multi_round_fallback_error).__name__,
+                        "error": str(multi_round_fallback_error),
+                    })
                 return plan
             except asyncio.TimeoutError as e:
                 last_error = e
