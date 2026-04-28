@@ -19,6 +19,7 @@ from backend.models.schemas import (
     SlotValue,
     StructuredIntent,
 )
+from backend.tracing import trace_span
 
 logger = logging.getLogger("analytica.perception")
 
@@ -334,22 +335,39 @@ class SlotFillingEngine:
         if extra_rules:
             prompt += extra_rules
 
-        # Call LLM with retry
-        raw_output = await self._call_llm_with_retry(prompt)
-        if raw_output is None:
-            return updated_slots
+        # Call LLM with retry — wrapped for trace observability so users
+        # can see how long slot extraction took and which slots came back.
+        async with trace_span(
+            "slot_fill", "perception.slot_fill",
+            task_name="槽位填充",
+            phase="perception",
+            input={
+                "prompt_chars": len(prompt),
+                "current_slots": [
+                    n for n, sv in current_slots.items() if sv.value is not None
+                ],
+                "user_message_chars": len(text),
+            },
+        ) as slot_out:
+            raw_output = await self._call_llm_with_retry(prompt)
+            if raw_output is None:
+                slot_out["result"] = "llm_failure"
+                return updated_slots
 
-        # Parse LLM output
-        cleaned = _clean_llm_output(raw_output)
-        try:
-            parsed = json.loads(cleaned)
-        except json.JSONDecodeError:
-            logger.warning("LLM output is not valid JSON after cleaning: %s", cleaned[:200])
-            return updated_slots
+            # Parse LLM output
+            cleaned = _clean_llm_output(raw_output)
+            try:
+                parsed = json.loads(cleaned)
+            except json.JSONDecodeError:
+                logger.warning("LLM output is not valid JSON after cleaning: %s", cleaned[:200])
+                slot_out["result"] = "parse_error"
+                return updated_slots
 
-        extracted = parsed.get("extracted", {})
-        if not isinstance(extracted, dict):
-            return updated_slots
+            extracted = parsed.get("extracted", {})
+            if not isinstance(extracted, dict):
+                slot_out["result"] = "no_extraction"
+                return updated_slots
+            slot_out["extracted_slots"] = list(extracted.keys())
 
         # Apply extracted values
         known_slot_names = set(SLOT_SCHEMA_MAP) | set(self._extra_slot_names)
@@ -451,15 +469,26 @@ class SlotFillingEngine:
             slot_meaning=slot_meaning,
         )
 
-        raw_output = await self._call_llm_with_retry(prompt)
-        if raw_output is None:
-            # Fallback question
-            return f"请问您希望的{slot_meaning}是什么？"
+        async with trace_span(
+            "clarify", "perception.clarify",
+            task_name=f"澄清: {target_slot}",
+            phase="perception",
+            input={
+                "target_slots": [target_slot],
+                "filled_slots_count": len(slots_json),
+            },
+        ) as clar_out:
+            raw_output = await self._call_llm_with_retry(prompt)
+            if raw_output is None:
+                clar_out["result"] = "fallback_template"
+                return f"请问您希望的{slot_meaning}是什么？"
 
-        cleaned = _strip_think_tags(raw_output).strip()
-        if not cleaned:
-            return f"请问您希望的{slot_meaning}是什么？"
-        return cleaned
+            cleaned = _strip_think_tags(raw_output).strip()
+            if not cleaned:
+                clar_out["result"] = "empty_output"
+                return f"请问您希望的{slot_meaning}是什么？"
+            clar_out["question_chars"] = len(cleaned)
+            return cleaned
 
     async def generate_multi_slot_clarification(
         self, target_slots: list[str], slots: dict[str, SlotValue]
@@ -486,16 +515,28 @@ class SlotFillingEngine:
             target_slots_info=target_slots_info,
         )
 
-        raw_output = await self._call_llm_with_retry(prompt)
-        if raw_output is None:
-            fallback_parts = [all_meanings.get(s, s) for s in target_slots]
-            return f"请问您希望的{'、'.join(fallback_parts)}分别是什么？"
+        async with trace_span(
+            "clarify", "perception.clarify",
+            task_name=f"澄清: {len(target_slots)} 个槽位",
+            phase="perception",
+            input={
+                "target_slots": list(target_slots),
+                "filled_slots_count": len(slots_json),
+            },
+        ) as clar_out:
+            raw_output = await self._call_llm_with_retry(prompt)
+            if raw_output is None:
+                clar_out["result"] = "fallback_template"
+                fallback_parts = [all_meanings.get(s, s) for s in target_slots]
+                return f"请问您希望的{'、'.join(fallback_parts)}分别是什么？"
 
-        cleaned = _strip_think_tags(raw_output).strip()
-        if not cleaned:
-            fallback_parts = [SLOT_MEANINGS.get(s, s) for s in target_slots]
-            return f"请问您希望的{'、'.join(fallback_parts)}分别是什么？"
-        return cleaned
+            cleaned = _strip_think_tags(raw_output).strip()
+            if not cleaned:
+                clar_out["result"] = "empty_output"
+                fallback_parts = [SLOT_MEANINGS.get(s, s) for s in target_slots]
+                return f"请问您希望的{'、'.join(fallback_parts)}分别是什么？"
+            clar_out["question_chars"] = len(cleaned)
+            return cleaned
 
     def build_structured_intent(
         self, slots: dict[str, SlotValue], raw_query: str

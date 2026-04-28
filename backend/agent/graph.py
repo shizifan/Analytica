@@ -115,7 +115,35 @@ def make_initial_state(
 async def perception_node(state: AgentState) -> AgentState:
     """Perception node: extract slots and clarify intent."""
     from backend.agent.perception import run_perception
-    return await run_perception(state)
+    from backend.tracing import trace_span
+
+    # Outer phase span: groups the slot_fill / clarify sub-spans the engine
+    # emits internally. Recorded output reflects whether the perception
+    # round produced a usable intent or queued another clarification.
+    raw_query = ""
+    for msg in reversed(state.get("messages", [])):
+        if msg.get("role") == "user":
+            raw_query = (msg.get("content") or "")[:80]
+            break
+
+    async with trace_span(
+        "phase", "perception",
+        task_name="感知阶段",
+        phase="perception",
+        input={
+            "raw_query": raw_query,
+            "clarification_round": state.get("clarification_round", 0),
+            "filled_slots": [
+                n for n, v in (state.get("slots") or {}).items()
+                if isinstance(v, dict) and v.get("value") not in (None, "")
+            ],
+        },
+    ) as phase_out:
+        result = await run_perception(state)
+        phase_out["intent_ready"] = bool(result.get("structured_intent"))
+        phase_out["empty_required"] = list(result.get("empty_required_slots") or [])
+        phase_out["target_slot"] = result.get("current_target_slot")
+        return result
 
 
 async def planning_node(state: AgentState) -> AgentState:
