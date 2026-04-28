@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import re
 import time
 from copy import deepcopy
@@ -38,6 +39,15 @@ TASK_COUNT_LIMITS = {
 # ── Template Hint 开关 ────────────────────────────────────────
 ENABLE_TEMPLATE_HINT   = True   # 从 DB 查历史模板注入 prompt
 ENABLE_TEMPLATE_BYPASS = True   # 命中 trigger_keywords 时直接返回模板，跳过 LLM
+
+# ── Multi-round planning（full_report 专用）──────────────────
+# 把单次大 prompt 拆成 skeleton（章节大纲）+ N×section（并行填充）两轮。
+# 解决单次 LLM 调用在 full_report 上 prompt 过大、超时无法降级的问题。
+ENABLE_MULTI_ROUND_PLANNING = os.getenv("ENABLE_MULTI_ROUND_PLANNING", "0") == "1"
+_PLANNING_SKELETON_TIMEOUT     = float(os.getenv("PLANNING_SKELETON_TIMEOUT", "60"))
+_PLANNING_SECTION_TIMEOUT      = float(os.getenv("PLANNING_SECTION_TIMEOUT",  "60"))
+_PLANNING_SECTION_PARALLELISM  = int(os.getenv("PLANNING_SECTION_PARALLELISM", "5"))
+_PLANNING_SECTION_FAILURE_RATIO = float(os.getenv("PLANNING_SECTION_FAILURE_RATIO", "0.4"))
 
 # ── 业务规则常量（可单独维护）────────────────────────────────
 
@@ -212,6 +222,112 @@ tool_attribution 示例（params 留空，上游数据通过 depends_on 自动�
 - 禁止在 params 中写：summary_style / topic / domain / template_id / task_refs（这些由执行时 LLM 自动决定）
 - tool_summary_gen params 示例：{{"intent": "分析港口吞吐量完成情况与归因"}}
 - tool_report_* params 示例：{{"intent": "港口运营月度分析", "report_metadata": {{"title": "...", "author": "Analytica", "date": "..."}},"report_structure": {{"sections": [{{"name": "概览"}}, {{"name": "趋势分析"}}]}}}}
+"""
+
+
+# ── Multi-round prompts ───────────────────────────────────────
+# Round 1: skeleton — only decides "how many sections, what they cover".
+# Deliberately omits the full endpoint catalogue and the 5-layer pipeline rules
+# so the prompt stays small and the LLM call finishes well under 60s.
+
+SKELETON_PROMPT = """你是一个数据分析报告策划专家。根据用户分析意图，规划一份 full_report 的【章节结构】。
+你只决定"分几节、每节讲什么"，不生成具体任务（任务由后续阶段按章节分别生成）。
+
+【分析意图】
+{intent_json}
+
+【可选业务领域索引】
+{domain_index}
+
+【输出格式提示】
+{output_formats_hint}
+
+【任务说明】
+1. 输出 4-6 个 section（章节）。典型结构：概览 / 趋势 / 结构 / 归因 / 结论。
+2. 每个 section 必须给出：
+   - section_id: "S1" / "S2" / ... 顺序编号
+   - name: 章节名称
+   - description: 1-2 句说明该节聚焦的问题（会传给下一阶段 LLM）
+   - focus_metrics: 1-3 个核心指标
+   - domain_hint: 业务域代号（D1-D7），用于反查可用端点
+   - expected_task_count: 3-5（不含归因/汇总/报告，这些由系统自动补）
+3. needs_attribution: 用户明确"不需要归因"时填 false，否则 true。
+4. output_formats: 从用户意图的 output_format slot 提取，缺省 ["HTML"]。
+
+【输出严格 JSON，无 <think> 块，无 markdown 包裹】
+{{
+  "title": "方案标题（简洁中文）",
+  "analysis_goal": "分析目标一句话",
+  "needs_attribution": true,
+  "output_formats": ["HTML"],
+  "sections": [
+    {{
+      "section_id": "S1",
+      "name": "总体概览",
+      "description": "聚焦本期吞吐量整体水平与同比变化",
+      "focus_metrics": ["吞吐量", "同比增速"],
+      "domain_hint": "D2",
+      "expected_task_count": 3
+    }}
+  ]
+}}
+"""
+
+
+# Round 2: per-section fill — only generates concrete tasks for ONE section,
+# given a pre-filtered endpoint subset (by domain_hint). No global concerns
+# (summary / report / attribution) — those are appended deterministically by
+# _stitch_plan after all sections return.
+
+SECTION_PROMPT = """你是一个数据分析任务规划专家。为下面这一【单个章节】生成具体任务。
+**只生成 data_fetch / analysis / visualization 类型的任务**。
+禁止生成 summary / report_gen / attribution 任务（由系统在合并阶段自动补）。
+
+【章节信息】
+section_id: {section_id}
+name: {section_name}
+description: {section_description}
+focus_metrics: {focus_metrics}
+expected_task_count: {expected_task_count}（允许 ±2）
+
+【上游意图】
+{intent_json}
+
+【本章节可用端点（已按 domain_hint 过滤）】
+{section_endpoints_desc}
+
+【可用工具】
+{tools_description}
+
+{time_param_rules}
+
+{cargo_selection_rules}
+
+【硬约束】
+- 所有 task_id 必须以 "{section_id}." 前缀，例如 {section_id}.T1, {section_id}.T2
+- depends_on 只能引用本章节内的 task_id（跨章节依赖由汇总层处理）
+- 至少 1 个 data_fetch 任务
+- 如有 visualization，必须 depends_on 至少 1 个本章节内的 data_fetch
+- analysis 任务遵循"intent 字段描述目标，params 只写 data_ref"原则
+- visualization 任务遵循"intent 字段描述图表意图，params 只写 chart_type"原则
+- 工具必须从【可用工具】清单中选取，端点必须从【本章节可用端点】中选取
+
+【输出严格 JSON，无 <think>，无 markdown】
+{{
+  "tasks": [
+    {{
+      "task_id": "{section_id}.T1",
+      "type": "data_fetch",
+      "name": "任务名",
+      "description": "对用户友好的描述",
+      "depends_on": [],
+      "tool": "tool_api_fetch",
+      "params": {{"endpoint_id": "..."}},
+      "intent": "",
+      "estimated_seconds": 10
+    }}
+  ]
+}}
 """
 
 
@@ -464,6 +580,23 @@ class PlanningEngine:
             except Exception as e:
                 logger.warning("Template bypass failed, fallback to LLM: %s", e)
 
+        # Multi-round planning: only for full_report under feature flag.
+        # On any failure (timeout / parse / validation) fall through to the
+        # single-round path below — the user always gets a plan.
+        if ENABLE_MULTI_ROUND_PLANNING and complexity == "full_report":
+            try:
+                return await self._generate_plan_multiround(
+                    intent, valid_tools, valid_endpoints, complexity,
+                )
+            except (PlanningError, asyncio.TimeoutError) as e:
+                logger.warning(
+                    "[planning] multi-round failed, fallback to single-round: %s", e,
+                )
+            except Exception as e:
+                logger.exception(
+                    "[planning] multi-round unexpected error, fallback to single-round: %s", e,
+                )
+
         # Template hint: 优先 JSON 模板骨架，其次查 DB 历史模板
         if ENABLE_TEMPLATE_HINT:
             template_hint = await self._fetch_template_hint(intent, db_session, user_id, employee_id, complexity)
@@ -525,6 +658,301 @@ class PlanningEngine:
         raise PlanningError(
             f"规划失败: LLM 调用在 {self.max_retries} 次尝试后仍然失败: {last_error}"
         )
+
+    # ── Multi-round planning (full_report) ────────────────────
+    # See SKELETON_PROMPT / SECTION_PROMPT above. Flow:
+    #   1. _call_skeleton_llm  → small prompt, ~60s timeout, returns sections
+    #   2. _call_section_llm   → N parallel small prompts, each ~60s
+    #   3. _stitch_plan        → deterministic merge + append global tasks
+
+    async def _generate_plan_multiround(
+        self,
+        intent: dict[str, Any],
+        valid_tools: set[str],
+        valid_endpoints: set[str],
+        complexity: str,
+    ) -> AnalysisPlan:
+        """Two-round planner: skeleton → parallel section fill → stitch."""
+        t0 = time.monotonic()
+        skeleton = await self._call_skeleton_llm(intent)
+        t_skel = time.monotonic() - t0
+
+        if not skeleton.sections:
+            raise PlanningError("multi-round: skeleton returned 0 sections")
+        if len(skeleton.sections) > 8:
+            raise PlanningError(
+                f"multi-round: skeleton returned {len(skeleton.sections)} sections (cap=8)"
+            )
+
+        sem = asyncio.Semaphore(_PLANNING_SECTION_PARALLELISM)
+
+        async def _fill_one(sec):
+            async with sem:
+                try:
+                    return await self._call_section_llm(
+                        intent, sec, valid_tools, valid_endpoints,
+                    )
+                except (asyncio.TimeoutError, PlanningError) as e:
+                    logger.warning(
+                        "[planning-multiround] section %s first attempt failed: %s",
+                        sec.section_id, e,
+                    )
+                    try:
+                        return await self._call_section_llm(
+                            intent, sec, valid_tools, valid_endpoints,
+                        )
+                    except Exception as e2:
+                        logger.warning(
+                            "[planning-multiround] section %s retry failed: %s",
+                            sec.section_id, e2,
+                        )
+                        return e2
+
+        t1 = time.monotonic()
+        results = await asyncio.gather(*[_fill_one(s) for s in skeleton.sections])
+        t_sec = time.monotonic() - t1
+
+        plan = self._stitch_plan(intent, skeleton, results)
+        plan = self._validate_tasks(plan, valid_tools, valid_endpoints, complexity)
+
+        n_failed = sum(1 for r in results if isinstance(r, BaseException))
+        logger.info(
+            "[planning-multiround] sections=%d skeleton=%.2fs sections_total=%.2fs "
+            "failed=%d total=%.2fs tasks=%d",
+            len(skeleton.sections), t_skel, t_sec, n_failed,
+            time.monotonic() - t0, len(plan.tasks),
+        )
+        return plan
+
+    async def _call_skeleton_llm(self, intent: dict[str, Any]) -> "PlanSkeleton":
+        """Round 1: produce section structure only (no concrete tasks)."""
+        from backend.models.schemas import PlanSkeleton
+        from backend.agent.api_registry import DOMAIN_INDEX
+
+        domain_lines = [
+            f"- {code}: {info.name} — {info.desc}"
+            for code, info in DOMAIN_INDEX.items()
+        ]
+        domain_index_str = "\n".join(domain_lines)
+
+        output_formats = self._extract_output_formats(intent)
+        output_formats_hint = (
+            f"用户期望格式: {', '.join(output_formats)}（决定 report_gen 工具种类，"
+            f"由系统在合并阶段补任务，本阶段无需生成）"
+        )
+
+        prompt = SKELETON_PROMPT.format(
+            intent_json=json.dumps(intent, ensure_ascii=False, indent=2, default=str),
+            domain_index=domain_index_str,
+            output_formats_hint=output_formats_hint,
+        )
+
+        raw = await asyncio.wait_for(
+            self._invoke_llm(prompt),
+            timeout=_PLANNING_SKELETON_TIMEOUT,
+        )
+        parsed = parse_planning_llm_output(raw)
+        # If LLM forgot output_formats, take it from intent.
+        parsed.setdefault("output_formats", output_formats)
+        skel = PlanSkeleton(**parsed)
+        self._enrich_section_endpoints(skel)
+        return skel
+
+    def _enrich_section_endpoints(self, skel: "PlanSkeleton") -> None:
+        """Fill endpoint_hints from domain_hint if the LLM left it empty."""
+        from backend.agent.api_registry import BY_DOMAIN
+        for sec in skel.sections:
+            if sec.endpoint_hints:
+                continue
+            if not sec.domain_hint:
+                continue
+            eps = BY_DOMAIN.get(sec.domain_hint, [])
+            sec.endpoint_hints = [ep.name for ep in eps[:8]]
+
+    def _extract_output_formats(self, intent: dict[str, Any]) -> list[str]:
+        """Pull output_format slot out of intent; default to ['HTML']."""
+        slots = intent.get("slots", {}) if isinstance(intent.get("slots"), dict) else {}
+        fmt_slot = slots.get("output_format", {}) if isinstance(slots, dict) else {}
+        raw = fmt_slot.get("value") if isinstance(fmt_slot, dict) else None
+        if raw is None:
+            raw = intent.get("output_format")
+        items = raw if isinstance(raw, list) else [raw] if raw else []
+        out = [str(i).strip().upper() for i in items if i]
+        return list(dict.fromkeys(out)) or ["HTML"]
+
+    async def _call_section_llm(
+        self,
+        intent: dict[str, Any],
+        section: "PlanSection",
+        valid_tools: set[str],
+        valid_endpoints: set[str],
+    ) -> list[TaskItem]:
+        """Round 2 (one section): produce concrete data_fetch/analysis/viz tasks."""
+        # Only feed endpoints relevant to this section. If domain reverse-lookup
+        # produced nothing (e.g. LLM gave a bogus domain_hint), fall back to a
+        # bounded slice of valid_endpoints so the prompt still has *some* options.
+        section_eps = frozenset(section.endpoint_hints) & valid_endpoints
+        if not section_eps:
+            section_eps = frozenset(list(valid_endpoints)[:15])
+        section_endpoints_desc = get_endpoints_description(
+            allowed_endpoints=section_eps,
+        )
+
+        if valid_tools:
+            tools_desc = get_tools_description(allowed_tools=frozenset(valid_tools))
+        else:
+            tools_desc = get_tools_description()
+
+        prompt = SECTION_PROMPT.format(
+            section_id=section.section_id,
+            section_name=section.name,
+            section_description=section.description,
+            focus_metrics=", ".join(section.focus_metrics) or "（未指定）",
+            expected_task_count=section.expected_task_count,
+            intent_json=json.dumps(intent, ensure_ascii=False, default=str),
+            section_endpoints_desc=section_endpoints_desc,
+            tools_description=tools_desc,
+            time_param_rules=PLANNING_RULE_HINTS["time_param"],
+            cargo_selection_rules=PLANNING_RULE_HINTS["cargo_selection"],
+        )
+
+        raw = await asyncio.wait_for(
+            self._invoke_llm(prompt),
+            timeout=_PLANNING_SECTION_TIMEOUT,
+        )
+        parsed = parse_planning_llm_output(raw)
+
+        tasks: list[TaskItem] = []
+        for idx, t_dict in enumerate(parsed.get("tasks", []), start=1):
+            tid = t_dict.get("task_id") or f"{section.section_id}.T{idx}"
+            if not tid.startswith(f"{section.section_id}."):
+                # LLM ignored the prefix rule; rewrite to keep IDs unique
+                tid = f"{section.section_id}.{tid}"
+            tasks.append(TaskItem(
+                task_id=tid,
+                type=t_dict.get("type", "data_fetch"),
+                name=t_dict.get("name", ""),
+                description=t_dict.get("description", ""),
+                depends_on=list(t_dict.get("depends_on", [])),
+                tool=t_dict.get("tool", ""),
+                params=dict(t_dict.get("params", {})),
+                estimated_seconds=int(t_dict.get("estimated_seconds", 10)),
+                intent=t_dict.get("intent", ""),
+            ))
+        return tasks
+
+    def _stitch_plan(
+        self,
+        intent: dict[str, Any],
+        skeleton: "PlanSkeleton",
+        section_results: list,
+    ) -> AnalysisPlan:
+        """Deterministically merge per-section tasks and append global tasks.
+
+        - Tolerates partial section failure up to PLANNING_SECTION_FAILURE_RATIO.
+        - Appends G_ATTR (if needed), G_SUM, and G_REPORT_<fmt> tasks with
+          dependencies wired from collected section task IDs. No LLM call.
+        """
+        tasks: list[TaskItem] = []
+        failed: list[tuple[str, str]] = []
+        kept_sections: list = []
+        for sec, result in zip(skeleton.sections, section_results):
+            if isinstance(result, BaseException):
+                failed.append((sec.section_id, repr(result)))
+                continue
+            if not result:
+                failed.append((sec.section_id, "empty tasks"))
+                continue
+            tasks.extend(result)
+            kept_sections.append(sec)
+
+        n_total = len(skeleton.sections)
+        max_failures = max(1, int(n_total * _PLANNING_SECTION_FAILURE_RATIO))
+        if len(failed) > max_failures:
+            raise PlanningError(
+                f"multi-round: too many sections failed "
+                f"({len(failed)}/{n_total}, cap={max_failures}): {failed}"
+            )
+
+        analysis_ids   = [t.task_id for t in tasks if t.type == "analysis"]
+        viz_ids        = [t.task_id for t in tasks if t.type == "visualization"]
+        data_fetch_ids = [t.task_id for t in tasks if t.type == "data_fetch"]
+
+        if skeleton.needs_attribution and data_fetch_ids:
+            tasks.append(TaskItem(
+                task_id="G_ATTR",
+                type="analysis",
+                name="归因分析",
+                description="基于上游数据分析核心驱动因素",
+                depends_on=data_fetch_ids[:5],
+                tool="tool_attribution",
+                params={},
+                intent=f"分析{skeleton.title or '本报告'}的核心驱动因素",
+                estimated_seconds=45,
+            ))
+            analysis_ids.append("G_ATTR")
+
+        if analysis_ids:
+            tasks.append(TaskItem(
+                task_id="G_SUM",
+                type="summary",
+                name="综合分析汇总",
+                description="汇总各章节分析结论",
+                depends_on=analysis_ids,
+                tool="tool_summary_gen",
+                params={"intent": skeleton.analysis_goal},
+                intent=skeleton.analysis_goal,
+                estimated_seconds=20,
+            ))
+
+        fmt_tool_map = {
+            "HTML": "tool_report_html",
+            "DOCX": "tool_report_docx",
+            "WORD": "tool_report_docx",
+            "PPTX": "tool_report_pptx",
+            "PPT":  "tool_report_pptx",
+        }
+        report_deps = list(viz_ids)
+        if analysis_ids:
+            report_deps.append("G_SUM")
+        for fmt in skeleton.output_formats:
+            tool = fmt_tool_map.get(fmt, "tool_report_html")
+            tasks.append(TaskItem(
+                task_id=f"G_REPORT_{fmt}",
+                type="report_gen",
+                name=f"生成{fmt}报告",
+                description=f"输出 {fmt} 格式报告",
+                depends_on=report_deps,
+                tool=tool,
+                params={
+                    "intent": skeleton.analysis_goal,
+                    "report_structure": {
+                        "sections": [{"name": s.name} for s in kept_sections],
+                    },
+                },
+                intent=skeleton.analysis_goal,
+                estimated_seconds=30,
+            ))
+
+        plan = AnalysisPlan(
+            plan_id=str(uuid4()),
+            version=1,
+            title=skeleton.title or "分析方案",
+            analysis_goal=skeleton.analysis_goal,
+            estimated_duration=sum(t.estimated_seconds for t in tasks),
+            tasks=_break_cycles(tasks),
+            report_structure={
+                "sections": [{"name": s.name} for s in kept_sections],
+            },
+            revision_log=[{
+                "phase": "multi_round_stitch",
+                "ts": int(time.time()),
+                "sections_total": n_total,
+                "sections_kept": len(kept_sections),
+                "failed_sections": failed,
+            }],
+        )
+        return plan
 
     def _get_complexity(self, intent: dict) -> str:
         """Extract output_complexity from intent."""

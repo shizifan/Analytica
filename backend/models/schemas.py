@@ -98,6 +98,30 @@ class AnalysisPlan(BaseModel):
     revision_log: list[dict[str, Any]] = Field(default_factory=list)
 
 
+# ── Multi-round Planning (full_report) ───────────────────────
+# Used by PlanningEngine when ENABLE_MULTI_ROUND_PLANNING is on:
+# round 1 produces a PlanSkeleton (sections only), round 2 fills each
+# section's concrete tasks in parallel, then a deterministic stitch step
+# assembles the final AnalysisPlan.
+
+class PlanSection(BaseModel):
+    section_id: str
+    name: str
+    description: str = ""
+    focus_metrics: list[str] = Field(default_factory=list)
+    domain_hint: Optional[str] = None
+    endpoint_hints: list[str] = Field(default_factory=list)
+    expected_task_count: int = 3
+
+
+class PlanSkeleton(BaseModel):
+    title: str = ""
+    analysis_goal: str = ""
+    sections: list[PlanSection] = Field(default_factory=list)
+    needs_attribution: bool = True
+    output_formats: list[str] = Field(default_factory=lambda: ["HTML"])
+
+
 # ── Tool Result (placeholder for Phase 3) ────────────────────
 
 class ToolResult(BaseModel):
