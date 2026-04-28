@@ -18,6 +18,7 @@ from uuid import uuid4
 
 from backend.exceptions import PlanningError
 from backend.models.schemas import AnalysisPlan, TaskItem
+from backend.tracing import trace_span
 from backend.agent.tools import get_valid_tool_ids, get_tools_description
 from backend.agent.api_registry import (
     VALID_ENDPOINT_IDS,
@@ -580,96 +581,133 @@ class PlanningEngine:
             except Exception as e:
                 logger.warning("Template bypass failed, fallback to LLM: %s", e)
 
-        # Multi-round planning is the default for full_report. On any failure
-        # (timeout / parse / validation) we fall through to the single-round
-        # path below — the user always gets a plan. The triggering error is
-        # captured so the fallback gets recorded in the resulting plan's
-        # revision_log (graph layer turns it into a DegradationEvent).
-        multi_round_fallback_error: Exception | None = None
-        if complexity == "full_report":
-            try:
-                return await self._generate_plan_multiround(
-                    intent, valid_tools, valid_endpoints, complexity,
+        # Phase-level span around the LLM-driven path. Template-bypass
+        # (above) doesn't allocate a planning span — its work is purely
+        # deterministic JSON loading. Inside this block we'll emit nested
+        # spans for multi-round (skeleton/section/stitch) or for the
+        # single-round LLM call.
+        intent_preview = (intent.get("raw_query") or "")[:80]
+        async with trace_span(
+            "phase", "planning",
+            task_name="规划阶段",
+            phase="planning",
+            input={
+                "complexity": complexity,
+                "employee_id": employee_id,
+                "raw_query": intent_preview,
+            },
+        ) as phase_out:
+            # Multi-round planning is the default for full_report. On any failure
+            # (timeout / parse / validation) we fall through to the single-round
+            # path below — the user always gets a plan. The triggering error is
+            # captured so the fallback gets recorded in the resulting plan's
+            # revision_log (graph layer turns it into a DegradationEvent).
+            multi_round_fallback_error: Exception | None = None
+            if complexity == "full_report":
+                try:
+                    plan = await self._generate_plan_multiround(
+                        intent, valid_tools, valid_endpoints, complexity,
+                    )
+                    phase_out["mode"] = "multi_round"
+                    phase_out["tasks"] = len(plan.tasks)
+                    return plan
+                except (PlanningError, asyncio.TimeoutError) as e:
+                    logger.warning(
+                        "[planning] multi-round failed, fallback to single-round: %s", e,
+                    )
+                    multi_round_fallback_error = e
+                except Exception as e:
+                    logger.exception(
+                        "[planning] multi-round unexpected error, fallback to single-round: %s", e,
+                    )
+                    multi_round_fallback_error = e
+
+            # Template hint: 优先 JSON 模板骨架，其次查 DB 历史模板
+            if ENABLE_TEMPLATE_HINT:
+                template_hint = await self._fetch_template_hint(intent, db_session, user_id, employee_id, complexity)
+            else:
+                template_hint = ""
+
+            # Agent skills hint: inject enabled SKILL.md workflow instructions
+            agent_skills_hint = await self._fetch_agent_skills_hint(db_session)
+
+            prompt = self._build_prompt(
+                intent, complexity, db_session, user_id,
+                available_tools=available_tools,
+                allowed_endpoints=allowed_endpoints,
+                allowed_tools=allowed_tools,
+                prompt_suffix=prompt_suffix,
+                template_hint=template_hint,
+                agent_skills_hint=agent_skills_hint,
+            )
+
+            # Use per-complexity timeout; fall back to constructor default only when
+            # the complexity-specific value doesn't exist.
+            effective_timeout = _PLANNING_TIMEOUT_BY_COMPLEXITY.get(
+                complexity, self.llm_timeout
+            )
+
+            phase_out["mode"] = (
+                "single_round_fallback" if multi_round_fallback_error else "single_round"
+            )
+
+            async with trace_span(
+                "planning_single_round", "planning.single_round",
+                task_name="规划-单轮 LLM",
+                phase="planning",
+                input={
+                    "complexity": complexity,
+                    "timeout_s": effective_timeout,
+                    "max_retries": self.max_retries,
+                    "prompt_chars": len(prompt),
+                },
+            ) as sr_out:
+                last_error: Exception | None = None
+                timeout_attempts = 0
+                for attempt in range(self.max_retries):
+                    if attempt > 0:
+                        await asyncio.sleep(1.0 * (2 ** (attempt - 1)))
+
+                    try:
+                        raw_output = await asyncio.wait_for(
+                            self._invoke_llm(prompt),
+                            timeout=effective_timeout,
+                        )
+                        plan_dict = parse_planning_llm_output(raw_output)
+                        plan = self._build_plan(plan_dict, complexity, intent)
+                        plan = self._validate_tasks(plan, valid_tools, valid_endpoints, complexity)
+                        if multi_round_fallback_error is not None:
+                            plan.revision_log.append({
+                                "phase": "multi_round_fallback",
+                                "ts": int(time.time()),
+                                "error_type": type(multi_round_fallback_error).__name__,
+                                "error": str(multi_round_fallback_error),
+                            })
+                        sr_out["attempts"] = attempt + 1
+                        sr_out["tasks"] = len(plan.tasks)
+                        phase_out["tasks"] = len(plan.tasks)
+                        return plan
+                    except asyncio.TimeoutError as e:
+                        last_error = e
+                        timeout_attempts += 1
+                        logger.warning(
+                            "Planning LLM timeout (attempt %d/%d, complexity=%s, timeout=%.0fs)",
+                            attempt + 1, self.max_retries, complexity, effective_timeout,
+                        )
+                        # Timeout is a capacity/network issue; a single retry is enough.
+                        # Retrying 3× would block the user for 3×timeout seconds.
+                        if timeout_attempts >= 2:
+                            break
+                    except PlanningError as e:
+                        last_error = e
+                        logger.warning("Planning parse error (attempt %d/%d): %s", attempt + 1, self.max_retries, e)
+                    except Exception as e:
+                        last_error = e
+                        logger.warning("Planning error (attempt %d/%d): %s", attempt + 1, self.max_retries, e)
+
+                raise PlanningError(
+                    f"规划失败: LLM 调用在 {self.max_retries} 次尝试后仍然失败: {last_error}"
                 )
-            except (PlanningError, asyncio.TimeoutError) as e:
-                logger.warning(
-                    "[planning] multi-round failed, fallback to single-round: %s", e,
-                )
-                multi_round_fallback_error = e
-            except Exception as e:
-                logger.exception(
-                    "[planning] multi-round unexpected error, fallback to single-round: %s", e,
-                )
-                multi_round_fallback_error = e
-
-        # Template hint: 优先 JSON 模板骨架，其次查 DB 历史模板
-        if ENABLE_TEMPLATE_HINT:
-            template_hint = await self._fetch_template_hint(intent, db_session, user_id, employee_id, complexity)
-        else:
-            template_hint = ""
-
-        # Agent skills hint: inject enabled SKILL.md workflow instructions
-        agent_skills_hint = await self._fetch_agent_skills_hint(db_session)
-
-        prompt = self._build_prompt(
-            intent, complexity, db_session, user_id,
-            available_tools=available_tools,
-            allowed_endpoints=allowed_endpoints,
-            allowed_tools=allowed_tools,
-            prompt_suffix=prompt_suffix,
-            template_hint=template_hint,
-            agent_skills_hint=agent_skills_hint,
-        )
-
-        # Use per-complexity timeout; fall back to constructor default only when
-        # the complexity-specific value doesn't exist.
-        effective_timeout = _PLANNING_TIMEOUT_BY_COMPLEXITY.get(
-            complexity, self.llm_timeout
-        )
-
-        last_error: Exception | None = None
-        timeout_attempts = 0
-        for attempt in range(self.max_retries):
-            if attempt > 0:
-                await asyncio.sleep(1.0 * (2 ** (attempt - 1)))
-
-            try:
-                raw_output = await asyncio.wait_for(
-                    self._invoke_llm(prompt),
-                    timeout=effective_timeout,
-                )
-                plan_dict = parse_planning_llm_output(raw_output)
-                plan = self._build_plan(plan_dict, complexity, intent)
-                plan = self._validate_tasks(plan, valid_tools, valid_endpoints, complexity)
-                if multi_round_fallback_error is not None:
-                    plan.revision_log.append({
-                        "phase": "multi_round_fallback",
-                        "ts": int(time.time()),
-                        "error_type": type(multi_round_fallback_error).__name__,
-                        "error": str(multi_round_fallback_error),
-                    })
-                return plan
-            except asyncio.TimeoutError as e:
-                last_error = e
-                timeout_attempts += 1
-                logger.warning(
-                    "Planning LLM timeout (attempt %d/%d, complexity=%s, timeout=%.0fs)",
-                    attempt + 1, self.max_retries, complexity, effective_timeout,
-                )
-                # Timeout is a capacity/network issue; a single retry is enough.
-                # Retrying 3× would block the user for 3×timeout seconds.
-                if timeout_attempts >= 2:
-                    break
-            except PlanningError as e:
-                last_error = e
-                logger.warning("Planning parse error (attempt %d/%d): %s", attempt + 1, self.max_retries, e)
-            except Exception as e:
-                last_error = e
-                logger.warning("Planning error (attempt %d/%d): %s", attempt + 1, self.max_retries, e)
-
-        raise PlanningError(
-            f"规划失败: LLM 调用在 {self.max_retries} 次尝试后仍然失败: {last_error}"
-        )
 
     # ── Multi-round planning (full_report) ────────────────────
     # See SKELETON_PROMPT / SECTION_PROMPT above. Flow:
@@ -724,8 +762,33 @@ class PlanningEngine:
         results = await asyncio.gather(*[_fill_one(s) for s in skeleton.sections])
         t_sec = time.monotonic() - t1
 
-        plan = self._stitch_plan(intent, skeleton, results)
-        plan = self._validate_tasks(plan, valid_tools, valid_endpoints, complexity)
+        async with trace_span(
+            "planning_stitch", "planning.stitch",
+            task_name="规划-合并",
+            phase="planning",
+            input={
+                "sections_total": len(skeleton.sections),
+                "needs_attribution": skeleton.needs_attribution,
+                "output_formats": list(skeleton.output_formats),
+            },
+        ) as stitch_out:
+            plan = self._stitch_plan(intent, skeleton, results)
+            plan = self._validate_tasks(plan, valid_tools, valid_endpoints, complexity)
+
+            # Surface stitch result for the trace pane: kept vs failed
+            # sections + the global tasks that got appended.
+            stitch_log = next(
+                (e for e in plan.revision_log
+                 if e.get("phase") == "multi_round_stitch"),
+                {},
+            )
+            stitch_out["sections_kept"] = stitch_log.get("sections_kept")
+            stitch_out["failed_sections"] = stitch_log.get("failed_sections", [])
+            stitch_out["tasks_total"] = len(plan.tasks)
+            stitch_out["global_tasks"] = [
+                t.task_id for t in plan.tasks
+                if t.task_id.startswith("G_")
+            ]
 
         n_failed = sum(1 for r in results if isinstance(r, BaseException))
         logger.info(
@@ -759,16 +822,29 @@ class PlanningEngine:
             output_formats_hint=output_formats_hint,
         )
 
-        raw = await asyncio.wait_for(
-            self._invoke_llm(prompt),
-            timeout=_PLANNING_SKELETON_TIMEOUT,
-        )
-        parsed = parse_planning_llm_output(raw)
-        # If LLM forgot output_formats, take it from intent.
-        parsed.setdefault("output_formats", output_formats)
-        skel = PlanSkeleton(**parsed)
-        self._enrich_section_endpoints(skel)
-        return skel
+        async with trace_span(
+            "planning_skeleton", "planning.skeleton",
+            task_name="规划-章节大纲",
+            phase="planning",
+            input={
+                "timeout_s": _PLANNING_SKELETON_TIMEOUT,
+                "prompt_chars": len(prompt),
+                "expected_formats": output_formats,
+            },
+        ) as out:
+            raw = await asyncio.wait_for(
+                self._invoke_llm(prompt),
+                timeout=_PLANNING_SKELETON_TIMEOUT,
+            )
+            parsed = parse_planning_llm_output(raw)
+            # If LLM forgot output_formats, take it from intent.
+            parsed.setdefault("output_formats", output_formats)
+            skel = PlanSkeleton(**parsed)
+            self._enrich_section_endpoints(skel)
+            out["sections"] = [s.section_id for s in skel.sections]
+            out["needs_attribution"] = skel.needs_attribution
+            out["output_formats"] = list(skel.output_formats)
+            return skel
 
     def _enrich_section_endpoints(self, skel: "PlanSkeleton") -> None:
         """Fill endpoint_hints from domain_hint if the LLM left it empty."""
@@ -828,11 +904,26 @@ class PlanningEngine:
             cargo_selection_rules=PLANNING_RULE_HINTS["cargo_selection"],
         )
 
-        raw = await asyncio.wait_for(
-            self._invoke_llm(prompt),
-            timeout=_PLANNING_SECTION_TIMEOUT,
-        )
-        parsed = parse_planning_llm_output(raw)
+        async with trace_span(
+            "planning_section",
+            f"planning.section.{section.section_id}",
+            task_name=f"规划-章节: {section.name}",
+            phase="planning",
+            input={
+                "section_id": section.section_id,
+                "section_name": section.name,
+                "endpoint_count": len(section_eps),
+                "expected_task_count": section.expected_task_count,
+                "timeout_s": _PLANNING_SECTION_TIMEOUT,
+                "prompt_chars": len(prompt),
+            },
+        ) as section_out:
+            raw = await asyncio.wait_for(
+                self._invoke_llm(prompt),
+                timeout=_PLANNING_SECTION_TIMEOUT,
+            )
+            parsed = parse_planning_llm_output(raw)
+            section_out["raw_tasks"] = len(parsed.get("tasks", []))
 
         tasks: list[TaskItem] = []
         for idx, t_dict in enumerate(parsed.get("tasks", []), start=1):

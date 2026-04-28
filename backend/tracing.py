@@ -24,9 +24,13 @@ title (e.g. "T001 拉取吞吐量") instead of a bare task id, and an optional
 """
 from __future__ import annotations
 
+import logging
 import time
 import uuid
-from typing import Any, Callable, Awaitable
+from contextlib import asynccontextmanager
+from typing import Any, AsyncIterator, Callable, Awaitable
+
+logger = logging.getLogger("analytica.tracing")
 
 
 def make_span(
@@ -94,3 +98,65 @@ def make_span_emit(
             pass
 
     return _emit
+
+
+@asynccontextmanager
+async def trace_span(
+    span_type: str,
+    task_id: str,
+    *,
+    task_name: str | None = None,
+    phase: str | None = None,
+    input: dict[str, Any] | None = None,
+) -> AsyncIterator[dict[str, Any]]:
+    """Async context manager for emitting a paired start/ok|error span.
+
+    The yielded dict is the span's ``output`` payload — callers fill in
+    keys to surface in the trace pane (e.g. ``out["sections"] = 4``). On
+    exception the wrapper auto-records ``error_type`` / ``error`` and
+    re-raises; tracing failures are logged but never propagate.
+
+    Pulls the current ws_callback from ``ws_ctx`` so callers don't need
+    to thread it through. When no callback is active (tests, offline
+    runs) emission becomes a no-op.
+
+    Example:
+        async with trace_span(
+            "planning_skeleton", "planning.skeleton",
+            task_name="规划-章节大纲", phase="planning",
+            input={"complexity": "full_report"},
+        ) as out:
+            skel = await self._call_skeleton_llm(...)
+            out["sections"] = len(skel.sections)
+    """
+    # Local import keeps the module import-cycle-free; ws_ctx imports nothing from here.
+    from backend.agent import ws_ctx
+
+    cb = ws_ctx.get_ws_callback()
+    emit = make_span_emit(task_id, cb, task_name=task_name, phase=phase)
+
+    output: dict[str, Any] = {}
+    # Emit start (best-effort).
+    try:
+        await emit(make_span(span_type, task_id, status="start", input=input))
+    except Exception:
+        logger.debug("trace_span start emit failed", exc_info=True)
+
+    error: BaseException | None = None
+    try:
+        yield output
+    except BaseException as e:
+        error = e
+        raise
+    finally:
+        status = "error" if error is not None else "ok"
+        if error is not None:
+            output.setdefault("error_type", type(error).__name__)
+            output.setdefault("error", str(error)[:200])
+        try:
+            await emit(make_span(
+                span_type, task_id, status=status,
+                output=output or None,
+            ))
+        except Exception:
+            logger.debug("trace_span end emit failed", exc_info=True)

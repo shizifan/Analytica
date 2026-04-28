@@ -2136,6 +2136,41 @@ html.analytica-v2 [data-density="spacious"] { font-size: 14px; }
   gap: 6px;
 }
 
+.an-trace-phase-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border-radius: var(--an-radius-md);
+  background: color-mix(in oklch, var(--an-ink-1) 4%, transparent);
+  border: 1px solid var(--an-border-subtle);
+}
+.an-trace-phase-group.s-perception { border-left: 3px solid #60a5fa; }
+.an-trace-phase-group.s-planning   { border-left: 3px solid #c084fc; }
+.an-trace-phase-group.s-execution  { border-left: 3px solid #4ade80; }
+
+.an-trace-phase-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--an-ink-1);
+  font-size: 12px;
+  font-weight: 600;
+}
+.an-trace-phase-head:hover { background: var(--an-bg-hover); border-radius: var(--an-radius-sm); }
+.an-trace-phase-label { flex: 1; text-align: left; }
+.an-trace-phase-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 4px 4px;
+}
+
 .an-trace-group {
   border: 1px solid var(--an-border-subtle);
   border-radius: var(--an-radius-sm);
