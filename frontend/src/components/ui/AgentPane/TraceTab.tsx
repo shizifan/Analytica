@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useTraceStore } from '../../../stores/traceStore';
 import type { Span } from '../../../stores/traceStore';
 import { useDegradationStore } from '../../../stores/degradationStore';
@@ -8,13 +8,37 @@ import { SmartJSON, CollapsibleSection } from './_primitives';
 // ── Helpers ─────────────────────────────────────────────────────
 
 const SPAN_META: Record<string, { icon: string; label: string }> = {
-  llm_call:      { icon: '🤖', label: 'LLM 调用' },
-  api_call:      { icon: '📡', label: 'API 调用' },
-  param_resolve: { icon: '🔧', label: '参数解析' },
+  llm_call:           { icon: '🤖', label: 'LLM 调用' },
+  api_call:           { icon: '📡', label: 'API 调用' },
+  param_resolve:      { icon: '🔧', label: '参数解析' },
+  phase:              { icon: '🟦', label: '阶段' },
+  planning_skeleton:  { icon: '🧱', label: '规划-章节大纲' },
+  planning_section:   { icon: '🧩', label: '规划-章节填充' },
+  planning_stitch:    { icon: '🧷', label: '规划-合并' },
+  planning_single_round: { icon: '🧠', label: '规划-单轮 LLM' },
+  slot_fill:          { icon: '🎯', label: '槽位填充' },
+  clarify:            { icon: '❓', label: '澄清' },
 };
 
 function spanIcon(t: string)  { return SPAN_META[t]?.icon  ?? '❓'; }
 function spanLabel(t: string) { return SPAN_META[t]?.label ?? t; }
+
+// ── Phase grouping ──────────────────────────────────────────────
+// Top-level groups by pipeline phase. Spans without `phase` are
+// bucketed into "execution" so legacy persisted spans still render.
+
+type Phase = 'perception' | 'planning' | 'execution';
+
+const PHASE_META: Record<Phase, { label: string; order: number }> = {
+  perception: { label: '感知阶段', order: 1 },
+  planning:   { label: '规划阶段', order: 2 },
+  execution:  { label: '执行阶段', order: 3 },
+};
+
+function spanPhase(spans: Span[]): Phase {
+  const tagged = spans.find((s) => s.phase);
+  return (tagged?.phase as Phase) ?? 'execution';
+}
 
 function latencyFromSpans(spans: Span[]): number | null {
   const end = spans.findLast((s) => s.status !== 'start');
@@ -172,6 +196,38 @@ function DegradationRow({ ev }: { ev: DegradationEvent }) {
   );
 }
 
+// ── PhaseGroup ──────────────────────────────────────────────────
+// Top-level expandable container that groups TaskGroups by pipeline
+// phase. Renders a header with the phase label + child count; default
+// expanded so users see content without an extra click.
+
+function PhaseGroup({
+  phase,
+  children,
+}: {
+  phase: Phase;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+  const childCount = Array.isArray(children) ? children.length : (children ? 1 : 0);
+  const meta = PHASE_META[phase];
+
+  return (
+    <div className={`an-trace-phase-group s-${phase}`}>
+      <button
+        type="button"
+        className="an-trace-phase-head"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="an-trace-group-chevron">{open ? '▾' : '▸'}</span>
+        <span className="an-trace-phase-label">{meta.label}</span>
+        <span className="an-trace-group-meta">{childCount} 项</span>
+      </button>
+      {open && <div className="an-trace-phase-body">{children}</div>}
+    </div>
+  );
+}
+
 // ── TaskGroup ───────────────────────────────────────────────────
 
 function TaskGroup({
@@ -200,11 +256,19 @@ function TaskGroup({
   // Hide group entirely if filter would leave it empty.
   if (visiblePairs.length === 0 && visibleDegs.length === 0) return null;
 
+  // Prefer the human-readable task_name from the first span; fall back to
+  // task_id so legacy spans (no task_name field) still render their group
+  // header. When both are present, show "T001 · 拉取吞吐量".
+  const taskName = spans.find((s) => s.task_name)?.task_name;
+  const headerLabel = taskName
+    ? `${taskId} · ${taskName}`
+    : taskId;
+
   return (
     <div className={`an-trace-group${hasError ? ' s-error' : ''}`}>
       <button type="button" className="an-trace-group-head" onClick={() => setOpen((o) => !o)}>
         <span className="an-trace-group-chevron">{open ? '▾' : '▸'}</span>
-        <span className="an-trace-group-id">{taskId}</span>
+        <span className="an-trace-group-id" title={taskId}>{headerLabel}</span>
         <span className="an-trace-group-meta">
           {allPairs.length} 次调用
           {latency != null && <> · {latency}ms</>}
@@ -287,6 +351,22 @@ export function TraceTab() {
     [allDegradations],
   );
 
+  // Bucket task groups by phase. Each phase keeps its tasks in arrival
+  // order (Object.entries iterates insertion order, which matches the
+  // order spans were appended). Phases render in pipeline order
+  // (感知 → 规划 → 执行) so the user reads top-to-bottom in time.
+  const taskEntriesByPhase = useMemo(() => {
+    const buckets: Record<Phase, Array<[string, Span[]]>> = {
+      perception: [],
+      planning: [],
+      execution: [],
+    };
+    for (const entry of taskEntries) {
+      buckets[spanPhase(entry[1])].push(entry);
+    }
+    return buckets;
+  }, [taskEntries]);
+
   const counts: Record<FilterKey, number> = useMemo(() => {
     let api = 0, llm = 0, pr = 0;
     for (const spans of Object.values(spansByTask)) {
@@ -328,15 +408,25 @@ export function TraceTab() {
 
       {showGlobal && <GlobalDegradationGroup events={globalDegs} />}
 
-      {showSpans && taskEntries.map(([taskId, spans]) => (
-        <TaskGroup
-          key={taskId}
-          taskId={taskId}
-          spans={spans}
-          degradations={degByTask[taskId] ?? []}
-          filter={filter}
-        />
-      ))}
+      {showSpans && (Object.keys(PHASE_META) as Phase[])
+        .sort((a, b) => PHASE_META[a].order - PHASE_META[b].order)
+        .map((phase) => {
+          const entries = taskEntriesByPhase[phase];
+          if (entries.length === 0) return null;
+          return (
+            <PhaseGroup key={phase} phase={phase}>
+              {entries.map(([taskId, spans]) => (
+                <TaskGroup
+                  key={taskId}
+                  taskId={taskId}
+                  spans={spans}
+                  degradations={degByTask[taskId] ?? []}
+                  filter={filter}
+                />
+              ))}
+            </PhaseGroup>
+          );
+        })}
 
       {/* When filter === degradation: also list per-task degs flatly */}
       {filter === 'degradation' && Object.entries(degByTask).map(([taskId, evs]) => (
