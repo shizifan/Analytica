@@ -18,6 +18,9 @@ wheels/
 # Qoder
 .qoder/
 
+# Claude Code worktree / session metadata
+.claude/
+
 # E2E test artifacts (generated per run)
 reports/e2e_artifacts/
 

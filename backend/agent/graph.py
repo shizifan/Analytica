@@ -159,10 +159,12 @@ async def planning_node(state: AgentState) -> AgentState:
         state["analysis_plan"] = plan_dict
         state["plan_version"] = plan.version
 
-        # Surface validator drops as DegradationEvents (cross-cutting channel).
+        # Surface planner-side drops / fallbacks as DegradationEvents
+        # (cross-cutting channel — chat bubble, reflection, Trace tab).
         from backend.agent.degradation import DegradationEvent, record, SEVERITY_WARN
         for entry in plan.revision_log:
-            if entry.get("phase") == "validation" and entry.get("dropped"):
+            phase = entry.get("phase")
+            if phase == "validation" and entry.get("dropped"):
                 record(state, DegradationEvent(
                     layer="planning",
                     severity=SEVERITY_WARN,
@@ -171,6 +173,31 @@ async def planning_node(state: AgentState) -> AgentState:
                         f"（原 {entry.get('original_count', '?')} → 留 {entry.get('kept_count', '?')}）"
                     ),
                     affected={"dropped": entry["dropped"]},
+                ))
+            elif phase == "multi_round_stitch" and entry.get("failed_sections"):
+                failed = entry["failed_sections"]
+                record(state, DegradationEvent(
+                    layer="planning",
+                    severity=SEVERITY_WARN,
+                    reason=(
+                        f"多轮规划部分章节失败："
+                        f"{len(failed)}/{entry.get('sections_total', '?')} 个章节未生成成功"
+                        f"（已保留 {entry.get('sections_kept', '?')} 个）"
+                    ),
+                    affected={"failed_sections": failed},
+                ))
+            elif phase == "multi_round_fallback":
+                record(state, DegradationEvent(
+                    layer="planning",
+                    severity=SEVERITY_WARN,
+                    reason=(
+                        f"多轮规划失败，已回退到单轮规划"
+                        f"（{entry.get('error_type', 'Error')}: {entry.get('error', '')[:120]}）"
+                    ),
+                    affected={
+                        "error_type": entry.get("error_type"),
+                        "error": entry.get("error"),
+                    },
                 ))
 
         # Simple plans auto-execute: no confirmation card, graph flows
