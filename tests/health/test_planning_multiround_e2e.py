@@ -71,9 +71,6 @@ def _full_intent() -> dict:
 
 async def test_multiround_full_pipeline(monkeypatch):
     """Skeleton call + 2 section calls + stitch produces a complete plan."""
-    monkeypatch.setattr(
-        "backend.agent.planning.ENABLE_MULTI_ROUND_PLANNING", True,
-    )
     # Disable template bypass / template hint so the test exercises the LLM path.
     monkeypatch.setattr(
         "backend.agent.planning.ENABLE_TEMPLATE_BYPASS", False,
@@ -121,9 +118,6 @@ async def test_multiround_full_pipeline(monkeypatch):
 
 async def test_multiround_falls_back_when_skeleton_times_out(monkeypatch):
     """Skeleton TimeoutError must fall through to single-round, not bubble up."""
-    monkeypatch.setattr(
-        "backend.agent.planning.ENABLE_MULTI_ROUND_PLANNING", True,
-    )
     monkeypatch.setattr(
         "backend.agent.planning.ENABLE_TEMPLATE_BYPASS", False,
     )
@@ -176,9 +170,6 @@ async def test_multiround_falls_back_when_skeleton_times_out(monkeypatch):
 async def test_multiround_tolerates_one_section_failure(monkeypatch):
     """If one of two sections raises, stitch still produces a plan but the
     failed section is dropped from report_structure."""
-    monkeypatch.setattr(
-        "backend.agent.planning.ENABLE_MULTI_ROUND_PLANNING", True,
-    )
     monkeypatch.setattr(
         "backend.agent.planning.ENABLE_TEMPLATE_BYPASS", False,
     )

@@ -41,9 +41,9 @@ ENABLE_TEMPLATE_HINT   = True   # 从 DB 查历史模板注入 prompt
 ENABLE_TEMPLATE_BYPASS = True   # 命中 trigger_keywords 时直接返回模板，跳过 LLM
 
 # ── Multi-round planning（full_report 专用）──────────────────
-# 把单次大 prompt 拆成 skeleton（章节大纲）+ N×section（并行填充）两轮。
-# 解决单次 LLM 调用在 full_report 上 prompt 过大、超时无法降级的问题。
-ENABLE_MULTI_ROUND_PLANNING = os.getenv("ENABLE_MULTI_ROUND_PLANNING", "0") == "1"
+# full_report 始终走多轮：先生成 skeleton（章节大纲），再并行填充每节的具体
+# 任务，最后由 _stitch_plan 拼接全局任务。多轮失败时自动回退到下方的单轮
+# 路径，所以单轮兜底依然是稳态保障。
 _PLANNING_SKELETON_TIMEOUT     = float(os.getenv("PLANNING_SKELETON_TIMEOUT", "60"))
 _PLANNING_SECTION_TIMEOUT      = float(os.getenv("PLANNING_SECTION_TIMEOUT",  "60"))
 _PLANNING_SECTION_PARALLELISM  = int(os.getenv("PLANNING_SECTION_PARALLELISM", "5"))
@@ -580,10 +580,10 @@ class PlanningEngine:
             except Exception as e:
                 logger.warning("Template bypass failed, fallback to LLM: %s", e)
 
-        # Multi-round planning: only for full_report under feature flag.
-        # On any failure (timeout / parse / validation) fall through to the
-        # single-round path below — the user always gets a plan.
-        if ENABLE_MULTI_ROUND_PLANNING and complexity == "full_report":
+        # Multi-round planning is the default for full_report. On any failure
+        # (timeout / parse / validation) we fall through to the single-round
+        # path below — the user always gets a plan.
+        if complexity == "full_report":
             try:
                 return await self._generate_plan_multiround(
                     intent, valid_tools, valid_endpoints, complexity,
