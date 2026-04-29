@@ -1,168 +1,196 @@
-"""DOCX tool factory — wraps _docx_elements builder functions as LangChain tools.
+"""DOCX outline-driven LLM agent tools — Step 4.
 
-Usage inside ``DocxReportSkill.execute()``::
+The agent's job under the outline pipeline is *to render* (not plan):
+the outline already describes what each section contains, and each tool
+calls the matching ``DocxBlockRenderer.emit_*`` method given a block_id.
+This is a much smaller decision space than the pre-refactor agent (which
+had to pick from 7+ heterogeneous content types and manage section
+ordering itself), so success rate goes up and the system prompt shrinks.
 
-    tools = make_docx_tools(doc, content)
-    success = await run_report_agent(llm, tools, DOCX_SYSTEM_PROMPT, msg)
+Usage::
+
+    renderer = DocxBlockRenderer()
+    tools = make_docx_outline_tools(renderer, outline)
+    success = await run_report_agent(
+        llm, tools, DOCX_OUTLINE_SYSTEM_PROMPT,
+        serialize_outline(outline),
+    )
+    if success:
+        docx_bytes = renderer.end_document()
 """
 from __future__ import annotations
 
-from typing import Any
-
-from docx import Document
 from langchain_core.tools import tool
 
-from backend.tools.report import _docx_elements as E
 from backend.tools.report._agent_loop import FINALIZE_SENTINEL
-from backend.tools.report._content_collector import (
-    ChartDataItem,
-    DataFrameItem,
-    GrowthItem,
-    NarrativeItem,
-    ReportContent,
-    StatsTableItem,
+from backend.tools.report._outline import (
+    ChartBlock,
+    ChartTablePairBlock,
+    ComparisonGridBlock,
+    GrowthIndicatorsBlock,
+    KpiRowBlock,
+    ParagraphBlock,
+    ReportOutline,
+    SectionCoverBlock,
+    TableBlock,
 )
+from backend.tools.report._renderers.docx import DocxBlockRenderer
 
-# ---------------------------------------------------------------------------
-# System prompt
-# ---------------------------------------------------------------------------
 
-DOCX_SYSTEM_PROMPT = """\
-你是一位专业的数据分析报告排版师。你的任务是使用提供的工具将分析内容组合成一份结构完整、排版专业的 Word 文档。
+DOCX_OUTLINE_SYSTEM_PROMPT = """\
+你是 Word 文档渲染执行者。报告大纲(outline)已经规划完毕——你的任务是按 outline 的顺序，
+逐个调用工具把每个 block 渲染到文档中。
 
-## 排版规范
-1. 首先添加封面页（add_cover_page），然后添加目录（add_toc）
-2. 如果存在 KPI 指标（用户消息中会标注 "KPI 卡片: N 张"），在目录之后调用 add_kpi_cards
-3. 按章节顺序处理每个 Section：先添加章节标题（add_section_heading，只传 title），再添加该章节的所有内容项
-4. 章节内建议的内容顺序：叙述文本 → 统计表格 → 增长率指标 → 图表数据表 → 数据明细表
-5. 最后添加总结章节（add_summary_section）
-6. 完成后必须调用 finalize_document
+## 工作流程
+1. 调用 begin_document
+2. 对每个 Section（按编号 0, 1, 2, ... 顺序）:
+   a. 调用 begin_section(section_index)
+   b. 按用户消息中给出的顺序, 对每个 block 调用对应的 emit_* 工具(传入 block_id)
+   c. 调用 end_section(section_index)
+3. 调用 finalize_document
+
+## Block 与工具对应
+- kpi_row → emit_kpi_row(block_id)
+- paragraph → emit_paragraph(block_id)
+- table → emit_table(block_id)
+- chart → emit_chart(block_id)
+- chart_table_pair → emit_chart_table_pair(block_id)
+- comparison_grid → emit_comparison_grid(block_id)
+- growth_indicators → emit_growth_indicators(block_id)
+- section_cover → emit_section_cover(block_id)
 
 ## 重要规则
-- 通过 section_index 和 item_index 引用内容，对应用户消息中的 Section 编号和 [] 编号
-- 章节名通常已带中文数字前缀（"一、经营摘要"），调用 add_section_heading 只传 title 即可，不要再加 "1." 这类编号
-- 不要跳过有内容的章节
-- 不要自行编造数据
-- 空章节可以跳过
-- 如果某个 Section 没有特定类型的内容项，不要尝试添加
+- block_id 必须严格使用 outline 中提供的字符串 ID(如 "B0007"), 不要编造
+- 调用工具时不要补章节编号("一、" 等已经在 section 名字里), section_index 是 0-based 整数
+- 空 section(无 block)只需调用 begin_section / end_section, 不要 emit
+- 完成后必须调用 finalize_document
 """
 
 
-# ---------------------------------------------------------------------------
-# Tool factory
-# ---------------------------------------------------------------------------
+def make_docx_outline_tools(
+    renderer: DocxBlockRenderer,
+    outline: ReportOutline,
+) -> list:
+    """Return a list of LangChain tools that drive *renderer* via *outline*."""
 
-def make_docx_tools(doc: Document, content: ReportContent) -> list:
-    """Return LangChain tools that operate on *doc* via closure."""
+    def _section(idx: int):
+        if idx < 0 or idx >= len(outline.sections):
+            raise IndexError(
+                f"section_index={idx} 越界 (0-{len(outline.sections)-1})"
+            )
+        return outline.sections[idx]
 
-    def _lookup(section_index: int, item_index: int, expected_type: type) -> Any:
-        """Validate indices and return the content item, or raise."""
-        if section_index < 0 or section_index >= len(content.sections):
-            raise IndexError(
-                f"section_index={section_index} 越界 (0-{len(content.sections)-1})"
-            )
-        sec = content.sections[section_index]
-        if item_index < 0 or item_index >= len(sec.items):
-            raise IndexError(
-                f"item_index={item_index} 越界，Section '{sec.name}' 共 {len(sec.items)} 项"
-            )
-        item = sec.items[item_index]
-        if not isinstance(item, expected_type):
+    def _block(block_id: str, expected_type: type):
+        block = outline.find_block(block_id)
+        if block is None:
+            raise KeyError(f"block_id {block_id!r} 不存在于 outline")
+        if not isinstance(block, expected_type):
             raise TypeError(
-                f"Section[{section_index}][{item_index}] 是 {type(item).__name__}，"
+                f"block {block_id!r} 是 {type(block).__name__}, "
                 f"期望 {expected_type.__name__}"
             )
-        return item
+        return block
 
-    # ── Tools ──────────────────────────────────────────────────────
-
-    @tool
-    def add_cover_page(title: str, author: str, date: str) -> str:
-        """添加报告封面页，包含标题、作者和日期。"""
-        E.build_cover_page(doc, title, author, date)
-        return f"✓ 封面页已添加：{title}"
+    # ---- Lifecycle ------------------------------------------------------
 
     @tool
-    def add_toc() -> str:
-        """添加目录占位符（可在 Word 中刷新生成目录）。"""
-        E.build_toc_placeholder(doc)
-        return "✓ 目录已添加"
+    def begin_document() -> str:
+        """Initialise the document (cover, TOC, global KPI). Call once first."""
+        renderer.begin_document(outline)
+        return "✓ document started"
 
     @tool
-    def add_section_heading(title: str, number: int | None = None) -> str:
-        """添加章节标题。``number`` 参数保留兼容旧调用，但渲染时忽略——
-        模板的章节名通常已带 "一、/二、" 等中文编号，不要再叠加阿拉伯数字。
-        """
-        E.build_section_heading(doc, number or 0, title)
-        return f"✓ 章节标题已添加：{title}"
+    def begin_section(section_index: int) -> str:
+        """Start a section. ``section_index`` is 0-based."""
+        section = _section(section_index)
+        renderer.begin_section(section, section_index)
+        return f"✓ section {section_index} (\"{section.name}\") begun"
 
     @tool
-    def add_kpi_cards() -> str:
-        """在报告顶部添加业务 KPI 卡片行（封面/目录之后，章节之前）。
-
-        使用内置的 ReportContent.kpi_cards 数据，无需参数。
-        """
-        if not content.kpi_cards:
-            return "（无 KPI 可渲染，跳过）"
-        E.build_kpi_row(doc, content.kpi_cards)
-        return f"✓ KPI 卡片已添加（{len(content.kpi_cards)} 张）"
-
-    @tool
-    def add_narrative(section_index: int, item_index: int) -> str:
-        """添加叙述分析文本段落。通过 section_index 和 item_index 指定内容。"""
-        item = _lookup(section_index, item_index, NarrativeItem)
-        E.build_narrative(doc, item.text)
-        return f"✓ 叙述文本已添加（{len(item.text)} 字符）"
-
-    @tool
-    def add_stats_table(section_index: int, item_index: int) -> str:
-        """添加统计数据汇总表格（含 mean/median/std/min/max）。"""
-        item = _lookup(section_index, item_index, StatsTableItem)
-        E.build_stats_table(doc, item.summary_stats)
-        return f"✓ 统计表格已添加（{len(item.summary_stats)} 列）"
-
-    @tool
-    def add_growth_indicators(section_index: int, item_index: int) -> str:
-        """添加增长率指标（同比/环比箭头）。"""
-        item = _lookup(section_index, item_index, GrowthItem)
-        E.build_growth_indicators(doc, item.growth_rates)
-        return f"✓ 增长率指标已添加（{len(item.growth_rates)} 项）"
-
-    @tool
-    def add_dataframe_table(section_index: int, item_index: int) -> str:
-        """添加原始数据明细表格（DataFrame）。"""
-        item = _lookup(section_index, item_index, DataFrameItem)
-        E.build_dataframe_table(doc, item.df)
-        return f"✓ 数据明细表已添加（{item.df.shape[0]} 行 × {item.df.shape[1]} 列）"
-
-    @tool
-    def add_chart_data_table(section_index: int, item_index: int) -> str:
-        """添加图表数据表格（从 ECharts 配置提取数据）。"""
-        item = _lookup(section_index, item_index, ChartDataItem)
-        E.build_chart_data_table(doc, item.option)
-        return f"✓ 图表数据表已添加：{item.title or '图表'}"
-
-    @tool
-    def add_summary_section() -> str:
-        """添加报告末尾的总结与建议章节。"""
-        E.build_summary_section(doc, content.summary_items)
-        return f"✓ 总结章节已添加（{len(content.summary_items)} 条摘要）"
+    def end_section(section_index: int) -> str:
+        """End a section. ``section_index`` matches the prior begin_section."""
+        section = _section(section_index)
+        renderer.end_section(section, section_index)
+        return f"✓ section {section_index} ended"
 
     @tool
     def finalize_document() -> str:
-        """完成文档编排，结束工具调用。必须在所有内容添加完毕后调用。"""
+        """Mark rendering complete. Must be called last; ends the agent loop."""
         return FINALIZE_SENTINEL
 
+    # ---- Block emitters -------------------------------------------------
+
+    @tool
+    def emit_kpi_row(block_id: str) -> str:
+        """Render a KPI row block."""
+        block = _block(block_id, KpiRowBlock)
+        renderer.emit_kpi_row(block)
+        return f"✓ kpi_row {block_id}"
+
+    @tool
+    def emit_paragraph(block_id: str) -> str:
+        """Render a narrative paragraph."""
+        block = _block(block_id, ParagraphBlock)
+        renderer.emit_paragraph(block)
+        return f"✓ paragraph {block_id}"
+
+    @tool
+    def emit_table(block_id: str) -> str:
+        """Render a stats table or dataframe table."""
+        block = _block(block_id, TableBlock)
+        asset = outline.get_asset(block.asset_id)
+        renderer.emit_table(block, asset)
+        return f"✓ table {block_id} (asset={block.asset_id})"
+
+    @tool
+    def emit_chart(block_id: str) -> str:
+        """Render a chart-as-data-table block."""
+        block = _block(block_id, ChartBlock)
+        asset = outline.get_asset(block.asset_id)
+        renderer.emit_chart(block, asset)
+        return f"✓ chart {block_id} (asset={block.asset_id})"
+
+    @tool
+    def emit_chart_table_pair(block_id: str) -> str:
+        """Render a chart + table side-by-side block."""
+        block = _block(block_id, ChartTablePairBlock)
+        chart_asset = outline.get_asset(block.chart_asset_id)
+        table_asset = outline.get_asset(block.table_asset_id)
+        renderer.emit_chart_table_pair(block, chart_asset, table_asset)
+        return f"✓ chart_table_pair {block_id}"
+
+    @tool
+    def emit_comparison_grid(block_id: str) -> str:
+        """Render a multi-column comparison grid (e.g. 短期/中期/长期)."""
+        block = _block(block_id, ComparisonGridBlock)
+        renderer.emit_comparison_grid(block)
+        return f"✓ comparison_grid {block_id}"
+
+    @tool
+    def emit_growth_indicators(block_id: str) -> str:
+        """Render growth-rate indicators (yoy / mom)."""
+        block = _block(block_id, GrowthIndicatorsBlock)
+        renderer.emit_growth_indicators(block)
+        return f"✓ growth_indicators {block_id}"
+
+    @tool
+    def emit_section_cover(block_id: str) -> str:
+        """Render a section cover (placeholder until Sprint 3)."""
+        block = _block(block_id, SectionCoverBlock)
+        renderer.emit_section_cover(block)
+        return f"✓ section_cover {block_id}"
+
     return [
-        add_cover_page,
-        add_toc,
-        add_kpi_cards,
-        add_section_heading,
-        add_narrative,
-        add_stats_table,
-        add_growth_indicators,
-        add_dataframe_table,
-        add_chart_data_table,
-        add_summary_section,
+        begin_document,
+        begin_section,
+        end_section,
         finalize_document,
+        emit_kpi_row,
+        emit_paragraph,
+        emit_table,
+        emit_chart,
+        emit_chart_table_pair,
+        emit_comparison_grid,
+        emit_growth_indicators,
+        emit_section_cover,
     ]

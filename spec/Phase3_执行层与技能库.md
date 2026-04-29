@@ -120,7 +120,13 @@ execution_context = {
 | `skill_report_pptx` | PPTX 报告 | .pptx 文件（含封面/目录/图表/总结） |
 | `skill_report_docx` | Word 报告 | .docx 文件 |
 | `skill_report_html` | HTML 报告 | 单页 HTML 文件 |
+| `skill_report_markdown` | Markdown 报告 | 纯文本 .md 文件 |
 | `skill_summary_gen` | 摘要生成 | 纯文本摘要段落 |
+
+> **架构 v2（2026-04-29 交付）**：报告生成已重构为 outline-driven 管道
+> （`task → ReportOutline → BlockRenderer × 4 端`）。本节下方的 v1 AI
+> Coding Prompt 仍保留作历史参考，但实际代码组织、数据模型、LLM 编排
+> 流程以 [spec/refactor_report_outline.md](./refactor_report_outline.md) 为准。
 
 ### 2.3 10 个 Mock API 接口（来自 PRD §6.3）
 

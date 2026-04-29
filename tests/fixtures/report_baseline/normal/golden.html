@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 Q1 港区吞吐量分析报告</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+body { font-family: 'Microsoft YaHei', sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; color: #333333; }
+h1 { color: #1E3A5F; text-align: center; border-bottom: 3px solid #F0A500; padding-bottom: 10px; }
+h2 { color: #1E3A5F; margin-top: 30px; }
+h3 { color: #2D5F8A; }
+.meta { text-align: center; color: #666; margin-bottom: 30px; }
+.section { margin-bottom: 40px; }
+.chart-container { width: 100%; height: 400px; margin: 20px 0; }
+.narrative { line-height: 1.8; text-indent: 2em; }
+.summary { background: #1E3A5F; color: white; padding: 20px; border-radius: 8px; margin-top: 40px; }
+.summary h2 { color: #F0A500; }
+table.stats { width: 100%; border-collapse: collapse; margin: 16px 0; }
+table.stats th { background: #1E3A5F; color: white; padding: 8px 12px; text-align: left; font-size: 13px; }
+table.stats td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; font-family: 'Calibri', monospace; }
+table.stats tr:nth-child(even) { background: #F5F7FA; }
+.kpi-row { display: flex; gap: 16px; margin: 16px 0; flex-wrap: wrap; }
+.kpi-card { flex: 1; min-width: 180px; background: #F5F7FA; border-radius: 8px; padding: 16px; text-align: center; border-left: 4px solid #F0A500; }
+.kpi-card .label { font-size: 12px; color: #546E7A; margin-bottom: 4px; }
+.kpi-card .value { font-size: 28px; font-weight: bold; font-family: 'Calibri', monospace; }
+.kpi-card .value.positive { color: #2E7D32; }
+.kpi-card .value.negative { color: #C62828; }
+.kpi-card .sub { font-size: 11px; color: #546E7A; }
+</style>
+</head>
+<body>
+<h1>2026 Q1 港区吞吐量分析报告</h1>
+<div class="meta">Analytica Test | 2026-04-29</div>
+<div class="section"><div class="kpi-row"><div class="kpi-card"><div class="label">总吞吐量</div><div class="value positive">9500.6 万吨</div><div class="sub">2026 Q1</div></div><div class="kpi-card"><div class="label">同比增长</div><div class="value positive">12.0%</div><div class="sub">YoY</div></div><div class="kpi-card"><div class="label">最高港区</div><div class="value">大连港</div><div class="sub">4500.5 万吨</div></div></div></div>
+<div class="section"><h2>一、港区吞吐量现状</h2>
+<h3>数据明细</h3><table class="stats"><tr><th>港区</th><th>吞吐量</th></tr><tr><td>大连港</td><td>4,500.50</td></tr><tr><td>营口港</td><td>3,200.10</td></tr><tr><td>锦州港</td><td>1,800.00</td></tr></table>
+<div id="chart_0" class="chart-container"></div><script>echarts.init(document.getElementById("chart_0")).setOption({"title": {"text": "港区吞吐量"}, "xAxis": {"type": "category", "data": ["大连港", "营口港", "锦州港"]}, "yAxis": {"type": "value"}, "series": [{"type": "bar", "data": [4500.5, 3200.1, 1800.0]}]});</script>
+</div>
+<div class="section"><h2>二、关键指标分析</h2>
+<div class="narrative">2026 Q1 大连港吞吐量达 4500.5 万吨，同比增长 12%，居三港之首；营口港 3200.1 万吨，锦州港 1800.0 万吨。</div>
+<h3>统计数据概览</h3><table class="stats"><tr><th>指标</th><th>均值</th><th>中位数</th><th>标准差</th><th>最小值</th><th>最大值</th></tr><tr><td><b>throughput</b></td><td>3,166.87</td><td>-</td><td>-</td><td>1,800.00</td><td>4,500.50</td></tr></table>
+<h3>增长率指标</h3><div class="kpi-row"><div class="kpi-card"><div class="label">throughput</div><div class="value positive">↑12.0%</div><div class="sub">同比</div><div class="value positive">↑3.0%</div><div class="sub">环比</div></div></div>
+</div>
+<div class="section"><h2>三、综合结论</h2>
+<div class="summary"><h2>总结与建议</h2>
+<p>三港区集装箱吞吐量整体稳健增长，大连港持续领跑。</p>
+</div>
+</div>
+</body>
+</html>

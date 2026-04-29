@@ -1,5 +1,14 @@
 """Shared content extraction and section-association logic.
 
+DEPRECATED — Replaced by the outline pipeline (``_outline_legacy`` →
+``ReportOutline``). The four ``*_gen.py`` skills no longer call any
+function here directly; the only remaining caller is
+``_outline_legacy.collect_and_build_outline`` which uses
+``collect_and_associate`` as Stage 1 of the planner. When Step 8 lands
+the LLM planner, this module's role narrows to "raw extractor"; when
+the rule-based fallback gets its own implementation, the module can be
+deleted.
+
 Replaces the duplicated (and buggy) content-collection code formerly
 inlined in docx_gen, pptx_gen and html_gen.
 
