@@ -27,7 +27,7 @@ from typing import Any
 
 import pandas as pd
 
-from backend.tools._i18n import col_label
+from backend.tools._field_labels import col_label
 from backend.tools.report._kpi_extractor import KPIItem
 
 logger = logging.getLogger("analytica.tools.report._content_collector")
@@ -127,7 +127,7 @@ def normalize_dataframe_item(
     """Return a cleaned DataFrameItem suitable for rendering.
 
     Transforms:
-    - Translate column headers to Chinese using ``col_label()`` from _i18n.
+    - Translate column headers to Chinese using ``col_label()`` from _field_labels.
     - Sort descending by first numeric column (makes TOP-N meaningful).
     - If more than ``max_rows`` rows, keep top (max_rows-1) and append an
       "其他" row summing the remaining numeric columns.

@@ -14,6 +14,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from backend.config import get_settings
 from backend.tools._llm import invoke_llm
 from backend.tools.analysis._data_summarizer import summarize_sources
 
@@ -102,7 +103,7 @@ async def extract_kpis_llm(
     result = await invoke_llm(
         prompt,
         system_prompt=_KPI_SYSTEM,
-        temperature=0.1,
+        temperature=get_settings().LLM_TEMPERATURE_DEFAULT,
         timeout=30,
         span_emit=span_emit,
         task_id=task_id,

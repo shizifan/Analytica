@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Icon } from '../Icon';
 import { EmployeeDetail } from './EmployeeDetail';
 import { useEmployeeStore } from '../../../stores/employeeStore';
+import { DEFAULT_EMPLOYEE_ID } from '../../../config/app';
 import type { EmployeeDetail as EmployeeDetailType, EmployeeSummary } from '../../../types';
 
 interface Props {
@@ -10,8 +11,6 @@ interface Props {
   onSelect(id: string | null): void;
   onClose(): void;
 }
-
-const DEFAULT_EMPLOYEE_ID = 'asset_investment';
 
 function sortEmployees(list: EmployeeSummary[]): EmployeeSummary[] {
   return [...list].sort((a, b) => {

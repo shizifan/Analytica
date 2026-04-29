@@ -44,6 +44,24 @@ class Settings(BaseSettings):
         description="Enable LLM agent loop for report generation; set False to use deterministic mode only",
     )
 
+    # ── LLM sampling temperature ──────────────────────────────────────────
+    # Three semantic tiers — pick by task type, not by feel:
+    #   default  (0.1)  structured/deterministic output (param resolution, KPI extraction, chart mapping)
+    #   balanced (0.2)  semi-generative (attribution narratives, HTML/DOCX assembly)
+    #   creative (0.3)  generative prose (descriptive analysis, summary copy)
+    LLM_TEMPERATURE_DEFAULT: float = Field(
+        default=0.1,
+        description="Temperature for structured/deterministic LLM calls",
+    )
+    LLM_TEMPERATURE_BALANCED: float = Field(
+        default=0.2,
+        description="Temperature for semi-generative LLM calls",
+    )
+    LLM_TEMPERATURE_CREATIVE: float = Field(
+        default=0.3,
+        description="Temperature for generative-prose LLM calls",
+    )
+
     DATABASE_URL: str = Field(
         default="mysql+aiomysql://root@localhost:3306/analytica",
         description="Async database URL",

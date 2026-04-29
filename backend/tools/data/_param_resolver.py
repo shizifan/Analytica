@@ -16,6 +16,7 @@ import json
 import logging
 from typing import Any
 
+from backend.config import get_settings
 from backend.tools._llm import extract_json, invoke_llm
 
 logger = logging.getLogger("analytica.tools.param_resolver")
@@ -131,7 +132,7 @@ async def resolve_params_with_llm(
     result = await invoke_llm(
         prompt,
         system_prompt=_RESOLVE_SYSTEM,
-        temperature=0.1,
+        temperature=get_settings().LLM_TEMPERATURE_DEFAULT,
         timeout=30,
         max_prompt_chars=3000,
         span_emit=span_emit,
@@ -201,7 +202,7 @@ async def diagnose_and_fix_params(
     result = await invoke_llm(
         prompt,
         system_prompt=_DIAGNOSE_SYSTEM,
-        temperature=0.1,
+        temperature=get_settings().LLM_TEMPERATURE_DEFAULT,
         timeout=30,
         max_prompt_chars=2000,
         span_emit=span_emit,

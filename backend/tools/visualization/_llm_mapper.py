@@ -14,6 +14,7 @@ from typing import Any
 
 import pandas as pd
 
+from backend.config import get_settings
 from backend.tools._llm import extract_json, invoke_llm
 
 logger = logging.getLogger("analytica.tools.visualization.llm_mapper")
@@ -274,7 +275,7 @@ async def decide_chart_mapping(
     result = await invoke_llm(
         user_prompt,
         system_prompt=_SYSTEM_PROMPT,
-        temperature=0.1,   # low temp: we want deterministic structured output
+        temperature=get_settings().LLM_TEMPERATURE_DEFAULT,
         timeout=30,
         max_prompt_chars=3000,
         span_emit=span_emit,

@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from backend.config import get_settings
 from backend.tools._llm import invoke_llm, truncate
 from backend.tools.analysis._data_summarizer import summarize_sources
 from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
@@ -97,7 +98,7 @@ class SummaryGenTool(BaseTool):
         result = await invoke_llm(
             prompt,
             system_prompt=_SUMMARY_SYSTEM,
-            temperature=0.3,
+            temperature=get_settings().LLM_TEMPERATURE_CREATIVE,
             timeout=90,
             span_emit=inp.span_emit,
             task_id=task_id,

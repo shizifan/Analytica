@@ -14,6 +14,7 @@ import logging
 import re
 from typing import Any
 
+from backend.config import get_settings
 from backend.tools._llm import invoke_llm
 from backend.tools.analysis._data_summarizer import summarize_sources
 from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
@@ -123,7 +124,7 @@ class AttributionAnalysisTool(BaseTool):
         result = await invoke_llm(
             user_prompt,
             system_prompt=_ATTRIBUTION_SYSTEM,
-            temperature=0.2,
+            temperature=get_settings().LLM_TEMPERATURE_BALANCED,
             timeout=90,
             span_emit=inp.span_emit,
             task_id=task_id,

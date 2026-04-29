@@ -30,7 +30,7 @@ from backend.tools.report._content_collector import (
 from backend.tools.report import _pptx_slides as S
 from backend.tools.report import _theme as T
 from backend.tools.report._kpi_extractor import extract_kpis_llm
-from backend.tools._i18n import metric_label
+from backend.tools._field_labels import metric_label
 
 logger = logging.getLogger("analytica.tools.report_pptx")
 

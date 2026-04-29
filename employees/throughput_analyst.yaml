@@ -98,3 +98,15 @@ planning:
     - 月度趋势分析 → tool_chart_line（当年 vs 上年曲线）
     - 港区/业务结构对比 → tool_chart_bar
     - 完成进度归因 → tool_chart_waterfall
+
+faqs:
+  - id: tp-1
+    question: 2026年3月各港区吞吐量数据，以柱状图展示各港区对比
+  - id: tp-2
+    question: 2026年集装箱吞吐量目标与完成情况，目标量、完成量、完成率，以折线图展示月度趋势
+  - id: tp-3
+    question: 2026年3月各港区泊位占用率，以折线图展示近6个月变化趋势
+  - id: tp-4
+    question: 2026年1-4月全港吞吐量同比、环比数据，以表格+柱状图展示
+  - id: tp-5
+    question: 2026年3月散杂货和集装箱吞吐量结构占比，以饼图展示

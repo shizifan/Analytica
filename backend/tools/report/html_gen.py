@@ -20,7 +20,7 @@ from backend.tools.report._content_collector import (
 )
 from backend.tools.report import _theme as T
 from backend.tools.report._kpi_extractor import extract_kpis_llm
-from backend.tools._i18n import metric_label
+from backend.tools._field_labels import metric_label
 
 logger = logging.getLogger("analytica.tools.report_html")
 
@@ -254,7 +254,7 @@ class HtmlReportTool(BaseTool):
                     base_url=settings.QWEN_API_BASE,
                     api_key=settings.QWEN_API_KEY,
                     model=settings.QWEN_MODEL,
-                    temperature=0.2,
+                    temperature=settings.LLM_TEMPERATURE_BALANCED,
                     request_timeout=90,
                     extra_body={"enable_thinking": False},
                 )

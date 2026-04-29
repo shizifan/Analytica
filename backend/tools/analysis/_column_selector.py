@@ -15,6 +15,7 @@ from typing import Any
 
 import pandas as pd
 
+from backend.config import get_settings
 from backend.tools._llm import invoke_llm
 
 logger = logging.getLogger("analytica.tools.analysis.column_selector")
@@ -124,7 +125,7 @@ async def select_analysis_columns(
     result = await invoke_llm(
         user_prompt,
         system_prompt=_SYSTEM_PROMPT,
-        temperature=0.1,
+        temperature=get_settings().LLM_TEMPERATURE_DEFAULT,
         timeout=20,
         max_prompt_chars=2500,
         span_emit=span_emit,

@@ -2,22 +2,7 @@ import { Link } from 'react-router-dom';
 import { Icon } from './Icon';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useWsStore } from '../../stores/wsStore';
-
-const PHASE_LABELS: Record<string, string> = {
-  idle: '待机',
-  perception: '感知中',
-  planning: '规划中',
-  executing: '执行中',
-  reflection: '反思中',
-  done: '已完成',
-};
-
-const WS_LABELS: Record<string, string> = {
-  connected: 'connected',
-  connecting: 'connecting',
-  disconnected: 'disconnected',
-  failed: 'failed',
-};
+import { PHASE_LABELS, WS_LABELS } from '../../lib/labels';
 
 interface Props {
   onTweaks(): void;

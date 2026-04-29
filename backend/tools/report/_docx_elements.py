@@ -16,7 +16,7 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.oxml.ns import qn, nsdecls
 from docx.oxml import parse_xml
 
-from backend.tools._i18n import metric_label
+from backend.tools._field_labels import metric_label
 from backend.tools.report import _theme as T
 
 # ---------------------------------------------------------------------------

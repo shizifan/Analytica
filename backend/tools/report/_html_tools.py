@@ -14,7 +14,7 @@ from typing import Any
 
 from langchain_core.tools import tool
 
-from backend.tools._i18n import metric_label
+from backend.tools._field_labels import metric_label
 from backend.tools.report._agent_loop import FINALIZE_SENTINEL
 from backend.tools.report._content_collector import (
     ChartDataItem,

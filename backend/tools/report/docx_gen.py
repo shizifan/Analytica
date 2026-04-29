@@ -100,7 +100,7 @@ class DocxReportTool(BaseTool):
                     base_url=settings.QWEN_API_BASE,
                     api_key=settings.QWEN_API_KEY,
                     model=settings.QWEN_MODEL,
-                    temperature=0.2,
+                    temperature=settings.LLM_TEMPERATURE_BALANCED,
                     request_timeout=90,
                     extra_body={"enable_thinking": False},
                 )

@@ -6,7 +6,7 @@ import { useSlotStore } from '../stores/slotStore';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useEmployeeStore } from '../stores/employeeStore';
 import { api } from '../api/client';
-import { getEmployeeFAQs } from '../data/employeeFaq';
+import { universalFAQs } from '../data/employeeFaq';
 
 import { InputBar } from '../components/InputBar';
 
@@ -25,18 +25,11 @@ import { useTweakStore, applyTweaksToDocument } from '../lib/tweaks';
 import { hydrateSession } from '../lib/hydrate';
 import { useThinkingStore } from '../stores/thinkingStore';
 import { useTraceStore } from '../stores/traceStore';
+import { PHASE_LABELS } from '../lib/labels';
+import { DEFAULT_EMPLOYEE_ID } from '../config/app';
 
 import type { ReflectionSummary } from '../types';
 import type { ConversationItem } from '../components/ui/HistoryPane';
-
-const PHASE_SHORT: Record<string, string> = {
-  idle: '待机',
-  perception: '感知中',
-  planning: '规划中',
-  executing: '执行中',
-  reflection: '反思中',
-  done: '已完成',
-};
 
 /**
  * V2 workbench layout — three-pane (History / Chat / Agent Inspector).
@@ -134,7 +127,7 @@ export function ChatPageV2() {
     defaultSelectedAppliedRef.current = true;
     if (selectedId !== null) return;
     if (sessionId) return;
-    const fallback = employees.find((e) => e.employee_id === 'asset_investment');
+    const fallback = employees.find((e) => e.employee_id === DEFAULT_EMPLOYEE_ID);
     if (fallback) setSelectedId(fallback.employee_id);
   }, [employees, selectedId, sessionId, setSelectedId]);
 
@@ -306,7 +299,7 @@ export function ChatPageV2() {
     if (selectedId && detail?.employee_id === selectedId && detail.faqs?.length) {
       return detail.faqs.map((f) => ({ id: f.id, question: f.question }));
     }
-    return getEmployeeFAQs(selectedId);
+    return universalFAQs;
   })();
 
   const inputDisabled = !sessionId || wsStatus !== 'connected';
@@ -454,7 +447,7 @@ export function ChatPageV2() {
         <AgentPane
           collapsed={agentCollapsed}
           onToggle={() => setAgentCollapsed((v) => !v)}
-          phaseLabel={PHASE_SHORT[phase] ?? phase}
+          phaseLabel={PHASE_LABELS[phase] ?? phase}
         />
       </div>
 

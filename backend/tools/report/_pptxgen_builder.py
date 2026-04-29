@@ -27,7 +27,7 @@ import subprocess
 import tempfile
 from typing import Any
 
-from backend.tools._i18n import col_label, metric_label
+from backend.tools._field_labels import col_label, metric_label
 from backend.tools.report._content_collector import (
     ChartDataItem,
     DataFrameItem,

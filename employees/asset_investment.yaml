@@ -173,3 +173,15 @@ planning:
     - 投资完成进度归因 → tool_chart_waterfall
     - 月度趋势曲线（利用率/完好率/台时/能耗） → tool_chart_line
     - 历年趋势对比 → tool_chart_line
+
+faqs:
+  - id: ai-1
+    question: 全港资产净值最新数据，相比2025年底变化金额和变化率，以表格列出各类资产明细
+  - id: ai-2
+    question: 2026年投资计划总额、已投资额、完成进度，以表格列出主要项目进展
+  - id: ai-3
+    question: 当前设备总数、正常运行数量、维修中数量，以表格列出维修中设备明细
+  - id: ai-4
+    question: 房屋和土地资产分布，各类型资产数量和面积，以表格+饼图展示
+  - id: ai-5
+    question: 2026年主要成本项目支出，以表格列出各项目支出金额和占比

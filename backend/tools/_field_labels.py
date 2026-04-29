@@ -1,4 +1,4 @@
-"""Chinese localization for API column names, stats metric keys, and chart identifiers.
+"""Chinese display labels for API column names, stats metric keys, and chart identifiers.
 
 Provides a single source of truth for translating raw API field names (e.g. ``qty``,
 ``finishQty``, ``mean``) to human-readable Chinese labels used in chart legends,
@@ -6,7 +6,7 @@ table headers, and KPI cards.
 
 Usage::
 
-    from backend.tools._i18n import col_label, metric_label
+    from backend.tools._field_labels import col_label, metric_label
 
     col_label("qty")        # → "吨吞吐量"
     col_label("unknown")    # → "unknown"   (passthrough fallback)

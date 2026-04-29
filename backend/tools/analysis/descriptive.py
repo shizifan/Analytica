@@ -14,6 +14,7 @@ from typing import Any
 
 import pandas as pd
 
+from backend.config import get_settings
 from backend.tools._llm import compact_stats_dict, invoke_llm
 from backend.tools.analysis._column_selector import select_analysis_columns
 from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
@@ -218,7 +219,7 @@ async def _generate_narrative(
     result = await invoke_llm(
         prompt,
         system_prompt=_NARRATIVE_SYSTEM,
-        temperature=0.3,
+        temperature=get_settings().LLM_TEMPERATURE_CREATIVE,
         timeout=90,
         span_emit=span_emit,
         task_id=task_id,

@@ -36,7 +36,7 @@ def build_llm(model_key: str, *, request_timeout: int = 200):
     else:
         base, key, name = s.QWEN_API_BASE, s.QWEN_API_KEY, s.QWEN_MODEL
 
-    kwargs: dict = dict(base_url=base, api_key=key, model=name, temperature=0.1, request_timeout=request_timeout)
+    kwargs: dict = dict(base_url=base, api_key=key, model=name, temperature=s.LLM_TEMPERATURE_DEFAULT, request_timeout=request_timeout)
     if not model_key.startswith("deepseek"):
         kwargs["extra_body"] = {"enable_thinking": False}
     return ChatOpenAI(**kwargs)

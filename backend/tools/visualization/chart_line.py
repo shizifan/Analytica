@@ -5,7 +5,7 @@ from typing import Any
 
 import pandas as pd
 
-from backend.tools._i18n import col_label
+from backend.tools._field_labels import col_label
 from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
 from backend.tools.registry import register_tool
 from backend.tools.visualization._config_parser import (
