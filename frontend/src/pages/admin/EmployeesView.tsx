@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AdminListShell } from '../../components/ui/admin/AdminListShell';
 import { EmployeeDetailDrawer } from '../../components/ui/admin/EmployeeDetailDrawer';
 import { api } from '../../api/client';
@@ -14,7 +15,19 @@ export function EmployeesView() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedId = searchParams.get('selected');
+
+  const openDetail = (id: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('selected', id);
+    setSearchParams(next, { replace: false });
+  };
+  const closeDetail = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('selected');
+    setSearchParams(next, { replace: false });
+  };
 
   const load = async () => {
     setLoading(true);
@@ -71,7 +84,7 @@ export function EmployeesView() {
                 <tr
                   key={emp.employee_id}
                   style={{ cursor: 'pointer' }}
-                  onClick={() => setSelectedId(emp.employee_id)}
+                  onClick={() => openDetail(emp.employee_id)}
                 >
                   <td>
                     <div style={{
@@ -120,7 +133,7 @@ export function EmployeesView() {
       {selectedId && (
         <EmployeeDetailDrawer
           employeeId={selectedId}
-          onClose={() => setSelectedId(null)}
+          onClose={closeDetail}
         />
       )}
     </>

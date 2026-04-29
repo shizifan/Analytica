@@ -55,7 +55,8 @@ async def list_api_endpoints(
     sql = (
         "SELECT name, method, path, domain, intent, time_type, granularity, "
         "tags, required_params, optional_params, returns, param_note, "
-        "disambiguate, source, enabled, created_at, updated_at "
+        "disambiguate, source, enabled, created_at, updated_at, "
+        "field_schema, use_cases, chain_with, analysis_note "
         "FROM api_endpoints WHERE " + " AND ".join(where) +
         " ORDER BY domain, name LIMIT :lim"
     )
@@ -82,6 +83,13 @@ def _api_row(r: Any) -> dict[str, Any]:
         "enabled": bool(r[14]),
         "created_at": _iso(r[15]),
         "updated_at": _iso(r[16]),
+        # P2.4: semantic-enrichment fields. NULL → empty list / "" so the
+        # consumers (api_registry.reload_from_db) can rebuild ApiEndpoint
+        # without per-field None checks.
+        "field_schema": _json_field(r[17]) or [],
+        "use_cases": _json_field(r[18]) or [],
+        "chain_with": _json_field(r[19]) or [],
+        "analysis_note": r[20] or "",
     }
 
 
@@ -92,7 +100,8 @@ async def get_api_endpoint(
         text(
             "SELECT name, method, path, domain, intent, time_type, granularity, "
             "tags, required_params, optional_params, returns, param_note, "
-            "disambiguate, source, enabled, created_at, updated_at "
+            "disambiguate, source, enabled, created_at, updated_at, "
+            "field_schema, use_cases, chain_with, analysis_note "
             "FROM api_endpoints WHERE name = :n"
         ),
         {"n": name},
@@ -121,6 +130,12 @@ async def upsert_api_endpoint(
     disambiguate: str | None = None,
     source: str = "mock",
     enabled: bool = True,
+    # P2.4: semantic-enrichment fields. ``field_schema`` rows are
+    # 3- or 4-element tuples per P2.3a (4th = label_zh).
+    field_schema: list[list[Any]] | None = None,
+    use_cases: list[str] | None = None,
+    chain_with: list[str] | None = None,
+    analysis_note: str | None = None,
 ) -> None:
     await db.execute(
         text(
@@ -128,10 +143,12 @@ async def upsert_api_endpoint(
             INSERT INTO api_endpoints
                 (name, method, path, domain, intent, time_type, granularity,
                  tags, required_params, optional_params, returns,
-                 param_note, disambiguate, source, enabled)
+                 param_note, disambiguate, source, enabled,
+                 field_schema, use_cases, chain_with, analysis_note)
             VALUES
                 (:n, :method, :path, :dom, :intent, :tt, :gr,
-                 :tags, :req, :opt, :ret, :note, :dis, :src, :en)
+                 :tags, :req, :opt, :ret, :note, :dis, :src, :en,
+                 :fs, :uc, :cw, :an)
             ON DUPLICATE KEY UPDATE
                 method = VALUES(method),
                 path = VALUES(path),
@@ -147,6 +164,10 @@ async def upsert_api_endpoint(
                 disambiguate = VALUES(disambiguate),
                 source = VALUES(source),
                 enabled = VALUES(enabled),
+                field_schema = VALUES(field_schema),
+                use_cases = VALUES(use_cases),
+                chain_with = VALUES(chain_with),
+                analysis_note = VALUES(analysis_note),
                 updated_at = NOW()
             """
         ),
@@ -166,6 +187,10 @@ async def upsert_api_endpoint(
             "dis": disambiguate,
             "src": source,
             "en": 1 if enabled else 0,
+            "fs": json.dumps(field_schema or [], ensure_ascii=False),
+            "uc": json.dumps(use_cases or [], ensure_ascii=False),
+            "cw": json.dumps(chain_with or [], ensure_ascii=False),
+            "an": analysis_note,
         },
     )
     await db.commit()

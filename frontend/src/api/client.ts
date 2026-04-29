@@ -87,6 +87,48 @@ export const api = {
       'GET', `/api/employees/${id}/versions`,
     ),
 
+  getEmployeeVersion: (id: string, version: string) =>
+    request<{ employee_id: string; version: string; snapshot: Record<string, unknown> }>(
+      'GET',
+      `/api/employees/${encodeURIComponent(id)}/versions/${encodeURIComponent(version)}`,
+    ),
+
+  // P3.1: prompt dry-run — exercise an unsaved perception/planning
+  // override without persisting. Used by the admin drawer's save guard.
+  dryrunPerception: (
+    id: string,
+    payload: { query: string; perception?: Record<string, unknown> },
+  ) =>
+    request<{
+      structured_intent: Record<string, unknown> | null;
+      empty_required_slots: string[];
+      current_target_slot: string | null;
+      clarification_round: number;
+    }>(
+      'POST',
+      `/api/admin/employees/${encodeURIComponent(id)}/dryrun-perception`,
+      payload,
+    ),
+
+  dryrunPlanning: (
+    id: string,
+    payload: {
+      query?: string;
+      intent?: Record<string, unknown>;
+      perception?: Record<string, unknown>;
+      planning?: Record<string, unknown>;
+    },
+  ) =>
+    request<{
+      plan: Record<string, unknown>;
+      task_count: number;
+      intent_used: Record<string, unknown>;
+    }>(
+      'POST',
+      `/api/admin/employees/${encodeURIComponent(id)}/dryrun-planning`,
+      payload,
+    ),
+
   // ── Phase 2 ──────────────────────────────────────────────
   listSessions: (userId?: string, limit = 50, offset = 0) => {
     const params = new URLSearchParams();
@@ -158,6 +200,19 @@ export const api = {
       request<{ status: string; name: string }>(
         'DELETE',
         `/api/admin/apis/${encodeURIComponent(name)}`,
+      ),
+    getApi: (name: string) =>
+      request<AdminApi>(
+        'GET',
+        `/api/admin/apis/${encodeURIComponent(name)}`,
+      ),
+    upsertApi: (name: string, payload: AdminApiUpsertPayload) =>
+      request<{ status: string; name: string }>(
+        'PUT',
+        `/api/admin/apis/${encodeURIComponent(name)}`,
+        // The backend takes name from URL, but the Pydantic model still
+        // requires a name field — fill it from the URL to satisfy validation.
+        { name, ...payload },
       ),
     testApi: (name: string, params: Record<string, string>, mode: 'mock' | 'prod' = 'mock') =>
       request<{ status_code: number; duration_ms: number; url: string; mode: string; data: unknown }>(
@@ -245,13 +300,46 @@ export interface AdminApi {
   path: string;
   domain: string;
   intent?: string | null;
+  time_type?: string | null;
+  granularity?: string | null;
   tags: string[];
   required_params: string[];
   optional_params: string[];
+  returns?: string | null;
   param_note?: string | null;
+  disambiguate?: string | null;
   source: string;
   enabled: boolean;
+  // P2.4: semantic-enrichment fields. ``field_schema`` rows are 3- or
+  // 4-element arrays per P2.3a (4th = label_zh).
+  field_schema?: Array<Array<string>>;
+  use_cases?: string[];
+  chain_with?: string[];
+  analysis_note?: string | null;
+  created_at?: string;
   updated_at?: string;
+}
+
+export interface AdminApiUpsertPayload {
+  name?: string;  // URL wins; included for completeness
+  method?: string;
+  path: string;
+  domain: string;
+  intent?: string | null;
+  time_type?: string | null;
+  granularity?: string | null;
+  tags?: string[];
+  required_params?: string[];
+  optional_params?: string[];
+  returns?: string | null;
+  param_note?: string | null;
+  disambiguate?: string | null;
+  source?: string;
+  enabled?: boolean;
+  field_schema?: Array<Array<string>>;
+  use_cases?: string[];
+  chain_with?: string[];
+  analysis_note?: string | null;
 }
 
 export interface AdminTool {

@@ -1002,7 +1002,13 @@ def _build_task_results_payload(
             if output.output_type == "dataframe" and isinstance(data, pd.DataFrame):
                 entry["output_type"] = "table"
                 # Keep full data — CSV download needs every row.
-                columns = [str(c) for c in data.columns]
+                # P2.3b extension: translate column headers via the endpoint-aware
+                # resolver so the chat task-result preview matches the report
+                # rendering. Endpoint name comes from api_fetch's ToolOutput
+                # metadata; falls back to the global COLUMN_LABELS map otherwise.
+                from backend.tools._field_labels import resolve_col_label
+                ep_meta = output.metadata.get("endpoint") if output.metadata else None
+                columns = [resolve_col_label(ep_meta, str(c)) for c in data.columns]
                 # Replace NaN/NaT with None so JSON serialisation stays
                 # honest (otherwise floats become NaN literals which json
                 # can't emit and the frontend would show "NaN").

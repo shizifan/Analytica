@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AdminListShell } from '../../components/ui/admin/AdminListShell';
 import { ApiTestDrawer } from '../../components/ui/admin/ApiTestDrawer';
+import { ApiEditDrawer } from '../../components/ui/admin/ApiEditDrawer';
 import { api, type AdminApi } from '../../api/client';
 
 /**
@@ -16,6 +17,7 @@ export function ApisView() {
 
   const [domainNames, setDomainNames] = useState<Record<string, string>>({});
   const [testTarget, setTestTarget] = useState<AdminApi | null>(null);
+  const [editTarget, setEditTarget] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -136,6 +138,14 @@ export function ApisView() {
                   <button
                     type="button"
                     className="an-btn ghost"
+                    onClick={() => setEditTarget(it.name)}
+                    style={{ padding: '2px 8px', fontSize: 11, marginRight: 4 }}
+                  >
+                    编辑
+                  </button>
+                  <button
+                    type="button"
+                    className="an-btn ghost"
                     onClick={() => setTestTarget(it)}
                     style={{ padding: '2px 8px', fontSize: 11, marginRight: 4 }}
                   >
@@ -159,6 +169,16 @@ export function ApisView() {
 
     {testTarget && (
       <ApiTestDrawer item={testTarget} onClose={() => setTestTarget(null)} />
+    )}
+    {editTarget && (
+      <ApiEditDrawer
+        name={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={(updated) => {
+          // Replace the row in-place so the table reflects the save without a full refetch.
+          setItems((arr) => arr.map((it) => it.name === updated.name ? updated : it));
+        }}
+      />
     )}
     </>
   );

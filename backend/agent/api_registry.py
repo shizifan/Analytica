@@ -2,10 +2,29 @@
 
 单一数据源，从 mock_server_all.py 的 _META_APIS 提取。
 主键为真实 API 函数名（路径末段），不使用 M-code 或 D-code 编码。
+
+P2.2 — registry can be loaded from one of three sources via the
+``FF_API_REGISTRY_SOURCE`` setting:
+
+  * ``code`` (default) — the inline tuples below; canonical historical source.
+  * ``file``           — load from ``data/api_registry.json``.
+  * ``dual``           — load file, diff against code, log divergences as
+                         WARN, but keep ``code`` as the served source. Used
+                         to validate the file in production before promoting
+                         it to default.
+
+The ``code`` branch must always remain reachable as a rollback safety net,
+even after the default flips. See ``_resolve_source`` below.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+import logging
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any
+
+logger = logging.getLogger("analytica.api_registry")
 
 
 @dataclass(frozen=True)
@@ -24,8 +43,12 @@ class ApiEndpoint:
     returns: str        # 返回字段说明
     disambiguate: str   # 消歧说明
     # ── 语义增强字段（可选，有默认值）──
-    field_schema: tuple[tuple[str, str, str], ...] = ()
-    # 每元素: (字段名, 类型, 含义)  e.g. ("dateMonth","str","年月yyyy-MM")
+    field_schema: tuple[tuple[str, ...], ...] = ()
+    # 每元素 3 或 4 项 (P2.3a):
+    #   3: (字段名, 类型, 含义)
+    #   4: (字段名, 类型, 含义, 中文显示名)
+    # e.g. ("dateMonth","str","年月yyyy-MM","月份")
+    # 中文显示名缺省时，下游回退到 backend.tools._field_labels.col_label() 的全局映射。
     use_cases: tuple[str, ...] = ()
     # 典型分析问题，2-3条
     chain_with: tuple[str, ...] = ()
@@ -33,6 +56,19 @@ class ApiEndpoint:
     analysis_note: str = ""
     # 数据结构或注意事项
     method: str = "GET" # HTTP 方法
+
+    def label_for(self, col_name: str) -> str | None:
+        """Return the per-endpoint Chinese label for ``col_name``, or ``None``.
+
+        Looks up this endpoint's ``field_schema`` for a row whose first element
+        matches ``col_name`` and returns its 4th element (``label_zh``) when
+        present. Returning ``None`` lets callers fall back to the global
+        ``_field_labels.col_label()`` map.
+        """
+        for row in self.field_schema:
+            if row and row[0] == col_name and len(row) >= 4 and row[3]:
+                return row[3]
+        return None
 
 
 @dataclass(frozen=True)
@@ -428,7 +464,7 @@ ALL_ENDPOINTS: tuple[ApiEndpoint, ...] = (
         required=('businessSegment', 'startDate', 'endDate'), optional=(),
         param_note="businessSegment=集装箱/散杂货/油化品/商品车",
         returns="throughput/businessSegment/dateMonth（多月×单业务板块）",
-        disambiguate="区别getCurBusinessCockpitTrendChart=全港当月版；getCumulativeTrendChart=累计版",
+        disambiguate="区别getCumulativeTrendChart=累计版",
         field_schema=(("throughput", "float", ""), ("businessSegment", "str", ""), ("dateMonth", "str", "")),
         use_cases=("某业务板块月度吞吐趋势", "板块吞吐量同比走势"),
         chain_with=("getCumulativeTrendChart", "getKeyEnterprise"),
@@ -440,7 +476,7 @@ ALL_ENDPOINTS: tuple[ApiEndpoint, ...] = (
         required=('businessSegment', 'curDateYear', 'yearDateYear'), optional=(),
         param_note="",
         returns="throughput/businessSegment/dateYear（累计趋势按年）",
-        disambiguate="区别getTrendChart=仅月度；getSumBusinessCockpitTrendChart=全港累计版",
+        disambiguate="区别getTrendChart=仅月度",
         field_schema=(("throughput", "float", ""), ("businessSegment", "str", ""), ("dateYear", "str", ""),),
         use_cases=("某业务板块年累计吞吐趋势", "板块历年吞吐量对比",),
         chain_with=("getTrendChart",),
@@ -669,7 +705,7 @@ ALL_ENDPOINTS: tuple[ApiEndpoint, ...] = (
         required=('assetOwnerZone',), optional=(),
         param_note="assetOwnerZone=港区名称",
         returns="totalCount/physicalAssetCount/financialAssetCount",
-        disambiguate="区别getAssetValue=价值；getMainAssetsInfo=重要资产"),
+        disambiguate="区别getAssetValue=价值"),
     ApiEndpoint(name="getAssetValue", path="/api/gateway/getAssetValue", domain="D5",
         intent="查询港区资产原值和净值（含折旧率）",
         time="T_NONE", granularity="G_ZONE",
@@ -677,7 +713,7 @@ ALL_ENDPOINTS: tuple[ApiEndpoint, ...] = (
         required=('ownerZone',), optional=(),
         param_note="",
         returns="originalValue/netValue/depreciationRate",
-        disambiguate="区别getTotalssets=数量；getMainAssetsInfo=重要资产明细"),
+        disambiguate="区别getTotalssets=数量"),
     ApiEndpoint(name="getMainAssetsInfo", path="/api/gateway/getMainAssetsInfo", domain="D5",
         intent="查询港区主要资产类别数量（设备/设施/房屋/土地）",
         time="T_NONE", granularity="G_ZONE",
@@ -877,7 +913,7 @@ ALL_ENDPOINTS: tuple[ApiEndpoint, ...] = (
         required=(), optional=('ownerLgZoneName',),
         param_note="",
         returns="dateYear/finishInvestAmt/planInvestAmt/realFinishPayAmt/captPlanPayAmt（7行，2019-2025）",
-        disambiguate="仅用于多年趋势对比，不含单个项目维度；若需查询各项目完成率请用 getCapitalProjectsList 或 getPlanFinishByProjectType",
+        disambiguate="仅用于多年趋势对比，不含单个项目维度；若需查询各项目完成率请用 getFinishProgressAndDeliveryRate 或 getPlanFinishByProjectType",
         field_schema=(("dateYear", "int", ""), ("finishInvestAmt", "int", ""), ("planInvestAmt", "float", ""), ("realFinishPayAmt", "float", ""), ("captPlanPayAmt", "float", "")),
         use_cases=("历年投资计划完成趋势", "投资金额年度对比"),
         chain_with=("getPlanFinishByZone",),
@@ -1417,20 +1453,325 @@ ALL_ENDPOINTS: tuple[ApiEndpoint, ...] = (
 
 
 # ════════════════════════════════════════════════════════════════
+# Source override (P2.2) — code | file | dual
+# ════════════════════════════════════════════════════════════════
+
+# Snapshot the code-defined registry. ``DOMAIN_INDEX`` / ``ALL_ENDPOINTS``
+# may be reassigned by ``_apply_source_override`` below; these references
+# stay pinned to the inline-defined "code" source so the exporter and the
+# dual-mode comparator always operate on the canonical version.
+_CODE_DOMAIN_INDEX: dict[str, DomainInfo] = dict(DOMAIN_INDEX)
+_CODE_ENDPOINTS: tuple[ApiEndpoint, ...] = ALL_ENDPOINTS
+
+
+def _to_jsonable(value: Any) -> Any:
+    """Recursively convert tuples → lists for JSON-equivalent shape."""
+    if isinstance(value, (tuple, list)):
+        return [_to_jsonable(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _to_jsonable(v) for k, v in value.items()}
+    return value
+
+
+def serialize_to_dict() -> dict[str, Any]:
+    """Build the JSON-ready dict from the **code** source.
+
+    Always reflects ``_CODE_*`` regardless of the runtime source — the
+    on-disk JSON is authored from code, not the other way around.
+    """
+    return _to_jsonable({
+        "domains": {code: asdict(d) for code, d in _CODE_DOMAIN_INDEX.items()},
+        "endpoints": [asdict(ep) for ep in _CODE_ENDPOINTS],
+    })
+
+
+def load_from_json(payload: dict[str, Any]) -> tuple[dict[str, DomainInfo], tuple[ApiEndpoint, ...]]:
+    """Reconstruct dataclasses from a JSON payload (inverse of ``serialize_to_dict``)."""
+    domains = {
+        code: DomainInfo(
+            code=v["code"], name=v["name"], desc=v["desc"],
+            api_count=v["api_count"], top_tags=tuple(v["top_tags"]),
+        )
+        for code, v in payload["domains"].items()
+    }
+    endpoints = tuple(
+        ApiEndpoint(
+            name=ep["name"], path=ep["path"], domain=ep["domain"],
+            intent=ep["intent"], time=ep["time"], granularity=ep["granularity"],
+            tags=tuple(ep["tags"]), required=tuple(ep["required"]),
+            optional=tuple(ep["optional"]), param_note=ep["param_note"],
+            returns=ep["returns"], disambiguate=ep["disambiguate"],
+            field_schema=tuple(tuple(row) for row in ep.get("field_schema", ())),
+            use_cases=tuple(ep.get("use_cases", ())),
+            chain_with=tuple(ep.get("chain_with", ())),
+            analysis_note=ep.get("analysis_note", ""),
+            method=ep.get("method", "GET"),
+        )
+        for ep in payload["endpoints"]
+    )
+    return domains, endpoints
+
+
+def _registry_json_path() -> Path:
+    return Path(__file__).resolve().parents[2] / "data" / "api_registry.json"
+
+
+def _diff_dual(
+    file_domains: dict[str, DomainInfo],
+    file_endpoints: tuple[ApiEndpoint, ...],
+) -> None:
+    """Log WARN on every code↔file divergence (run only under source=dual)."""
+    if file_domains != _CODE_DOMAIN_INDEX:
+        logger.warning("[dual] DOMAIN_INDEX divergence between code and file")
+
+    code_by = {ep.name: ep for ep in _CODE_ENDPOINTS}
+    file_by = {ep.name: ep for ep in file_endpoints}
+
+    only_code = sorted(set(code_by) - set(file_by))
+    only_file = sorted(set(file_by) - set(code_by))
+    if only_code:
+        logger.warning("[dual] endpoints only in code: %s", only_code)
+    if only_file:
+        logger.warning("[dual] endpoints only in file: %s", only_file)
+    for name in sorted(set(code_by) & set(file_by)):
+        if code_by[name] != file_by[name]:
+            logger.warning("[dual] field divergence on endpoint: %s", name)
+
+
+def _resolve_source(
+    source: str | None = None,
+) -> tuple[dict[str, DomainInfo], tuple[ApiEndpoint, ...]]:
+    """Pure dispatcher: returns the (domains, endpoints) pair to expose.
+
+    ``source`` defaults to ``settings.FF_API_REGISTRY_SOURCE``. Any failure
+    (unknown source, missing file, parse error) falls back to ``code`` with
+    a WARN — the system never errors out at import.
+    """
+    if source is None:
+        try:
+            from backend.config import get_settings
+            source = get_settings().FF_API_REGISTRY_SOURCE
+        except Exception as e:
+            logger.warning("[source] settings not loadable (%s); fall back to code", e)
+            return _CODE_DOMAIN_INDEX, _CODE_ENDPOINTS
+
+    if source == "code":
+        return _CODE_DOMAIN_INDEX, _CODE_ENDPOINTS
+
+    if source in ("db", "dual_db"):
+        # Module-init runs synchronously; the DB swap happens later in
+        # ``lifespan_apply_source`` (post-FastAPI-startup). Until then we
+        # serve the code source so import paths don't break.
+        logger.info(
+            "[source] FF_API_REGISTRY_SOURCE=%s; deferring DB load to lifespan",
+            source,
+        )
+        return _CODE_DOMAIN_INDEX, _CODE_ENDPOINTS
+
+    if source not in ("file", "dual"):
+        logger.warning("[source] unknown FF_API_REGISTRY_SOURCE=%s; fall back to code", source)
+        return _CODE_DOMAIN_INDEX, _CODE_ENDPOINTS
+
+    json_path = _registry_json_path()
+    if not json_path.exists():
+        logger.warning(
+            "[source] FF_API_REGISTRY_SOURCE=%s but %s missing; fall back to code",
+            source, json_path,
+        )
+        return _CODE_DOMAIN_INDEX, _CODE_ENDPOINTS
+
+    try:
+        with open(json_path, encoding="utf-8") as f:
+            payload = json.load(f)
+        file_domains, file_endpoints = load_from_json(payload)
+    except Exception as e:
+        logger.warning("[source] failed to load %s (%s); fall back to code", json_path, e)
+        return _CODE_DOMAIN_INDEX, _CODE_ENDPOINTS
+
+    if source == "dual":
+        _diff_dual(file_domains, file_endpoints)
+        # IMPORTANT (P2.2 → P2.4): code stays primary during dual mode.
+        # Do NOT remove this `code` branch when promoting `file` to default —
+        # it is the rollback safety net referenced in the migration plan.
+        return _CODE_DOMAIN_INDEX, _CODE_ENDPOINTS
+
+    # source == "file"
+    return file_domains, file_endpoints
+
+
+def _apply_source_override() -> None:
+    """Module-init: replace ``DOMAIN_INDEX`` / ``ALL_ENDPOINTS`` per FF setting."""
+    global DOMAIN_INDEX, ALL_ENDPOINTS
+    DOMAIN_INDEX, ALL_ENDPOINTS = _resolve_source()
+
+
+_apply_source_override()
+
+
+# ════════════════════════════════════════════════════════════════
 # 派生索引
 # ════════════════════════════════════════════════════════════════
 
-BY_NAME: dict[str, ApiEndpoint] = {ep.name: ep for ep in ALL_ENDPOINTS}
-BY_PATH: dict[str, ApiEndpoint] = {ep.path: ep for ep in ALL_ENDPOINTS}
+# Pre-declared so ``_rebuild_derived_indices`` can mutate them in place;
+# the actual content is computed by the call below.
+BY_NAME: dict[str, ApiEndpoint] = {}
+BY_PATH: dict[str, ApiEndpoint] = {}
 BY_DOMAIN: dict[str, list[ApiEndpoint]] = {}
-for _ep in ALL_ENDPOINTS:
-    BY_DOMAIN.setdefault(_ep.domain, []).append(_ep)
-
 BY_TIME: dict[str, list[ApiEndpoint]] = {}
-for _ep in ALL_ENDPOINTS:
-    BY_TIME.setdefault(_ep.time, []).append(_ep)
+VALID_ENDPOINT_IDS: frozenset[str] = frozenset()
 
-VALID_ENDPOINT_IDS: frozenset[str] = frozenset(BY_NAME)
+
+def _rebuild_derived_indices() -> None:
+    """Recompute ``BY_NAME`` / ``BY_PATH`` / ``BY_DOMAIN`` / ``BY_TIME`` /
+    ``VALID_ENDPOINT_IDS`` from the current ``ALL_ENDPOINTS``.
+
+    Mutates the existing dict objects in place (so lazy ``from ... import``
+    inside functions sees the new content) and reassigns the frozenset
+    module attribute.
+    """
+    global VALID_ENDPOINT_IDS
+    BY_NAME.clear()
+    BY_PATH.clear()
+    BY_DOMAIN.clear()
+    BY_TIME.clear()
+    for ep in ALL_ENDPOINTS:
+        BY_NAME[ep.name] = ep
+        BY_PATH[ep.path] = ep
+        BY_DOMAIN.setdefault(ep.domain, []).append(ep)
+        BY_TIME.setdefault(ep.time, []).append(ep)
+    VALID_ENDPOINT_IDS = frozenset(BY_NAME)
+
+
+_rebuild_derived_indices()
+
+
+# ════════════════════════════════════════════════════════════════
+# DB source — async post-init swap (P2.4)
+# ════════════════════════════════════════════════════════════════
+
+async def reload_from_db(session: Any | None = None) -> int:
+    """Replace the in-memory registry with the contents of ``api_endpoints``.
+
+    Mirrors ``EmployeeManager.load_from_db`` but for the API registry.
+    Module-init runs synchronously and falls back to the inline ``code``
+    source; once the FastAPI lifespan is up it can call this to swap to
+    DB-backed data.
+
+    DOMAIN_INDEX is **not** swapped — it has no DB representation, so
+    domain metadata always comes from code.
+
+    Returns the number of endpoints loaded. Does nothing & returns the
+    current count if the DB query fails (logs WARN); the registry stays
+    on the previous source.
+    """
+    global ALL_ENDPOINTS
+
+    from backend.memory import admin_store
+
+    async def _load(db: Any) -> list[dict[str, Any]]:
+        return await admin_store.list_api_endpoints(db, limit=10_000)
+
+    try:
+        if session is None:
+            from backend.database import get_session_factory
+            factory = get_session_factory()
+            async with factory() as db:
+                rows = await _load(db)
+        else:
+            rows = await _load(session)
+    except Exception as e:
+        logger.warning("[reload_from_db] DB read failed (%s); registry unchanged", e)
+        return len(ALL_ENDPOINTS)
+
+    rebuilt: list[ApiEndpoint] = []
+    for row in rows:
+        try:
+            rebuilt.append(_endpoint_from_db_row(row))
+        except Exception as e:
+            logger.warning(
+                "[reload_from_db] skipping malformed row %r (%s)",
+                row.get("name"), e,
+            )
+
+    ALL_ENDPOINTS = tuple(rebuilt)
+    _rebuild_derived_indices()
+    logger.info("[reload_from_db] loaded %d endpoints from DB", len(ALL_ENDPOINTS))
+    return len(ALL_ENDPOINTS)
+
+
+def _endpoint_from_db_row(row: dict[str, Any]) -> ApiEndpoint:
+    """Reconstruct ``ApiEndpoint`` from an ``admin_store._api_row`` dict.
+
+    DB column names (``time_type`` / ``required_params`` / ``optional_params``)
+    differ from the dataclass; this is the single bridge.
+    """
+    return ApiEndpoint(
+        name=row["name"],
+        path=row["path"],
+        domain=row["domain"],
+        intent=row.get("intent") or "",
+        time=row.get("time_type") or "",
+        granularity=row.get("granularity") or "",
+        tags=tuple(row.get("tags") or ()),
+        required=tuple(row.get("required_params") or ()),
+        optional=tuple(row.get("optional_params") or ()),
+        param_note=row.get("param_note") or "",
+        returns=row.get("returns") or "",
+        disambiguate=row.get("disambiguate") or "",
+        field_schema=tuple(tuple(r) for r in (row.get("field_schema") or ())),
+        use_cases=tuple(row.get("use_cases") or ()),
+        chain_with=tuple(row.get("chain_with") or ()),
+        analysis_note=row.get("analysis_note") or "",
+        method=row.get("method") or "GET",
+    )
+
+
+def _diff_dual_db() -> None:
+    """Log WARN for every code↔DB divergence under source=dual_db.
+
+    Mirror of ``_diff_dual`` with inverted polarity: the registry has
+    just been swapped to DB-loaded data (``BY_NAME`` reflects DB), and
+    we flag drift relative to the inline ``_CODE_*`` source. Used in
+    the 14-day pre-cutover observation window: 0 entries → safe to
+    promote ``db`` to default.
+    """
+    code_by = {ep.name: ep for ep in _CODE_ENDPOINTS}
+    db_by = dict(BY_NAME)
+
+    only_code = sorted(set(code_by) - set(db_by))
+    only_db = sorted(set(db_by) - set(code_by))
+    if only_code:
+        logger.warning("[dual_db] endpoints only in code: %s", only_code)
+    if only_db:
+        logger.warning("[dual_db] endpoints only in DB: %s", only_db)
+    for name in sorted(set(code_by) & set(db_by)):
+        if code_by[name] != db_by[name]:
+            logger.warning("[dual_db] field divergence on endpoint: %s", name)
+
+
+async def lifespan_apply_source() -> None:
+    """FastAPI lifespan hook for ``FF_API_REGISTRY_SOURCE in {db, dual_db}``.
+
+    Module init can only do sync sources (``code``/``file``/``dual``) and
+    leaves the registry on code when the FF picks a DB mode. This call
+    swaps to DB content once the async session factory is available.
+
+    On any failure the registry stays on the prior (code) source — see
+    ``reload_from_db``.
+    """
+    try:
+        from backend.config import get_settings
+        source = get_settings().FF_API_REGISTRY_SOURCE
+    except Exception as e:
+        logger.warning("[lifespan] settings not loadable (%s); skipping DB swap", e)
+        return
+    if source not in ("db", "dual_db"):
+        return
+
+    count = await reload_from_db()
+    if source == "dual_db":
+        _diff_dual_db()
+    logger.info("[lifespan] FF_API_REGISTRY_SOURCE=%s active (%d endpoints)", source, count)
 
 
 # ── 槽位 → 注册表维度映射 ──
@@ -1546,7 +1887,9 @@ def get_endpoints_description(
         if ep.returns:
             line += f"\n    返回字段: {ep.returns}"
         if ep.field_schema:
-            schema_str = " | ".join(f"{f}({t})" for f, t, _ in ep.field_schema)
+            # P2.3a: rows are 3 or 4 elements (last is optional ``label_zh``).
+            # Index by position so both shapes render identically here.
+            schema_str = " | ".join(f"{row[0]}({row[1]})" for row in ep.field_schema)
             line += f"\n    字段结构: {schema_str}"
         if ep.analysis_note:
             line += f"\n    分析要点: {ep.analysis_note}"

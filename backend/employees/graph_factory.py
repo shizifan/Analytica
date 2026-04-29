@@ -22,6 +22,7 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
     allowed_endpoints = profile.get_endpoint_names()
     allowed_tools = profile.get_tool_ids()
     planning_prompt_suffix = profile.planning.prompt_suffix or ""
+    planning_rule_hints = profile.planning.rule_hints or {}
 
     # ── 闭包节点 ──
 
@@ -56,6 +57,7 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
                 allowed_endpoints=allowed_endpoints,
                 allowed_tools=allowed_tools,
                 prompt_suffix=planning_prompt_suffix,
+                rule_hints=planning_rule_hints,
                 employee_id=profile.employee_id,
             )
 

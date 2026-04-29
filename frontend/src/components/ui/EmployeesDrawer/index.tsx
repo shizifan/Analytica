@@ -3,7 +3,7 @@ import { Icon } from '../Icon';
 import { EmployeeDetail } from './EmployeeDetail';
 import { useEmployeeStore } from '../../../stores/employeeStore';
 import { DEFAULT_EMPLOYEE_ID } from '../../../config/app';
-import type { EmployeeDetail as EmployeeDetailType, EmployeeSummary } from '../../../types';
+import type { EmployeeSummary } from '../../../types';
 
 interface Props {
   open: boolean;
@@ -21,28 +21,23 @@ function sortEmployees(list: EmployeeSummary[]): EmployeeSummary[] {
 }
 
 /**
- * Phase 4 — Employees drawer.
+ * Employees drawer (chat workspace).
  *
  * Two modes:
  *   - list: grid of employee cards; clicking one → detail view
- *   - detail: full profile with edit toggle + version history
- *
- * Kept self-contained so it can mount anywhere (ChatPageV2 header chip
- * as of Phase 4.1; future admin console will reuse it).
+ *   - detail: read-only profile + version history. Edit happens in
+ *     /admin/employees only (link in the detail footer).
  */
 export function EmployeesDrawer({ open, selectedId, onSelect, onClose }: Props) {
   const employees = useEmployeeStore((s) => s.employees);
   const fetchEmployees = useEmployeeStore((s) => s.fetchEmployees);
-  const updateInList = useEmployeeStore((s) => s.updateInList);
 
   const [viewingId, setViewingId] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     if (open) {
       fetchEmployees();
       setViewingId(null);
-      setEditing(false);
     }
   }, [open, fetchEmployees]);
 
@@ -92,29 +87,10 @@ export function EmployeesDrawer({ open, selectedId, onSelect, onClose }: Props) 
         {viewingId ? (
           <EmployeeDetail
             employeeId={viewingId}
-            editing={editing}
-            onExit={() => {
-              setViewingId(null);
-              setEditing(false);
-            }}
-            onToggleEdit={() => setEditing((v) => !v)}
+            onExit={() => setViewingId(null)}
             onUse={() => {
               onSelect(viewingId);
               onClose();
-            }}
-            onSaved={(updated: EmployeeDetailType) => {
-              updateInList({
-                employee_id: updated.employee_id,
-                name: updated.name,
-                description: updated.description,
-                domains: updated.domains,
-                version: updated.version,
-                initials: updated.initials,
-                status: updated.status,
-                faqs_count: updated.faqs.length,
-                tools_count: updated.tools.length,
-                endpoints_count: updated.endpoints.length,
-              });
             }}
           />
         ) : (

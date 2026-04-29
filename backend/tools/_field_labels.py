@@ -132,3 +132,30 @@ def metric_label(metric: str) -> str:
     Falls back to the raw key when no mapping exists.
     """
     return METRIC_LABELS.get(metric, metric)
+
+
+def resolve_col_label(endpoint_name: str | None, col: str) -> str:
+    """Endpoint-aware Chinese label resolver (P2.3b).
+
+    Resolution order:
+      1. Per-endpoint override — ``endpoint.label_for(col)`` from
+         ``api_registry.field_schema``'s 4th element.
+      2. Global ``COLUMN_LABELS`` map (backward-compatible default).
+      3. The raw column name (passthrough — same behaviour as ``col_label``).
+
+    Pass ``endpoint_name=None`` to skip step 1, matching legacy ``col_label``
+    callers that don't yet thread endpoint context.
+    """
+    if endpoint_name:
+        # Imported lazily — api_registry imports this module's siblings only,
+        # but importing api_registry at module load would still be a one-way
+        # dependency; lazy is safer in case future restructures introduce a
+        # cycle.
+        from backend.agent.api_registry import BY_NAME
+
+        ep = BY_NAME.get(endpoint_name)
+        if ep is not None:
+            override = ep.label_for(col)
+            if override:
+                return override
+    return COLUMN_LABELS.get(col, col)

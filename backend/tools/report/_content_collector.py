@@ -27,7 +27,7 @@ from typing import Any
 
 import pandas as pd
 
-from backend.tools._field_labels import col_label
+from backend.tools._field_labels import resolve_col_label
 from backend.tools.report._kpi_extractor import KPIItem
 
 logger = logging.getLogger("analytica.tools.report._content_collector")
@@ -56,11 +56,18 @@ class ChartDataItem:
     option: dict[str, Any]
     title: str = ""
     source_task: str = ""
+    # P2.3b: name of the api_registry endpoint that produced the underlying
+    # DataFrame — lets downstream rendering pick a per-endpoint label_zh
+    # before falling back to the global COLUMN_LABELS map. None when the
+    # producing tool didn't tag its ToolOutput with an ``endpoint`` metadata.
+    endpoint_name: str | None = None
 
 @dataclass
 class DataFrameItem:
     df: pd.DataFrame
     source_task: str = ""
+    # P2.3b: see ChartDataItem.endpoint_name.
+    endpoint_name: str | None = None
 
 @dataclass
 class SummaryTextItem:
@@ -127,7 +134,9 @@ def normalize_dataframe_item(
     """Return a cleaned DataFrameItem suitable for rendering.
 
     Transforms:
-    - Translate column headers to Chinese using ``col_label()`` from _field_labels.
+    - Translate column headers to Chinese via ``resolve_col_label`` — uses
+      the producing endpoint's per-column ``label_zh`` (P2.3a) when set,
+      otherwise the global ``COLUMN_LABELS`` map.
     - Sort descending by first numeric column (makes TOP-N meaningful).
     - If more than ``max_rows`` rows, keep top (max_rows-1) and append an
       "其他" row summing the remaining numeric columns.
@@ -145,7 +154,7 @@ def normalize_dataframe_item(
     rename_map: dict[str, str] = {}
     target_seen: set[str] = set(df.columns)  # existing names that must stay unique
     for c in df.columns:
-        target = col_label(c)
+        target = resolve_col_label(item.endpoint_name, c)
         if target != c and target not in target_seen:
             rename_map[c] = target
             target_seen.add(target)
@@ -176,7 +185,11 @@ def normalize_dataframe_item(
                 other_row[c] = "其他合计"
         df = pd.concat([top, pd.DataFrame([other_row])], ignore_index=True)
 
-    return DataFrameItem(df=df, source_task=item.source_task)
+    return DataFrameItem(
+        df=df,
+        source_task=item.source_task,
+        endpoint_name=item.endpoint_name,
+    )
 
 
 # ── Extract: classifies upstream ToolOutput objects into content items ──
@@ -222,9 +235,17 @@ def _extract_items(
             task_output.get("data") if isinstance(task_output, dict) else None
         )
 
+        # P2.3b: pull the producing endpoint name from ToolOutput.metadata
+        # (set by api_fetch). None when the upstream tool isn't api_fetch
+        # (e.g. an analysis-stage tool); resolve_col_label handles None.
+        metadata = getattr(task_output, "metadata", None) or (
+            task_output.get("metadata") if isinstance(task_output, dict) else None
+        ) or {}
+        endpoint_name = metadata.get("endpoint") if isinstance(metadata, dict) else None
+
         if isinstance(data, pd.DataFrame) and not data.empty:
             items.append(normalize_dataframe_item(
-                DataFrameItem(df=data, source_task=task_id),
+                DataFrameItem(df=data, source_task=task_id, endpoint_name=endpoint_name),
             ))
             continue
 
@@ -260,7 +281,10 @@ def _extract_items(
                 chart_title = title_obj.get("text", "")
             elif isinstance(title_obj, str):
                 chart_title = title_obj
-            items.append(ChartDataItem(option=data, title=chart_title, source_task=task_id))
+            items.append(ChartDataItem(
+                option=data, title=chart_title, source_task=task_id,
+                endpoint_name=endpoint_name,
+            ))
 
         # Summary text field
         summary_text = data.get("summary")

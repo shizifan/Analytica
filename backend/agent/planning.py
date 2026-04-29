@@ -84,6 +84,24 @@ PLANNING_RULE_HINTS = {
     ),
 }
 
+
+def resolve_rule_hint(key: str, overrides: dict[str, str] | None) -> str:
+    """Apply per-employee ``rule_hints`` overrides to the global hint table.
+
+    P3.2 semantics:
+      * key not present in ``overrides`` → return the global default
+      * key present with empty string  → return "" (skip this rule)
+      * key present with non-empty str  → return the override
+
+    Used by both single-round and multi-round prompt builders so the same
+    employee config drives all planning paths consistently.
+    """
+    overrides = overrides or {}
+    if key in overrides:
+        return overrides[key]
+    return PLANNING_RULE_HINTS.get(key, "")
+
+
 # ── Planning LLM Prompt ──────────────────────────────────────
 
 PLANNING_PROMPT = """你是一个数据分析规划专家。根据用户的分析意图，制定一份分析执行方案。
@@ -303,7 +321,7 @@ expected_task_count: {expected_task_count}（允许 ±2）
 {time_param_rules}
 
 {cargo_selection_rules}
-
+{employee_cookbook}
 【硬约束】
 - 所有 task_id 必须以 "{section_id}." 前缀，例如 {section_id}.T1, {section_id}.T2
 - depends_on 只能引用本章节内的 task_id（跨章节依赖由汇总层处理）
@@ -538,6 +556,7 @@ class PlanningEngine:
         allowed_endpoints: frozenset[str] | None = None,
         allowed_tools: frozenset[str] | None = None,
         prompt_suffix: str = "",
+        rule_hints: dict[str, str] | None = None,
         employee_id: str | None = None,
     ) -> AnalysisPlan:
         """Generate an analysis plan from a structured intent.
@@ -548,6 +567,8 @@ class PlanningEngine:
             allowed_endpoints: 端点白名单 frozenset（来自 EmployeeProfile），硬过滤。
             allowed_tools: 工具白名单 frozenset（来自 EmployeeProfile），硬过滤。
             prompt_suffix: 员工规划层提示后缀。
+            rule_hints: 员工对 ``PLANNING_RULE_HINTS`` 的覆写（P3.2）。
+                None / 空 dict → 全部走默认。详见 ``resolve_rule_hint``。
             employee_id: 员工 ID，用于模板匹配。
         """
         # 确定合法工具集
@@ -607,6 +628,8 @@ class PlanningEngine:
                 try:
                     plan = await self._generate_plan_multiround(
                         intent, valid_tools, valid_endpoints, complexity,
+                        rule_hints=rule_hints,
+                        prompt_suffix=prompt_suffix,
                     )
                     phase_out["mode"] = "multi_round"
                     phase_out["tasks"] = len(plan.tasks)
@@ -637,6 +660,7 @@ class PlanningEngine:
                 allowed_endpoints=allowed_endpoints,
                 allowed_tools=allowed_tools,
                 prompt_suffix=prompt_suffix,
+                rule_hints=rule_hints,
                 template_hint=template_hint,
                 agent_skills_hint=agent_skills_hint,
             )
@@ -721,6 +745,8 @@ class PlanningEngine:
         valid_tools: set[str],
         valid_endpoints: set[str],
         complexity: str,
+        rule_hints: dict[str, str] | None = None,
+        prompt_suffix: str = "",
     ) -> AnalysisPlan:
         """Two-round planner: skeleton → parallel section fill → stitch."""
         t0 = time.monotonic()
@@ -741,6 +767,8 @@ class PlanningEngine:
                 try:
                     return await self._call_section_llm(
                         intent, sec, valid_tools, valid_endpoints,
+                        rule_hints=rule_hints,
+                        prompt_suffix=prompt_suffix,
                     )
                 except (asyncio.TimeoutError, PlanningError) as e:
                     logger.warning(
@@ -750,6 +778,8 @@ class PlanningEngine:
                     try:
                         return await self._call_section_llm(
                             intent, sec, valid_tools, valid_endpoints,
+                            rule_hints=rule_hints,
+                            prompt_suffix=prompt_suffix,
                         )
                     except Exception as e2:
                         logger.warning(
@@ -874,6 +904,8 @@ class PlanningEngine:
         section: "PlanSection",
         valid_tools: set[str],
         valid_endpoints: set[str],
+        rule_hints: dict[str, str] | None = None,
+        prompt_suffix: str = "",
     ) -> list[TaskItem]:
         """Round 2 (one section): produce concrete data_fetch/analysis/viz tasks."""
         # Only feed endpoints relevant to this section. If domain reverse-lookup
@@ -891,6 +923,15 @@ class PlanningEngine:
         else:
             tools_desc = get_tools_description()
 
+        # P3.2: thread employee Cookbook into section prompts. The
+        # single-round prompt has wrapped this under "【意图结构化提示】"
+        # — sections aren't structured-hint emitters, so we render a
+        # standalone "【员工专属规划提示（Cookbook）】" block instead.
+        cookbook_block = (
+            f"\n【员工专属规划提示（Cookbook）】\n{prompt_suffix}\n"
+            if prompt_suffix else ""
+        )
+
         prompt = SECTION_PROMPT.format(
             section_id=section.section_id,
             section_name=section.name,
@@ -900,8 +941,9 @@ class PlanningEngine:
             intent_json=json.dumps(intent, ensure_ascii=False, default=str),
             section_endpoints_desc=section_endpoints_desc,
             tools_description=tools_desc,
-            time_param_rules=PLANNING_RULE_HINTS["time_param"],
-            cargo_selection_rules=PLANNING_RULE_HINTS["cargo_selection"],
+            time_param_rules=resolve_rule_hint("time_param", rule_hints),
+            cargo_selection_rules=resolve_rule_hint("cargo_selection", rule_hints),
+            employee_cookbook=cookbook_block,
         )
 
         async with trace_span(
@@ -1084,6 +1126,7 @@ class PlanningEngine:
         allowed_endpoints: frozenset[str] | None = None,
         allowed_tools: frozenset[str] | None = None,
         prompt_suffix: str = "",
+        rule_hints: dict[str, str] | None = None,
         template_hint: str = "",
         agent_skills_hint: str = "",
     ) -> str:
@@ -1305,9 +1348,9 @@ class PlanningEngine:
             template_hint=template_hint,
             complexity=complexity,
             report_hint=report_hint,
-            minimization_rules=PLANNING_RULE_HINTS["minimization"],
-            time_param_rules=PLANNING_RULE_HINTS["time_param"],
-            cargo_selection_rules=PLANNING_RULE_HINTS["cargo_selection"],
+            minimization_rules=resolve_rule_hint("minimization", rule_hints),
+            time_param_rules=resolve_rule_hint("time_param", rule_hints),
+            cargo_selection_rules=resolve_rule_hint("cargo_selection", rule_hints),
         )
         return result
 

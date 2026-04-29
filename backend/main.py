@@ -74,6 +74,15 @@ async def lifespan(app: FastAPI):
         else:
             logger.info("All employee profiles validated successfully")
 
+    # API registry — Phase 6.4: optional swap to DB source.
+    # No-op when FF_API_REGISTRY_SOURCE is code/file/dual (already applied
+    # at module import). For db / dual_db the swap happens here.
+    from backend.agent import api_registry
+    try:
+        await api_registry.lifespan_apply_source()
+    except Exception:
+        logger.exception("API registry DB swap failed — staying on code source")
+
     yield
     engine = get_engine()
     await engine.dispose()
@@ -340,6 +349,146 @@ async def get_employee_version(
             detail=f"Version not found: {employee_id}@{version}",
         )
     return {"employee_id": employee_id, "version": version, "snapshot": snap}
+
+
+# ── Prompt dry-run (P3.1) ─────────────────────────────────────
+#
+# Lets the admin UI exercise a draft perception / planning config before
+# saving. Both endpoints accept a partial override and run the engine
+# against the live registry; nothing is persisted. The save button in
+# the admin drawer stays disabled until at least one dry-run succeeds —
+# that's the protection bar we promised in the v2 plan.
+
+class _DryRunPerceptionRequest(BaseModel):
+    query: str
+    # Optional partial override of `perception:` from the YAML. Missing
+    # fields fall through to the saved profile.
+    perception: Optional[dict[str, Any]] = None
+
+
+class _DryRunPlanningRequest(BaseModel):
+    # Either provide a full structured intent (chained from a previous
+    # dryrun-perception) or a query (we'll re-run perception inline).
+    query: Optional[str] = None
+    intent: Optional[dict[str, Any]] = None
+    planning: Optional[dict[str, Any]] = None
+    perception: Optional[dict[str, Any]] = None  # only used when query is set
+
+
+def _profile_with_overrides(
+    employee_id: str,
+    perception_override: Optional[dict[str, Any]] = None,
+    planning_override: Optional[dict[str, Any]] = None,
+):
+    """Return a copy of the saved profile with the supplied overrides
+    applied. Raises 404 if the employee doesn't exist.
+
+    The override dicts mirror the YAML/DB payload — partial is fine;
+    omitted fields keep the saved value.
+    """
+    from backend.employees.manager import EmployeeManager
+    from backend.employees.profile import PerceptionConfig, PlanningConfig
+
+    base = EmployeeManager.get_instance().get_employee(employee_id)
+    if base is None:
+        raise HTTPException(status_code=404, detail=f"Employee not found: {employee_id}")
+
+    perception = base.perception
+    if perception_override is not None:
+        merged = {**base.perception.model_dump(), **perception_override}
+        perception = PerceptionConfig(**merged)
+
+    planning = base.planning
+    if planning_override is not None:
+        merged = {**base.planning.model_dump(), **planning_override}
+        planning = PlanningConfig(**merged)
+
+    return base.model_copy(update={"perception": perception, "planning": planning})
+
+
+@app.post("/api/admin/employees/{employee_id}/dryrun-perception")
+async def dryrun_perception(employee_id: str, req: _DryRunPerceptionRequest):
+    """Run perception with an unsaved config override; return the slot result."""
+    from backend.agent.perception import run_perception
+
+    if not req.query.strip():
+        raise HTTPException(status_code=400, detail="query is required")
+
+    profile = _profile_with_overrides(employee_id, perception_override=req.perception)
+
+    state = {
+        "messages": [{"role": "user", "content": req.query}],
+        "raw_query": req.query,
+        "session_id": f"dryrun-{employee_id}",
+        "user_id": f"dryrun_{employee_id}",
+        "employee_id": employee_id,
+    }
+    try:
+        out = await run_perception(state, profile=profile)
+    except Exception as e:
+        # Surface as 422 — the admin sees it and the UI keeps save disabled.
+        raise HTTPException(status_code=422, detail=f"perception 失败: {e}")
+
+    return {
+        "structured_intent": out.get("structured_intent"),
+        "empty_required_slots": out.get("empty_required_slots") or [],
+        "current_target_slot": out.get("current_target_slot"),
+        "clarification_round": out.get("clarification_round", 0),
+    }
+
+
+@app.post("/api/admin/employees/{employee_id}/dryrun-planning")
+async def dryrun_planning(employee_id: str, req: _DryRunPlanningRequest):
+    """Run planning with an unsaved config override; return the plan tasks."""
+    from backend.agent.planning import PlanningEngine
+    from backend.agent.graph import build_llm
+    from backend.agent.perception import run_perception
+
+    profile = _profile_with_overrides(
+        employee_id,
+        perception_override=req.perception,
+        planning_override=req.planning,
+    )
+
+    intent = req.intent
+    if intent is None:
+        if not req.query or not req.query.strip():
+            raise HTTPException(status_code=400, detail="query or intent is required")
+        # Inline perception so a planning dry-run can stand alone.
+        state = {
+            "messages": [{"role": "user", "content": req.query}],
+            "raw_query": req.query,
+            "session_id": f"dryrun-{employee_id}",
+            "user_id": f"dryrun_{employee_id}",
+            "employee_id": employee_id,
+        }
+        try:
+            out = await run_perception(state, profile=profile)
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"perception 失败: {e}")
+        intent = out.get("structured_intent")
+        if not intent:
+            raise HTTPException(status_code=422, detail="perception 未产出 intent — 请补充必填槽位")
+
+    llm = build_llm("qwen3-235b", request_timeout=200)
+    engine = PlanningEngine(llm=llm, llm_timeout=120.0, max_retries=3)
+    try:
+        plan = await engine.generate_plan(
+            intent,
+            allowed_endpoints=profile.get_endpoint_names(),
+            allowed_tools=profile.get_tool_ids(),
+            prompt_suffix=profile.planning.prompt_suffix or "",
+            rule_hints=profile.planning.rule_hints or {},
+            employee_id=employee_id,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"planning 失败: {e}")
+
+    return {
+        "plan": plan.model_dump(),
+        "task_count": len(plan.tasks),
+        "intent_used": intent,
+    }
 
 
 # ── Session APIs ─────────────────────────────────────────────
@@ -857,6 +1006,13 @@ class ApiEndpointUpsert(BaseModel):
     disambiguate: Optional[str] = None
     source: str = "mock"
     enabled: bool = True
+    # P2.4: semantic-enrichment fields. ``field_schema`` rows are 3- or
+    # 4-element lists per P2.3a — accept ``list[Any]`` so we don't reject
+    # 4-element rows carrying a label_zh.
+    field_schema: list[list[Any]] = Field(default_factory=list)
+    use_cases: list[str] = Field(default_factory=list)
+    chain_with: list[str] = Field(default_factory=list)
+    analysis_note: Optional[str] = None
 
 
 @app.get("/api/admin/apis")

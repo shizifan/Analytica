@@ -46,6 +46,14 @@ class PerceptionConfig(BaseModel):
 class PlanningConfig(BaseModel):
     prompt_suffix: str = ""
     preferred_endpoints: list[str] = Field(default_factory=list)
+    # P3.2 — per-employee override of the global ``PLANNING_RULE_HINTS``
+    # entries (e.g. ``minimization`` / ``time_param`` / ``cargo_selection``).
+    # Semantics, applied per key:
+    #   * key absent       → use the global default
+    #   * value is ""      → SKIP this rule section (renders empty)
+    #   * value is non-""  → REPLACE the default with this string
+    # Unknown keys are ignored — they don't crash the prompt builder.
+    rule_hints: dict[str, str] = Field(default_factory=dict)
 
 
 # ── EmployeeProfile ────────────────────────────────────────
