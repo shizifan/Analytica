@@ -129,7 +129,8 @@ def _render_records_table(records: list[dict[str, Any]]) -> str:
 class MarkdownBlockRenderer(BlockRendererBase):
     _step_label = "Step 3"
 
-    def __init__(self) -> None:
+    def __init__(self, theme=None) -> None:  # noqa: ANN001
+        super().__init__(theme=theme)
         self._parts: list[str] = []
         self._title: str = ""
         self._author: str = ""
@@ -179,6 +180,16 @@ class MarkdownBlockRenderer(BlockRendererBase):
         return None
 
     def emit_paragraph(self, block: ParagraphBlock) -> None:
+        # Phase 4.1 — callout styles render as blockquote with emoji
+        # marker; gives Markdown readers a visual cue equivalent to
+        # the rich-style backends' coloured boxes.
+        if block.style == "callout-warn":
+            self._parts.append(f"\n> ⚠️ **注意**：{block.text}\n")
+            return
+        if block.style == "callout-info":
+            self._parts.append(f"\n> 💡 {block.text}\n")
+            return
+
         if self._current_role == "appendix":
             self._parts.append(f"\n- {block.text}\n")
             self._appendix_emit_count += 1

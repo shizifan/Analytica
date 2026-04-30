@@ -409,3 +409,71 @@ def build_thank_you_slide(prs: Presentation) -> None:
                  "THANK YOU", font_size=18,
                  color=T.RGB_ACCENT, alignment=PP_ALIGN.CENTER,
                  font_name=T.FONT_NUM)
+
+
+# ---------------------------------------------------------------------------
+# Comparison grid (Phase 3.2)
+# ---------------------------------------------------------------------------
+
+def build_comparison_grid_slide(
+    prs: Presentation,
+    title: str,
+    columns: list,
+) -> None:
+    """N-column grid slide (e.g. 短期 / 中期 / 长期 recommendations).
+
+    Each column has a primary-coloured title bar over a light card
+    background with a bulleted item list. ``columns`` items must
+    expose ``.title: str`` and ``.items: list[str]`` (matches
+    ``_outline.GridColumn`` shape).
+    """
+    if not columns:
+        return
+    n = min(len(columns), 4)
+
+    slide = _blank(prs)
+    _add_textbox(
+        slide, Inches(0.5), Inches(0.3), Inches(9), Inches(0.7),
+        title, font_size=T.SIZE_H2, bold=True,
+        color=T.RGB_PRIMARY, alignment=PP_ALIGN.LEFT,
+    )
+
+    margin = 0.6
+    gap = 0.2
+    usable = 10 - 2 * margin - gap * (n - 1)
+    col_w = max(usable / n, 1.5)
+    col_y = 1.3
+    col_h = 5.5
+    title_bar_h = 0.7
+
+    for i, col in enumerate(columns[:n]):
+        cx = margin + i * (col_w + gap)
+        # Card background
+        _add_rect(
+            slide, Inches(cx), Inches(col_y),
+            Inches(col_w), Inches(col_h),
+            T.RGB_BG_LIGHT,
+        )
+        # Title bar
+        _add_rect(
+            slide, Inches(cx), Inches(col_y),
+            Inches(col_w), Inches(title_bar_h),
+            T.RGB_PRIMARY,
+        )
+        _add_textbox(
+            slide, Inches(cx + 0.1), Inches(col_y + 0.1),
+            Inches(col_w - 0.2), Inches(title_bar_h - 0.2),
+            col.title, font_size=14, bold=True,
+            color=T.RGB_WHITE, alignment=PP_ALIGN.CENTER,
+        )
+        # Items
+        items_text = "\n".join(f"• {it}" for it in col.items[:6])
+        if items_text:
+            _add_textbox(
+                slide, Inches(cx + 0.2),
+                Inches(col_y + title_bar_h + 0.15),
+                Inches(col_w - 0.4),
+                Inches(col_h - title_bar_h - 0.3),
+                items_text, font_size=11,
+                color=T.RGB_TEXT_DARK, alignment=PP_ALIGN.LEFT,
+            )

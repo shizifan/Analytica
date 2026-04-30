@@ -33,6 +33,7 @@ from backend.tools.report._outline import (
     OutlineSection,
     ParagraphBlock,
     ReportOutline,
+    SectionCoverBlock,
     SectionRole,
     StatsAsset,
     TableAsset,
@@ -71,6 +72,7 @@ def collect_and_build_outline(
         planner_mode="rule_fallback",
     )
 
+    cover_index = 0
     for old_sec in rc.sections:
         new_sec = OutlineSection(
             name=old_sec.name,
@@ -78,6 +80,16 @@ def collect_and_build_outline(
             blocks=[],
             source_tasks=[],
         )
+        # Phase 3.1 — every non-appendix section opens with a SectionCoverBlock.
+        # Renderers' ``emit_section_cover`` paints the "封面" visual; their
+        # ``begin_section`` step no longer does so, which avoids the duplicate
+        # heading / divider that the placeholder cover used to produce.
+        cover_index += 1
+        new_sec.blocks.append(SectionCoverBlock(
+            block_id=new_block_id(),
+            index=cover_index,
+            title=old_sec.name,
+        ))
         for item in old_sec.items:
             block, asset = _convert_item(item)
             if asset is not None:

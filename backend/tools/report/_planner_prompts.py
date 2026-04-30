@@ -47,15 +47,62 @@ _OUTPUT_SCHEMA_DOC = """\
 ## 角色 → 推荐编排
 
 - summary    : 顶部 kpi_row + 1-2 paragraph(style=lead) 概述核心发现
-- status     : table / chart 配 paragraph 解读
+- status     : table / chart 配 paragraph 解读;
+               关键现状用 chart_table_pair 并排展示(图+表对照)
 - analysis   : chart + paragraph 数据解读
-- attribution: paragraph 概述 + (可选)对比 table 列出问题/原因/影响
+- attribution: paragraph 概述 + 归因汇总表(见下)
 - recommendation: comparison_grid 三栏(短期/中期/长期), 每列 2-3 条要点
 - appendix   : 0-N paragraph(style=lead) 总结句
 
+## attribution 归因汇总表格式
+
+attribution 章节如有多个问题归因, 应优先合成结构化归因表
+(让读者一眼对比). 输出形式:
+{
+  "kind": "table",
+  "asset_id": "<新合成的归因表 asset, 见下>",
+  "caption": "归因汇总"
+}
+归因表 asset 通过额外的 ``synthesised_assets`` 数组声明:
+
+"synthesised_assets": [
+  {
+    "asset_id": "ATTR0001",
+    "kind": "table",
+    "df_records": [
+      {"问题": "...", "数据依据": "...", "原因": "...",
+       "影响": "...", "责任方": "..."},
+      ...
+    ],
+    "columns_meta": [
+      {"name": "问题"}, {"name": "数据依据"},
+      {"name": "原因"}, {"name": "影响"}, {"name": "责任方"}
+    ]
+  }
+]
+
+引用 ATTR0001 时它必须出现在 synthesised_assets 中. 若上游素材
+不足以归因, 退回 paragraph 方式描述, 不要编造.
+
+## 视觉强调指引
+
+- callout-warn  : 风险/预警/未达成/下降 N% 类信息
+- callout-info  : 提示/建议关注/补充说明类信息
+- 风险数据      : 段落使用 callout-warn 强调, 让读者第一眼捕获
+
+## 图表选型指引
+
+- 时间序列     : LINE 图;
+- 类别比较     : 纵向 BAR;
+- 排名 / TOP-N : 横向 BAR (yAxis.type="category"), 单系列时
+                 渲染端自动添加数值标签;
+- 占比         : PIE / DOUGHNUT(状态分类用 DOUGHNUT 视觉更专业);
+- 二维相关     : COMBO (同一类别下指标 + 比率).
+
 ## 严格规则
 
-1. 引用 asset_id 必须存在于"可用 assets"清单, 严禁编造
+1. 引用 asset_id 必须存在于"可用 assets"清单或 synthesised_assets 中,
+   严禁编造
 2. block kind 必须是上述 8 种之一(不要用 section_cover, 当前不渲染)
 3. sections 顺序与输入"章节定义"完全一致, 数量也一致
 4. 不要在 JSON 之外输出任何文字、注释、代码块标记

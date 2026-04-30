@@ -131,11 +131,10 @@ _FROZEN_KPIS = [
 def freeze_kpis(monkeypatch) -> None:
     """Replace ``extract_kpis_llm`` with a deterministic stub.
 
-    After Step 8 only ``_outline_planner`` (rule fallback path) and
-    ``pptx_gen`` (PptxGenJS bridge) directly import the function;
-    other backends go through ``plan_outline`` which calls it
-    transitively. Patching the source module covers the planner;
-    pptx_gen still has a module-level binding so we patch it too.
+    After阶段 0 (Sprint 2 closure) only ``_outline_planner`` (rule
+    fallback path) directly imports the function — the four ``*_gen.py``
+    modules all go through ``plan_outline`` which calls it transitively.
+    Patching the planner's import site is sufficient.
     """
     async def _stub(intent, context, *, span_emit=None, task_id=""):  # noqa: ARG001
         return list(_FROZEN_KPIS)
@@ -145,9 +144,6 @@ def freeze_kpis(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         "backend.tools.report._outline_planner.extract_kpis_llm", _stub,
-    )
-    monkeypatch.setattr(
-        "backend.tools.report.pptx_gen.extract_kpis_llm", _stub,
     )
 
 
@@ -177,8 +173,14 @@ def disable_skill_mode(monkeypatch) -> None:
         REPORT_AGENT_ENABLED=False,
         REPORT_OUTLINE_PLANNER_ENABLED=False,
     )
+    # Patch both the source module AND pptx_gen's import site (the latter
+    # binds the name at import time via ``from ... import``).
     monkeypatch.setattr(
         "backend.tools.report._pptxgen_builder.check_pptxgen_available",
+        lambda: False,
+    )
+    monkeypatch.setattr(
+        "backend.tools.report.pptx_gen.check_pptxgen_available",
         lambda: False,
     )
 
@@ -229,6 +231,23 @@ def docx_to_text_tree(docx_bytes: bytes) -> str:
     return "\n".join(lines)
 
 
+_PIC_TAGS = {
+    "{http://schemas.openxmlformats.org/drawingml/2006/main}graphic",
+    "{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}inline",
+    "{http://schemas.openxmlformats.org/drawingml/2006/picture}pic",
+}
+
+
+def _has_picture(p) -> bool:
+    """Detect any drawing/picture child to keep the comparator stable
+    across embedded PNG bytes (Phase 2.2 — DOCX 嵌图 introduces images
+    whose binary differs across matplotlib / OS / font runs)."""
+    for elem in p.iter():
+        if elem.tag in _PIC_TAGS:
+            return True
+    return False
+
+
 def _serialize_paragraph(p) -> str:
     style = ""
     pPr = p.find(f"{_W_NS}pPr")
@@ -240,9 +259,11 @@ def _serialize_paragraph(p) -> str:
     has_pgbreak = any(
         br.get(f"{_W_NS}type") == "page" for br in p.iter(f"{_W_NS}br")
     )
+    has_pic = _has_picture(p)
     prefix = f"[P:{style}]" if style else "[P]"
     suffix = "[PAGEBREAK]" if has_pgbreak else ""
-    return f"{prefix}{text}{suffix}"
+    pic_marker = "[PICTURE]" if has_pic else ""
+    return f"{prefix}{pic_marker}{text}{suffix}"
 
 
 def _serialize_table(tbl) -> list[str]:

@@ -154,6 +154,14 @@ class TableBlock:
     block_id: str
     asset_id: str
     caption: str = ""
+    # Phase 4.2 — per-cell visual emphasis rules. Each rule is a dict
+    # with at least {"col": <name>, "color": <semantic>}; optional
+    # ``predicate`` may be a string the planner emits ("> 0", "< 0.5",
+    # "max", "min", "negative", "rank<=3") that the renderer interprets.
+    # When ``row`` is given (int index, 0-based **after** header), the
+    # rule paints the entire row regardless of ``col``.
+    # Semantic colors: "positive" / "negative" / "neutral" / "accent" /
+    # "gold" / "silver" / "bronze" — resolved against the active theme.
     highlight_rules: list[dict[str, Any]] = field(default_factory=list)
     kind: Literal["table"] = "table"
 

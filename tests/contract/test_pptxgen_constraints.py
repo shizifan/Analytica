@@ -91,12 +91,64 @@ def _multi_series_bar() -> dict:
     }
 
 
+def _pie_option() -> dict:
+    """Phase 2.3: PIE — data is [{name, value}, ...]."""
+    return {
+        "title": {"text": "PieChart"},
+        "series": [{
+            "type": "pie", "name": "占比",
+            "data": [
+                {"name": "A", "value": 40},
+                {"name": "B", "value": 35},
+                {"name": "C", "value": 25},
+            ],
+        }],
+    }
+
+
+def _doughnut_option() -> dict:
+    return {
+        "title": {"text": "Doughnut"},
+        "series": [{
+            "type": "doughnut",
+            "data": [
+                {"name": "正常", "value": 80},
+                {"name": "故障", "value": 15},
+                {"name": "停用", "value": 5},
+            ],
+        }],
+    }
+
+
+def _horizontal_bar_option() -> dict:
+    return {
+        "title": {"text": "TOP3"},
+        "yAxis": {"type": "category", "data": ["A", "B", "C"]},
+        "xAxis": {"type": "value"},
+        "series": [{"type": "bar", "data": [100, 80, 60]}],
+    }
+
+
+def _combo_option() -> dict:
+    """BAR + LINE on shared categories."""
+    return {
+        "title": {"text": "Combo"},
+        "xAxis": {"type": "category", "data": ["Q1", "Q2", "Q3"]},
+        "yAxis": {"type": "value"},
+        "series": [
+            {"type": "bar", "name": "金额", "data": [100, 200, 150]},
+            {"type": "line", "name": "增长率", "data": [0.1, 0.15, 0.12]},
+        ],
+    }
+
+
 # ---------------------------------------------------------------------------
 # Constraint 1 — no leading '#' in any color string
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("option_factory", [
     _bar_option, _line_option, _multi_series_bar,
+    _pie_option, _doughnut_option, _horizontal_bar_option, _combo_option,
 ])
 def test_no_hash_prefix_in_colors(option_factory):
     spec = echarts_to_pptxgen(option_factory())
@@ -133,6 +185,7 @@ def test_no_chart_title_key():
 
 @pytest.mark.parametrize("option_factory", [
     _bar_option, _line_option, _multi_series_bar,
+    _pie_option, _doughnut_option, _horizontal_bar_option, _combo_option,
 ])
 def test_no_8_digit_hex_rgba(option_factory):
     spec = echarts_to_pptxgen(option_factory())
@@ -162,6 +215,7 @@ def _looks_like_color_path(path: str) -> bool:
 
 @pytest.mark.parametrize("option_factory", [
     _bar_option, _line_option, _multi_series_bar,
+    _pie_option, _doughnut_option, _horizontal_bar_option, _combo_option,
 ])
 def test_color_strings_are_6_digit_hex(option_factory):
     spec = echarts_to_pptxgen(option_factory())
@@ -198,8 +252,76 @@ def test_line_option_returns_line_type():
 
 def test_unknown_chart_type_returns_none():
     """Falls back gracefully — caller renders as table."""
-    pie_option = {
-        "title": {"text": "Pie"},
-        "series": [{"type": "pie", "data": [{"name": "A", "value": 1}]}],
+    scatter_option = {
+        "title": {"text": "Scatter"},
+        "xAxis": {"type": "value"},
+        "yAxis": {"type": "value"},
+        "series": [{"type": "scatter", "data": [[1, 2], [3, 4]]}],
     }
-    assert echarts_to_pptxgen(pie_option) is None
+    assert echarts_to_pptxgen(scatter_option) is None
+
+
+# ---------------------------------------------------------------------------
+# Phase 2.3 — new chart types
+# ---------------------------------------------------------------------------
+
+def test_pie_returns_pie_type_with_name_value_data():
+    spec = echarts_to_pptxgen(_pie_option())
+    assert spec is not None
+    assert spec["type"] == "PIE"
+    # PIE data is wrapped in pptxgenjs single-series form
+    assert len(spec["data"]) == 1
+    assert spec["data"][0]["labels"] == ["A", "B", "C"]
+    assert spec["data"][0]["values"] == [40.0, 35.0, 25.0]
+    assert spec["options"]["showPercent"] is True
+
+
+def test_doughnut_returns_doughnut_with_hole():
+    spec = echarts_to_pptxgen(_doughnut_option())
+    assert spec is not None
+    assert spec["type"] == "DOUGHNUT"
+    # Hole size is required for doughnut to be visually distinct from pie
+    assert "holeSize" in spec["options"]
+    assert 0 < spec["options"]["holeSize"] < 100
+
+
+def test_horizontal_bar_uses_bar_dir_bar():
+    spec = echarts_to_pptxgen(_horizontal_bar_option())
+    assert spec is not None
+    assert spec["type"] == "BAR"
+    assert spec["horizontal"] is True
+    assert spec["options"]["barDir"] == "bar"
+
+
+def test_combo_returns_multi_type_data_with_secondary_axis():
+    spec = echarts_to_pptxgen(_combo_option())
+    assert spec is not None
+    assert spec["type"] == "COMBO"
+    # data is a list of {type, data, options} entries
+    assert isinstance(spec["data"], list)
+    assert {entry["type"] for entry in spec["data"]} == {"BAR", "LINE"}
+    line_entry = next(e for e in spec["data"] if e["type"] == "LINE")
+    assert line_entry["options"].get("secondaryValAxis") is True
+
+
+def test_combo_with_only_bar_falls_back_to_pure_bar():
+    """COMBO requires BOTH BAR and LINE; bar-only shouldn't trigger combo."""
+    pure_bar = {
+        "xAxis": {"type": "category", "data": ["A"]},
+        "yAxis": {"type": "value"},
+        "series": [
+            {"type": "bar", "name": "S1", "data": [1]},
+            {"type": "bar", "name": "S2", "data": [2]},
+        ],
+    }
+    spec = echarts_to_pptxgen(pure_bar)
+    assert spec is not None
+    assert spec["type"] == "BAR"
+
+
+def test_pie_with_zero_total_returns_none():
+    """Empty / zero-sum pie data should fall back to table."""
+    bad = {
+        "series": [{"type": "pie", "data": [{"name": "X", "value": 0}]}],
+    }
+    assert echarts_to_pptxgen(bad) is None

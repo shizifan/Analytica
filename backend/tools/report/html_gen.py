@@ -18,6 +18,7 @@ from backend.tools.registry import register_tool
 from backend.tools.report._block_renderer import render_outline
 from backend.tools.report._outline_planner import plan_outline
 from backend.tools.report._renderers.html import HtmlBlockRenderer
+from backend.tools.report._theme import get_theme
 
 logger = logging.getLogger("analytica.tools.report_html")
 
@@ -39,7 +40,10 @@ class HtmlReportTool(BaseTool):
 
             from backend.config import get_settings
 
-            renderer = HtmlBlockRenderer()
+            theme = get_theme(
+                (inp.params.get("report_metadata") or {}).get("theme"),
+            )
+            renderer = HtmlBlockRenderer(theme=theme)
             mode = "deterministic"
 
             if get_settings().REPORT_AGENT_ENABLED:
@@ -53,7 +57,7 @@ class HtmlReportTool(BaseTool):
                     mode = "deterministic_fallback_error"
 
                 if mode != "llm_agent":
-                    renderer = HtmlBlockRenderer()
+                    renderer = HtmlBlockRenderer(theme=theme)
                     render_outline(outline, renderer)
             else:
                 render_outline(outline, renderer)

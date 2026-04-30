@@ -18,6 +18,7 @@ from backend.tools.registry import register_tool
 from backend.tools.report._block_renderer import render_outline
 from backend.tools.report._outline_planner import plan_outline
 from backend.tools.report._renderers.docx import DocxBlockRenderer
+from backend.tools.report._theme import get_theme
 
 logger = logging.getLogger("analytica.tools.report_docx")
 
@@ -39,7 +40,10 @@ class DocxReportTool(BaseTool):
 
             from backend.config import get_settings
 
-            renderer = DocxBlockRenderer()
+            theme = get_theme(
+                (inp.params.get("report_metadata") or {}).get("theme"),
+            )
+            renderer = DocxBlockRenderer(theme=theme)
             mode = "deterministic"
 
             if get_settings().REPORT_AGENT_ENABLED:
@@ -54,7 +58,7 @@ class DocxReportTool(BaseTool):
 
                 if mode != "llm_agent":
                     # Agent partially wrote the doc — reset and re-render
-                    renderer = DocxBlockRenderer()
+                    renderer = DocxBlockRenderer(theme=theme)
                     render_outline(outline, renderer)
             else:
                 render_outline(outline, renderer)

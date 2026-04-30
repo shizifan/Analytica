@@ -62,7 +62,8 @@ def _stats_to_text(summary_stats: dict[str, Any]) -> str:
 class PptxBlockRenderer(BlockRendererBase):
     _step_label = "Step 5"
 
-    def __init__(self) -> None:
+    def __init__(self, theme=None) -> None:  # noqa: ANN001
+        super().__init__(theme=theme)
         self._prs = Presentation()
         self._prs.slide_width = Inches(T.SLIDE_WIDTH)
         self._prs.slide_height = Inches(T.SLIDE_HEIGHT)
@@ -114,9 +115,10 @@ class PptxBlockRenderer(BlockRendererBase):
             self._is_appendix = False
             self._numbered_count += 1
             self._current_section_name = section.name
-            S.build_section_divider_slide(
-                self._prs, self._numbered_count, section.name,
-            )
+            # Phase 3.1: divider slide is emitted by ``emit_section_cover``
+            # (driven by the SectionCoverBlock that legacy converter / LLM
+            # planner inserts as the section's first block). begin_section
+            # is now state-only; cover behaviour is data-driven.
             self._narratives = []
             self._stats = []
             self._growth = []
@@ -136,11 +138,20 @@ class PptxBlockRenderer(BlockRendererBase):
         return None
 
     def emit_paragraph(self, block: ParagraphBlock) -> None:
+        # Phase 4.1 — prefix callouts with emoji marker so the buffer-mode
+        # narrative slide still surfaces the warn/info hierarchy without
+        # breaking the existing buffer schema. A standalone callout shape
+        # is Phase 5.1 component-library work.
+        text = block.text
+        if block.style == "callout-warn":
+            text = f"⚠ 注意: {text}"
+        elif block.style == "callout-info":
+            text = f"💡 提示: {text}"
         if self._is_appendix:
-            self._appendix_paragraphs.append(block.text)
+            self._appendix_paragraphs.append(text)
         else:
-            self._narratives.append(block.text)
-            self._all_narratives.append(block.text)
+            self._narratives.append(text)
+            self._all_narratives.append(text)
 
     def emit_table(self, block: TableBlock, asset: Asset) -> None:
         if isinstance(asset, StatsAsset):
@@ -168,16 +179,22 @@ class PptxBlockRenderer(BlockRendererBase):
         self.emit_table(synth_table, table_asset)
 
     def emit_comparison_grid(self, block: ComparisonGridBlock) -> None:
-        # Legacy PPTX has no equivalent; Sprint 3 will add a dedicated slide.
-        return None
+        """Phase 3.2 — dedicated comparison-grid slide via the
+        python-pptx fallback path (Node bridge unavailable)."""
+        if not block.columns:
+            return
+        slide_title = self._current_section_name or "对比分析"
+        S.build_comparison_grid_slide(self._prs, slide_title, block.columns)
 
     def emit_growth_indicators(self, block: GrowthIndicatorsBlock) -> None:
         if block.growth_rates:
             self._growth.append(block.growth_rates)
 
     def emit_section_cover(self, block: SectionCoverBlock) -> None:
-        # ``begin_section`` already added a divider slide.
-        return None
+        """Paint the section divider slide using the SectionCoverBlock's
+        (index, title). Since begin_section is now state-only this is the
+        sole owner of the divider visual."""
+        S.build_section_divider_slide(self._prs, block.index, block.title)
 
     # ---- Helpers -------------------------------------------------------
 

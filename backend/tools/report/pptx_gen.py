@@ -1,16 +1,21 @@
-"""PPTX Report Generation Skill — Step 5 (outline pipeline for fallback).
+"""PPTX Report Generation Skill — Step 0 (Sprint 2 closure).
 
-Generation strategy (in priority order):
-  1. **PptxGenJS** (Node.js subprocess) — native PowerPoint charts.
-     Still consumes the legacy ``ReportContent`` model; will be migrated
-     to the outline pipeline as part of Sprint 3 visual work.
-  2. **PptxBlockRenderer** (python-pptx, outline-driven) — pure-Python
-     fallback that produces output structurally equivalent to the
-     pre-refactor deterministic builder.
+Single-pipeline architecture: ``plan_outline`` produces a ``ReportOutline``,
+then a renderer is selected based on Node bridge availability:
 
-No LLM agent loop on this backend by design — the deterministic builders
-already produce high-quality slides from structured data, making LLM
-orchestration unnecessary overhead.
+  1. **PptxGenJSBlockRenderer** (Node + pptxgenjs) — produces native,
+     editable PowerPoint charts. The Node side runs ``pptxgen_executor.js``
+     and is fed a ``SlideCommand`` JSON stream.
+  2. **PptxBlockRenderer** (python-pptx) — pure-Python fallback when
+     Node / pptxgenjs is unavailable, or when the bridge raises. Charts
+     degrade to data tables.
+
+Either renderer consumes the same outline. The dual-path fork that lived
+here through Sprint 1-2 (PptxGenJS taking ReportContent + python-pptx
+taking outline) is gone — the chart-quality fallback now lives entirely
+inside the renderer-selection step.
+
+No LLM agent loop on this backend by design.
 """
 from __future__ import annotations
 
@@ -23,9 +28,11 @@ from pptx import Presentation
 from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
 from backend.tools.registry import register_tool
 from backend.tools.report._block_renderer import render_outline
-from backend.tools.report._kpi_extractor import extract_kpis_llm
 from backend.tools.report._outline_planner import plan_outline
+from backend.tools.report._pptxgen_builder import check_pptxgen_available
 from backend.tools.report._renderers.pptx import PptxBlockRenderer
+from backend.tools.report._renderers.pptxgen import PptxGenJSBlockRenderer
+from backend.tools.report._theme import Theme, get_theme
 
 logger = logging.getLogger("analytica.tools.report_pptx")
 
@@ -37,77 +44,18 @@ class PptxReportTool(BaseTool):
 
     async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         try:
-            intent = inp.params.get("intent", "")
-            task_id = inp.params.get("__task_id__", "")
-            task_order = inp.params.get("_task_order")
-
-            # ── Strategy 1: PptxGenJS (legacy ReportContent path) ──
-            # Bypasses the outline planner — Sprint 3 visual work will
-            # migrate this bridge. Until then it owns its own KPI
-            # extraction + content collection.
-            try:
-                from backend.tools.report._pptxgen_builder import (
-                    check_pptxgen_available,
-                    render_to_pptx,
-                )
-
-                if check_pptxgen_available():
-                    from backend.tools.report._content_collector import (
-                        collect_and_associate,
-                    )
-
-                    kpi_cards = await extract_kpis_llm(
-                        intent, context,
-                        span_emit=inp.span_emit, task_id=task_id,
-                    )
-                    rc = collect_and_associate(
-                        inp.params, context, task_order=task_order,
-                    )
-                    rc.kpi_cards = kpi_cards
-                    pptx_bytes = render_to_pptx(rc)
-
-                    try:
-                        slide_count = len(
-                            Presentation(io.BytesIO(pptx_bytes)).slides
-                        )
-                    except Exception:
-                        slide_count = len(rc.sections) + 4
-
-                    logger.info(
-                        "PPTX generated via PptxGenJS: %d bytes, %d slides, "
-                        "%d sections",
-                        len(pptx_bytes), slide_count, len(rc.sections),
-                    )
-                    return ToolOutput(
-                        tool_id=self.tool_id,
-                        status="success",
-                        output_type="file",
-                        data=pptx_bytes,
-                        metadata={
-                            "format": "pptx",
-                            "title": rc.title,
-                            "file_size_bytes": len(pptx_bytes),
-                            "mode": "pptxgenjs",
-                            "slide_count": slide_count,
-                            "sections": len(rc.sections),
-                        },
-                    )
-                logger.info("PptxGenJS not available; using outline pipeline")
-            except Exception as pptxgen_err:
-                logger.warning(
-                    "PptxGenJS render failed (%s); using outline pipeline",
-                    pptxgen_err,
-                )
-
-            # ── Strategy 2: outline pipeline + python-pptx renderer ──
             outline = await plan_outline(
                 inp.params, context,
-                task_order=task_order, intent=intent,
-                task_id=task_id, span_emit=inp.span_emit,
+                task_order=inp.params.get("_task_order"),
+                intent=inp.params.get("intent", ""),
+                task_id=inp.params.get("__task_id__", ""),
+                span_emit=inp.span_emit,
             )
-            renderer = PptxBlockRenderer()
-            render_outline(outline, renderer)
-            pptx_bytes = renderer.end_document()
+
+            theme = get_theme(
+                (inp.params.get("report_metadata") or {}).get("theme"),
+            )
+            pptx_bytes, mode = _render_pptx(outline, theme)
 
             try:
                 slide_count = len(Presentation(io.BytesIO(pptx_bytes)).slides)
@@ -118,7 +66,7 @@ class PptxReportTool(BaseTool):
                 "format": "pptx",
                 "title": outline.metadata.get("title", ""),
                 "file_size_bytes": len(pptx_bytes),
-                "mode": f"python_pptx_{outline.planner_mode}",
+                "mode": mode,
                 "slide_count": slide_count,
                 "sections": len(outline.sections),
             }
@@ -135,3 +83,32 @@ class PptxReportTool(BaseTool):
         except Exception as e:
             logger.exception("PPTX generation failed: %s", e)
             return self._fail(str(e))
+
+
+def _render_pptx(outline, theme: Theme) -> tuple[bytes, str]:
+    """Render *outline* through the best available pipeline.
+
+    Returns ``(pptx_bytes, mode_label)``. ``mode_label`` is surfaced in
+    ToolOutput.metadata so downstream observability can distinguish
+    native-chart runs from fallback runs.
+    """
+    if check_pptxgen_available():
+        renderer = PptxGenJSBlockRenderer(theme=theme)
+        try:
+            render_outline(outline, renderer)
+            pptx_bytes = renderer.end_document()
+            logger.info(
+                "PPTX generated via PptxGenJS bridge: %d bytes, %d sections",
+                len(pptx_bytes), len(outline.sections),
+            )
+            return pptx_bytes, f"pptxgenjs_{outline.planner_mode}"
+        except Exception as bridge_err:
+            logger.warning(
+                "PptxGenJS bridge failed (%s); falling back to python-pptx",
+                bridge_err,
+            )
+
+    renderer = PptxBlockRenderer(theme=theme)
+    render_outline(outline, renderer)
+    pptx_bytes = renderer.end_document()
+    return pptx_bytes, f"python_pptx_{outline.planner_mode}"

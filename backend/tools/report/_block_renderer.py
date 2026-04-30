@@ -81,9 +81,19 @@ class BlockRendererBase:
     same for DOCX/PPTX/HTML. Skeletons protect against silent no-ops —
     if a Step's renderer forgets to override ``emit_chart_table_pair``,
     rendering an outline that contains one will fail loudly.
+
+    Phase 1 (Sprint 3) adds the ``theme`` keyword: every concrete renderer
+    accepts an optional ``theme`` and falls back to the default
+    ``corporate-blue`` preset. New visual code should read
+    ``self._theme.*`` instead of the module-level legacy constants.
     """
 
     _step_label: str = "Step 3-6"
+
+    def __init__(self, theme=None):  # noqa: ANN001 — Theme typed via late import
+        from backend.tools.report._theme import get_theme
+
+        self._theme = theme if theme is not None else get_theme()
 
     def _todo(self, method: str) -> None:
         raise NotImplementedError(

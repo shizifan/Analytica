@@ -15,6 +15,7 @@ from backend.tools.registry import register_tool
 from backend.tools.report._block_renderer import render_outline
 from backend.tools.report._outline_planner import plan_outline
 from backend.tools.report._renderers.markdown import MarkdownBlockRenderer
+from backend.tools.report._theme import get_theme
 
 logger = logging.getLogger("analytica.tools.report_markdown")
 
@@ -34,7 +35,10 @@ class MarkdownReportTool(BaseTool):
                 span_emit=inp.span_emit,
             )
 
-            renderer = MarkdownBlockRenderer()
+            theme = get_theme(
+                (inp.params.get("report_metadata") or {}).get("theme"),
+            )
+            renderer = MarkdownBlockRenderer(theme=theme)
             md = render_outline(outline, renderer)
 
             meta: dict[str, Any] = {

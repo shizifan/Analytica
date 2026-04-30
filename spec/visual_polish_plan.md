@@ -2,9 +2,33 @@
 
 **前置依赖**：[spec/refactor_report_outline.md](./refactor_report_outline.md) Sprint 1-2 已交付（2026-04-29）
 **目标读者**：Claude Code 执行实例（无本会话上下文）
-**状态**：待实施
+**状态**：阶段 0 ✅ 已交付（2026-04-29）；阶段 1-6 待实施
 **预计工时**：~20 人日（按单人）/ 2 人并行 ~10 周
 **关键产品决策**：选项 C — 保留 PptxGenJS 原生可编辑图表能力（用户强需求）
+
+---
+
+## 交付状态
+
+| 阶段 | 内容 | 完成日期 | 状态 |
+|---|---|---|---|
+| 0 | Sprint 2 收尾（PptxGenJS outline 化）— 4 端真正闭环 | 2026-04-29 | ✅ |
+| 1 | Theme 系统化 | 2026-04-29 | ✅ |
+| 2 | 数据表达核心（chart 渲染能力） | 2026-04-29 | ✅ |
+| 3 | 版式与编排 | 2026-04-29 | ✅ |
+| 4 | 信息层次与强调 | 2026-04-29 | ✅ |
+| 5 | 视觉风格一致性 | 2026-04-29 | ✅ |
+| 6 | 质量保障 | — | 待实施 |
+
+**阶段 0 摘要（已交付）**：
+- 新增 `_pptxgen_commands.py`（SlideCommand DSL，6 种 command type）
+- 新增 `_renderers/pptxgen.py`（PptxGenJSBlockRenderer，第 5 个 BlockRenderer 实现）
+- 新增 `_pptxgen_runtime.py`（Python ↔ Node subprocess helper）
+- 新增 `pptxgen_executor.js`（长期常驻 Node 脚本，替代旧 `generate_pptxgen_script` 临时 JS 字符串生成）
+- `_pptxgen_builder.py` 从 936 → 217 行（删除 `_ScriptBuilder` / `generate_pptxgen_script` / `render_to_pptx`）
+- `pptx_gen.py` 双路径消除：单一 `outline → renderer 选择 → render_outline` 流，回退能力下沉到 renderer 选择层
+- 新增测试 45 项（25 SlideCommand + 13 PptxGenJSBlockRenderer + 7 Node 桥接集成）
+- 全套 contract 测试 276 PASSED 零回归
 
 ---
 

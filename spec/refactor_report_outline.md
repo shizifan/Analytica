@@ -21,10 +21,14 @@
 | 7 | 死代码清理（`_pptx_tools.py` 删除 + `serialize_report_content` 删除） | 2026-04-29 | ✅ |
 | 8 | LLM planner（合并 KPI + 章节编排 + 合成块）| 2026-04-29 | ✅ |
 | 9 | 灰度文档 + 收尾 | 2026-04-29 | ✅ |
+| 11 | **Sprint 2 真正闭环** — PptxGenJS outline 化（参见 [visual_polish_plan.md 阶段 0](./visual_polish_plan.md#4-阶段-0--sprint-2-收尾pptxgenjs-outline-化)）| 2026-04-29 | ✅ |
+
+**Step 11 (Sprint 2 闭环) 摘要**：原 Step 5 PPT 仅完成 50% outline 化（python-pptx fallback 路径），PptxGenJS 桥接保留旧 ReportContent 管道作为 scope-control 妥协。Step 11 新增 SlideCommand DSL（`_pptxgen_commands.py`）+ PptxGenJSBlockRenderer（`_renderers/pptxgen.py`）+ 重写的 Node 长期常驻脚本（`pptxgen_executor.js`），消除 PPT 双路径。**4 端真正 100% outline 化**。
 
 **测试覆盖**：
 
-- 全套 contract 测试 **238 PASSED**（含 baseline 4 + outline_model 18 + protocol 20 + pptxgen 13 + planner_fallback 5 + planner_llm 10）
+- 全套 contract 测试 **276 PASSED**（含 baseline 4 + outline_model 18 + protocol 20 + pptxgen 13 + pptxgen_commands 25 + pptxgen_block_renderer 13 + planner_fallback 5 + planner_llm 10 + 既有 168）
+- Node 桥接集成测试 **7 PASSED**（slow，含 native chart 嵌入验证）
 - 既有 220 项 contract 测试零回归
 
 **Feature flag 默认值**（`backend/config.py`）：

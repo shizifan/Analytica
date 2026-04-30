@@ -206,6 +206,63 @@ def build_narrative(doc: Document, text: str) -> None:
         run.font.size = Pt(T.SIZE_BODY)
         run.font.name = T.FONT_CN
 
+
+def build_callout(
+    doc: Document, text: str, level: str = "warn", theme=None,
+) -> None:
+    """Phase 4.1 — render a callout block with left coloured border and
+    light tinted background.
+
+    ``level`` is one of ``"warn"`` / ``"info"``; the leading emoji and
+    border colour pick from the theme's ``callout_*`` fields. The
+    paragraph is added without first-line indent (callouts are
+    standalone visual blocks, not inline narrative).
+    """
+    from backend.tools.report._theme import get_theme
+
+    th = theme or get_theme()
+    if level == "warn":
+        emoji = "⚠"
+        title_label = "注意"
+        bg = th.callout_warn_bg
+        border = th.callout_warn_border
+    else:  # info / fallback
+        emoji = "💡"
+        title_label = "提示"
+        bg = th.callout_info_bg
+        border = th.callout_info_border
+
+    border_hex = f"{border[0]:02X}{border[1]:02X}{border[2]:02X}"
+    bg_hex = f"{bg[0]:02X}{bg[1]:02X}{bg[2]:02X}"
+
+    p = doc.add_paragraph()
+    pPr = p._p.get_or_add_pPr()
+    # Left border + light fill — applied via raw OOXML for fine control
+    border_xml = f'''<w:pBdr {nsdecls("w")}>
+        <w:left w:val="single" w:sz="24" w:space="6" w:color="{border_hex}"/>
+    </w:pBdr>'''
+    pPr.append(parse_xml(border_xml))
+    shading_xml = (
+        f'<w:shd {nsdecls("w")} w:val="clear" '
+        f'w:color="auto" w:fill="{bg_hex}"/>'
+    )
+    pPr.append(parse_xml(shading_xml))
+
+    # Title run (bold, coloured)
+    title_run = p.add_run(f"{emoji} {title_label}：")
+    title_run.font.bold = True
+    title_run.font.size = Pt(T.SIZE_BODY)
+    title_run.font.color.rgb = _rgb(border)
+    title_run.font.name = T.FONT_CN
+    # Body run
+    body_run = p.add_run(text)
+    body_run.font.size = Pt(T.SIZE_BODY)
+    body_run.font.name = T.FONT_CN
+    body_run.font.color.rgb = _rgb(T.RGB_TEXT_DARK)
+
+    # Trailing spacing — empty paragraph keeps callouts visually separated
+    doc.add_paragraph("")
+
 # ---------------------------------------------------------------------------
 # Stats table
 # ---------------------------------------------------------------------------
@@ -320,24 +377,50 @@ def build_growth_indicators(doc: Document, growth_rates: dict[str, dict[str, flo
 # DataFrame → table
 # ---------------------------------------------------------------------------
 
-def build_dataframe_table(doc: Document, df: pd.DataFrame, max_rows: int = 20) -> None:
-    """Render a DataFrame as a Word table (capped at *max_rows*)."""
+def build_dataframe_table(
+    doc: Document,
+    df: pd.DataFrame,
+    max_rows: int = 20,
+    *,
+    highlight_rules: list[dict[str, Any]] | None = None,
+    theme=None,
+    heading: str = "数据明细",
+) -> None:
+    """Render a DataFrame as a Word table (capped at *max_rows*).
+
+    Phase 4.2 — ``highlight_rules`` paints body cells (row/col-based,
+    see :mod:`backend.tools.report._table_highlight`) before the
+    striped-row tint. When a rule applies, alternating-row shading is
+    *replaced* by the rule colour for visual prominence.
+    """
     if df is None or df.empty:
         return
 
-    doc.add_heading("数据明细", level=2)
+    from backend.tools.report._table_highlight import (
+        resolve_cell_highlights,
+        rgb_to_hex,
+    )
+    from backend.tools.report._theme import get_theme
+
+    th = theme or get_theme()
+    doc.add_heading(heading, level=2)
 
     display_df = df.head(max_rows)
     n_rows, n_cols = display_df.shape
+
+    headers = [str(c) for c in display_df.columns]
+    cell_colors = resolve_cell_highlights(
+        headers, n_rows, highlight_rules or [], th,
+    )
 
     table = doc.add_table(rows=1 + n_rows, cols=n_cols)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.style = "Table Grid"
 
     # Header
-    for ci, col_name in enumerate(display_df.columns):
+    for ci, col_name in enumerate(headers):
         cell = table.rows[0].cells[ci]
-        cell.text = str(col_name)
+        cell.text = col_name
         _set_cell_shading(cell, T.PRIMARY)
         for p in cell.paragraphs:
             for run in p.runs:
@@ -350,12 +433,28 @@ def build_dataframe_table(doc: Document, df: pd.DataFrame, max_rows: int = 20) -
         for ci in range(n_cols):
             cell = table.rows[ri + 1].cells[ci]
             cell.text = _fmt_number(display_df.iloc[ri, ci])
-            if ri % 2 == 1:
+            highlight = cell_colors.get((ri, ci))
+            if highlight is not None:
+                _set_cell_shading(cell, "#" + rgb_to_hex(highlight))
+            elif ri % 2 == 1:
                 _set_cell_shading(cell, T.BG_LIGHT)
             for p in cell.paragraphs:
                 for run in p.runs:
                     run.font.size = Pt(T.SIZE_TABLE_BODY)
                     run.font.name = T.FONT_NUM
+                    if highlight is not None:
+                        # Highlighted cells need contrasting text — pick
+                        # white if luminance is low, else theme dark.
+                        lum = (
+                            0.299 * highlight[0]
+                            + 0.587 * highlight[1]
+                            + 0.114 * highlight[2]
+                        )
+                        run.font.color.rgb = (
+                            _rgb(T.RGB_WHITE) if lum < 140
+                            else _rgb(T.RGB_TEXT_DARK)
+                        )
+                        run.font.bold = True
 
     if len(df) > max_rows:
         p = doc.add_paragraph(f"（仅展示前 {max_rows} 行，共 {len(df)} 行）")

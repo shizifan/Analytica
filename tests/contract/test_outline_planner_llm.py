@@ -234,6 +234,69 @@ async def test_response_in_markdown_code_fence_parsed(monkeypatch):
     assert outline.planner_mode == "llm"
 
 
+async def test_synthesised_attribution_table_registered_as_asset(monkeypatch):
+    """Phase 3.4 — LLM declares an attribution summary table via the
+    ``synthesised_assets`` payload; block references resolve cleanly."""
+    response = _valid_response_for_normal_fixture()
+    response["synthesised_assets"] = [{
+        "asset_id": "ATTR0001",
+        "kind": "table",
+        "source_task": "synthesised",
+        "df_records": [
+            {"问题": "投资支付滞后", "数据依据": "支付率 65%",
+             "原因": "审批流程瓶颈", "影响": "项目交付延期",
+             "责任方": "财务部"},
+            {"问题": "设备完好率下降", "数据依据": "完好率 82%",
+             "原因": "维护周期超期", "影响": "运营效率降低",
+             "责任方": "运维部"},
+        ],
+        "columns_meta": [
+            {"name": "问题"}, {"name": "数据依据"},
+            {"name": "原因"}, {"name": "影响"}, {"name": "责任方"},
+        ],
+    }]
+    # Reference the new asset from a section block
+    response["sections"][2]["blocks"].append({
+        "kind": "table", "asset_id": "ATTR0001", "caption": "归因汇总",
+    })
+    _stub_invoke_llm(monkeypatch, response)
+
+    params, ctx, _ = make_normal_fixture()
+    outline = await plan_outline(params, ctx, task_order=params["_task_order"])
+
+    assert outline.planner_mode == "llm"
+    # Asset registered
+    assert "ATTR0001" in outline.assets
+    asset = outline.assets["ATTR0001"]
+    assert asset.kind == "table"
+    assert len(asset.df_records) == 2
+    assert asset.df_records[0]["问题"] == "投资支付滞后"
+    # Block referencing it survived
+    sec3_table_blocks = [
+        b for b in outline.sections[2].blocks
+        if isinstance(b, TableBlock) and b.asset_id == "ATTR0001"
+    ]
+    assert len(sec3_table_blocks) == 1
+
+
+async def test_synthesised_asset_with_dangling_reference_falls_back(monkeypatch):
+    """Reference to an undeclared synthesised asset should fall back
+    rather than render with an unresolved asset_id."""
+    response = _valid_response_for_normal_fixture()
+    response["sections"][2]["blocks"].append({
+        "kind": "table", "asset_id": "ATTR9999", "caption": "缺失",
+    })
+    _stub_invoke_llm(monkeypatch, response)
+
+    params, ctx, _ = make_normal_fixture()
+    outline = await plan_outline(params, ctx, task_order=params["_task_order"])
+
+    assert outline.planner_mode == "rule_fallback"
+    assert any(
+        "ATTR9999" in d.get("reason", "") for d in outline.degradations
+    )
+
+
 async def test_response_with_think_tag_stripped(monkeypatch):
     payload = _valid_response_for_normal_fixture()
     _stub_invoke_llm(

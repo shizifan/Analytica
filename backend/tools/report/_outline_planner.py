@@ -200,6 +200,11 @@ async def _llm_plan_outline(
     if parsed is None:
         raise _LLMPlannerFailure("LLM output not valid JSON")
 
+    # Phase 3.4: register LLM-synthesised assets (e.g. attribution
+    # tables) before validation, so block ``asset_id`` references to
+    # these new ids resolve cleanly.
+    _consume_synthesised_assets(parsed, assets)
+
     _validate_outline_response(parsed, assets, section_defs)
 
     return _build_outline_from_response(
@@ -310,6 +315,58 @@ def _parse_outline_json(text: str) -> dict[str, Any] | None:
             except json.JSONDecodeError:
                 return None
         return None
+
+
+def _consume_synthesised_assets(
+    parsed: dict[str, Any],
+    assets: dict[str, Asset],
+) -> None:
+    """Register the LLM-synthesised assets payload (Phase 3.4).
+
+    The planner prompt allows LLM to declare extra TableAssets it
+    fabricated (e.g. an attribution summary table) under a top-level
+    ``synthesised_assets`` array. We register them under their declared
+    ``asset_id`` so block validation finds them.
+
+    Quietly ignores malformed entries — they'll fail downstream
+    validation if a block actually references them.
+    """
+    raw = parsed.get("synthesised_assets") or []
+    if not isinstance(raw, list):
+        return
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        aid = entry.get("asset_id")
+        kind = entry.get("kind")
+        if not isinstance(aid, str) or not aid or aid in assets:
+            continue
+        if kind == "table":
+            records = entry.get("df_records") or []
+            cols_meta = entry.get("columns_meta") or []
+            if not isinstance(records, list):
+                continue
+            assets[aid] = TableAsset(
+                asset_id=aid,
+                source_task=entry.get("source_task", "synthesised"),
+                df_records=[r for r in records if isinstance(r, dict)],
+                columns_meta=[
+                    c for c in cols_meta if isinstance(c, dict)
+                ],
+                endpoint=entry.get("endpoint"),
+            )
+        elif kind == "stats":
+            stats = entry.get("summary_stats") or {}
+            if not isinstance(stats, dict):
+                continue
+            assets[aid] = StatsAsset(
+                asset_id=aid,
+                source_task=entry.get("source_task", "synthesised"),
+                summary_stats=stats,
+                endpoint=entry.get("endpoint"),
+            )
+        # ChartAsset synthesis is not allowed — LLM cannot fabricate
+        # raw chart data without ground truth from real tasks.
 
 
 _VALID_BLOCK_KINDS = {
