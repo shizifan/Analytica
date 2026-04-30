@@ -39,6 +39,7 @@ from backend.tools.report._outline import (
     OutlineSection,
     ParagraphBlock,
     ReportOutline,
+    SectionCoverBlock,
     StatsAsset,
     TableAsset,
     TableBlock,
@@ -453,6 +454,14 @@ def _build_outline_from_response(
         degradations=list(rc.degradations),
     )
 
+    # Auto-inject SectionCoverBlock for each non-appendix section so the
+    # LLM path produces the same "深色封面页" visual as the rule fallback
+    # (see ``_outline_legacy.collect_and_build_outline``). The LLM must
+    # NOT emit section_cover blocks itself — the prompt forbids it and
+    # the validator rejects unknown kinds. Subtitle is intentionally
+    # blank: the planner currently has no way to reason about a tagline,
+    # and renderers degrade cleanly when subtitle is empty.
+    cover_index = 0
     for sec_idx, sec_def in enumerate(section_defs):
         sec_resp = parsed["sections"][sec_idx]
         new_sec = OutlineSection(
@@ -463,6 +472,13 @@ def _build_outline_from_response(
                 if isinstance(t, str)
             ],
         )
+        if sec_def["role"] != "appendix":
+            cover_index += 1
+            new_sec.blocks.append(SectionCoverBlock(
+                block_id=new_block_id(),
+                index=cover_index,
+                title=sec_def["name"],
+            ))
         for blk_resp in sec_resp.get("blocks", []) or []:
             block = _block_from_response(blk_resp)
             if block is not None:
@@ -470,6 +486,49 @@ def _build_outline_from_response(
         outline.sections.append(new_sec)
 
     return outline
+
+
+# Whitelisted semantic colors that the renderers know how to resolve
+# (see ``_table_highlight.resolve_color``). LLM-emitted rules whose
+# ``color`` falls outside this set are dropped — silent because picking a
+# valid color is the LLM's job and a stray non-standard value shouldn't
+# tank the whole table.
+_HIGHLIGHT_COLOR_WHITELIST = frozenset({
+    "positive", "negative", "neutral", "accent",
+    "gold", "silver", "bronze",
+})
+
+
+def _parse_highlight_rules(raw: Any) -> list[dict[str, Any]]:
+    """Whitelist-validate ``TableBlock.highlight_rules`` from LLM JSON.
+
+    Each rule must specify a ``color`` from the whitelist plus EITHER a
+    ``col`` (column name) OR a ``row`` (0-based int after header). The
+    optional ``predicate`` string is passed through verbatim — the
+    renderer interprets / ignores unknown predicates.
+    """
+    if not isinstance(raw, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for r in raw:
+        if not isinstance(r, dict):
+            continue
+        color = r.get("color")
+        if color not in _HIGHLIGHT_COLOR_WHITELIST:
+            continue
+        col = r.get("col")
+        row = r.get("row")
+        if col is None and row is None:
+            continue
+        rule: dict[str, Any] = {"color": str(color)}
+        if isinstance(col, str) and col:
+            rule["col"] = col
+        if isinstance(row, int):
+            rule["row"] = row
+        if isinstance(r.get("predicate"), str) and r["predicate"]:
+            rule["predicate"] = r["predicate"]
+        out.append(rule)
+    return out
 
 
 def _block_from_response(d: dict[str, Any]) -> Block | None:
@@ -501,6 +560,7 @@ def _block_from_response(d: dict[str, Any]) -> Block | None:
             block_id=new_block_id(),
             asset_id=str(d["asset_id"]),
             caption=str(d.get("caption", "")),
+            highlight_rules=_parse_highlight_rules(d.get("highlight_rules")),
         )
     if kind == "chart":
         return ChartBlock(

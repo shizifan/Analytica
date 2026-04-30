@@ -136,11 +136,16 @@ async def test_llm_blocks_constructed_correctly(monkeypatch):
     params, ctx, _ = make_normal_fixture()
     outline = await plan_outline(params, ctx, task_order=params["_task_order"])
 
-    sec1_kinds = [b.kind for b in outline.sections[0].blocks]
-    assert sec1_kinds == ["table", "chart"]
-    assert isinstance(outline.sections[0].blocks[0], TableBlock)
-    assert outline.sections[0].blocks[0].asset_id == "T0001"
-    assert isinstance(outline.sections[0].blocks[1], ChartBlock)
+    # Section 0 starts with an auto-injected SectionCoverBlock
+    # (non-appendix sections always do); the LLM-emitted blocks follow.
+    llm_blocks = [
+        b for b in outline.sections[0].blocks if b.kind != "section_cover"
+    ]
+    llm_kinds = [b.kind for b in llm_blocks]
+    assert llm_kinds == ["table", "chart"]
+    assert isinstance(llm_blocks[0], TableBlock)
+    assert llm_blocks[0].asset_id == "T0001"
+    assert isinstance(llm_blocks[1], ChartBlock)
 
 
 async def test_comparison_grid_parsed(monkeypatch):
@@ -149,8 +154,10 @@ async def test_comparison_grid_parsed(monkeypatch):
     params, ctx, _ = make_normal_fixture()
     outline = await plan_outline(params, ctx, task_order=params["_task_order"])
 
-    grid_blk = outline.sections[2].blocks[0]
-    assert isinstance(grid_blk, ComparisonGridBlock)
+    grid_blk = next(
+        b for b in outline.sections[2].blocks
+        if isinstance(b, ComparisonGridBlock)
+    )
     assert [c.title for c in grid_blk.columns] == ["短期", "中期", "长期"]
     assert grid_blk.columns[0].items == ["监控吞吐量"]
 
