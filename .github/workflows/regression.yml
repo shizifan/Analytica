@@ -30,6 +30,10 @@ jobs:
       DATABASE_URL: mysql+aiomysql://root@127.0.0.1:3306/analytica
       DATABASE_URL_SYNC: mysql+pymysql://root@127.0.0.1:3306/analytica
       API_MODE: mock
+      # Dummy values so pydantic Settings validation passes — regression
+      # runs --llm-mode=replay and never actually calls Qwen.
+      QWEN_API_BASE: http://localhost/unused
+      QWEN_API_KEY: ci-dummy
 
     steps:
       - uses: actions/checkout@v4
