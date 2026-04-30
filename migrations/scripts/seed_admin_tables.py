@@ -61,6 +61,10 @@ async def _seed_api_endpoints(db) -> int:
             returns=ep.returns,
             param_note=ep.param_note,
             disambiguate=ep.disambiguate,
+            field_schema=[list(row) for row in (ep.field_schema or ())],
+            use_cases=list(ep.use_cases or ()),
+            chain_with=list(ep.chain_with or ()),
+            analysis_note=ep.analysis_note or "",
             source="mock",
             enabled=True,
         )
