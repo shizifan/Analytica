@@ -9,6 +9,7 @@ rest of the backend.
 from __future__ import annotations
 
 import json
+import math
 import time
 from typing import Any, Optional
 
@@ -26,6 +27,31 @@ def _now_ts_ms() -> int:
     return int(time.monotonic() * 1000) - _PROCESS_START_MS
 
 
+def _scrub_non_finite(value: Any) -> Any:
+    # MySQL JSON columns reject NaN/Infinity (RFC 7159), but Python's
+    # json.dumps emits them by default. Upstream API results occasionally
+    # carry float NaN for missing numeric cells, so coerce those to None
+    # before serialisation.
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {k: _scrub_non_finite(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_scrub_non_finite(v) for v in value]
+    return value
+
+
+def _dump_payload(payload: dict[str, Any] | None) -> str | None:
+    if not payload:
+        return None
+    return json.dumps(
+        _scrub_non_finite(payload),
+        ensure_ascii=False,
+        allow_nan=False,
+        default=str,
+    )
+
+
 async def append_chat_message(
     db: AsyncSession,
     session_id: str,
@@ -37,7 +63,7 @@ async def append_chat_message(
     payload: dict[str, Any] | None = None,
 ) -> int:
     """Insert a chat message and return its auto-generated id."""
-    payload_json = json.dumps(payload, ensure_ascii=False, default=str) if payload else None
+    payload_json = _dump_payload(payload)
     result = await db.execute(
         text(
             """
@@ -71,7 +97,7 @@ async def append_thinking_event(
     ts_ms: int | None = None,
 ) -> int:
     """Insert a thinking/tool/decision event and return its id."""
-    payload_json = json.dumps(payload, ensure_ascii=False, default=str) if payload else None
+    payload_json = _dump_payload(payload)
     actual_ts = ts_ms if ts_ms is not None else _now_ts_ms()
     result = await db.execute(
         text(
