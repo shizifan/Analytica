@@ -24,7 +24,8 @@ function sortEmployees(list: EmployeeSummary[]): EmployeeSummary[] {
  * Employees drawer (chat workspace).
  *
  * Two modes:
- *   - list: grid of employee cards; clicking one → detail view
+ *   - list: one-row-per-employee list; clicking a row switches employee
+ *     directly. A small "详情" button on each row opens the detail view.
  *   - detail: read-only profile + version history. Edit happens in
  *     /admin/employees only (link in the detail footer).
  */
@@ -96,21 +97,32 @@ export function EmployeesDrawer({ open, selectedId, onSelect, onClose }: Props) 
         ) : (
           <>
             <div className="an-drawer-body">
-              <div className="an-emp-grid">
+              <div className="an-emp-list">
                 {sortEmployees(employees).map((e: EmployeeSummary) => (
-                  <button
+                  <div
                     key={e.employee_id}
-                    type="button"
-                    className={`an-emp-card${e.employee_id === selectedId ? ' active' : ''}${
+                    role="button"
+                    tabIndex={0}
+                    className={`an-emp-row${e.employee_id === selectedId ? ' active' : ''}${
                       e.status === 'draft' ? ' draft' : ''
                     }${e.status === 'archived' ? ' archived' : ''}`}
-                    onClick={() => setViewingId(e.employee_id)}
+                    onClick={() => {
+                      onSelect(e.employee_id);
+                      onClose();
+                    }}
+                    onKeyDown={(ev) => {
+                      if (ev.key === 'Enter' || ev.key === ' ') {
+                        ev.preventDefault();
+                        onSelect(e.employee_id);
+                        onClose();
+                      }
+                    }}
                   >
-                    <div className="an-emp-head">
+                    <div className="an-emp-row-id">
                       <div className="an-emp-avatar">
                         {e.initials || e.name.slice(0, 2)}
                       </div>
-                      <div style={{ minWidth: 0, flex: 1 }}>
+                      <div className="an-emp-row-id-text">
                         <div className="an-emp-name">{e.name}</div>
                         <div className="an-emp-ver">
                           v{e.version}
@@ -118,38 +130,67 @@ export function EmployeesDrawer({ open, selectedId, onSelect, onClose }: Props) 
                         </div>
                       </div>
                     </div>
-                    <div className="an-emp-desc">{e.description || '（暂无描述）'}</div>
-                    <div className="an-emp-stats">
+                    <div className="an-emp-row-desc">
+                      {e.description || '（暂无描述）'}
+                    </div>
+                    <div className="an-emp-row-stats">
                       {(e.domains ?? []).map((d) => (
                         <span key={d} className="stat">{d}</span>
                       ))}
                       <span className="stat">Tools {e.tools_count ?? '—'}</span>
                       <span className="stat">FAQs {e.faqs_count ?? '—'}</span>
                     </div>
-                  </button>
+                    <button
+                      type="button"
+                      className="an-emp-row-info"
+                      title="查看详情"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        setViewingId(e.employee_id);
+                      }}
+                    >
+                      详情
+                    </button>
+                  </div>
                 ))}
 
-                <button
-                  type="button"
-                  className={`an-emp-card${selectedId === null ? ' active' : ''}`}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className={`an-emp-row${selectedId === null ? ' active' : ''}`}
                   onClick={() => {
                     onSelect(null);
                     onClose();
                   }}
+                  onKeyDown={(ev) => {
+                    if (ev.key === 'Enter' || ev.key === ' ') {
+                      ev.preventDefault();
+                      onSelect(null);
+                      onClose();
+                    }
+                  }}
                 >
-                  <div className="an-emp-head">
-                    <div className="an-emp-avatar" style={{ background: 'var(--an-bg-sunken)', color: 'var(--an-ink-3)', borderColor: 'var(--an-border)' }}>
+                  <div className="an-emp-row-id">
+                    <div
+                      className="an-emp-avatar"
+                      style={{
+                        background: 'var(--an-bg-sunken)',
+                        color: 'var(--an-ink-3)',
+                        borderColor: 'var(--an-border)',
+                      }}
+                    >
                       ANY
                     </div>
-                    <div style={{ minWidth: 0 }}>
+                    <div className="an-emp-row-id-text">
                       <div className="an-emp-name">通用模式</div>
                       <div className="an-emp-ver">无员工限制</div>
                     </div>
                   </div>
-                  <div className="an-emp-desc">
+                  <div className="an-emp-row-desc">
                     不绑定具体数字员工，使用全域 API 与技能。
                   </div>
-                </button>
+                  <div className="an-emp-row-stats" />
+                </div>
               </div>
             </div>
           </>
