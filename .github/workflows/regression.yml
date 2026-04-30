@@ -52,6 +52,9 @@ jobs:
       - name: Apply migrations
         run: uv run alembic upgrade head
 
+      - name: Seed admin tables (api_endpoints / skills / domains)
+        run: uv run python -m migrations.scripts.seed_admin_tables
+
       - name: Seed employees from YAML
         run: uv run python -m migrations.scripts.seed_employees_from_yaml --force
 
