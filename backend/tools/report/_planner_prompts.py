@@ -33,7 +33,8 @@ _OUTPUT_SCHEMA_DOC = """\
         // 每个 block 必有 "kind" 字段, 其余字段按 kind 不同而不同
         {"kind": "kpi_row", "items": [...KPI...]},
         {"kind": "paragraph", "text": str, "style": "body"|"lead"|"callout-warn"|"callout-info"},
-        {"kind": "table", "asset_id": str, "caption": str},        // asset_id 必须存在于"可用 assets"
+        {"kind": "table", "asset_id": str, "caption": str,
+         "highlight_rules": [...规则数组,见下,可省略...]},   // asset_id 必须存在于"可用 assets"
         {"kind": "chart", "asset_id": str, "caption": str},
         {"kind": "chart_table_pair", "chart_asset_id": str, "table_asset_id": str, "layout": "h"|"v"},
         {"kind": "comparison_grid",
@@ -90,6 +91,28 @@ attribution 章节如有多个问题归因, 应优先合成结构化归因表
 - callout-info  : 提示/建议关注/补充说明类信息
 - 风险数据      : 段落使用 callout-warn 强调, 让读者第一眼捕获
 
+## 表格高亮指引 (highlight_rules)
+
+table block 可附带 ``highlight_rules`` 数组让渲染器对单元格染色。
+每条规则形如:
+
+  {"col": "<列名>", "predicate": "<可选>", "color": "<语义色>"}
+  或
+  {"row": <0-based 行号>, "color": "<语义色>"}    // 整行染色
+
+- color 必须取自白名单:
+  positive (利好/达成) | negative (风险/未达成) | neutral
+  | accent (中性强调) | gold | silver | bronze (前 1/2/3 名)
+- predicate 可选, 常用值: "max" | "min" | "negative" | "positive"
+  | ">0" | "<0" | "rank<=3"; 渲染器对未知 predicate 容忍跳过.
+- 当且仅当数据内有真正的对比意义时才上规则; 不要给所有数字加色.
+
+示例: 归因表的"贡献度"列, max 染绿、negative 染红:
+  "highlight_rules": [
+    {"col": "contribution", "predicate": "max",      "color": "positive"},
+    {"col": "contribution", "predicate": "negative", "color": "negative"}
+  ]
+
 ## 图表选型指引
 
 - 时间序列     : LINE 图;
@@ -103,7 +126,8 @@ attribution 章节如有多个问题归因, 应优先合成结构化归因表
 
 1. 引用 asset_id 必须存在于"可用 assets"清单或 synthesised_assets 中,
    严禁编造
-2. block kind 必须是上述 8 种之一(不要用 section_cover, 当前不渲染)
+2. block kind 必须是上述 7 种之一. **不要输出 section_cover** —
+   章节封面页由系统在每个非 appendix 章节自动注入, 你只需关注章节内容.
 3. sections 顺序与输入"章节定义"完全一致, 数量也一致
 4. 不要在 JSON 之外输出任何文字、注释、代码块标记
 """

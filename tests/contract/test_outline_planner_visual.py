@@ -170,9 +170,11 @@ async def test_visual_blocks_present_in_planned_outline(monkeypatch):
     styles = {b.style for b in callout_blocks}
     assert styles == {"callout-warn", "callout-info"}
 
-    # comparison_grid intact in section 2
-    grid = outline.sections[2].blocks[0]
-    assert isinstance(grid, ComparisonGridBlock)
+    # comparison_grid intact in section 2 (skip the auto-injected cover)
+    grid = next(
+        b for b in outline.sections[2].blocks
+        if isinstance(b, ComparisonGridBlock)
+    )
     assert [c.title for c in grid.columns] == [
         "短期 (Q2)", "中期 (H2)", "长期",
     ]
@@ -280,60 +282,193 @@ async def test_pptx_renders_visual_blocks(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Documented gap — LLM cannot drive section_cover or highlight_rules today
+# SectionCoverBlock — auto-injected for non-appendix sections
 # ---------------------------------------------------------------------------
 
-async def test_planner_rejects_section_cover_and_falls_back(monkeypatch):
-    """LLM-emitted ``section_cover`` blocks are rejected by the
-    validator → planner falls back to rule mode (which inserts
-    section_cover blocks automatically). This test pins the contract
-    so we notice if/when planner support is added.
+async def test_llm_path_auto_injects_section_cover(monkeypatch):
+    """The planner now auto-prepends a ``SectionCoverBlock`` to every
+    non-appendix section in the LLM path, matching the rule-fallback
+    convention. The LLM itself must NOT emit ``section_cover`` — the
+    prompt forbids it; the validator still rejects unknown kinds."""
+    _stub_invoke_llm(monkeypatch, _visual_response())
+    params, ctx, _ = make_normal_fixture()
+    outline = await plan_outline(
+        params, ctx,
+        task_order=params["_task_order"],
+        intent=params.get("intent", ""),
+    )
 
-    Symptoms when this contract changes:
-      - planner_mode flips to ``llm`` instead of ``rule_fallback``
-      - degradations list no longer mentions ``section_cover``
+    assert outline.planner_mode == "llm"
+
+    # Non-appendix sections all start with a SectionCoverBlock.
+    non_appendix = [s for s in outline.sections if s.role != "appendix"]
+    assert non_appendix, "fixture should have non-appendix sections"
+    from backend.tools.report._outline import SectionCoverBlock
+    for sec in non_appendix:
+        assert sec.blocks, f"section {sec.name!r} unexpectedly empty"
+        first = sec.blocks[0]
+        assert isinstance(first, SectionCoverBlock), (
+            f"section {sec.name!r} first block is {type(first).__name__}, "
+            "expected SectionCoverBlock"
+        )
+        assert first.title == sec.name
+
+    # Cover indices monotonically increase across sections.
+    indices = [
+        sec.blocks[0].index
+        for sec in non_appendix
+    ]
+    assert indices == sorted(indices)
+    assert indices == list(range(1, len(non_appendix) + 1))
+
+
+async def test_llm_path_does_not_inject_cover_into_appendix(monkeypatch):
+    """Appendix sections never get a SectionCoverBlock — same convention
+    as the rule fallback path (legacy converter explicitly skips it).
+
+    Section role for the LLM path is derived from ``_infer_role`` which
+    has no built-in 附录/appendix mapping today, so we monkeypatch it
+    to return ``appendix`` for one specific section name. This exercises
+    the cover-injection code's role check without needing planner
+    changes elsewhere.
     """
+    # Make the last fixture section name distinctive so we can target it.
+    params, ctx, _ = make_normal_fixture()
+    params["report_structure"]["sections"][-1]["name"] = "附录：原始数据"
+
+    # Adjust LLM response section name and blocks to match.
+    response = _visual_response()
+    response["sections"][-1]["name"] = "附录：原始数据"
+    response["sections"][-1]["role"] = "appendix"
+    response["sections"][-1]["blocks"] = [
+        {"kind": "paragraph", "text": "附录注脚", "style": "lead"},
+    ]
+    _stub_invoke_llm(monkeypatch, response)
+
+    # Force "附录" → "appendix" role inference.
+    from backend.tools.report import _outline_planner as _planner_mod
+    _orig = _planner_mod._infer_role
+
+    def _custom_infer(name):
+        if "附录" in name:
+            return "appendix"
+        return _orig(name)
+    monkeypatch.setattr(_planner_mod, "_infer_role", _custom_infer)
+
+    outline = await plan_outline(
+        params, ctx,
+        task_order=params["_task_order"],
+        intent=params.get("intent", ""),
+    )
+
+    from backend.tools.report._outline import SectionCoverBlock
+    appendix_sections = [s for s in outline.sections if s.role == "appendix"]
+    assert appendix_sections, "test setup should have produced an appendix"
+    for sec in appendix_sections:
+        assert not any(isinstance(b, SectionCoverBlock) for b in sec.blocks), (
+            f"appendix {sec.name!r} should not contain a SectionCoverBlock"
+        )
+
+    # Sanity: non-appendix sections still get covers, so we know the
+    # role check is doing actual work.
+    non_appendix = [s for s in outline.sections if s.role != "appendix"]
+    assert non_appendix
+    for sec in non_appendix:
+        assert any(isinstance(b, SectionCoverBlock) for b in sec.blocks)
+
+
+async def test_llm_planner_still_rejects_llm_emitted_section_cover(monkeypatch):
+    """Even though section_cover is now auto-injected, the LLM is not
+    allowed to emit one itself — the validator must still reject it.
+    This protects the "LLM owns content; system owns chrome" boundary."""
     response = _visual_response()
     response["sections"][0]["blocks"].insert(
         0,
-        {"kind": "section_cover", "index": 1,
-         "title": "LLM 不应能驱动封面", "subtitle": "今后若放开则更新本测试"},
+        {"kind": "section_cover", "index": 99,
+         "title": "LLM 不应主动发封面", "subtitle": "应被验证器拒收"},
     )
     _stub_invoke_llm(monkeypatch, response)
     params, ctx, _ = make_normal_fixture()
     outline = await plan_outline(params, ctx, task_order=params["_task_order"])
 
-    assert outline.planner_mode == "rule_fallback", (
-        "Planner should reject section_cover and fall back to rule mode"
-    )
+    assert outline.planner_mode == "rule_fallback"
     assert any(
         "section_cover" in d.get("reason", "")
         for d in outline.degradations
-    ), f"Expected 'section_cover' in degradations, got {outline.degradations}"
+    )
 
 
-async def test_planner_silently_drops_table_highlight_rules(monkeypatch):
-    """LLM-emitted ``highlight_rules`` on table blocks are silently
-    dropped (the parser ignores unknown fields rather than rejecting
-    the response). Pinning this so we know if/when LLM-driven
-    highlights become a real feature."""
+# ---------------------------------------------------------------------------
+# Highlight rules — LLM can now drive table cell colouring
+# ---------------------------------------------------------------------------
+
+async def test_llm_table_highlight_rules_preserved(monkeypatch):
+    """LLM-emitted ``highlight_rules`` on table blocks now flow through
+    to ``TableBlock.highlight_rules`` instead of being dropped."""
     response = _visual_response()
     for sec in response["sections"]:
         for blk in sec["blocks"]:
             if blk.get("kind") == "table":
-                blk["highlight_rules"] = [{"col": "x", "color": "positive"}]
+                blk["highlight_rules"] = [
+                    {"col": "throughput", "predicate": "max",
+                     "color": "positive"},
+                    {"col": "throughput", "predicate": "negative",
+                     "color": "negative"},
+                ]
 
     _stub_invoke_llm(monkeypatch, response)
     params, ctx, _ = make_normal_fixture()
     outline = await plan_outline(params, ctx, task_order=params["_task_order"])
 
-    # LLM mode still succeeds
     assert outline.planner_mode == "llm"
-    # but every TableBlock comes back with empty highlight_rules
     table_blocks = [
         b for sec in outline.sections for b in sec.blocks
         if b.kind == "table"
     ]
-    assert table_blocks, "expected at least one table block in fixture"
-    for tb in table_blocks:
-        assert tb.highlight_rules == []
+    assert table_blocks
+    rules = [r for tb in table_blocks for r in tb.highlight_rules]
+    assert any(
+        r["color"] == "positive" and r.get("predicate") == "max"
+        for r in rules
+    )
+    assert any(
+        r["color"] == "negative" and r.get("predicate") == "negative"
+        for r in rules
+    )
+
+
+async def test_llm_highlight_rules_drops_unknown_color(monkeypatch):
+    """Rules whose ``color`` falls outside the semantic whitelist are
+    silently filtered. Renderers can't translate arbitrary colour names
+    so passing them through would cause a runtime fault."""
+    response = _visual_response()
+    for sec in response["sections"]:
+        for blk in sec["blocks"]:
+            if blk.get("kind") == "table":
+                blk["highlight_rules"] = [
+                    {"col": "throughput", "color": "magenta"},        # bad
+                    {"col": "throughput", "color": "positive"},       # good
+                    {"col": "throughput", "color": "negative",        # good
+                     "predicate": "negative"},
+                    {"predicate": "max", "color": "gold"},            # bad: no col/row
+                    {"row": 0, "color": "neutral"},                   # good: row
+                ]
+
+    _stub_invoke_llm(monkeypatch, response)
+    params, ctx, _ = make_normal_fixture()
+    outline = await plan_outline(params, ctx, task_order=params["_task_order"])
+
+    table_blocks = [
+        b for sec in outline.sections for b in sec.blocks
+        if b.kind == "table"
+    ]
+    assert table_blocks
+    all_rules = [r for tb in table_blocks for r in tb.highlight_rules]
+    colors = {r["color"] for r in all_rules}
+    assert "magenta" not in colors
+    assert {"positive", "negative", "neutral"}.issubset(colors)
+    # bad: no col + no row should have been dropped
+    assert not any(
+        r.get("color") == "gold" and "col" not in r and "row" not in r
+        for r in all_rules
+    )
