@@ -13,6 +13,7 @@ import pytest
 pytestmark = pytest.mark.health
 
 
+@pytest.mark.llm_replay
 async def test_perception_runs_with_minimal_state(recorded_llm, test_db_session):
     """Perception node accepts a state with raw_query and returns a state
     with structured_intent populated.
