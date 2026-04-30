@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 Q1 港区吞吐量分析报告 (Enhanced)</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<style>
+body { font-family: 'Microsoft YaHei', sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; color: #333333; }
+h1 { color: #1E3A5F; text-align: center; border-bottom: 3px solid #F0A500; padding-bottom: 10px; }
+h2 { color: #1E3A5F; margin-top: 30px; }
+h3 { color: #2D5F8A; }
+.meta { text-align: center; color: #666; margin-bottom: 30px; }
+.section { margin-bottom: 40px; }
+.chart-container { width: 100%; height: 400px; margin: 20px 0; }
+.narrative { line-height: 1.8; text-indent: 2em; }
+.summary { background: #1E3A5F; color: white; padding: 20px; border-radius: 8px; margin-top: 40px; }
+.summary h2 { color: #F0A500; }
+table.stats { width: 100%; border-collapse: collapse; margin: 16px 0; }
+table.stats th { background: #1E3A5F; color: white; padding: 8px 12px; text-align: left; font-size: 13px; }
+table.stats td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-size: 13px; font-family: 'Calibri', monospace; }
+table.stats tr:nth-child(even) { background: #F5F7FA; }
+.kpi-row { display: flex; gap: 16px; margin: 16px 0; flex-wrap: wrap; }
+.kpi-card { flex: 1; min-width: 180px; background: #F5F7FA; border-radius: 8px; padding: 16px; text-align: center; border-left: 4px solid #F0A500; }
+.kpi-card .label { font-size: 12px; color: #546E7A; margin-bottom: 4px; }
+.kpi-card .value { font-size: 28px; font-weight: bold; font-family: 'Calibri', monospace; }
+.kpi-card .value.positive { color: #2E7D32; }
+.kpi-card .value.negative { color: #C62828; }
+.kpi-card .sub { font-size: 11px; color: #546E7A; }
+.comparison-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 24px 0; }
+.comparison-col { background: white; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); overflow: hidden; transition: box-shadow 0.2s; }
+.comparison-col:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.12); }
+.comparison-col .col-title { background: #1E3A5F; color: white; padding: 10px 16px; font-weight: bold; font-size: 14px; text-align: center; }
+.comparison-col ul { padding: 12px 16px 16px 32px; margin: 0; line-height: 1.7; font-size: 13px; }
+.comparison-col ul li { margin-bottom: 6px; }
+.chart-table-pair { display: flex; gap: 16px; margin: 24px 0; align-items: stretch; }
+.chart-table-pair[data-layout="v"] { flex-direction: column; }
+.chart-table-pair[data-layout="h"] > * { flex: 1; min-width: 0; }
+.chart-table-pair > .chart-pane { flex: 1.2; }
+.chart-table-pair > .table-pane { flex: 1; }
+.chart-table-pair > .table-pane table { width: 100%; }
+.callout { border-left: 4px solid #546E7A; background: #F5F7FA; padding: 12px 16px; margin: 16px 0; border-radius: 4px; line-height: 1.7; }
+.callout.warn { border-left-color: #C62828; background: #FEF1F1; }
+.callout.info { border-left-color: #2D5F8A; background: #E3F2FD; }
+.callout::before { display: inline-block; margin-right: 8px; font-weight: bold; }
+.callout.warn::before { content: "⚠️ 注意"; color: #C62828; }
+.callout.info::before { content: "💡 提示"; color: #2D5F8A; }
+
+/* Phase 5.4 — auto dark mode (HTML only). Other backends ignore this
+   block since DOCX / PPT clients don't honour prefers-color-scheme. */
+@media (prefers-color-scheme: dark) {
+    body { background: #1a1a1a; color: #e0e0e0; }
+    h2 { color: #6BA8E8; border-color: #444; }
+    h3 { color: #8BC34A; }
+    .meta { color: #999; }
+    .narrative { color: #d0d0d0; }
+    table.stats { background: #242424; }
+    table.stats th { background: #2a4a6e; color: #fff; }
+    table.stats td { color: #d0d0d0; border-bottom-color: #333; }
+    table.stats tr:nth-child(even) { background: #2a2a2a; }
+    .kpi-card { background: #2a2a2a; color: #e0e0e0; }
+    .kpi-card .label { color: #aaa; }
+    .kpi-card .sub { color: #888; }
+    .summary { background: #2a4a6e; }
+    .callout { background: #2a2a2a; color: #d0d0d0; }
+    .callout.warn { background: #3a1f1f; color: #ffb4b4; }
+    .callout.info { background: #1f2f3f; color: #b4d4f0; }
+    .comparison-col { background: #2a2a2a; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
+    .comparison-col:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.6); }
+}
+</style>
+</head>
+<body>
+<h1>2026 Q1 港区吞吐量分析报告 (Enhanced)</h1>
+<div class="meta">Analytica Test | 2026-04-29</div>
+<div class="section"><div class="kpi-row"><div class="kpi-card"><div class="label">总吞吐量</div><div class="value positive">9500.6 万吨</div><div class="sub">2026 Q1</div></div><div class="kpi-card"><div class="label">同比增长</div><div class="value positive">12.0%</div><div class="sub">YoY</div></div><div class="kpi-card"><div class="label">最高港区</div><div class="value">大连港</div><div class="sub">4500.5 万吨</div></div><div class="kpi-card"><div class="label">负增长港</div><div class="value negative">锦州港</div><div class="sub">-3.0%</div></div></div></div>
+<div class="section"><h2>一、执行摘要</h2>
+<div class="narrative">2026 Q1 三港区合计吞吐量 9500.6 万吨，同比增长 12%。大连港持续领跑，锦州港受天气拖累出现负增长。</div>
+</div>
+<div class="section"><h2>二、现状分析</h2>
+<div class="chart-table-pair" data-layout="h"><div class="chart-pane"><div id="chart_0" class="chart-container" data-chart-type="bar"></div><script>(function(){var c=echarts.init(document.getElementById("chart_0"));c.setOption({"title": {"text": "港区吞吐量"}, "xAxis": {"type": "category", "data": ["大连港", "营口港", "锦州港"]}, "yAxis": {"type": "value"}, "series": [{"type": "bar", "data": [4500.5, 3200.1, 1800.0], "label": {"show": true, "position": "top"}}], "tooltip": {"trigger": "axis"}});window.addEventListener("resize",function(){c.resize();});})();</script></div><div class="table-pane"><h3>数据明细</h3><table class="stats"><tr><th>regionName</th><th>throughput</th><th>yoy</th></tr><tr><td>大连港</td><td>4,500.50</td><td>0.1200</td></tr><tr><td>营口港</td><td>3,200.10</td><td>0.0500</td></tr><tr><td>锦州港</td><td>1,800.00</td><td>-0.0300</td></tr></table></div></div>
+<div id="chart_1" class="chart-container" data-chart-type="pie"></div><script>(function(){var c=echarts.init(document.getElementById("chart_1"));c.setOption({"title": {"text": "市场份额"}, "series": [{"type": "pie", "data": [{"name": "大连港", "value": 4500.5}, {"name": "营口港", "value": 3200.1}, {"name": "锦州港", "value": 1800.0}]}], "tooltip": {"trigger": "axis"}});window.addEventListener("resize",function(){c.resize();});})();</script>
+<h3>增长率指标</h3><div class="kpi-row"><div class="kpi-card"><div class="label">throughput</div><div class="value positive">↑12.0%</div><div class="sub">同比</div><div class="value positive">↑3.0%</div><div class="sub">环比</div></div><div class="kpi-card"><div class="label">share</div><div class="value positive">↑4.0%</div><div class="sub">同比</div><div class="value negative">↓1.0%</div><div class="sub">环比</div></div></div>
+</div>
+<div class="section"><h2>三、归因分析</h2>
+<h3>归因贡献度</h3><table class="stats"><tr><th>factor</th><th>contribution</th></tr><tr><td style="background:rgb(240,165,0);color:#1E293B;font-weight:bold;">船舶到港数</td><td style="background:rgb(198,40,40);color:#FFFFFF;font-weight:bold;">0.4200</td></tr><tr><td style="background:rgb(240,165,0);color:#1E293B;font-weight:bold;">装卸效率</td><td style="background:rgb(198,40,40);color:#FFFFFF;font-weight:bold;">0.3100</td></tr><tr><td style="background:rgb(240,165,0);color:#1E293B;font-weight:bold;">天气因素</td><td style="background:rgb(198,40,40);color:#FFFFFF;font-weight:bold;">-0.0800</td></tr><tr><td style="background:rgb(240,165,0);color:#1E293B;font-weight:bold;">其它</td><td style="background:rgb(198,40,40);color:#FFFFFF;font-weight:bold;">0.0500</td></tr></table>
+<div class="callout warn">锦州港 yoy -3% 已连续两个季度走弱，需要警惕设备老化风险。</div>
+<div class="callout info">装卸效率提升对总吞吐贡献 31%，推荐复制至其它港区。</div>
+</div>
+<div class="section"><h2>四、行动建议</h2>
+<div class="comparison-grid"><div class="comparison-col"><div class="col-title">短期 (Q2)</div><ul><li>锦州港启动设备巡检专项</li><li>复用大连港装卸 SOP</li></ul></div><div class="comparison-col"><div class="col-title">中期 (H2)</div><ul><li>营口港运力扩张 +15%</li><li>天气联动调度系统上线</li></ul></div><div class="comparison-col"><div class="col-title">长期 (2027+)</div><ul><li>三港区一体化调度</li><li>智能设备改造完成</li></ul></div></div>
+<div class="summary"><h2>附录：统计明细</h2>
+<h3>统计数据概览</h3><table class="stats"><tr><th>指标</th><th>均值</th><th>中位数</th><th>标准差</th><th>最小值</th><th>最大值</th></tr><tr><td><b>throughput</b></td><td>3,166.87</td><td>-</td><td>1,102.30</td><td>1,800.00</td><td>4,500.50</td></tr></table>
+<p>以上分析基于数据，仅供参考。</p>
+</div>
+</div>
+</body>
+</html>

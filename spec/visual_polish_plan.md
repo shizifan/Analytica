@@ -18,7 +18,7 @@
 | 3 | 版式与编排 | 2026-04-29 | ✅ |
 | 4 | 信息层次与强调 | 2026-04-29 | ✅ |
 | 5 | 视觉风格一致性 | 2026-04-29 | ✅ |
-| 6 | 质量保障 | — | 待实施 |
+| 6 | 质量保障 | 2026-04-30 | ✅ |
 
 **阶段 0 摘要（已交付）**：
 - 新增 `_pptxgen_commands.py`（SlideCommand DSL，6 种 command type）
@@ -801,13 +801,13 @@ Theme 不只颜色，含：
 - PPT size ≤ 1MB（含原生图表）
 - 超出报警，不直接 fail
 
-### 10.7 阶段 6 完成标志
+### 10.7 阶段 6 完成标志（2026-04-30 ✅）
 
-- [ ] enhanced visual fixture 4 端 golden 就位
-- [ ] perceptual hash 视觉回归落地
-- [ ] 跨平台 spot check 矩阵文档化
-- [ ] LLM planner 视觉验收测试通过
-- [ ] CI 集成 + 性能预算就位
+- [x] enhanced visual fixture 4 端 golden 就位 — `tests/fixtures/report_baseline/enhanced/` + `tests/contract/test_enhanced_baseline.py`
+- [x] perceptual hash 视觉回归落地 — `tests/visual/test_report_visual.py`（slow，依赖 LibreOffice + poppler-utils + Pillow + imagehash；deps 缺失时 graceful skip）
+- [x] 跨平台 spot check 矩阵文档化 — [`spec/visual_compatibility_matrix.md`](./visual_compatibility_matrix.md)
+- [x] LLM planner 视觉验收测试通过 — `tests/contract/test_outline_planner_visual.py`（10 PASSED，含 section_cover 拒绝 / highlight_rules 静默丢弃 gap 守卫）
+- [x] CI 集成 + 性能预算就位 — `.github/workflows/visual_regression.yml` + `tests/contract/test_perf_budget.py`
 
 ---
 
