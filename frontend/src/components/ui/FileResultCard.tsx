@@ -83,19 +83,11 @@ export function FileResultCard({ primary }: Props) {
     if (!artifactId || converting) return;
     setConvertError(null);
     setConverting(fmt);
-    // Open window inside user-gesture context to avoid popup blocker.
-    const win = window.open('', '_blank', 'noopener');
     try {
       const { artifact_id: newId } = await api.convertReport(artifactId, fmt);
       setConverted((m) => ({ ...m, [fmt]: newId }));
-      const url = `/analytica/api/reports/${newId}/download`;
-      if (win) {
-        win.location.href = url;
-      } else {
-        triggerDownload(url);
-      }
+      triggerDownload(`/analytica/api/reports/${newId}/download`);
     } catch (err) {
-      win?.close();
       const msg = err instanceof Error ? err.message : String(err);
       setConvertError(msg);
     } finally {
