@@ -46,10 +46,12 @@ asyncio_default_fixture_loop_scope = "session"
 testpaths = ["tests"]
 pythonpath = ["."]
 # Default deselects:
-#   - scenario: business-specific paths (run on demand / pre-release)
-#   - llm_real: hits real LLM API (run nightly / manual)
-#   - slow:    > 5s
-addopts = "-m 'not scenario and not llm_real and not slow'"
+#   - scenario:   business-specific paths (run on demand / pre-release)
+#   - llm_real:   hits real LLM API (run nightly / manual)
+#   - llm_replay: depends on tests/llm_cache fixtures — brittle to prompt
+#                 drift, run locally when re-recording or auditing
+#   - slow:       > 5s
+addopts = "-m 'not scenario and not llm_real and not llm_replay and not slow'"
 markers = [
     "contract: schema/registry/config invariants — must pass on every PR",
     "health: per-layer minimal sanity check",
@@ -58,5 +60,6 @@ markers = [
     "scenario: business-specific (NOT in regression suite — run with -m scenario)",
     "slow: > 5s — opt-in via -m slow",
     "llm_real: hits real LLM API — opt-in via -m llm_real",
+    "llm_replay: depends on recorded LLM cache fixtures — opt-in via -m llm_replay (re-record with --llm-mode=record-missing)",
     "integration: deprecated, kept for back-compat with legacy tests",
 ]

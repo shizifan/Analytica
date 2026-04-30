@@ -75,6 +75,7 @@ def test_planning_template_bypass_yields_valid_plan():
 # ── Live record-replay: real planning LLM call ────────────────
 
 
+@pytest.mark.llm_replay
 async def test_generate_plan_via_recorded_llm(recorded_llm):
     """End-to-end planning: real LLM (or cached) → AnalysisPlan that
     survives the validator. Uses one canonical intent."""
