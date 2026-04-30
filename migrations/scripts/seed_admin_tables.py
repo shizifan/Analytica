@@ -2,7 +2,7 @@
 
 Populates:
   - api_endpoints  ← backend/agent/api_registry.ALL_ENDPOINTS
-  - skills         ← SkillRegistry singleton
+  - tools          ← ToolRegistry singleton
   - domains        ← DOMAIN_INDEX
 
 Idempotent — upserts by primary key. Run once per schema change:
@@ -61,6 +61,10 @@ async def _seed_api_endpoints(db) -> int:
             returns=ep.returns,
             param_note=ep.param_note,
             disambiguate=ep.disambiguate,
+            field_schema=[list(row) for row in (ep.field_schema or ())],
+            use_cases=list(ep.use_cases or ()),
+            chain_with=list(ep.chain_with or ()),
+            analysis_note=ep.analysis_note or "",
             source="mock",
             enabled=True,
         )
@@ -69,28 +73,28 @@ async def _seed_api_endpoints(db) -> int:
 
 
 async def _seed_tools(db) -> int:
-    from backend.tools.loader import load_all_skills
-    from backend.tools.registry import SkillRegistry
+    from backend.tools.loader import load_all_tools
+    from backend.tools.registry import ToolRegistry
 
-    load_all_skills()
-    registry = SkillRegistry.get_instance()
+    load_all_tools()
+    registry = ToolRegistry.get_instance()
     count = 0
-    for skill in registry._skills.values():
+    for tool in registry._tools.values():
         category_name = (
-            skill.category.name
-            if hasattr(skill.category, "name")
-            else str(skill.category)
+            tool.category.name
+            if hasattr(tool.category, "name")
+            else str(tool.category)
         )
         kind = SKILL_KIND_BY_CATEGORY.get(category_name, category_name.lower())
         await admin_store.upsert_tool(
             db,
-            skill_id=skill.skill_id,
-            name=getattr(skill, "name", None) or skill.skill_id,
+            tool_id=tool.tool_id,
+            name=getattr(tool, "name", None) or tool.tool_id,
             kind=kind,
-            description=getattr(skill, "description", None),
-            input_spec=getattr(skill, "input_spec", None),
-            output_spec=getattr(skill, "output_spec", None),
-            domains=list(getattr(skill, "domains", None) or []),
+            description=getattr(tool, "description", None),
+            input_spec=getattr(tool, "input_spec", None),
+            output_spec=getattr(tool, "output_spec", None),
+            domains=list(getattr(tool, "domains", None) or []),
             enabled=True,
         )
         count += 1

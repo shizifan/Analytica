@@ -4,8 +4,11 @@ Cross-layer health: catches wiring breaks the per-layer health tests
 miss — e.g., perception's StructuredIntent shape divergent from what
 planning expects.
 
-Marked `health` (not a separate `smoke` tier) so it joins the default
-regression run. Refresh cache: `--llm-mode=record-missing`.
+Marked `llm_replay` (deselected from the default regression run) on
+top of `health` because the assertions depend on recorded LLM
+fixtures in `tests/llm_cache/` which drift whenever perception or
+planning prompts change. Run locally with `-m llm_replay`; refresh
+cache via `--llm-mode=record-missing`.
 """
 from __future__ import annotations
 
@@ -13,7 +16,7 @@ import pytest
 
 from backend.tools.loader import load_all_tools
 
-pytestmark = pytest.mark.health
+pytestmark = [pytest.mark.health, pytest.mark.llm_replay]
 
 
 @pytest.fixture(scope="module", autouse=True)
