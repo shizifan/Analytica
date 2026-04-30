@@ -32,6 +32,13 @@ dev = [
     "pytest-xdist>=3.8.0",
     "respx>=0.23.1",
 ]
+# Optional deps for the perceptual-hash visual regression suite
+# (tests/visual/). Also requires LibreOffice + poppler-utils on PATH.
+# Install with: `uv sync --group visual`
+visual = [
+    "Pillow>=10.0",
+    "imagehash>=4.3",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

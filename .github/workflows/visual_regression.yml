@@ -1,0 +1,97 @@
+name: Visual regression
+
+# Phase 6 / 6.5 — gated visual regression suite.
+#
+# Three triggers:
+#   1. PR with the "visual" label  → quick run (perceptual hash + structural)
+#   2. Schedule (nightly)          → full visual matrix + render artifacts
+#   3. Manual dispatch             → on demand
+#
+# Structural baseline (test_enhanced_baseline.py) already runs in the main
+# regression workflow on every PR. This workflow adds the binary-pixel
+# layer that needs LibreOffice + poppler-utils + Pillow + imagehash.
+
+on:
+  pull_request:
+    types: [labeled, synchronize, opened, reopened]
+  schedule:
+    # 02:30 UTC nightly — runs against current default branch
+    - cron: "30 2 * * *"
+  workflow_dispatch: {}
+
+# Skip on PR events unless the "visual" label is present.
+jobs:
+  visual:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'pull_request' &&
+       contains(github.event.pull_request.labels.*.name, 'visual'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # Pinned so renders don't drift just because LibreOffice picks a
+      # different default font.
+      DEBIAN_FRONTEND: noninteractive
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install LibreOffice + poppler-utils + CJK fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libreoffice-core libreoffice-writer libreoffice-impress \
+            poppler-utils \
+            fonts-noto-cjk fonts-noto-cjk-extra
+          soffice --version
+          pdftoppm -v 2>&1 | head -1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: latest
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install dependencies (dev + visual)
+        run: uv sync --group dev --group visual
+
+      # ── Structural baseline (4 ends, normal + enhanced) ──
+      - name: Structural baseline
+        run: |
+          uv run pytest \
+            tests/contract/test_report_outputs_baseline.py \
+            tests/contract/test_enhanced_baseline.py \
+            tests/contract/test_outline_planner_visual.py \
+            -v --tb=short
+
+      # ── Perceptual hash visual regression ──
+      - name: Perceptual hash regression
+        run: uv run pytest tests/visual/ -m slow -v --tb=short
+
+      # ── Performance budget ──
+      - name: Performance budget
+        run: uv run pytest tests/contract/test_perf_budget.py -v --tb=short
+
+      # ── Render artifacts (nightly only) ──
+      - name: Render PDFs for inspection
+        if: github.event_name == 'schedule'
+        run: |
+          mkdir -p artifacts
+          for f in tests/fixtures/report_baseline/*/golden.docx \
+                   tests/fixtures/report_baseline/*/golden.pptx; do
+            soffice --headless --nologo --convert-to pdf \
+              --outdir artifacts "$f" || true
+          done
+          ls -la artifacts || true
+
+      - name: Upload render artifacts
+        if: github.event_name == 'schedule'
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-renders-${{ github.run_id }}
+          path: artifacts/
+          retention-days: 14
+          if-no-files-found: warn
