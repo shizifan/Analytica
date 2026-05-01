@@ -20,7 +20,7 @@ also consume.
 """
 from __future__ import annotations
 
-from backend.tools.report._kpi_extractor import KPIItem
+from backend.tools.report._outline import KPIItem
 from backend.tools.report._outline import (
     ChartAsset,
     ChartBlock,
@@ -261,5 +261,5 @@ def make_enhanced_outline() -> ReportOutline:
             "T0002": attribution_table,
             "S0001": stats,
         },
-        planner_mode="rule_fallback",
+        planner_mode="llm",
     )

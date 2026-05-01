@@ -1,16 +1,15 @@
-"""Outline planner — Step 8.
+"""Outline planner — LLM-driven Stage-2 entry point.
 
-Stage-2 entry point ``plan_outline`` returns a ``ReportOutline`` ready
-for rendering. Two paths controlled by ``REPORT_OUTLINE_PLANNER_ENABLED``:
+``plan_outline`` runs ``collect_and_associate`` (Stage 1), prepares
+asset/item summaries, calls the LLM once to produce a complete outline
+(``kpi_summary`` + ``sections.blocks`` + synthesised blocks like the
+attribution table or recommendation grid), validates it against the
+asset registry, and returns a ``ReportOutline`` ready for rendering.
 
-- **LLM (default when flag on)**: one call produces a full outline —
-  ``kpi_summary`` + ``sections.blocks`` + any synthesised blocks
-  (e.g. comparison_grid for the recommendation section). Combines the
-  KPI extraction + content composition pass that used to be two
-  separate LLM calls.
-- **Rule fallback**: byte-equivalent to the pre-Step-8 path
-  (``extract_kpis_llm`` + ``collect_and_build_outline``). Always used
-  when the flag is off, and as a safety net when the LLM path raises.
+There is no rule-based fallback: when the LLM fails, the call raises
+``_LLMPlannerFailure`` and the caller must decide how to surface the
+error. Keeping a single planning path eliminates the silent
+divergence that the previous fallback could mask.
 """
 from __future__ import annotations
 
@@ -22,10 +21,16 @@ from typing import Any
 from backend.config import get_settings
 from backend.tools._llm import invoke_llm
 from backend.tools.report._content_collector import (
+    ChartDataItem,
     ContentItem,
+    DataFrameItem,
+    GrowthItem,
+    NarrativeItem,
+    ReportContent,
+    StatsTableItem,
+    SummaryTextItem,
     collect_and_associate,
 )
-from backend.tools.report._kpi_extractor import KPIItem, extract_kpis_llm
 from backend.tools.report._outline import (
     Asset,
     Block,
@@ -35,21 +40,19 @@ from backend.tools.report._outline import (
     ComparisonGridBlock,
     GridColumn,
     GrowthIndicatorsBlock,
+    KPIItem,
     KpiRowBlock,
     OutlineSection,
     ParagraphBlock,
     ReportOutline,
     SectionCoverBlock,
+    SectionRole,
     StatsAsset,
     TableAsset,
     TableBlock,
+    new_asset_id,
     new_block_id,
     reset_id_counters,
-)
-from backend.tools.report._outline_legacy import (
-    _convert_item,
-    _infer_role,
-    collect_and_build_outline,
 )
 from backend.tools.report._planner_prompts import (
     OUTLINE_PLANNER_SYSTEM,
@@ -64,6 +67,15 @@ logger = logging.getLogger("analytica.tools.report._outline_planner")
 # Public entry point
 # ---------------------------------------------------------------------------
 
+class _LLMPlannerFailure(Exception):
+    """Raised when the LLM planner output is unusable.
+
+    Wraps any failure mode (network error, malformed JSON, schema
+    violation, dangling asset_id, …). Callers that need a usable
+    outline must handle this — there is no built-in fallback.
+    """
+
+
 async def plan_outline(
     params: dict[str, Any],
     context: dict[str, Any],
@@ -75,97 +87,15 @@ async def plan_outline(
 ) -> ReportOutline:
     """Return a ``ReportOutline`` ready for rendering.
 
-    The caller (each ``*_gen.py``) does not need to know whether the
-    LLM was used — both paths produce a valid outline. Failure modes
-    are captured in ``outline.degradations`` so downstream metadata
-    surfaces them without the renderer caring.
-    """
-    settings = get_settings()
-    degradation: dict[str, Any] | None = None
-
-    if settings.REPORT_OUTLINE_PLANNER_ENABLED:
-        try:
-            outline = await _llm_plan_outline(
-                params, context,
-                task_order=task_order, intent=intent,
-                task_id=task_id, span_emit=span_emit,
-            )
-            outline.planner_mode = "llm"
-            _maybe_dump(outline, task_id, settings)
-            return outline
-        except _LLMPlannerFailure as e:
-            logger.warning("LLM planner failed (%s); falling back to rule", e)
-            degradation = {
-                "kind": "outline_planner_fallback",
-                "reason": str(e),
-            }
-        except Exception as e:  # noqa: BLE001 — last-ditch safety net
-            logger.exception("LLM planner unexpected error: %s", e)
-            degradation = {
-                "kind": "outline_planner_fallback",
-                "reason": f"unexpected: {type(e).__name__}",
-            }
-
-    outline = await _rule_plan_outline(
-        params, context,
-        task_order=task_order, intent=intent,
-        task_id=task_id, span_emit=span_emit,
-    )
-    if degradation:
-        outline.degradations.append(degradation)
-    _maybe_dump(outline, task_id, settings)
-    return outline
-
-
-# ---------------------------------------------------------------------------
-# Rule fallback
-# ---------------------------------------------------------------------------
-
-async def _rule_plan_outline(
-    params: dict[str, Any],
-    context: dict[str, Any],
-    *,
-    task_order: list[str] | None,
-    intent: str,
-    task_id: str,
-    span_emit: Any,
-) -> ReportOutline:
-    """Rule fallback — byte-equivalent to the pre-Step-8 output path."""
-    kpi_cards = await extract_kpis_llm(
-        intent, context, span_emit=span_emit, task_id=task_id,
-    )
-    outline = collect_and_build_outline(
-        params, context,
-        task_order=task_order, kpi_cards=kpi_cards,
-    )
-    outline.planner_mode = "rule_fallback"
-    return outline
-
-
-# ---------------------------------------------------------------------------
-# LLM main path
-# ---------------------------------------------------------------------------
-
-class _LLMPlannerFailure(Exception):
-    """Raised when LLM output is unusable; triggers rule fallback."""
-
-
-async def _llm_plan_outline(
-    params: dict[str, Any],
-    context: dict[str, Any],
-    *,
-    task_order: list[str] | None,
-    intent: str,
-    task_id: str,
-    span_emit: Any,
-) -> ReportOutline:
-    """LLM-driven planning. Pipeline:
-
+    Pipeline:
       1. ``collect_and_associate`` runs Stage-1 collection.
       2. Convert items → assets (without binding to sections).
       3. Build prompt + call LLM.
       4. Parse + validate JSON response (schema + asset_id existence).
       5. Compose ``ReportOutline`` from validated response.
+
+    Raises ``_LLMPlannerFailure`` when the LLM call fails or the
+    response is malformed.
     """
     rc = collect_and_associate(params, context, task_order=task_order)
 
@@ -208,9 +138,96 @@ async def _llm_plan_outline(
 
     _validate_outline_response(parsed, assets, section_defs)
 
-    return _build_outline_from_response(
+    outline = _build_outline_from_response(
         parsed, rc, assets, section_defs, intent,
     )
+    _maybe_dump(outline, task_id, settings)
+    return outline
+
+
+# ---------------------------------------------------------------------------
+# Section role inference (was _outline_legacy._infer_role — moved here so
+# the planner is self-contained after the rule-fallback removal).
+# ---------------------------------------------------------------------------
+
+def _infer_role(name: str) -> SectionRole:
+    if any(k in name for k in ("摘要", "概览", "执行摘要")):
+        return "summary"
+    if any(k in name for k in ("建议", "结论", "总结")):
+        return "recommendation"
+    if any(k in name for k in ("归因", "原因")):
+        return "attribution"
+    return "status"
+
+
+# ---------------------------------------------------------------------------
+# ContentItem → (Block, Asset) conversion (was _outline_legacy._convert_item).
+# Used to build the asset registry from Stage-1 items so the LLM has a
+# concrete catalogue to reference when planning blocks.
+# ---------------------------------------------------------------------------
+
+def _convert_item(item: ContentItem) -> tuple[Block | None, Asset | None]:
+    if isinstance(item, NarrativeItem):
+        return ParagraphBlock(
+            block_id=new_block_id(),
+            text=item.text,
+            style="body",
+        ), None
+
+    if isinstance(item, StatsTableItem):
+        asset = StatsAsset(
+            asset_id=new_asset_id("stats"),
+            source_task=item.source_task,
+            summary_stats=item.summary_stats,
+        )
+        return TableBlock(
+            block_id=new_block_id(),
+            asset_id=asset.asset_id,
+            caption="统计数据概览",
+        ), asset
+
+    if isinstance(item, GrowthItem):
+        return GrowthIndicatorsBlock(
+            block_id=new_block_id(),
+            growth_rates=item.growth_rates,
+        ), None
+
+    if isinstance(item, ChartDataItem):
+        asset = ChartAsset(
+            asset_id=new_asset_id("chart"),
+            source_task=item.source_task,
+            option=item.option,
+            endpoint=item.endpoint_name,
+        )
+        return ChartBlock(
+            block_id=new_block_id(),
+            asset_id=asset.asset_id,
+            caption=item.title or "图表",
+        ), asset
+
+    if isinstance(item, DataFrameItem):
+        df = item.df
+        asset = TableAsset(
+            asset_id=new_asset_id("table"),
+            source_task=item.source_task,
+            df_records=df.to_dict(orient="records"),
+            columns_meta=[{"name": str(c)} for c in df.columns],
+            endpoint=item.endpoint_name,
+        )
+        return TableBlock(
+            block_id=new_block_id(),
+            asset_id=asset.asset_id,
+            caption="数据明细",
+        ), asset
+
+    if isinstance(item, SummaryTextItem):
+        return ParagraphBlock(
+            block_id=new_block_id(),
+            text=item.text,
+            style="lead",
+        ), None
+
+    return None, None
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +235,7 @@ async def _llm_plan_outline(
 # ---------------------------------------------------------------------------
 
 def _items_to_assets(
-    rc,
+    rc: ReportContent,
 ) -> tuple[dict[str, Asset], dict[str, list[tuple[Block, Asset | None]]]]:
     """Convert all ContentItems to (block, asset) pairs without binding
     to sections. Returns ``(assets_by_id, items_grouped_by_source_task)``.
@@ -271,7 +288,7 @@ def _summarise_assets(assets: dict[str, Asset]) -> list[dict[str, Any]]:
 
 
 def _summarise_raw_items(
-    rc,
+    rc: ReportContent,
     items_by_task: dict[str, list[tuple[Block, Asset | None]]],
 ) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
@@ -425,7 +442,7 @@ def _validate_outline_response(
 
 def _build_outline_from_response(
     parsed: dict[str, Any],
-    rc,
+    rc: ReportContent,
     assets: dict[str, Asset],
     section_defs: list[dict[str, str]],
     intent: str,
@@ -452,13 +469,12 @@ def _build_outline_from_response(
         kpi_summary=kpi_summary,
         assets=dict(assets),
         degradations=list(rc.degradations),
+        planner_mode="llm",
     )
 
-    # Auto-inject SectionCoverBlock for each non-appendix section so the
-    # LLM path produces the same "深色封面页" visual as the rule fallback
-    # (see ``_outline_legacy.collect_and_build_outline``). The LLM must
-    # NOT emit section_cover blocks itself — the prompt forbids it and
-    # the validator rejects unknown kinds. Subtitle is intentionally
+    # Auto-inject SectionCoverBlock for each non-appendix section. The
+    # LLM must NOT emit section_cover blocks itself — the prompt forbids
+    # it and the validator rejects unknown kinds. Subtitle is intentionally
     # blank: the planner currently has no way to reason about a tagline,
     # and renderers degrade cleanly when subtitle is empty.
     cover_index = 0

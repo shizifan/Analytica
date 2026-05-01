@@ -18,7 +18,7 @@ import pandas as pd
 from backend.tools._field_labels import metric_label
 from backend.tools.report import _theme as T
 from backend.tools.report._block_renderer import BlockRendererBase
-from backend.tools.report._kpi_extractor import KPIItem
+from backend.tools.report._outline import KPIItem
 from backend.tools.report._outline import (
     Asset,
     ChartBlock,

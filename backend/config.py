@@ -44,16 +44,6 @@ class Settings(BaseSettings):
         description="Enable LLM agent loop for report generation; set False to use deterministic mode only",
     )
 
-    REPORT_OUTLINE_PLANNER_ENABLED: bool = Field(
-        default=False,
-        description=(
-            "Enable LLM-driven outline planning (Step 8 of the report refactor). "
-            "When False the planner falls back to the rule-based path which is "
-            "byte-equivalent to the pre-Step-8 output. Default off pending "
-            "production rollout."
-        ),
-    )
-
     REPORT_DEBUG_DUMP_OUTLINE: bool = Field(
         default=False,
         description="Dump the planned ReportOutline to data/reports/outline_<task_id>.json for debugging.",

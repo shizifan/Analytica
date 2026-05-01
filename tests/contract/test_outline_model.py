@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.tools.report._kpi_extractor import KPIItem
+from backend.tools.report._outline import KPIItem
 from backend.tools.report._outline import (
     ChartAsset,
     ChartBlock,
@@ -88,7 +88,7 @@ def test_default_outline_has_schema_version_and_empty_collections():
     assert o.sections == []
     assert o.assets == {}
     assert o.degradations == []
-    assert o.planner_mode == "rule_fallback"
+    assert o.planner_mode == "llm"
 
 
 def test_each_block_kind_constructs_with_correct_kind_field():

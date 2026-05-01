@@ -40,7 +40,6 @@ from backend.tools.report._renderers import (
 )
 
 from tests.contract._report_baseline import (
-    freeze_kpis,
     make_normal_fixture,
     override_settings,
 )
@@ -54,12 +53,7 @@ pytestmark = pytest.mark.contract
 
 @pytest.fixture(autouse=True)
 def _planner_env(monkeypatch):
-    freeze_kpis(monkeypatch)
-    override_settings(
-        monkeypatch,
-        REPORT_AGENT_ENABLED=False,
-        REPORT_OUTLINE_PLANNER_ENABLED=True,
-    )
+    override_settings(monkeypatch, REPORT_AGENT_ENABLED=False)
     monkeypatch.setattr(
         "backend.tools.report._pptxgen_builder.check_pptxgen_available",
         lambda: False,
@@ -381,6 +375,8 @@ async def test_llm_planner_still_rejects_llm_emitted_section_cover(monkeypatch):
     """Even though section_cover is now auto-injected, the LLM is not
     allowed to emit one itself — the validator must still reject it.
     This protects the "LLM owns content; system owns chrome" boundary."""
+    from backend.tools.report._outline_planner import _LLMPlannerFailure
+
     response = _visual_response()
     response["sections"][0]["blocks"].insert(
         0,
@@ -389,13 +385,8 @@ async def test_llm_planner_still_rejects_llm_emitted_section_cover(monkeypatch):
     )
     _stub_invoke_llm(monkeypatch, response)
     params, ctx, _ = make_normal_fixture()
-    outline = await plan_outline(params, ctx, task_order=params["_task_order"])
-
-    assert outline.planner_mode == "rule_fallback"
-    assert any(
-        "section_cover" in d.get("reason", "")
-        for d in outline.degradations
-    )
+    with pytest.raises(_LLMPlannerFailure, match="section_cover"):
+        await plan_outline(params, ctx, task_order=params["_task_order"])
 
 
 # ---------------------------------------------------------------------------

@@ -1,14 +1,14 @@
-"""Baseline test helpers for report output regression — Step 0 of the
-outline refactor (see spec/refactor_report_outline.md).
+"""Baseline test helpers for report output regression.
 
 Provides:
 - ``make_normal_fixture()`` — synthetic ToolInput.params + context
   covering all current content item types (DataFrame, chart, narrative,
   stats, growth, summary text).
-- ``freeze_kpis(monkeypatch)`` — replaces ``extract_kpis_llm`` with a
-  deterministic stub so KPI cards are stable across runs.
+- ``stub_planner_llm(monkeypatch)`` — replaces the planner's
+  ``invoke_llm`` call with a fixed JSON response so the LLM-driven
+  outline pipeline produces byte-stable output across runs.
 - ``disable_skill_mode(monkeypatch)`` — forces the deterministic
-  fallback path on all four backends (no LLM agent, no PptxGenJS).
+  rendering path on all four backends (no agent loop, no PptxGenJS).
 - Four structural comparators that strip volatile bits (font sizes,
   exact spacing, ECharts data dumps) and emit a normalised text tree
   suitable for ``assert ==``.
@@ -17,6 +17,7 @@ Provides:
 from __future__ import annotations
 
 import io
+import json
 import os
 import re
 import zipfile
@@ -28,7 +29,7 @@ from xml.etree import ElementTree as ET
 import pandas as pd
 
 from backend.tools.base import ToolOutput
-from backend.tools.report._kpi_extractor import KPIItem
+from backend.tools.report._outline import KPIItem
 
 
 GOLDEN_DIR = Path(__file__).parent.parent / "fixtures" / "report_baseline"
@@ -118,32 +119,83 @@ def make_normal_fixture() -> tuple[dict, dict, list[str]]:
 
 
 # ---------------------------------------------------------------------------
-# Deterministic stubs (LLM + Node bridge)
+# Deterministic stubs (LLM planner + Node bridge)
 # ---------------------------------------------------------------------------
 
-_FROZEN_KPIS = [
-    KPIItem(label="总吞吐量", value="9500.6 万吨", sub="2026 Q1", trend="positive"),
-    KPIItem(label="同比增长", value="12.0%", sub="YoY", trend="positive"),
-    KPIItem(label="最高港区", value="大连港", sub="4500.5 万吨", trend=None),
-]
+# Hand-crafted "what a sensible LLM would emit" response keyed to the
+# normal fixture's 3 sections. Asset IDs (T0001/C0001/S0001) match what
+# ``_items_to_assets`` mints for that fixture: T001 → DataFrame → T0001,
+# T002 → ECharts → C0001, T003 narrative + summary_stats + growth_rates
+# (DataFrame absent so first table id stays T0001) → S0001 for stats.
+# The summary block in section 3 mirrors what the previous rule path
+# would have surfaced from T004's summary text.
+_FROZEN_PLANNER_RESPONSE = {
+    "kpi_summary": [
+        {"label": "总吞吐量", "value": "9500.6 万吨", "sub": "2026 Q1", "trend": "positive"},
+        {"label": "同比增长", "value": "12.0%", "sub": "YoY", "trend": "positive"},
+        {"label": "最高港区", "value": "大连港", "sub": "4500.5 万吨", "trend": None},
+    ],
+    "sections": [
+        {
+            "name": "一、港区吞吐量现状",
+            "role": "status",
+            "source_tasks": ["T001", "T002"],
+            "blocks": [
+                {"kind": "chart_table_pair", "chart_asset_id": "C0001",
+                 "table_asset_id": "T0001", "layout": "h"},
+                {"kind": "paragraph",
+                 "text": "2026 Q1 大连港吞吐量达 4500.5 万吨，同比增长 12%，居三港之首；营口港 3200.1 万吨，锦州港 1800.0 万吨。",
+                 "style": "body"},
+            ],
+        },
+        {
+            "name": "二、关键指标分析",
+            "role": "status",
+            "source_tasks": ["T003"],
+            "blocks": [
+                {"kind": "table", "asset_id": "S0001", "caption": "统计数据概览"},
+                {"kind": "growth_indicators",
+                 "growth_rates": {"throughput": {"yoy": 0.12, "mom": 0.03}}},
+            ],
+        },
+        {
+            "name": "三、综合结论",
+            "role": "recommendation",
+            "source_tasks": ["T004"],
+            "blocks": [
+                {"kind": "paragraph",
+                 "text": "三港区集装箱吞吐量整体稳健增长，大连港持续领跑。",
+                 "style": "lead"},
+            ],
+        },
+    ],
+}
 
 
-def freeze_kpis(monkeypatch) -> None:
-    """Replace ``extract_kpis_llm`` with a deterministic stub.
+def stub_planner_llm(
+    monkeypatch,
+    response: dict | str | None = None,
+) -> None:
+    """Replace ``invoke_llm`` inside the planner with a fixed response.
 
-    After阶段 0 (Sprint 2 closure) only ``_outline_planner`` (rule
-    fallback path) directly imports the function — the four ``*_gen.py``
-    modules all go through ``plan_outline`` which calls it transitively.
-    Patching the planner's import site is sufficient.
+    Without an override, returns ``_FROZEN_PLANNER_RESPONSE`` — the
+    canonical "good" LLM output for the normal fixture. Tests that need
+    a different shape can pass their own dict / raw string.
+
+    Patches the planner module's bound name (``invoke_llm`` was imported
+    via ``from backend.tools._llm import invoke_llm`` so patching the
+    source module wouldn't reach it).
     """
-    async def _stub(intent, context, *, span_emit=None, task_id=""):  # noqa: ARG001
-        return list(_FROZEN_KPIS)
+    payload = response if response is not None else _FROZEN_PLANNER_RESPONSE
+    text = payload if isinstance(payload, str) else json.dumps(
+        payload, ensure_ascii=False,
+    )
+
+    async def _stub(*args, **kwargs):  # noqa: ARG001
+        return {"text": text}
 
     monkeypatch.setattr(
-        "backend.tools.report._kpi_extractor.extract_kpis_llm", _stub,
-    )
-    monkeypatch.setattr(
-        "backend.tools.report._outline_planner.extract_kpis_llm", _stub,
+        "backend.tools.report._outline_planner.invoke_llm", _stub,
     )
 
 
@@ -157,22 +209,15 @@ _GET_SETTINGS_IMPORT_SITES = (
 
 
 def disable_skill_mode(monkeypatch) -> None:
-    """Force deterministic fallback path on every backend.
+    """Force the deterministic rendering path on every backend.
 
     - ``REPORT_AGENT_ENABLED=False`` → DOCX/HTML skip the LLM agent loop
-    - ``REPORT_OUTLINE_PLANNER_ENABLED=False`` → outline planner uses
-      the rule fallback path
     - ``check_pptxgen_available → False`` → PPTX skips the Node bridge
 
-    ``get_settings()`` returns a fresh ``Settings()`` per call (no
-    lru_cache), so we replace it with a closure returning a frozen
-    instance — this makes the overrides actually stick.
+    The outline planner itself is still LLM-driven; tests that need a
+    stable outline must call ``stub_planner_llm`` separately.
     """
-    override_settings(
-        monkeypatch,
-        REPORT_AGENT_ENABLED=False,
-        REPORT_OUTLINE_PLANNER_ENABLED=False,
-    )
+    override_settings(monkeypatch, REPORT_AGENT_ENABLED=False)
     # Patch both the source module AND pptx_gen's import site (the latter
     # binds the name at import time via ``from ... import``).
     monkeypatch.setattr(

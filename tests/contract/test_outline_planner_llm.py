@@ -1,12 +1,11 @@
-"""Step 8 — Outline planner LLM-path tests.
+"""Outline planner LLM-path tests.
 
-Stubs ``invoke_llm`` to return canned JSON, then verifies:
-- Valid response → outline with planner_mode='llm'
-- Invalid block kind → fallback
-- Dangling asset_id → fallback
-- Section count mismatch → fallback
-- KPI summary parsed correctly
-- Comparison grid parsed correctly
+Stubs ``invoke_llm`` to return canned JSON, then verifies the planner:
+- Happy path: returns an outline with planner_mode='llm'
+- Validation failures (unknown block kind, dangling asset_id, section
+  count mismatch, malformed JSON, LLM error) → raises ``_LLMPlannerFailure``
+- Robust JSON parsing (fenced code, ``<think>`` tag noise)
+- Synthesised assets registered before validation
 """
 from __future__ import annotations
 
@@ -17,14 +16,11 @@ import pytest
 from backend.tools.report._outline import (
     ChartBlock,
     ComparisonGridBlock,
-    KpiRowBlock,
-    ParagraphBlock,
     TableBlock,
 )
-from backend.tools.report._outline_planner import plan_outline
+from backend.tools.report._outline_planner import _LLMPlannerFailure, plan_outline
 
 from tests.contract._report_baseline import (
-    freeze_kpis,
     make_normal_fixture,
     override_settings,
 )
@@ -34,12 +30,7 @@ pytestmark = pytest.mark.contract
 
 @pytest.fixture(autouse=True)
 def _planner_env(monkeypatch):
-    freeze_kpis(monkeypatch)
-    override_settings(
-        monkeypatch,
-        REPORT_AGENT_ENABLED=False,
-        REPORT_OUTLINE_PLANNER_ENABLED=True,
-    )
+    override_settings(monkeypatch, REPORT_AGENT_ENABLED=False)
     monkeypatch.setattr(
         "backend.tools.report._pptxgen_builder.check_pptxgen_available",
         lambda: False,
@@ -59,7 +50,7 @@ def _stub_invoke_llm(monkeypatch, payload: dict | str) -> None:
 
 def _valid_response_for_normal_fixture() -> dict:
     """Hand-crafted valid LLM response matching the normal fixture's
-    3 sections + the assets that the legacy converter would create
+    3 sections + the assets the planner mints from Stage-1 items
     (T-prefix table, C-prefix chart, S-prefix stats)."""
     return {
         "kpi_summary": [
@@ -176,52 +167,58 @@ async def test_section_role_preserved_from_input(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Validation failures → fallback
+# Validation failures → raise _LLMPlannerFailure
 # ---------------------------------------------------------------------------
 
-async def test_dangling_asset_id_falls_back(monkeypatch):
+async def test_dangling_asset_id_raises(monkeypatch):
     response = _valid_response_for_normal_fixture()
     response["sections"][0]["blocks"][0]["asset_id"] = "C9999"  # doesn't exist
     _stub_invoke_llm(monkeypatch, response)
 
     params, ctx, _ = make_normal_fixture()
-    outline = await plan_outline(params, ctx, task_order=params["_task_order"])
-
-    assert outline.planner_mode == "rule_fallback"
-    assert any(
-        "C9999" in d.get("reason", "")
-        for d in outline.degradations
-    )
+    with pytest.raises(_LLMPlannerFailure, match="C9999"):
+        await plan_outline(params, ctx, task_order=params["_task_order"])
 
 
-async def test_unknown_block_kind_falls_back(monkeypatch):
+async def test_unknown_block_kind_raises(monkeypatch):
     response = _valid_response_for_normal_fixture()
     response["sections"][0]["blocks"].append({"kind": "doughnut"})
     _stub_invoke_llm(monkeypatch, response)
 
     params, ctx, _ = make_normal_fixture()
-    outline = await plan_outline(params, ctx, task_order=params["_task_order"])
-
-    assert outline.planner_mode == "rule_fallback"
-    assert any(
-        "doughnut" in d.get("reason", "")
-        for d in outline.degradations
-    )
+    with pytest.raises(_LLMPlannerFailure, match="doughnut"):
+        await plan_outline(params, ctx, task_order=params["_task_order"])
 
 
-async def test_section_count_mismatch_falls_back(monkeypatch):
+async def test_section_count_mismatch_raises(monkeypatch):
     response = _valid_response_for_normal_fixture()
     response["sections"].pop()  # 2 sections, input has 3
     _stub_invoke_llm(monkeypatch, response)
 
     params, ctx, _ = make_normal_fixture()
-    outline = await plan_outline(params, ctx, task_order=params["_task_order"])
+    with pytest.raises(_LLMPlannerFailure, match="sections count mismatch"):
+        await plan_outline(params, ctx, task_order=params["_task_order"])
 
-    assert outline.planner_mode == "rule_fallback"
-    assert any(
-        "sections count mismatch" in d.get("reason", "")
-        for d in outline.degradations
+
+async def test_invalid_json_raises(monkeypatch):
+    _stub_invoke_llm(monkeypatch, "not valid json {oops")
+
+    params, ctx, _ = make_normal_fixture()
+    with pytest.raises(_LLMPlannerFailure, match="not valid JSON"):
+        await plan_outline(params, ctx, task_order=params["_task_order"])
+
+
+async def test_llm_error_response_raises(monkeypatch):
+    async def _stub(*args, **kwargs):
+        return {"error": "stub_failure", "error_category": "TEST"}
+
+    monkeypatch.setattr(
+        "backend.tools.report._outline_planner.invoke_llm", _stub,
     )
+
+    params, ctx, _ = make_normal_fixture()
+    with pytest.raises(_LLMPlannerFailure, match="stub_failure"):
+        await plan_outline(params, ctx, task_order=params["_task_order"])
 
 
 # ---------------------------------------------------------------------------
@@ -286,8 +283,8 @@ async def test_synthesised_attribution_table_registered_as_asset(monkeypatch):
     assert len(sec3_table_blocks) == 1
 
 
-async def test_synthesised_asset_with_dangling_reference_falls_back(monkeypatch):
-    """Reference to an undeclared synthesised asset should fall back
+async def test_synthesised_asset_with_dangling_reference_raises(monkeypatch):
+    """Reference to an undeclared synthesised asset should raise
     rather than render with an unresolved asset_id."""
     response = _valid_response_for_normal_fixture()
     response["sections"][2]["blocks"].append({
@@ -296,12 +293,8 @@ async def test_synthesised_asset_with_dangling_reference_falls_back(monkeypatch)
     _stub_invoke_llm(monkeypatch, response)
 
     params, ctx, _ = make_normal_fixture()
-    outline = await plan_outline(params, ctx, task_order=params["_task_order"])
-
-    assert outline.planner_mode == "rule_fallback"
-    assert any(
-        "ATTR9999" in d.get("reason", "") for d in outline.degradations
-    )
+    with pytest.raises(_LLMPlannerFailure, match="ATTR9999"):
+        await plan_outline(params, ctx, task_order=params["_task_order"])
 
 
 async def test_response_with_think_tag_stripped(monkeypatch):

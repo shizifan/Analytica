@@ -1,32 +1,23 @@
 """Shared content extraction and section-association logic.
 
-DEPRECATED — Replaced by the outline pipeline (``_outline_legacy`` →
-``ReportOutline``). The four ``*_gen.py`` skills no longer call any
-function here directly; the only remaining caller is
-``_outline_legacy.collect_and_build_outline`` which uses
-``collect_and_associate`` as Stage 1 of the planner. When Step 8 lands
-the LLM planner, this module's role narrows to "raw extractor"; when
-the rule-based fallback gets its own implementation, the module can be
-deleted.
+Stage-1 of the outline pipeline. ``collect_and_associate`` walks the
+upstream ``ToolOutput`` map, classifies each entry into a typed
+``ContentItem`` (DataFrame / chart / narrative / stats / growth /
+summary text), and groups them under their declared section via
+``task_refs``. The result feeds ``_outline_planner._items_to_assets``
+which builds the asset registry and per-task block kinds for the LLM
+planner.
 
-Replaces the duplicated (and buggy) content-collection code formerly
-inlined in docx_gen, pptx_gen and html_gen.
-
-Batch 4 changes:
-- Iterate context in task-declaration order (falls back to sorted dict keys
-  only when no order is supplied). Previously the ``sorted(keys)`` path
-  interleaved content in lexicographic order — e.g. T001 → T010 → T011 →
-  T002 — which in turn shuffled items across sections because task_refs
-  matching happened in the same pass.
-- Skip task outputs whose status is ``failed`` or ``skipped`` — those carry
-  either None or stale data and should never be rendered.
-- Drop unmatched items (log a warning) instead of padding the least-full
-  section, which produced the observed "wrong content in wrong chapter"
-  effect.
-- KPI cards are extracted asynchronously by each report generator via
-  ``_kpi_extractor.extract_kpis_llm`` after collect_and_associate() returns.
-- Normalise DataFrame items: unit-annotated headers, sort-by-first-numeric
-  descending, Top-N + "其他" row merge.
+Notes:
+- Iterate context in declared ``task_order`` (falls back to sorted dict
+  keys when the caller doesn't supply order). Lexicographic iteration
+  used to interleave T001 → T010 → T011 → T002 and shuffle items.
+- Skip ``failed`` / ``skipped`` outputs — they carry None or stale data.
+- Unmatched items get reassigned to a catch-all section with a logged
+  warning + a degradation marker (never silently dropped).
+- ``DataFrameItem``s are normalised here: Chinese column labels via the
+  per-endpoint registry, sort by first numeric column desc, Top-N with
+  an "其他合计" rollup row.
 """
 from __future__ import annotations
 
@@ -37,7 +28,6 @@ from typing import Any
 import pandas as pd
 
 from backend.tools._field_labels import resolve_col_label
-from backend.tools.report._kpi_extractor import KPIItem
 
 logger = logging.getLogger("analytica.tools.report._content_collector")
 
@@ -101,7 +91,6 @@ class ReportContent:
     date: str
     sections: list[SectionContent] = field(default_factory=list)
     summary_items: list[SummaryTextItem] = field(default_factory=list)
-    kpi_cards: list[KPIItem] = field(default_factory=list)  # batch 4
     # Records what _associate had to fall back on (items reassigned to "其他",
     # missing source data, etc.). Populated by _associate so downstream
     # report tools can surface degradation in their ToolOutput.metadata.
@@ -442,14 +431,11 @@ def collect_and_associate(
     degradations: list[dict[str, Any]] = []
     associated = _associate(sections, items, degradations=degradations)
 
-    # KPI cards are populated asynchronously by each report generator
-    # after collect_and_associate() returns, via extract_kpis_llm().
     return ReportContent(
         title=title,
         author=author,
         date=date,
         sections=associated,
         summary_items=summaries,
-        kpi_cards=[],
         degradations=degradations,
     )

@@ -26,13 +26,13 @@ from backend.tools.report.pptx_gen import PptxReportTool
 from tests.contract._report_baseline import (
     disable_skill_mode,
     docx_to_text_tree,
-    freeze_kpis,
     golden_path,
     html_to_text_tree,
     make_normal_fixture,
     markdown_normalize,
     pptx_to_text_tree,
     regen_baseline_enabled,
+    stub_planner_llm,
 )
 
 pytestmark = pytest.mark.contract
@@ -40,7 +40,7 @@ pytestmark = pytest.mark.contract
 
 @pytest.fixture(autouse=True)
 def _baseline_env(monkeypatch):
-    freeze_kpis(monkeypatch)
+    stub_planner_llm(monkeypatch)
     disable_skill_mode(monkeypatch)
 
 

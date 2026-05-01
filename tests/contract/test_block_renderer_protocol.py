@@ -23,7 +23,7 @@ from backend.tools.report._block_renderer import (
     _dispatch,
     render_outline,
 )
-from backend.tools.report._kpi_extractor import KPIItem
+from backend.tools.report._outline import KPIItem
 from backend.tools.report._outline import (
     ChartAsset,
     ChartBlock,

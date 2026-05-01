@@ -2,8 +2,7 @@
 
 **目标读者**：Claude Code 执行实例（无本会话上下文）
 **作者**：架构方案讨论沉淀
-**状态**：✅ 已交付（2026-04-29）
-**实际工时**：1 个会话（迭代式 Step 0→9）
+**状态**：✅ 已交付（2026-04-29），✅ 灰度收尾完成（2026-05-01）
 
 ---
 
@@ -22,29 +21,30 @@
 | 8 | LLM planner（合并 KPI + 章节编排 + 合成块）| 2026-04-29 | ✅ |
 | 9 | 灰度文档 + 收尾 | 2026-04-29 | ✅ |
 | 11 | **Sprint 2 真正闭环** — PptxGenJS outline 化（参见 [visual_polish_plan.md 阶段 0](./visual_polish_plan.md#4-阶段-0--sprint-2-收尾pptxgenjs-outline-化)）| 2026-04-29 | ✅ |
+| 12 | **灰度收尾** — 翻 LLM 路径为唯一主路径，删除规则 fallback、`_outline_legacy.py`、`_kpi_extractor.py`、`REPORT_OUTLINE_PLANNER_ENABLED` 开关；baseline 改用 stub LLM | 2026-05-01 | ✅ |
 
 **Step 11 (Sprint 2 闭环) 摘要**：原 Step 5 PPT 仅完成 50% outline 化（python-pptx fallback 路径），PptxGenJS 桥接保留旧 ReportContent 管道作为 scope-control 妥协。Step 11 新增 SlideCommand DSL（`_pptxgen_commands.py`）+ PptxGenJSBlockRenderer（`_renderers/pptxgen.py`）+ 重写的 Node 长期常驻脚本（`pptxgen_executor.js`），消除 PPT 双路径。**4 端真正 100% outline 化**。
 
-**测试覆盖**：
+**Step 12（灰度收尾）摘要**：经实际 LLM 调用验证后，删除规则 fallback。`_outline_legacy.py` 与 `_kpi_extractor.py` 整体删除——前者的 `_convert_item` / `_infer_role` 内联进 `_outline_planner.py`，`KPIItem` dataclass 搬到 `_outline.py` 作为数据模型一部分。`REPORT_OUTLINE_PLANNER_ENABLED` 开关与 `plan_outline` 中的 try/except fallback 块一并删除，LLM 失败现在直接抛 `_LLMPlannerFailure`（无兜底）。Baseline 测试改为 stub `invoke_llm`：`tests/contract/_report_baseline.py::stub_planner_llm` 返回固定 JSON，4 端 golden 文件随之 regen。`PlannerMode` Literal 收紧为 `"llm"`。
 
-- 全套 contract 测试 **276 PASSED**（含 baseline 4 + outline_model 18 + protocol 20 + pptxgen 13 + pptxgen_commands 25 + pptxgen_block_renderer 13 + planner_fallback 5 + planner_llm 10 + 既有 168）
-- Node 桥接集成测试 **7 PASSED**（slow，含 native chart 嵌入验证）
-- 既有 220 项 contract 测试零回归
+**测试覆盖**（Step 12 后）：
+
+- 全套 tests/contract + tests/integration **384 PASSED**（baseline 4 + outline_model 18 + planner_llm 14 + planner_visual 13 + 既有约 335）
+- 1 skipped / 1 xfailed 与 outline 无关（throughput_analyst 模板预存在状态）
+- Step 12 后零回归
 
 **Feature flag 默认值**（`backend/config.py`）：
 
 | Flag | 默认 | 用途 |
 |---|---|---|
-| `REPORT_AGENT_ENABLED` | `True` | DOCX/HTML 是否走 LLM agent 编排（已存在） |
-| `REPORT_OUTLINE_PLANNER_ENABLED` | `False` | Step 8 LLM planner 主路径，flag off 时走 rule fallback（与重构前等价）|
+| `REPORT_AGENT_ENABLED` | `True` | DOCX/HTML 是否走 LLM agent 编排 |
 | `REPORT_DEBUG_DUMP_OUTLINE` | `False` | 把 outline JSON dump 到 `data/reports/outline_<task_id>.json` 调试用 |
 
-**灰度策略**：
-- 第 1 周（默认）：`REPORT_OUTLINE_PLANNER_ENABLED=False`，仅观察 baseline 测试持续 CI 绿
-- 第 2 周：单环境（如 staging）开 `True`，观察输出质量与失败率（看 `outline.degradations`）
-- 第 3 周：默认开启，rule fallback 仍兜底
+`REPORT_OUTLINE_PLANNER_ENABLED` 在 Step 12 已删除——LLM 路径是唯一路径，无开关切换。
 
 ---
+
+> ⚠️ **Step 12 后注**：以下 Mission / Steps 文档保留作为重构史，但 Step 8 描述的"LLM + 规则 fallback 双路径"已在 Step 12 简化为"仅 LLM 路径"。`_outline_legacy.py` / `_kpi_extractor.py` / `REPORT_OUTLINE_PLANNER_ENABLED` 在代码库中已不存在。下文中提及它们的位置仅供历史参照，不要按其结构去找当前代码。
 
 ## 0. Mission
 
@@ -632,178 +632,19 @@ async def execute(self, inp, context):
 
 ---
 
-### Sprint 3：LLM Planner（4 天）
+### Sprint 3：LLM Planner
 
-#### Step 8 — `_outline_planner.py`（LLM 主路径 + 规则 fallback）[3d]
+#### Step 8-9 — `_outline_planner.py` + 灰度
 
-**新增文件**：
-- `backend/tools/report/_outline_planner.py`
-- `backend/tools/report/_planner_prompts.py`（提示词常量）
-
-**修改文件**：
-- 4 端 `*_gen.py`（替换 `collect_and_build_outline` 为 `plan_outline`）
-
-**实施动作**：
-
-1. 实现 `_outline_planner.py`：
-
-```python
-async def plan_outline(
-    intent: str,
-    raw_collection: RawCollection,
-    section_definitions: list[SectionDef],
-    *,
-    span_emit=None,
-    task_id: str = "",
-) -> ReportOutline:
-    """Stage 2: 规划 + 合成 outline.
-
-    主路径: LLM 一次 call 产出完整 outline（含 kpi_summary + blocks + 合成块）
-    Fallback: 按 section.role 走规则模板（与 Step 3 的 collect_and_build_outline 等价）
-    """
-    if settings.REPORT_OUTLINE_PLANNER_ENABLED:
-        try:
-            outline = await _llm_plan(intent, raw_collection, section_definitions)
-            outline.planner_mode = "llm"
-            return outline
-        except Exception as e:
-            logger.warning("LLM planner failed (%s); falling back to rule-based", e)
-    return _rule_plan(raw_collection, section_definitions)
-
-
-def _rule_plan(raw_collection, section_definitions) -> ReportOutline:
-    """规则 fallback。等价于 _outline_legacy.collect_and_build_outline 当前的实现。"""
-    # 直接复用 _outline_legacy 的逻辑
-
-async def _llm_plan(intent, raw_collection, section_definitions) -> ReportOutline:
-    """LLM 主路径。"""
-    prompt = build_planner_prompt(intent, raw_collection, section_definitions)
-    response = await invoke_llm(...)
-    outline_dict = parse_json(response)  # JSON Schema 校验
-    outline = ReportOutline.from_json(outline_dict)
-    # 把 raw_collection.assets 合并到 outline.assets
-    outline.assets.update(raw_collection.assets)
-    # 失败 task / degradations 沿用 raw_collection.degradations
-    outline.degradations = raw_collection.degradations
-    return outline
-```
-
-2. LLM Planner Prompt 模板（写在 `_planner_prompts.py`）：
-
-```
-你是数据分析报告的总编辑。给定一份分析报告的意图、上游各任务产出的原始素材、章节定义，
-请输出一个 JSON 大纲，规划每个章节内的 block 组合，并合成必要的派生内容（执行摘要 KPI、归因表、建议三栏）。
-
-## 输入
-
-【报告意图】
-{intent}
-
-【章节定义】
-{sections}  # 每项含 name + role
-- summary: 执行摘要（顶部 KPI + 3 大核心发现段落）
-- status: 现状描述（表/图/数据并列）
-- analysis: 分析章节（图+文字解读）
-- attribution: 归因（合成"问题/数据/原因/影响"对比表）
-- recommendation: 建议（合成"短期/中期/长期"三栏）
-- appendix: 附录
-
-【上游素材清单】
-{raw_items}  # 每项含 task_id, kind, brief, available_metadata
-
-【可用资产】
-{assets}     # 每项 asset_id + 数据预览（前 5 行）
-
-## 输出要求
-JSON Schema:
-{{
-  "kpi_summary": [{{"label": "...", "value": "...", "trend": "up|down|flat"}}],  # 3-4 项
-  "sections": [
-    {{
-      "name": "...",
-      "role": "...",
-      "blocks": [
-        {{"kind": "kpi_row", "items": [...]}}, // 仅 summary 章节用
-        {{"kind": "paragraph", "text": "...", "style": "body|lead|callout-warn|callout-info"}},
-        {{"kind": "table", "asset_id": "T0001", "caption": "..."}},
-        {{"kind": "chart", "asset_id": "C0001", "caption": "..."}},
-        {{"kind": "chart_table_pair", "chart_asset_id": "C0001", "table_asset_id": "T0001", "layout": "h"}},
-        {{"kind": "comparison_grid", "columns": [
-            {{"title": "短期", "items": ["...", "..."]}},
-            {{"title": "中期", "items": ["..."]}},
-            {{"title": "长期", "items": ["..."]}}
-        ]}},
-        {{"kind": "growth_indicators", "growth_rates": {{...}}}}
-      ],
-      "source_tasks": ["T001", "T002"]
-    }}
-  ]
-}}
-
-## 规则
-- 每个 asset_id 必须存在于"可用资产"清单
-- recommendation 章节必须用 comparison_grid 三栏
-- attribution 章节优先生成对比表
-- summary 章节顶部必须有 kpi_row
-- 所有 block 的文字描述基于素材，不要编造数据
-```
-
-3. **JSON Schema 校验**（用 `pydantic` 或 `jsonschema`）：LLM 返回必须通过 schema 校验，否则 raise，触发 fallback。
-
-4. **资产 ID 校验**：planner 引用的 `asset_id` 必须存在于 `raw_collection.assets`，缺失则 raise。
-
-5. **degradations 记录**：LLM mode 失败 → 在 `outline.degradations` 加一条 `{kind: "planner_fallback", reason: ...}`。
-
-6. 4 端 `*_gen.py` 改：
-```python
-raw = await collect_raw(inp.params, context, task_order=...)
-outline = await plan_outline(intent, raw, section_definitions, span_emit=..., task_id=...)
-# 不再单独调 extract_kpis_llm —— planner 已合并
-renderer = ...
-render_outline(outline, renderer)
-```
-
-7. 新增 `_content_collector.collect_raw()`：返回 `RawCollection`（含 raw_items + assets + degradations + task_order），不做章节归属。复用大部分 `collect_and_associate` 内部逻辑。
-
-8. **debug dump**：当 `settings.REPORT_DEBUG_DUMP_OUTLINE` 开启时，把 outline JSON 落盘到 `data/reports/outline_<task_id>.json`，方便排查。
-
-**验收**：
-- 规则路径（flag off）跑 baseline 全绿
-- LLM 路径（flag on）跑端到端，输出文件结构合理（人工 spot check）
-- LLM 路径失败时自动 fallback 到规则路径，并在 metadata 标注 `planner_mode`
-- LLM 调用次数从 4 端 × 2 (KPI + agent) = 8 次降为 4 端 × 2 (planner + agent) = 8 次（注意：合并指的是 KPI+planner 合并，agent 仍独立。如果想进一步合并，需让 LLM 直接产出渲染指令，超出本次范围）
-
-**风险**：
-- LLM 输出 JSON 不规范 → 必须 schema 校验 + retry once + fallback
-- LLM 编造 asset_id → 校验拒绝 + fallback
-- LLM 章节顺序与输入不一致 → 强制按输入 section_definitions 顺序重排
-
----
-
-#### Step 9 — Feature Flag + 灰度 + 文档 [1d]
-
-**修改文件**：
-- `backend/config.py`（加 flag）
-- `spec/refactor_report_outline.md`（本文档，标记完成）
-
-**实施动作**：
-
-1. `backend/config.py` 新增：
-```python
-# Outline planner — Sprint 3 新增
-REPORT_OUTLINE_PLANNER_ENABLED: bool = False  # 默认 false，灰度开启
-REPORT_DEBUG_DUMP_OUTLINE: bool = False        # 调试用
-```
-2. 现有 `REPORT_AGENT_ENABLED` 保持不变（控制 Skill mode）
-3. 文档：本 spec 标记完成日期 + commit hash
-4. 在 `CLAUDE.md` 或 `spec/Phase3_执行层与技能库.md` 增补一节"报告生成架构（v2 outline-driven）"，描述新数据流（不复制本 spec，仅指向）
-
-**灰度策略**：
-- 第 1 周：`REPORT_OUTLINE_PLANNER_ENABLED=false`（rule fallback），观察 baseline 测试在 CI 持续绿
-- 第 2 周：单一环境开 LLM mode，观察输出质量与失败率
-- 第 3 周：默认开启，保留 fallback
-
-**验收**：flag 配置生效；文档更新；baseline 测试在两种 flag 状态下都全绿。
+> **历史步骤，详细规格已废弃**。Step 8 原计划"LLM 主路径 + 规则 fallback 双路径"，Step 9 设计了 `REPORT_OUTLINE_PLANNER_ENABLED` 灰度开关 + 三周渐进策略。Step 12 收尾时彻底简化为"仅 LLM 路径"——开关、规则 fallback、`_outline_legacy.py` / `_kpi_extractor.py` 一并删除。
+>
+> **当前实现位置**：
+> - 规划逻辑：[`backend/tools/report/_outline_planner.py`](../backend/tools/report/_outline_planner.py)（`plan_outline` 入口、`_validate_outline_response` 校验、`_consume_synthesised_assets` 处理 LLM 合成 asset）
+> - Prompt 模板：[`backend/tools/report/_planner_prompts.py`](../backend/tools/report/_planner_prompts.py)（`OUTLINE_PLANNER_SYSTEM` + `build_planner_user_prompt` + 完整 JSON Schema 输出说明）
+> - Debug dump：`REPORT_DEBUG_DUMP_OUTLINE` flag 仍保留（dump 到 `data/reports/outline_<task_id>.json`）
+> - 失败处理：LLM 错误 / JSON 解析失败 / asset_id 编造 → 直接抛 `_LLMPlannerFailure`，无内置兜底，由调用方处理
+>
+> 不要按本节原始伪代码（已删）去找当前函数签名——以源码为准。
 
 ---
 

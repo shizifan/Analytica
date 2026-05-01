@@ -21,10 +21,30 @@ import itertools
 from dataclasses import dataclass, field, asdict
 from typing import Any, Literal, Union
 
-from backend.tools.report._kpi_extractor import KPIItem
-
 
 SCHEMA_VERSION = "1.0"
+
+
+# ---------------------------------------------------------------------------
+# KPIItem — top-of-report metric card. Lives here (not in a separate
+# extractor module) because it's part of the outline data model: every
+# renderer consumes ``ReportOutline.kpi_summary`` and ``KpiRowBlock.items``.
+# ---------------------------------------------------------------------------
+
+@dataclass
+class KPIItem:
+    """A single metric card surfaced above section 1 in the report.
+
+    Attributes:
+        label:  Short label shown at the top of the card (e.g. "吞吐量完成率").
+        value:  Formatted primary value (e.g. "17.3%").
+        sub:    Optional subtitle (e.g. "目标 48,000 万吨").
+        trend:  ``"positive"`` / ``"negative"`` / None — drives CSS class.
+    """
+    label: str
+    value: str
+    sub: str = ""
+    trend: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -247,7 +267,7 @@ class OutlineSection:
     source_tasks: list[str] = field(default_factory=list)
 
 
-PlannerMode = Literal["llm", "rule_fallback"]
+PlannerMode = Literal["llm"]
 
 
 @dataclass
@@ -258,7 +278,7 @@ class ReportOutline:
     sections: list[OutlineSection] = field(default_factory=list)
     assets: dict[str, Asset] = field(default_factory=dict)
     degradations: list[dict[str, Any]] = field(default_factory=list)
-    planner_mode: PlannerMode = "rule_fallback"
+    planner_mode: PlannerMode = "llm"
 
     # ---- Convenience accessors used by renderers -----------------------
 
@@ -302,7 +322,7 @@ class ReportOutline:
             sections=[_section_from_dict(s) for s in data.get("sections", [])],
             assets={aid: _asset_from_dict(a) for aid, a in data.get("assets", {}).items()},
             degradations=[dict(d) for d in data.get("degradations", [])],
-            planner_mode=data.get("planner_mode", "rule_fallback"),
+            planner_mode=data.get("planner_mode", "llm"),
         )
 
 

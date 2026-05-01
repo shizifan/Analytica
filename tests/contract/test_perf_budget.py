@@ -24,19 +24,19 @@ import time
 import pytest
 
 from backend.tools.report._block_renderer import render_outline
+from backend.tools.report._outline_planner import plan_outline
 from backend.tools.report._renderers import (
     DocxBlockRenderer,
     HtmlBlockRenderer,
     MarkdownBlockRenderer,
     PptxBlockRenderer,
 )
-from backend.tools.report._outline_legacy import collect_and_build_outline
 
 from tests.contract._enhanced_baseline import make_enhanced_outline
 from tests.contract._report_baseline import (
     disable_skill_mode,
-    freeze_kpis,
     make_normal_fixture,
+    stub_planner_llm,
 )
 
 pytestmark = pytest.mark.contract
@@ -69,21 +69,22 @@ def _budget_violation(metric: str, actual, limit, unit: str) -> None:
 
 @pytest.fixture(autouse=True)
 def _perf_env(monkeypatch):
-    freeze_kpis(monkeypatch)
+    stub_planner_llm(monkeypatch)
     disable_skill_mode(monkeypatch)
 
 
 # ---------------------------------------------------------------------------
-# File size budgets — normal fixture (rule fallback path, no LLM)
+# File size budgets — normal fixture (LLM planner stubbed, no agent loop)
 # ---------------------------------------------------------------------------
 
-def _normal_outline():
+async def _normal_outline():
     params, ctx, task_order = make_normal_fixture()
-    return collect_and_build_outline(params, ctx, task_order=task_order)
+    return await plan_outline(params, ctx, task_order=task_order,
+                              intent=params.get("intent", ""))
 
 
-def test_docx_normal_size_within_budget():
-    blob = render_outline(_normal_outline(), DocxBlockRenderer())
+async def test_docx_normal_size_within_budget():
+    blob = render_outline(await _normal_outline(), DocxBlockRenderer())
     size_kb = len(blob) / 1024
     if len(blob) > DOCX_NORMAL_MAX_BYTES:
         _budget_violation(
@@ -91,8 +92,8 @@ def test_docx_normal_size_within_budget():
         )
 
 
-def test_pptx_normal_size_within_budget():
-    blob = render_outline(_normal_outline(), PptxBlockRenderer())
+async def test_pptx_normal_size_within_budget():
+    blob = render_outline(await _normal_outline(), PptxBlockRenderer())
     size_kb = len(blob) / 1024
     if len(blob) > PPTX_NORMAL_MAX_BYTES:
         _budget_violation(
@@ -114,8 +115,8 @@ def _time_render(renderer_cls, outline) -> tuple[float, int]:
     return dt, size
 
 
-def test_per_renderer_time_normal_within_budget():
-    outline = _normal_outline()
+async def test_per_renderer_time_normal_within_budget():
+    outline = await _normal_outline()
     timings: dict[str, float] = {}
     for cls in (
         MarkdownBlockRenderer, HtmlBlockRenderer,
@@ -136,8 +137,8 @@ def test_per_renderer_time_normal_within_budget():
         )
 
 
-def test_end_to_end_normal_within_budget():
-    outline = _normal_outline()
+async def test_end_to_end_normal_within_budget():
+    outline = await _normal_outline()
     t0 = time.perf_counter()
     for cls in (
         MarkdownBlockRenderer, HtmlBlockRenderer,
