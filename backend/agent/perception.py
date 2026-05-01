@@ -158,8 +158,19 @@ SLOT_DEFAULTS = {
 # when their condition is met. attribution_needed / predictive_needed intentionally
 # omitted: they default to False via SLOT_DEFAULTS and are enabled only when the
 # user explicitly asks for 归因/预测 in their query.
+def _output_format_relevant(complexity: str) -> bool:
+    """Return True when output_format is relevant at the given complexity.
+
+    Reads the single source of truth (_complexity_rules) instead of using a
+    hardcoded lambda so the condition stays in sync with the schema layer.
+    """
+    from backend.agent._complexity_rules import COMPLEXITY_RULES
+    rule = COMPLEXITY_RULES.get(complexity)
+    return rule is not None and "output_format" in rule.relevant_slots
+
+
 CONDITION_RULES = {
-    "output_format": lambda complexity: complexity == "full_report",
+    "output_format": _output_format_relevant,
 }
 
 

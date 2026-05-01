@@ -57,13 +57,63 @@ def test_complexity_constraint_raises_not_silent():
     from backend.exceptions import PlanningError
 
     engine = PlanningEngine(llm=None, llm_timeout=10, max_retries=1)
+    # simple_table forbids tool_desc_analysis — must raise
     plan = AnalysisPlan(title="t", analysis_goal="", estimated_duration=10, tasks=[
-        # chart_text without any chart tool → should raise
         TaskItem(task_id="T001", type="data_fetch", tool="tool_api_fetch",
                  params={"endpoint_id": "E"}, depends_on=[]),
+        TaskItem(task_id="T002", type="analysis", tool="tool_desc_analysis",
+                 params={}, depends_on=["T001"]),
     ])
-    with pytest.raises(PlanningError, match="图表工具"):
-        engine._validate_tasks(plan, {"tool_api_fetch"}, {"E"}, "chart_text")
+    with pytest.raises(PlanningError, match="禁止"):
+        engine._validate_tasks(
+            plan,
+            valid_tools={"tool_api_fetch", "tool_desc_analysis"},
+            valid_endpoints={"E"},
+            complexity="simple_table",
+        )
+
+
+def test_chart_text_without_chart_does_not_raise():
+    """chart_text no longer requires charts — fetch + desc_analysis is fine."""
+    from backend.agent.planning import PlanningEngine
+    from backend.models.schemas import AnalysisPlan, TaskItem
+
+    engine = PlanningEngine(llm=None, llm_timeout=10, max_retries=1)
+    plan = AnalysisPlan(title="t", analysis_goal="", estimated_duration=10, tasks=[
+        TaskItem(task_id="T001", type="data_fetch", tool="tool_api_fetch",
+                 params={"endpoint_id": "E"}, depends_on=[]),
+        TaskItem(task_id="T002", type="analysis", tool="tool_desc_analysis",
+                 params={"data_ref": "T001"}, depends_on=["T001"]),
+    ])
+    # Must NOT raise: chart_text now allows fetch + desc_analysis without charts
+    engine._validate_tasks(
+        plan,
+        valid_tools={"tool_api_fetch", "tool_desc_analysis"},
+        valid_endpoints={"E"},
+        complexity="chart_text",
+    )
+    assert len(plan.tasks) == 2
+
+
+def test_chart_text_allows_attribution():
+    """chart_text now allows attribution analysis (key fix from boundary spec)."""
+    from backend.agent.planning import PlanningEngine
+    from backend.models.schemas import AnalysisPlan, TaskItem
+
+    engine = PlanningEngine(llm=None, llm_timeout=10, max_retries=1)
+    plan = AnalysisPlan(title="t", analysis_goal="", estimated_duration=10, tasks=[
+        TaskItem(task_id="T001", type="data_fetch", tool="tool_api_fetch",
+                 params={"endpoint_id": "E"}, depends_on=[]),
+        TaskItem(task_id="T002", type="analysis", tool="tool_attribution",
+                 params={}, depends_on=["T001"]),
+    ])
+    engine._validate_tasks(
+        plan,
+        valid_tools={"tool_api_fetch", "tool_attribution"},
+        valid_endpoints={"E"},
+        complexity="chart_text",
+    )
+    assert len(plan.tasks) == 2
 
 
 # ── Collector: no items dropped under partial task_refs ─────

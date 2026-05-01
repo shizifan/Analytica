@@ -17,13 +17,35 @@ class SlotDefinition(BaseModel):
     inferable: bool = False
 
 
+def _build_slot_condition(slot_name: str) -> str | None:
+    """Derive a slot's condition string from the single source of truth.
+
+    Returns None when the slot is relevant to every complexity level (no
+    filtering needed), or when the slot is relevant to no complexity level.
+    """
+    from backend.agent._complexity_rules import COMPLEXITY_RULES
+
+    relevant_complexities = [
+        complexity for complexity, rule in COMPLEXITY_RULES.items()
+        if slot_name in rule.relevant_slots
+    ]
+    if not relevant_complexities or len(relevant_complexities) == len(COMPLEXITY_RULES):
+        return None
+    if len(relevant_complexities) == 1:
+        return f"output_complexity={relevant_complexities[0]}"
+    return f"output_complexity in [{','.join(sorted(relevant_complexities))}]"
+
+
 SLOT_SCHEMA: list[SlotDefinition] = [
     SlotDefinition(name="analysis_subject", required=True, priority=2, inferable=False),
     SlotDefinition(name="time_range", required=True, priority=1, inferable=False),
     SlotDefinition(name="output_complexity", required=False, priority=3, inferable=True),
-    SlotDefinition(name="output_format", required=False, priority=4, condition="output_complexity=full_report"),
-    SlotDefinition(name="attribution_needed", required=False, priority=5, inferable=True, condition="output_complexity in [chart_text,full_report]"),
-    SlotDefinition(name="predictive_needed", required=False, priority=6, inferable=True, condition="output_complexity=full_report"),
+    SlotDefinition(name="output_format", required=False, priority=4,
+                   condition=_build_slot_condition("output_format")),
+    SlotDefinition(name="attribution_needed", required=False, priority=5, inferable=True,
+                   condition=_build_slot_condition("attribution_needed")),
+    SlotDefinition(name="predictive_needed", required=False, priority=6, inferable=True,
+                   condition=_build_slot_condition("predictive_needed")),
     SlotDefinition(name="time_granularity", required=False, priority=99, inferable=True),
     SlotDefinition(name="domain", required=False, priority=7, inferable=True),
     SlotDefinition(name="domain_glossary", required=False, priority=99, inferable=True),
