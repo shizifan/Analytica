@@ -37,11 +37,13 @@ function codeLabel(options: Array<{ code: string; label: string }>, code: string
 }
 
 interface Props {
-  /** API endpoint name to load / edit. Drawer fetches its own copy via GET. */
-  name: string;
+  /** API endpoint name to load / edit. Pass ``null`` for create mode —
+   * the drawer will render a name input and skip the initial GET. */
+  name: string | null;
   onClose: () => void;
   onSaved?: (updated: AdminApi) => void;
-  /** When true, all fields are read-only and the save button is hidden. */
+  /** When true, all fields are read-only and the save button is hidden.
+   * Ignored in create mode (creating a read-only endpoint makes no sense). */
   readOnly?: boolean;
 }
 
@@ -143,11 +145,18 @@ function draftToPayload(name: string, d: Draft) {
   };
 }
 
-export function ApiEditDrawer({ name, onClose, onSaved, readOnly = false }: Props) {
+export function ApiEditDrawer({ name, onClose, onSaved, readOnly: readOnlyProp = false }: Props) {
+  const isCreate = name === null;
+  // Force create mode to be writable even if a parent passes readOnly=true
+  // by mistake. Below this line, ``readOnly`` already includes that gate.
+  const readOnly = !isCreate && readOnlyProp;
   const overlayRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<Tab>('basic');
   const [draft, setDraft] = useState<Draft>(emptyDraft());
-  const [loading, setLoading] = useState(true);
+  // Create-mode only: the user types the new endpoint name here. In edit
+  // mode this stays empty and ``name`` (URL key) is the authoritative id.
+  const [nameInput, setNameInput] = useState('');
+  const [loading, setLoading] = useState(!isCreate);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState<string | null>(null);
@@ -159,20 +168,32 @@ export function ApiEditDrawer({ name, onClose, onSaved, readOnly = false }: Prop
   }, [onClose]);
 
   useEffect(() => {
+    if (isCreate) {
+      // Create mode: skip GET, start from a blank draft.
+      setDraft(emptyDraft());
+      setLoading(false);
+      setErr(null);
+      return;
+    }
     setLoading(true);
     setErr(null);
     api.admin.getApi(name)
       .then((d) => setDraft(detailToDraft(d)))
       .catch((e) => setErr(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
-  }, [name]);
+  }, [name, isCreate]);
 
   const handleSave = async () => {
+    const targetName = isCreate ? nameInput.trim() : (name as string);
+    if (isCreate && !targetName) {
+      setSaveErr('请填写 API 名称');
+      return;
+    }
     setSaving(true);
     setSaveErr(null);
     try {
-      await api.admin.upsertApi(name, draftToPayload(name, draft));
-      const fresh = await api.admin.getApi(name);
+      await api.admin.upsertApi(targetName, draftToPayload(targetName, draft));
+      const fresh = await api.admin.getApi(targetName);
       onSaved?.(fresh);
       onClose();
     } catch (e) {
@@ -226,10 +247,14 @@ export function ApiEditDrawer({ name, onClose, onSaved, readOnly = false }: Prop
         {/* Header */}
         <div className="an-drawer-head">
           <div className="an-drawer-title">
-            <span style={{ fontWeight: 600 }}>{readOnly ? '查看 API' : '编辑 API'}</span>
-            <span style={{ fontFamily: 'var(--an-font-mono)', fontSize: 11, color: 'var(--an-ink-4)' }}>
-              {name}
+            <span style={{ fontWeight: 600 }}>
+              {isCreate ? '新建 API' : readOnly ? '查看 API' : '编辑 API'}
             </span>
+            {!isCreate && (
+              <span style={{ fontFamily: 'var(--an-font-mono)', fontSize: 11, color: 'var(--an-ink-4)' }}>
+                {name}
+              </span>
+            )}
           </div>
           <div className="an-drawer-actions">
             <button type="button" className="an-btn ghost" onClick={onClose}
@@ -259,9 +284,19 @@ export function ApiEditDrawer({ name, onClose, onSaved, readOnly = false }: Prop
             {tab === 'basic' && (
               <div className="an-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <FieldRow label="名称">
-                  <span style={{ fontFamily: 'var(--an-font-mono)', fontSize: 12, color: 'var(--an-ink-3)' }}>
-                    {name}
-                  </span>
+                  {isCreate ? (
+                    <input
+                      type="text"
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      placeholder="如 getThroughputByMonth"
+                      style={{ ...inputStyle, fontFamily: 'var(--an-font-mono)' }}
+                    />
+                  ) : (
+                    <span style={{ fontFamily: 'var(--an-font-mono)', fontSize: 12, color: 'var(--an-ink-3)' }}>
+                      {name}
+                    </span>
+                  )}
                 </FieldRow>
                 <FieldRow label="HTTP 方法">
                   <select

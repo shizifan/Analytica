@@ -19,6 +19,7 @@ export function ApisView() {
   const [testTarget, setTestTarget] = useState<AdminApi | null>(null);
   const [editTarget, setEditTarget] = useState<string | null>(null);
   const [viewTarget, setViewTarget] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -82,6 +83,14 @@ export function ApisView() {
           <option key={d} value={d}>{d}</option>
         ))}
       </select>
+      <button
+        type="button"
+        className="an-btn primary"
+        onClick={() => setCreateOpen(true)}
+        style={{ padding: '4px 12px', fontSize: 12 }}
+      >
+        + 新增 API
+      </button>
     </>
   );
 
@@ -188,6 +197,23 @@ export function ApisView() {
         name={viewTarget}
         onClose={() => setViewTarget(null)}
         readOnly
+      />
+    )}
+    {createOpen && (
+      <ApiEditDrawer
+        name={null}
+        onClose={() => setCreateOpen(false)}
+        onSaved={(created) => {
+          // Insert into list (sorted by name to mirror backend default).
+          setItems((arr) => {
+            if (arr.some((it) => it.name === created.name)) {
+              return arr.map((it) => it.name === created.name ? created : it);
+            }
+            return [...arr, created].sort((a, b) =>
+              a.domain.localeCompare(b.domain) || a.name.localeCompare(b.name),
+            );
+          });
+        }}
       />
     )}
     </>

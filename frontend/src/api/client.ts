@@ -261,6 +261,17 @@ export const api = {
 
     listDomains: () =>
       request<{ items: AdminDomain[]; count: number }>('GET', '/api/admin/domains'),
+    upsertDomain: (code: string, payload: AdminDomainUpsertPayload) =>
+      request<AdminDomain>(
+        'PUT',
+        `/api/admin/domains/${encodeURIComponent(code)}`,
+        payload,
+      ),
+    deleteDomain: (code: string) =>
+      request<{ status: string; code: string }>(
+        'DELETE',
+        `/api/admin/domains/${encodeURIComponent(code)}`,
+      ),
 
     listMemories: (userId?: string, limit = 100) => {
       const p = new URLSearchParams();
@@ -381,6 +392,13 @@ export interface AdminDomain {
   api_count: number;
   employee_count: number;
   updated_at?: string;
+}
+
+export interface AdminDomainUpsertPayload {
+  name: string;
+  description?: string | null;
+  color?: string | null;
+  top_tags: string[];
 }
 
 export interface AdminAuditEntry {
