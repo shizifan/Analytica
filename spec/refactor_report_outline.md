@@ -33,14 +33,17 @@
 - 1 skipped / 1 xfailed 与 outline 无关（throughput_analyst 模板预存在状态）
 - Step 12 后零回归
 
-**Feature flag 默认值**（`backend/config.py`）：
+**Feature flag 状态**（`backend/config.py`）：所有 report 相关的 flag 都已删除。
+- `REPORT_OUTLINE_PLANNER_ENABLED` 在 Step 12 删除——outline 规划是唯一 LLM 路径，无开关。
+- `REPORT_DEBUG_DUMP_OUTLINE` 删除——开发者要 dump outline 直接在 `_outline_planner.plan_outline` 末尾加一行 `print(json.dumps(outline.to_json(), ...))` 即可。
+- `REPORT_AGENT_ENABLED` 删除——DOCX/HTML 永远走 LLM agent 路径，agent 失败直接 raise（无 deterministic fallback）。Markdown/PPTX 仍是 deterministic（它们从来就只有这一条路径）。
 
-| Flag | 默认 | 用途 |
+| 端 | 渲染路径 | 说明 |
 |---|---|---|
-| `REPORT_AGENT_ENABLED` | `True` | DOCX/HTML 是否走 LLM agent 编排 |
-
-`REPORT_OUTLINE_PLANNER_ENABLED` 在 Step 12 已删除——LLM 路径是唯一路径，无开关切换。
-`REPORT_DEBUG_DUMP_OUTLINE` 也已删除——开发者要 dump outline 直接在 `_outline_planner.plan_outline` 末尾加一行 `print(json.dumps(outline.to_json(), ...))` 即可，无需专门 flag。
+| Markdown | deterministic（`render_outline`）| 纯结构化，无 LLM 参与 |
+| PPTX | deterministic（`render_outline` + 可选 PptxGenJS Node 桥）| 二进制格式，LLM 难以介入 |
+| DOCX | **LLM agent only** | agent 决定排版语义（加粗/段间留白/导语段落等）|
+| HTML | **LLM agent only** | agent 决定 CSS class / callout 包装等 |
 
 ---
 

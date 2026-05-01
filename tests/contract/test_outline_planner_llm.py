@@ -20,17 +20,13 @@ from backend.tools.report._outline import (
 )
 from backend.tools.report._outline_planner import _LLMPlannerFailure, plan_outline
 
-from tests.contract._report_baseline import (
-    make_normal_fixture,
-    override_settings,
-)
+from tests.contract._report_baseline import make_normal_fixture
 
 pytestmark = pytest.mark.contract
 
 
 @pytest.fixture(autouse=True)
 def _planner_env(monkeypatch):
-    override_settings(monkeypatch, REPORT_AGENT_ENABLED=False)
     monkeypatch.setattr(
         "backend.tools.report._pptxgen_builder.check_pptxgen_available",
         lambda: False,

@@ -1,9 +1,15 @@
-"""Step 0 baseline tests — guard report output structural equivalence
-across the outline refactor (see spec/refactor_report_outline.md).
+"""Baseline tests — guard report output structural equivalence for the
+two deterministic backends (Markdown + PPTX).
+
+DOCX and HTML are LLM-agent-only after the REPORT_AGENT_ENABLED flag
+removal — their structural shape now depends on a real model call, so
+byte-level baselines aren't reproducible without LLM caching.
+The DOCX/HTML render layer is still covered by ``test_outline_planner_visual``
+and the per-renderer protocol tests; we just don't pin a goldens file.
 
 Each test:
-  1. Forces deterministic fallback (no LLM, no Node bridge).
-  2. Runs the corresponding report tool against the "normal" fixture.
+  1. Stubs the planner LLM + disables the optional Node-side PPTX bridge.
+  2. Runs the report tool against the "normal" fixture.
   3. Diff-compares a normalised structural tree to the golden file.
 
 Regenerating goldens after an intentional output change::
@@ -18,16 +24,12 @@ from __future__ import annotations
 import pytest
 
 from backend.tools.base import ToolInput
-from backend.tools.report.docx_gen import DocxReportTool
-from backend.tools.report.html_gen import HtmlReportTool
 from backend.tools.report.markdown_gen import MarkdownReportTool
 from backend.tools.report.pptx_gen import PptxReportTool
 
 from tests.contract._report_baseline import (
-    disable_skill_mode,
-    docx_to_text_tree,
+    disable_pptxgen_bridge,
     golden_path,
-    html_to_text_tree,
     make_normal_fixture,
     markdown_normalize,
     pptx_to_text_tree,
@@ -41,7 +43,7 @@ pytestmark = pytest.mark.contract
 @pytest.fixture(autouse=True)
 def _baseline_env(monkeypatch):
     stub_planner_llm(monkeypatch)
-    disable_skill_mode(monkeypatch)
+    disable_pptxgen_bridge(monkeypatch)
 
 
 async def _run_tool(tool_cls, params: dict, context: dict):
@@ -106,7 +108,7 @@ def _short_diff(expected: str, actual: str, context_lines: int = 3) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Per-backend tests
+# Per-backend tests — Markdown + PPTX only
 # ---------------------------------------------------------------------------
 
 async def test_markdown_baseline():
@@ -116,22 +118,8 @@ async def test_markdown_baseline():
     _check_or_regen(md, "md", markdown_normalize)
 
 
-async def test_docx_baseline():
-    params, context, _ = make_normal_fixture()
-    data = await _run_tool(DocxReportTool, params, context)
-    assert isinstance(data, (bytes, bytearray))
-    _check_or_regen(data, "docx", docx_to_text_tree)
-
-
 async def test_pptx_baseline():
     params, context, _ = make_normal_fixture()
     data = await _run_tool(PptxReportTool, params, context)
     assert isinstance(data, (bytes, bytearray))
     _check_or_regen(data, "pptx", pptx_to_text_tree)
-
-
-async def test_html_baseline():
-    params, context, _ = make_normal_fixture()
-    html = await _run_tool(HtmlReportTool, params, context)
-    assert isinstance(html, str)
-    _check_or_regen(html, "html", html_to_text_tree)

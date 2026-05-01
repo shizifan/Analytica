@@ -34,7 +34,7 @@ from backend.tools.report._renderers import (
 
 from tests.contract._enhanced_baseline import make_enhanced_outline
 from tests.contract._report_baseline import (
-    disable_skill_mode,
+    disable_pptxgen_bridge,
     make_normal_fixture,
     stub_planner_llm,
 )
@@ -70,7 +70,7 @@ def _budget_violation(metric: str, actual, limit, unit: str) -> None:
 @pytest.fixture(autouse=True)
 def _perf_env(monkeypatch):
     stub_planner_llm(monkeypatch)
-    disable_skill_mode(monkeypatch)
+    disable_pptxgen_bridge(monkeypatch)
 
 
 # ---------------------------------------------------------------------------

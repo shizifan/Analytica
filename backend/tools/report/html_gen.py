@@ -1,12 +1,9 @@
-"""HTML Report Generation Skill — Step 6 (outline pipeline).
+"""HTML Report Generation Skill — outline pipeline + LLM agent loop.
 
-Two execution modes share the same outline:
-- ``llm_agent``: agent calls the renderer's emit tools one block at a time
-- ``deterministic``: ``render_outline`` walks the outline directly
-
-Both produce structurally equivalent output (guarded by Step 0 baseline);
-the agent path is the default per ``REPORT_AGENT_ENABLED`` and falls
-back to deterministic on any failure.
+The agent walks the outline by calling the renderer's emit tools one
+block at a time. There is no deterministic fallback: agent failures
+propagate so the caller sees the actual cause instead of a silently
+re-rendered output that hides whatever went wrong.
 """
 from __future__ import annotations
 
@@ -15,7 +12,6 @@ from typing import Any
 
 from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
 from backend.tools.registry import register_tool
-from backend.tools.report._block_renderer import render_outline
 from backend.tools.report._outline_planner import plan_outline
 from backend.tools.report._renderers.html import HtmlBlockRenderer
 from backend.tools.report._theme import get_theme
@@ -38,37 +34,18 @@ class HtmlReportTool(BaseTool):
                 span_emit=inp.span_emit,
             )
 
-            from backend.config import get_settings
-
             theme = get_theme(
                 (inp.params.get("report_metadata") or {}).get("theme"),
             )
             renderer = HtmlBlockRenderer(theme=theme)
-            mode = "deterministic"
-
-            if get_settings().REPORT_AGENT_ENABLED:
-                try:
-                    mode = await _run_html_agent(renderer, outline)
-                except Exception as agent_err:
-                    logger.warning(
-                        "HTML agent loop failed (%s); falling back to deterministic",
-                        agent_err,
-                    )
-                    mode = "deterministic_fallback_error"
-
-                if mode != "llm_agent":
-                    renderer = HtmlBlockRenderer(theme=theme)
-                    render_outline(outline, renderer)
-            else:
-                render_outline(outline, renderer)
-
+            await _run_html_agent(renderer, outline)
             html = renderer.end_document()
 
             meta: dict[str, Any] = {
                 "format": "html",
                 "title": outline.metadata.get("title", ""),
                 "chart_count": renderer.chart_count,
-                "mode": mode,
+                "mode": "llm_agent",
             }
             if outline.degradations:
                 meta["degradations"] = outline.degradations
@@ -85,11 +62,12 @@ class HtmlReportTool(BaseTool):
             return self._fail(str(e))
 
 
-async def _run_html_agent(renderer: HtmlBlockRenderer, outline) -> str:
+async def _run_html_agent(renderer: HtmlBlockRenderer, outline) -> None:
     """Drive the HTML renderer through the LLM agent loop.
 
-    Returns ``"llm_agent"`` on success; ``"deterministic_fallback"`` if
-    the agent did not finalise. Caller resets renderer before re-render.
+    Raises ``RuntimeError`` if the agent did not finalise — the caller
+    surfaces this as a tool failure rather than retry with a degraded
+    output silently.
     """
     from langchain_openai import ChatOpenAI
 
@@ -118,8 +96,5 @@ async def _run_html_agent(renderer: HtmlBlockRenderer, outline) -> str:
     success = await run_report_agent(
         llm, tools, HTML_OUTLINE_SYSTEM_PROMPT, user_message,
     )
-
-    if success:
-        return "llm_agent"
-    logger.warning("HTML agent did not finalise; falling back to deterministic")
-    return "deterministic_fallback"
+    if not success:
+        raise RuntimeError("HTML agent did not finalise")

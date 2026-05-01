@@ -1,12 +1,9 @@
-"""DOCX Report Generation Skill — Step 4 (outline pipeline).
+"""DOCX Report Generation Skill — outline pipeline + LLM agent loop.
 
-Two execution modes share the same outline:
-- ``llm_agent``: agent calls the renderer's emit tools one block at a time
-- ``deterministic``: ``render_outline`` walks the outline directly
-
-Both produce structurally equivalent output (guarded by Step 0 baseline);
-the agent path is the default per ``REPORT_AGENT_ENABLED`` and falls
-back to deterministic on any failure.
+The agent walks the outline by calling the renderer's emit tools one
+block at a time. There is no deterministic fallback: agent failures
+propagate so the caller sees the actual cause instead of a silently
+re-rendered output that hides whatever went wrong.
 """
 from __future__ import annotations
 
@@ -15,7 +12,6 @@ from typing import Any
 
 from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
 from backend.tools.registry import register_tool
-from backend.tools.report._block_renderer import render_outline
 from backend.tools.report._outline_planner import plan_outline
 from backend.tools.report._renderers.docx import DocxBlockRenderer
 from backend.tools.report._theme import get_theme
@@ -38,38 +34,18 @@ class DocxReportTool(BaseTool):
                 span_emit=inp.span_emit,
             )
 
-            from backend.config import get_settings
-
             theme = get_theme(
                 (inp.params.get("report_metadata") or {}).get("theme"),
             )
             renderer = DocxBlockRenderer(theme=theme)
-            mode = "deterministic"
-
-            if get_settings().REPORT_AGENT_ENABLED:
-                try:
-                    mode = await _run_docx_agent(renderer, outline)
-                except Exception as agent_err:
-                    logger.warning(
-                        "DOCX agent loop failed (%s); falling back to deterministic",
-                        agent_err,
-                    )
-                    mode = "deterministic_fallback_error"
-
-                if mode != "llm_agent":
-                    # Agent partially wrote the doc — reset and re-render
-                    renderer = DocxBlockRenderer(theme=theme)
-                    render_outline(outline, renderer)
-            else:
-                render_outline(outline, renderer)
-
+            await _run_docx_agent(renderer, outline)
             docx_bytes = renderer.end_document()
 
             meta: dict[str, Any] = {
                 "format": "docx",
                 "title": outline.metadata.get("title", ""),
                 "file_size_bytes": len(docx_bytes),
-                "mode": mode,
+                "mode": "llm_agent",
             }
             if outline.degradations:
                 meta["degradations"] = outline.degradations
@@ -86,13 +62,12 @@ class DocxReportTool(BaseTool):
             return self._fail(str(e))
 
 
-async def _run_docx_agent(renderer: DocxBlockRenderer, outline) -> str:
+async def _run_docx_agent(renderer: DocxBlockRenderer, outline) -> None:
     """Drive the DOCX renderer through the LLM agent loop.
 
-    Returns the resolved mode string (``"llm_agent"`` on success,
-    ``"deterministic_fallback"`` if the agent did not finalise) — the
-    caller is responsible for re-running the deterministic path on
-    fallback (renderer state is reset by the caller).
+    Raises ``RuntimeError`` if the agent did not finalise — the caller
+    surfaces this as a tool failure rather than retry with a degraded
+    output silently.
     """
     from langchain_openai import ChatOpenAI
 
@@ -121,9 +96,5 @@ async def _run_docx_agent(renderer: DocxBlockRenderer, outline) -> str:
     success = await run_report_agent(
         llm, tools, DOCX_OUTLINE_SYSTEM_PROMPT, user_message,
     )
-
-    if success:
-        return "llm_agent"
-    logger.warning("DOCX agent did not finalise; falling back to deterministic")
-    # Caller must reset renderer before deterministic fallback re-render.
-    return "deterministic_fallback"
+    if not success:
+        raise RuntimeError("DOCX agent did not finalise")

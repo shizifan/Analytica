@@ -7,7 +7,7 @@ Provides:
 - ``stub_planner_llm(monkeypatch)`` — replaces the planner's
   ``invoke_llm`` call with a fixed JSON response so the LLM-driven
   outline pipeline produces byte-stable output across runs.
-- ``disable_skill_mode(monkeypatch)`` — forces the deterministic
+- ``disable_pptxgen_bridge(monkeypatch)`` — forces python-pptx
   rendering path on all four backends (no agent loop, no PptxGenJS).
 - Four structural comparators that strip volatile bits (font sizes,
   exact spacing, ECharts data dumps) and emit a normalised text tree
@@ -208,16 +208,16 @@ _GET_SETTINGS_IMPORT_SITES = (
 )
 
 
-def disable_skill_mode(monkeypatch) -> None:
-    """Force the deterministic rendering path on every backend.
+def disable_pptxgen_bridge(monkeypatch) -> None:
+    """Force PPTX onto the python-pptx renderer (no Node bridge).
 
-    - ``REPORT_AGENT_ENABLED=False`` → DOCX/HTML skip the LLM agent loop
-    - ``check_pptxgen_available → False`` → PPTX skips the Node bridge
+    The PptxGenJS Node-side bridge is the only optional path left in the
+    report pipeline; turning it off keeps PPTX baseline tests deterministic
+    on machines without Node installed.
 
-    The outline planner itself is still LLM-driven; tests that need a
-    stable outline must call ``stub_planner_llm`` separately.
+    DOCX/HTML are LLM-agent-only (no deterministic fallback); tests that
+    exercise their tool entry points must mock the agent.
     """
-    override_settings(monkeypatch, REPORT_AGENT_ENABLED=False)
     # Patch both the source module AND pptx_gen's import site (the latter
     # binds the name at import time via ``from ... import``).
     monkeypatch.setattr(
