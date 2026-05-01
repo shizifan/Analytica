@@ -44,11 +44,6 @@ class Settings(BaseSettings):
         description="Enable LLM agent loop for report generation; set False to use deterministic mode only",
     )
 
-    REPORT_DEBUG_DUMP_OUTLINE: bool = Field(
-        default=False,
-        description="Dump the planned ReportOutline to data/reports/outline_<task_id>.json for debugging.",
-    )
-
     # ── LLM sampling temperature ──────────────────────────────────────────
     # Three semantic tiers — pick by task type, not by feel:
     #   default  (0.1)  structured/deterministic output (param resolution, KPI extraction, chart mapping)

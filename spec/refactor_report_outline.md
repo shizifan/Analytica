@@ -38,9 +38,9 @@
 | Flag | 默认 | 用途 |
 |---|---|---|
 | `REPORT_AGENT_ENABLED` | `True` | DOCX/HTML 是否走 LLM agent 编排 |
-| `REPORT_DEBUG_DUMP_OUTLINE` | `False` | 把 outline JSON dump 到 `data/reports/outline_<task_id>.json` 调试用 |
 
 `REPORT_OUTLINE_PLANNER_ENABLED` 在 Step 12 已删除——LLM 路径是唯一路径，无开关切换。
+`REPORT_DEBUG_DUMP_OUTLINE` 也已删除——开发者要 dump outline 直接在 `_outline_planner.plan_outline` 末尾加一行 `print(json.dumps(outline.to_json(), ...))` 即可，无需专门 flag。
 
 ---
 
@@ -641,7 +641,6 @@ async def execute(self, inp, context):
 > **当前实现位置**：
 > - 规划逻辑：[`backend/tools/report/_outline_planner.py`](../backend/tools/report/_outline_planner.py)（`plan_outline` 入口、`_validate_outline_response` 校验、`_consume_synthesised_assets` 处理 LLM 合成 asset）
 > - Prompt 模板：[`backend/tools/report/_planner_prompts.py`](../backend/tools/report/_planner_prompts.py)（`OUTLINE_PLANNER_SYSTEM` + `build_planner_user_prompt` + 完整 JSON Schema 输出说明）
-> - Debug dump：`REPORT_DEBUG_DUMP_OUTLINE` flag 仍保留（dump 到 `data/reports/outline_<task_id>.json`）
 > - 失败处理：LLM 错误 / JSON 解析失败 / asset_id 编造 → 直接抛 `_LLMPlannerFailure`，无内置兜底，由调用方处理
 >
 > 不要按本节原始伪代码（已删）去找当前函数签名——以源码为准。

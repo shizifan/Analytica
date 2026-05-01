@@ -138,11 +138,9 @@ async def plan_outline(
 
     _validate_outline_response(parsed, assets, section_defs)
 
-    outline = _build_outline_from_response(
+    return _build_outline_from_response(
         parsed, rc, assets, section_defs, intent,
     )
-    _maybe_dump(outline, task_id, settings)
-    return outline
 
 
 # ---------------------------------------------------------------------------
@@ -612,22 +610,3 @@ def _block_from_response(d: dict[str, Any]) -> Block | None:
                 growth_rates=gr,
             )
     return None
-
-
-# ---------------------------------------------------------------------------
-# Debug dump
-# ---------------------------------------------------------------------------
-
-def _maybe_dump(outline: ReportOutline, task_id: str, settings) -> None:
-    if not settings.REPORT_DEBUG_DUMP_OUTLINE:
-        return
-    try:
-        import os
-
-        os.makedirs("data/reports", exist_ok=True)
-        path = f"data/reports/outline_{task_id or 'unknown'}.json"
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(outline.to_json(), f, ensure_ascii=False, indent=2)
-        logger.info("Dumped outline to %s", path)
-    except Exception as e:  # noqa: BLE001
-        logger.warning("outline dump failed: %s", e)
