@@ -1234,7 +1234,7 @@ html.analytica-v2 [data-density="spacious"] { font-size: 14px; }
 
 /* data table */
 .an-data-table {
-  width: 100%;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -1250,12 +1250,17 @@ html.analytica-v2 [data-density="spacious"] { font-size: 14px; }
   font-weight: 500;
   color: var(--an-ink-3);
   letter-spacing: 0.02em;
+  white-space: nowrap;
   z-index: 1;
 }
 .an-data-table tbody td {
   padding: 7px 12px;
   border-bottom: 1px solid var(--an-border-subtle);
   color: var(--an-ink-2);
+  white-space: nowrap;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .an-data-table tbody td.num {
   font-family: var(--an-font-mono);

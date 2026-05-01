@@ -105,6 +105,17 @@ COLUMN_LABELS: dict[str, str] = {
     "captPlanPayAmt":                "立项计划付款(万元)",
     "costApplyInvestAmt":            "费用申请投资(万元)",
     "projectCurrentStage":          "项目当前阶段",
+    # ── Capital projects list (getCapitalProjectsList) ────────────────────
+    "projectName":                   "项目名称",
+    "projectNo":                     "项目编号",
+    "investProjectType":             "项目类型",
+    "investProjectStatus":           "项目状态码",
+    "investProjectStatusName":       "项目状态",
+    "ownerDept":                     "归口部门",
+    "planYear":                      "计划年度",
+    "proAmt":                        "立项金额(万元)",
+    "captProjectPhysicalProgress":   "物理进度(%)",
+    "captProjectPayProgress":        "付款进度",
 }
 
 # ---------------------------------------------------------------------------
