@@ -56,7 +56,7 @@ async def list_api_endpoints(
         "SELECT name, method, path, domain, intent, time_type, granularity, "
         "tags, required_params, optional_params, returns, param_note, "
         "disambiguate, source, enabled, created_at, updated_at, "
-        "field_schema, use_cases, chain_with, analysis_note "
+        "field_schema, use_cases, chain_with, analysis_note, api_token "
         "FROM api_endpoints WHERE " + " AND ".join(where) +
         " ORDER BY domain, name LIMIT :lim"
     )
@@ -90,6 +90,7 @@ def _api_row(r: Any) -> dict[str, Any]:
         "use_cases": _json_field(r[18]) or [],
         "chain_with": _json_field(r[19]) or [],
         "analysis_note": r[20] or "",
+        "api_token": r[21] or "",
     }
 
 
@@ -101,7 +102,7 @@ async def get_api_endpoint(
             "SELECT name, method, path, domain, intent, time_type, granularity, "
             "tags, required_params, optional_params, returns, param_note, "
             "disambiguate, source, enabled, created_at, updated_at, "
-            "field_schema, use_cases, chain_with, analysis_note "
+            "field_schema, use_cases, chain_with, analysis_note, api_token "
             "FROM api_endpoints WHERE name = :n"
         ),
         {"n": name},
@@ -136,6 +137,7 @@ async def upsert_api_endpoint(
     use_cases: list[str] | None = None,
     chain_with: list[str] | None = None,
     analysis_note: str | None = None,
+    api_token: str | None = None,
 ) -> None:
     await db.execute(
         text(
@@ -144,11 +146,11 @@ async def upsert_api_endpoint(
                 (name, method, path, domain, intent, time_type, granularity,
                  tags, required_params, optional_params, returns,
                  param_note, disambiguate, source, enabled,
-                 field_schema, use_cases, chain_with, analysis_note)
+                 field_schema, use_cases, chain_with, analysis_note, api_token)
             VALUES
                 (:n, :method, :path, :dom, :intent, :tt, :gr,
                  :tags, :req, :opt, :ret, :note, :dis, :src, :en,
-                 :fs, :uc, :cw, :an)
+                 :fs, :uc, :cw, :an, :tok)
             ON DUPLICATE KEY UPDATE
                 method = VALUES(method),
                 path = VALUES(path),
@@ -168,6 +170,7 @@ async def upsert_api_endpoint(
                 use_cases = VALUES(use_cases),
                 chain_with = VALUES(chain_with),
                 analysis_note = VALUES(analysis_note),
+                api_token = COALESCE(VALUES(api_token), api_token),
                 updated_at = NOW()
             """
         ),
@@ -191,6 +194,7 @@ async def upsert_api_endpoint(
             "uc": json.dumps(use_cases or [], ensure_ascii=False),
             "cw": json.dumps(chain_with or [], ensure_ascii=False),
             "an": analysis_note,
+            "tok": api_token,
         },
     )
     await db.commit()

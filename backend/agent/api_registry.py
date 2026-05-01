@@ -45,6 +45,7 @@ class ApiEndpoint:
     chain_with: tuple[str, ...] = ()
     analysis_note: str = ""
     method: str = "GET"
+    api_token: str = ""        # 64-char hex API-TOKEN, 空串表示无 token
 
     def label_for(self, col_name: str) -> str | None:
         """Return the per-endpoint Chinese label for ``col_name``, or ``None``.
@@ -189,6 +190,7 @@ def _endpoint_from_db_row(row: dict[str, Any]) -> ApiEndpoint:
         chain_with=tuple(row.get("chain_with") or ()),
         analysis_note=row.get("analysis_note") or "",
         method=row.get("method") or "GET",
+        api_token=row.get("api_token") or "",
     )
 
 

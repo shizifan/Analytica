@@ -4875,63 +4875,6 @@
       "chain_with": [],
       "analysis_note": "返回clientName/num，注意当前数据可能全为零",
       "method": "GET"
-    },
-    {
-      "name": "getStrategicCustomerChurnRisk",
-      "path": "/api/gateway/getStrategicCustomerChurnRisk",
-      "domain": "D3",
-      "intent": "查询战略客户流失风险评估（基于吞吐趋势的风险评分）",
-      "time": "T_MON",
-      "granularity": "G_CLIENT",
-      "tags": [
-        "流失风险",
-        "客户预警",
-        "风险评分",
-        "战略客户"
-      ],
-      "required": [],
-      "optional": [
-        "date"
-      ],
-      "param_note": "date=yyyy-MM，默认当月",
-      "returns": "clientName/riskScore/riskLevel/curMonthThroughput/yoyRate/trend3m",
-      "disambiguate": "专用于流失风险/客户预警分析；riskLevel=高风险/中风险/低风险；riskScore∈[0,1]，越高风险越大",
-      "field_schema": [
-        [
-          "clientName",
-          "str",
-          "客户名称"
-        ],
-        [
-          "riskScore",
-          "float",
-          "风险评分0-1"
-        ],
-        [
-          "riskLevel",
-          "str",
-          "高风险/中风险/低风险"
-        ],
-        [
-          "curMonthThroughput",
-          "float",
-          "当月吞吐量"
-        ],
-        [
-          "yoyRate",
-          "float",
-          "同比增长率%"
-        ]
-      ],
-      "use_cases": [
-        "战略客户流失预警",
-        "识别高风险客户",
-        "客户流失风险分析",
-        "客户健康度评估"
-      ],
-      "chain_with": [],
-      "analysis_note": "按riskScore降序返回，高风险客户排前；可结合贡献排名分析高价值高风险客户",
-      "method": "GET"
     }
   ]
 }

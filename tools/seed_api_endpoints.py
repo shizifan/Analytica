@@ -34,6 +34,7 @@ from backend.memory import admin_store
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_JSON = REPO_ROOT / "data" / "api_registry.json"
+DEFAULT_TOKEN_JSON = REPO_ROOT / "data" / "api_tokens.json"
 
 
 def _endpoint_to_upsert_kwargs(ep: dict[str, Any]) -> dict[str, Any]:
@@ -105,6 +106,14 @@ async def _seed(json_path: Path, dry_run: bool) -> tuple[int, int, int, int]:
     if dry_run:
         return len(endpoints), 0, len(domains), 0
 
+    # Load tokens (file is gitignored, may not exist).
+    token_map: dict[str, str] = {}
+    if DEFAULT_TOKEN_JSON.exists():
+        with open(DEFAULT_TOKEN_JSON, encoding="utf-8") as tf:
+            token_map = json.load(tf)
+    else:
+        print(f"[warn] {DEFAULT_TOKEN_JSON.name} not found, endpoints will have no tokens", file=sys.stderr)
+
     settings = get_settings()
     engine = create_async_engine(settings.DATABASE_URL, future=True)
     Session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -119,8 +128,13 @@ async def _seed(json_path: Path, dry_run: bool) -> tuple[int, int, int, int]:
                 )
                 applied_doms += 1
             for ep in endpoints:
+                kwargs = _endpoint_to_upsert_kwargs(ep)
+                # Inject token from api_tokens.json if available.
+                token = token_map.get(ep["path"], "")
+                if token:
+                    kwargs["api_token"] = token
                 await admin_store.upsert_api_endpoint(
-                    session, **_endpoint_to_upsert_kwargs(ep),
+                    session, **kwargs,
                 )
                 applied_eps += 1
     finally:

@@ -18,6 +18,7 @@ import httpx
 import pandas as pd
 
 from backend.agent.api_registry import get_endpoint, get_endpoint_path, resolve_endpoint_id
+from backend.agent.api_registry import ApiEndpoint
 from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
 from backend.tools.registry import register_tool
 from backend.tracing import make_span
@@ -39,13 +40,16 @@ def _is_prod_mode() -> bool:
     return get_settings().API_MODE == "prod"
 
 
-def _build_auth_headers(path: str) -> dict[str, str]:
-    """Build authentication headers for the given API path."""
-    from backend.tools.data.token_map import get_token_for_path
-    token = get_token_for_path(path)
+def _build_auth_headers(ep: ApiEndpoint | None) -> dict[str, str]:
+    """Build authentication headers for the given API endpoint."""
+    token = ep.api_token if ep else ""
     if token:
         return {"API-TOKEN": token}
-    logger.warning("No token found for path %s, request may fail with 401", path)
+    if ep:
+        logger.warning(
+            "No token for endpoint %s (path=%s), request may fail with 401",
+            ep.name, ep.path,
+        )
     return {}
 
 
@@ -183,7 +187,7 @@ class ApiDataFetchTool(BaseTool):
 
         api_base = _resolve_api_base()
         url = f"{api_base}{path}"
-        headers = _build_auth_headers(path)
+        headers = _build_auth_headers(ep)
         verify_ssl = not _is_prod_mode()
 
         # ── Step 2: Inner retry loop ──────────────────────────
