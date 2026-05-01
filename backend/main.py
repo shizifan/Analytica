@@ -1039,19 +1039,25 @@ async def admin_get_api(name: str, db=Depends(get_db_session)):
 async def admin_upsert_api(
     name: str, req: ApiEndpointUpsert, db=Depends(get_db_session),
 ):
+    from backend.agent import api_registry
     from backend.memory import admin_store
     payload = req.model_dump()
     payload["name"] = name  # URL wins
+    existed = await admin_store.get_api_endpoint(db, name) is not None
     await admin_store.upsert_api_endpoint(db, **payload)
     await admin_store.append_audit(
-        db, action="update", resource_type="api_endpoint", resource_id=name,
+        db, action="update" if existed else "create",
+        resource_type="api_endpoint", resource_id=name,
         actor_type="user", diff=payload,
     )
+    # Refresh in-memory registry so planning sees the change immediately.
+    await api_registry.reload_from_db(db)
     return await admin_store.get_api_endpoint(db, name)
 
 
 @app.delete("/api/admin/apis/{name}")
 async def admin_delete_api(name: str, db=Depends(get_db_session)):
+    from backend.agent import api_registry
     from backend.memory import admin_store
     ok = await admin_store.delete_api_endpoint(db, name)
     if not ok:
@@ -1059,6 +1065,7 @@ async def admin_delete_api(name: str, db=Depends(get_db_session)):
     await admin_store.append_audit(
         db, action="delete", resource_type="api_endpoint", resource_id=name,
     )
+    await api_registry.reload_from_db(db)
     return {"status": "ok", "name": name}
 
 
@@ -1315,14 +1322,38 @@ class DomainUpsert(BaseModel):
 async def admin_upsert_domain(
     code: str, req: DomainUpsert, db=Depends(get_db_session),
 ):
+    from backend.agent import api_registry
     from backend.memory import admin_store
+    existing = [d for d in await admin_store.list_domains(db) if d["code"] == code]
     await admin_store.upsert_domain(db, code=code, **req.model_dump())
     await admin_store.append_audit(
-        db, action="update", resource_type="domain", resource_id=code,
+        db, action="update" if existing else "create",
+        resource_type="domain", resource_id=code,
         diff=req.model_dump(),
     )
+    # Refresh in-memory registry so planning sees the change immediately.
+    await api_registry.reload_from_db(db)
     domains = await admin_store.list_domains(db)
     return next((d for d in domains if d["code"] == code), None)
+
+
+@app.delete("/api/admin/domains/{code}")
+async def admin_delete_domain(code: str, db=Depends(get_db_session)):
+    """Delete a domain. Refuses if endpoints still reference it — the
+    UI should reassign or delete those first."""
+    from backend.agent import api_registry
+    from backend.memory import admin_store
+    try:
+        ok = await admin_store.delete_domain(db, code)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    if not ok:
+        raise HTTPException(status_code=404, detail=f"Domain '{code}' not found")
+    await admin_store.append_audit(
+        db, action="delete", resource_type="domain", resource_id=code,
+    )
+    await api_registry.reload_from_db(db)
+    return {"status": "ok", "code": code}
 
 
 @app.get("/api/admin/memories")

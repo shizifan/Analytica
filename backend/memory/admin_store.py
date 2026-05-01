@@ -343,6 +343,38 @@ async def upsert_domain(
     await db.commit()
 
 
+async def count_endpoints_in_domain(db: AsyncSession, code: str) -> int:
+    """How many ``api_endpoints`` rows reference this domain.
+
+    Used by ``delete_domain`` to refuse deletion when the domain still
+    owns endpoints — that would orphan them and break planning prompts.
+    """
+    rows = await db.execute(
+        text("SELECT COUNT(*) FROM api_endpoints WHERE domain = :c"),
+        {"c": code},
+    )
+    return int(rows.scalar() or 0)
+
+
+async def delete_domain(db: AsyncSession, code: str) -> bool:
+    """Delete a domain. Returns True if a row was removed, False if the
+    domain didn't exist. Raises ``ValueError`` if the domain still owns
+    endpoints — caller must reassign or delete those first.
+    """
+    n = await count_endpoints_in_domain(db, code)
+    if n > 0:
+        raise ValueError(
+            f"domain {code!r} still owns {n} endpoint(s); reassign or "
+            f"delete them before removing the domain"
+        )
+    result = await db.execute(
+        text("DELETE FROM domains WHERE code = :c"),
+        {"c": code},
+    )
+    await db.commit()
+    return bool(result.rowcount)
+
+
 # ── audit_logs ─────────────────────────────────────────────────
 
 async def append_audit(
