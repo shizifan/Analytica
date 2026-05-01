@@ -1359,11 +1359,7 @@ async def websocket_chat(ws: WebSocket, session_id: str):
 
     from backend.database import get_session_factory
     from backend.memory import session_log
-    from backend.config import get_settings
     from backend.agent.session_registry import get_registry
-
-    settings = get_settings()
-    thinking_stream_enabled = settings.FF_THINKING_STREAM
 
     factory = get_session_factory()
     registry = get_registry()
@@ -1482,17 +1478,16 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                     async def _ws_callback(payload: dict) -> None:
                         evt = payload.get("event")
                         if evt in ("tool_call_start", "tool_call_end"):
-                            if thinking_stream_enabled:
-                                try:
-                                    async with factory() as tx:
-                                        await session_log.append_thinking_event(
-                                            tx, session_id,
-                                            kind="tool",
-                                            payload=payload,
-                                            phase="execution",
-                                        )
-                                except Exception:
-                                    logger.exception("thinking_events insert failed")
+                            try:
+                                async with factory() as tx:
+                                    await session_log.append_thinking_event(
+                                        tx, session_id,
+                                        kind="tool",
+                                        payload=payload,
+                                        phase="execution",
+                                    )
+                            except Exception:
+                                logger.exception("thinking_events insert failed")
                         elif evt == "trace_span":
                             try:
                                 span = payload.get("span") or {}
@@ -1531,17 +1526,16 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                         # Thinking stream (node-boundary events from graph.run_stream)
                         if "__thinking__" in event:
                             thinking = event["__thinking__"]
-                            if thinking_stream_enabled:
-                                try:
-                                    async with factory() as tx:
-                                        await session_log.append_thinking_event(
-                                            tx, session_id,
-                                            kind=thinking.get("kind", "thinking"),
-                                            payload=thinking.get("payload"),
-                                            phase=thinking.get("phase"),
-                                        )
-                                except Exception:
-                                    logger.exception("thinking_events insert failed")
+                            try:
+                                async with factory() as tx:
+                                    await session_log.append_thinking_event(
+                                        tx, session_id,
+                                        kind=thinking.get("kind", "thinking"),
+                                        payload=thinking.get("payload"),
+                                        phase=thinking.get("phase"),
+                                    )
+                            except Exception:
+                                logger.exception("thinking_events insert failed")
                             # Broadcast to all subscribers — drain tasks
                             # forward to each WS.
                             registry.broadcast(session_id, {

@@ -86,14 +86,6 @@ class Settings(BaseSettings):
         description="API mode: 'mock' or 'prod'",
     )
 
-    # UI/UE revamp feature flags — see specs/ui-revamp-v2 phased plan.
-    # All default to the pre-revamp behavior so flipping them off rolls back cleanly.
-    FF_THINKING_STREAM: bool = Field(
-        default=True,
-        description="Phase 2/3: persist thinking_events (node + tool + decision). "
-                    "WS events are always forwarded so the inspector renders "
-                    "in real time even when persistence is off.",
-    )
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
