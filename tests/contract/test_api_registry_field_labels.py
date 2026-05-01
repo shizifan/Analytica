@@ -1,22 +1,26 @@
-"""P2.3a — ``ApiEndpoint.field_schema`` 4-element shape contract.
+"""``ApiEndpoint.field_schema`` 4-element shape contract.
 
 Three-element rows ``(name, type, desc)`` remain the historical baseline.
 Adding a 4th element ``label_zh`` lets a single endpoint override the
-Chinese display name for a column. P2.3b will thread this into the report
-and chart label-resolution path; this file pins the schema mechanics so
-the wiring step has a stable contract to build on.
+Chinese display name for a column. This file pins the schema mechanics
+so downstream label-resolution code has a stable contract to build on.
+
+Round-trip equivalence (factory JSON → DB → reload) is covered by
+``test_api_registry_reload_from_db.test_reload_preserves_semantic_fields``.
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
-from backend.agent.api_registry import (
-    ApiEndpoint,
-    load_from_json,
-    serialize_to_dict,
-)
+from backend.agent.api_registry import ApiEndpoint
 
 pytestmark = pytest.mark.contract
+
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _make_endpoint(field_schema):
@@ -25,7 +29,7 @@ def _make_endpoint(field_schema):
         name="testFixtureEndpoint",
         path="/api/test/fixture",
         domain="D1",
-        intent="fixture endpoint for label_for / round-trip tests",
+        intent="fixture endpoint for label_for tests",
         time="T_RT",
         granularity="G_PORT",
         tags=("test",),
@@ -63,72 +67,14 @@ def test_label_for_treats_empty_label_as_missing():
     assert ep.label_for("qty") is None
 
 
-def test_three_element_field_schema_still_loads():
-    """Backward-compat: existing JSON with 3-element rows must keep working."""
-    payload = {
-        "domains": {},
-        "endpoints": [{
-            "name": "ep3",
-            "path": "/x", "domain": "D1", "intent": "i", "time": "T_RT",
-            "granularity": "G_PORT", "tags": [], "required": [], "optional": [],
-            "param_note": "", "returns": "", "disambiguate": "",
-            "field_schema": [["qty", "int", "throughput"]],
-            "use_cases": [], "chain_with": [], "analysis_note": "", "method": "GET",
-        }],
-    }
-    _, endpoints = load_from_json(payload)
-    assert len(endpoints[0].field_schema) == 1
-    row = endpoints[0].field_schema[0]
-    assert row == ("qty", "int", "throughput")
-    assert endpoints[0].label_for("qty") is None
-
-
-def test_four_element_field_schema_round_trips():
-    """Serialize → JSON → load_from_json preserves the 4th element."""
-    original = (
-        ("qty", "int", "throughput in tons", "吨吞吐量"),
-        ("dateMonth", "str", "month YYYY-MM"),  # 3-elt mixed in
-    )
-    fixture = _make_endpoint(original)
-    payload = {
-        "domains": {},
-        "endpoints": [{
-            "name": fixture.name, "path": fixture.path, "domain": fixture.domain,
-            "intent": fixture.intent, "time": fixture.time,
-            "granularity": fixture.granularity, "tags": list(fixture.tags),
-            "required": list(fixture.required), "optional": list(fixture.optional),
-            "param_note": fixture.param_note, "returns": fixture.returns,
-            "disambiguate": fixture.disambiguate,
-            "field_schema": [list(row) for row in fixture.field_schema],
-            "use_cases": list(fixture.use_cases),
-            "chain_with": list(fixture.chain_with),
-            "analysis_note": fixture.analysis_note, "method": fixture.method,
-        }],
-    }
-    _, endpoints = load_from_json(payload)
-    rebuilt = endpoints[0]
-    assert rebuilt.field_schema == original
-    assert rebuilt.label_for("qty") == "吨吞吐量"
-    assert rebuilt.label_for("dateMonth") is None
-
-
-def test_serialize_emits_four_element_rows_as_lists():
-    """JSON output must store 4-elt rows as lists of 4 (not silently truncate)."""
-    # We don't mutate ALL_ENDPOINTS; instead exercise the serialize helper
-    # path indirectly by checking that 4-elt data survives _to_jsonable.
-    from backend.agent.api_registry import _to_jsonable
-    out = _to_jsonable((("qty", "int", "throughput", "吨吞吐量"),))
-    assert out == [["qty", "int", "throughput", "吨吞吐量"]]
-
-
-def test_existing_endpoints_have_three_or_four_element_rows_only():
-    """All checked-in field_schema entries must be 3 or 4 elements long.
-
-    Catches accidental 2-element or 5-element rows introduced during edits.
+def test_factory_json_field_schema_rows_are_3_or_4_elements():
+    """All checked-in field_schema entries in the factory JSON must be
+    3 or 4 elements long. Catches accidental 2-element or 5-element rows
+    introduced during manual edits to data/api_registry.json.
     """
-    payload = serialize_to_dict()
-    for ep in payload["endpoints"]:
-        for row in ep.get("field_schema", ()):
+    payload = json.loads((_REPO_ROOT / "data" / "api_registry.json").read_text())
+    for ep in payload.get("endpoints", []):
+        for row in ep.get("field_schema") or []:
             assert len(row) in (3, 4), (
                 f"endpoint {ep['name']!r} has malformed field_schema row: {row}"
             )

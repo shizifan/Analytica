@@ -52,7 +52,10 @@ jobs:
       - name: Apply migrations
         run: uv run alembic upgrade head
 
-      - name: Seed admin tables (api_endpoints / skills / domains)
+      - name: Seed API registry (api_endpoints + domains from data/api_registry.json)
+        run: uv run python -m tools.seed_api_endpoints
+
+      - name: Seed tools table from ToolRegistry
         run: uv run python -m migrations.scripts.seed_admin_tables
 
       - name: Seed employees from YAML

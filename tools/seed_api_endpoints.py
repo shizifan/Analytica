@@ -1,8 +1,14 @@
-"""Seed ``api_endpoints`` from ``data/api_registry.json``.
+"""Seed ``api_endpoints`` and ``domains`` from ``data/api_registry.json``.
 
-P2.4-4 of the API-registry → DB migration. Idempotent UPSERT (decision Q3):
-running the script twice changes nothing on the second pass, and changes
-to the JSON propagate row-by-row on subsequent runs.
+This is the single bridge from the factory-data JSON file into the
+running database. Run it after ``alembic upgrade head`` on every fresh
+deployment, and again whenever the JSON file changes (idempotent
+UPSERT — running twice is safe).
+
+After the first run, all subsequent endpoint/domain edits should go
+through the admin console (which writes the DB directly and triggers
+``api_registry.reload_from_db`` so the runtime sees the change). The
+JSON file is the *initial* dataset, not the long-term source of truth.
 
 Run::
 
@@ -21,7 +27,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from backend.config import get_settings
 from backend.memory import admin_store
@@ -33,7 +39,7 @@ DEFAULT_JSON = REPO_ROOT / "data" / "api_registry.json"
 def _endpoint_to_upsert_kwargs(ep: dict[str, Any]) -> dict[str, Any]:
     """Map JSON endpoint shape → ``admin_store.upsert_api_endpoint`` kwargs.
 
-    The ApiEndpoint dataclass field names diverge from DB columns
+    Field names diverge between the dataclass / JSON shape and DB columns
     (``required`` vs ``required_params``, ``time`` vs ``time_type``);
     this helper bridges both shapes in one place.
     """
@@ -51,9 +57,9 @@ def _endpoint_to_upsert_kwargs(ep: dict[str, Any]) -> dict[str, Any]:
         "returns": ep.get("returns") or None,
         "param_note": ep.get("param_note") or None,
         "disambiguate": ep.get("disambiguate") or None,
-        # ``source`` here is the data-source label (mock/prod), not the
-        # registry-source mode. UPSERT keeps existing value unchanged on
-        # subsequent runs; default for first seed is "mock".
+        # ``source`` here is the data-source label (mock/prod). UPSERT
+        # keeps existing value unchanged on subsequent runs; default for
+        # first seed is "mock".
         "source": "mock",
         "enabled": True,
         "field_schema": [list(row) for row in (ep.get("field_schema") or [])],
@@ -63,32 +69,63 @@ def _endpoint_to_upsert_kwargs(ep: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def _seed(json_path: Path, dry_run: bool) -> tuple[int, int]:
-    """Returns (planned_count, applied_count). In dry-run, applied=0."""
+def _domain_to_upsert_kwargs(dom: dict[str, Any]) -> dict[str, Any]:
+    """Map JSON domain shape → ``admin_store.upsert_domain`` kwargs.
+
+    ``api_count`` is omitted: it's a SUM-computed column in
+    ``list_domains`` (not stored). ``color`` defaults to None — the
+    admin UI can set it later.
+    """
+    return {
+        "code": dom["code"],
+        "name": dom["name"],
+        "description": dom.get("desc") or None,
+        "color": dom.get("color") or None,
+        "top_tags": list(dom.get("top_tags") or []),
+    }
+
+
+async def _seed(json_path: Path, dry_run: bool) -> tuple[int, int, int, int]:
+    """Returns (planned_endpoints, applied_endpoints, planned_domains, applied_domains)."""
     with open(json_path, encoding="utf-8") as f:
         payload = json.load(f)
     endpoints = payload.get("endpoints") or []
+    domains_raw = payload.get("domains") or {}
+    # Domains are stored as a dict keyed by code in the JSON — flatten to a list
+    # for uniform iteration.
+    domains = list(domains_raw.values()) if isinstance(domains_raw, dict) else list(domains_raw)
+
     if not endpoints:
         print(f"[error] {json_path} has no endpoints", file=sys.stderr)
-        return 0, 0
+        return 0, 0, 0, 0
+    if not domains:
+        print(f"[error] {json_path} has no domains", file=sys.stderr)
+        return len(endpoints), 0, 0, 0
 
     if dry_run:
-        return len(endpoints), 0
+        return len(endpoints), 0, len(domains), 0
 
     settings = get_settings()
     engine = create_async_engine(settings.DATABASE_URL, future=True)
     Session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    applied = 0
+    applied_eps = 0
+    applied_doms = 0
     try:
         async with Session() as session:
+            # Seed domains first — endpoints reference domain codes.
+            for dom in domains:
+                await admin_store.upsert_domain(
+                    session, **_domain_to_upsert_kwargs(dom),
+                )
+                applied_doms += 1
             for ep in endpoints:
                 await admin_store.upsert_api_endpoint(
                     session, **_endpoint_to_upsert_kwargs(ep),
                 )
-                applied += 1
+                applied_eps += 1
     finally:
         await engine.dispose()
-    return len(endpoints), applied
+    return len(endpoints), applied_eps, len(domains), applied_doms
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -107,13 +144,18 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[error] {args.json} does not exist", file=sys.stderr)
         return 1
 
-    planned, applied = asyncio.run(_seed(args.json, args.dry_run))
-    if planned == 0:
+    planned_e, applied_e, planned_d, applied_d = asyncio.run(_seed(args.json, args.dry_run))
+    if planned_e == 0 or planned_d == 0:
         return 1
     if args.dry_run:
-        print(f"[dry-run] would upsert {planned} endpoints from {args.json}")
+        print(
+            f"[dry-run] would upsert {planned_d} domains + {planned_e} endpoints from {args.json}"
+        )
     else:
-        print(f"[ok] upserted {applied}/{planned} endpoints from {args.json}")
+        print(
+            f"[ok] upserted {applied_d}/{planned_d} domains + "
+            f"{applied_e}/{planned_e} endpoints from {args.json}"
+        )
     return 0
 
 

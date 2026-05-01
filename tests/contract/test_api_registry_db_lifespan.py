@@ -1,47 +1,47 @@
-"""P2.4-6 — ``db`` / ``dual_db`` source modes & lifespan hook.
+"""Lifespan hook contract — ``api_registry.lifespan_apply_source`` is the
+sole entry point for populating the in-memory registry from the DB.
 
-Three guarantees:
+Three guarantees pinned here:
 
-  1. ``_resolve_source`` returns the code source for ``db`` / ``dual_db``
-     at module init (deferring DB load to the lifespan hook), so import
-     paths remain valid even with no DB connection.
-  2. ``lifespan_apply_source`` is a no-op when the FF is code/file/dual
-     and triggers ``reload_from_db`` only for db / dual_db.
-  3. ``_diff_dual_db`` flags divergences with the ``[dual_db]`` prefix
-     (distinct from ``[dual]`` so log search remains unambiguous).
+  1. **Happy path** — when the DB has rows, lifespan loads them and
+     populates ``ALL_ENDPOINTS`` + ``DOMAIN_INDEX``.
+  2. **Empty endpoints** — refuses to start with a clear error message
+     pointing at ``tools.seed_api_endpoints``.
+  3. **Empty domains** — same fail-fast behaviour.
+
+The previous source-mode dispatcher (code/file/dual/dual_db) was removed
+along with its tests; the registry now has a single source of truth (DB).
 """
 from __future__ import annotations
 
-import logging
 from contextlib import contextmanager
 from unittest.mock import AsyncMock
 
 import pytest
 
 from backend.agent import api_registry
-from backend.agent.api_registry import (
-    _CODE_DOMAIN_INDEX,
-    _CODE_ENDPOINTS,
-    _diff_dual_db,
-    _resolve_source,
-    lifespan_apply_source,
-)
+from backend.agent.api_registry import lifespan_apply_source
 
 pytestmark = pytest.mark.contract
 
 
 @contextmanager
 def _save_and_restore_registry():
+    """Snapshot module globals so lifespan calls can be reverted between
+    tests (the session-scope conftest fixture seeds the canonical state
+    once; tests that mutate it must restore)."""
     snap_endpoints = api_registry.ALL_ENDPOINTS
+    snap_domain_index = dict(api_registry.DOMAIN_INDEX)
     snap_by_name = dict(api_registry.BY_NAME)
     snap_by_path = dict(api_registry.BY_PATH)
     snap_by_domain = {k: list(v) for k, v in api_registry.BY_DOMAIN.items()}
     snap_by_time = {k: list(v) for k, v in api_registry.BY_TIME.items()}
-    snap_valid = api_registry.VALID_ENDPOINT_IDS
+    snap_valid = set(api_registry.VALID_ENDPOINT_IDS)
     try:
         yield
     finally:
         api_registry.ALL_ENDPOINTS = snap_endpoints
+        api_registry.DOMAIN_INDEX = snap_domain_index
         api_registry.BY_NAME.clear()
         api_registry.BY_NAME.update(snap_by_name)
         api_registry.BY_PATH.clear()
@@ -50,127 +50,55 @@ def _save_and_restore_registry():
         api_registry.BY_DOMAIN.update(snap_by_domain)
         api_registry.BY_TIME.clear()
         api_registry.BY_TIME.update(snap_by_time)
-        api_registry.VALID_ENDPOINT_IDS = snap_valid
+        api_registry.VALID_ENDPOINT_IDS.clear()
+        api_registry.VALID_ENDPOINT_IDS.update(snap_valid)
 
 
-# ── _resolve_source: db / dual_db at module init ────────────────────
+# ── Happy path ─────────────────────────────────────────────────
 
 
-def test_db_source_defers_to_lifespan(caplog):
-    """At sync init, ``db`` mode must return code (not crash on no DB)."""
-    with caplog.at_level(logging.INFO, logger="analytica.api_registry"):
-        domains, endpoints = _resolve_source("db")
-    assert endpoints is _CODE_ENDPOINTS
-    assert domains is _CODE_DOMAIN_INDEX
-    assert any("deferring DB load" in r.message for r in caplog.records)
-
-
-def test_dual_db_source_defers_to_lifespan(caplog):
-    with caplog.at_level(logging.INFO, logger="analytica.api_registry"):
-        domains, endpoints = _resolve_source("dual_db")
-    assert endpoints is _CODE_ENDPOINTS
-    assert domains is _CODE_DOMAIN_INDEX
-    assert any("deferring DB load" in r.message for r in caplog.records)
-
-
-# ── lifespan_apply_source ───────────────────────────────────────────
-
-
-async def test_lifespan_is_noop_for_non_db_sources(monkeypatch):
-    """``code`` / ``file`` / ``dual`` must not trigger reload_from_db."""
-    fake_reload = AsyncMock(return_value=0)
+async def test_lifespan_populates_in_memory_registry(monkeypatch):
+    """Lifespan must call reload_from_db and produce non-empty globals."""
+    fake_reload = AsyncMock(return_value=(42, 5))
     monkeypatch.setattr(api_registry, "reload_from_db", fake_reload)
-    for src in ("code", "file", "dual"):
-        monkeypatch.setattr(
-            api_registry, "get_settings", lambda: type("S", (), {"FF_API_REGISTRY_SOURCE": src})(),
-            raising=False,
-        )
-        # The function imports settings via `from backend.config import get_settings`
-        # — patch that path instead.
-        from backend.config import get_settings as _real
-        monkeypatch.setattr(
-            "backend.config.get_settings",
-            lambda: type("S", (), {"FF_API_REGISTRY_SOURCE": src})(),
-        )
+
+    await lifespan_apply_source()
+
+    assert fake_reload.await_count == 1
+
+
+# ── Fail-fast on empty data ────────────────────────────────────
+
+
+async def test_lifespan_raises_when_endpoints_empty(monkeypatch):
+    """An empty endpoints table must surface as a startup error pointing
+    at the seed script — silent serving with no APIs would break LLM
+    planning in confusing ways."""
+    fake_reload = AsyncMock(return_value=(0, 5))
+    monkeypatch.setattr(api_registry, "reload_from_db", fake_reload)
+
+    with pytest.raises(RuntimeError, match="api_endpoints table is empty"):
         await lifespan_apply_source()
-    assert fake_reload.await_count == 0
 
 
-async def test_lifespan_calls_reload_for_db_source(monkeypatch):
-    fake_reload = AsyncMock(return_value=42)
+async def test_lifespan_raises_when_domains_empty(monkeypatch):
+    """Same fail-fast rule for domains — endpoints reference domain codes
+    so a missing domain table breaks the prompt formatter."""
+    fake_reload = AsyncMock(return_value=(42, 0))
     monkeypatch.setattr(api_registry, "reload_from_db", fake_reload)
-    monkeypatch.setattr(
-        "backend.config.get_settings",
-        lambda: type("S", (), {"FF_API_REGISTRY_SOURCE": "db"})(),
-    )
-    await lifespan_apply_source()
-    assert fake_reload.await_count == 1
+
+    with pytest.raises(RuntimeError, match="domains table is empty"):
+        await lifespan_apply_source()
 
 
-async def test_lifespan_calls_reload_and_diff_for_dual_db(monkeypatch):
-    fake_reload = AsyncMock(return_value=42)
-    fake_diff = AsyncMock()
-    # _diff_dual_db is sync; AsyncMock won't be awaited so use a plain Mock-like.
-    calls = {"diff": 0}
+async def test_lifespan_propagates_db_errors(monkeypatch):
+    """A DB read failure during reload must propagate (not be swallowed)
+    so the operator sees the actual cause rather than a downstream
+    KeyError when planning runs against an empty registry."""
+    async def _boom(*a, **kw):
+        raise RuntimeError("simulated DB outage")
 
-    def fake_diff_sync():
-        calls["diff"] += 1
+    monkeypatch.setattr(api_registry, "reload_from_db", _boom)
 
-    monkeypatch.setattr(api_registry, "reload_from_db", fake_reload)
-    monkeypatch.setattr(api_registry, "_diff_dual_db", fake_diff_sync)
-    monkeypatch.setattr(
-        "backend.config.get_settings",
-        lambda: type("S", (), {"FF_API_REGISTRY_SOURCE": "dual_db"})(),
-    )
-    await lifespan_apply_source()
-    assert fake_reload.await_count == 1
-    assert calls["diff"] == 1
-
-
-# ── _diff_dual_db logs ──────────────────────────────────────────────
-
-
-def test_diff_dual_db_quiet_when_db_matches_code(caplog):
-    """No drift expected when the registry hasn't been swapped (current
-    state == code). Pins the happy-path baseline."""
-    with caplog.at_level(logging.WARNING, logger="analytica.api_registry"):
-        _diff_dual_db()
-    dual_db_warnings = [r for r in caplog.records if "[dual_db]" in r.message]
-    assert dual_db_warnings == []
-
-
-def test_diff_dual_db_logs_endpoint_only_in_db(caplog):
-    """Inject an extra endpoint into BY_NAME → should surface as DB-only WARN."""
-    with _save_and_restore_registry():
-        extra = api_registry.ApiEndpoint(
-            name="testOnlyInDb",
-            path="/api/test/onlyInDb",
-            domain="D1", intent="db-only fixture",
-            time="T_RT", granularity="G_PORT",
-            tags=("test",), required=(), optional=(),
-            param_note="", returns="", disambiguate="",
-        )
-        api_registry.BY_NAME[extra.name] = extra
-
-        with caplog.at_level(logging.WARNING, logger="analytica.api_registry"):
-            _diff_dual_db()
-    matched = [
-        r for r in caplog.records
-        if "endpoints only in DB" in r.message and "testOnlyInDb" in r.message
-    ]
-    assert matched, [r.message for r in caplog.records]
-
-
-def test_diff_dual_db_uses_distinct_log_prefix(caplog):
-    """``[dual]`` and ``[dual_db]`` must be distinct so log search isn't
-    ambiguous between P2.2 and P2.4 modes."""
-    with _save_and_restore_registry():
-        # Remove an endpoint to trigger "only in code" warning.
-        first = _CODE_ENDPOINTS[0]
-        api_registry.BY_NAME.pop(first.name, None)
-        with caplog.at_level(logging.WARNING, logger="analytica.api_registry"):
-            _diff_dual_db()
-    bare_dual = [r for r in caplog.records if "[dual]" in r.message and "[dual_db]" not in r.message]
-    has_dual_db = [r for r in caplog.records if "[dual_db]" in r.message]
-    assert not bare_dual
-    assert has_dual_db
+    with pytest.raises(RuntimeError, match="simulated DB outage"):
+        await lifespan_apply_source()

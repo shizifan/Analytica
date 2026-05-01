@@ -22,9 +22,9 @@ import pytest
 import yaml
 
 from backend.agent.api_registry import (
+    ALL_ENDPOINTS,
     ApiEndpoint,
     BY_NAME,
-    _CODE_ENDPOINTS,
     get_endpoints_description,
 )
 
@@ -83,9 +83,9 @@ def test_disambiguate_hints_stay_within_employee_whitelist(yaml_path):
 
 def test_disambiguate_references_point_to_real_endpoints():
     """Catch typos / renamed endpoints whose names linger in disambiguate text."""
-    valid_names = {ep.name for ep in _CODE_ENDPOINTS}
+    valid_names = {ep.name for ep in ALL_ENDPOINTS}
     offences: list[str] = []
-    for ep in _CODE_ENDPOINTS:
+    for ep in ALL_ENDPOINTS:
         for ref in _endpoint_names_in_text(ep.disambiguate):
             if ref not in valid_names:
                 offences.append(f"{ep.name}.disambiguate references unknown endpoint {ref!r}")

@@ -16,6 +16,46 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+# ── API Registry: seed DB + load into memory once per session ─
+
+@pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")
+async def _seed_and_load_api_registry():
+    """Once per pytest session, ensure ``api_endpoints`` + ``domains`` tables
+    are seeded from ``data/api_registry.json`` and the in-memory ``api_registry``
+    module globals (``BY_NAME``, ``ALL_ENDPOINTS``, ...) are populated.
+
+    The new design treats DB as the only source — the module imports with
+    empty globals, and tests that ``from api_registry import BY_NAME`` would
+    see an empty dict without this fixture. Running once per session keeps
+    the cost negligible (~150 UPSERTs).
+
+    Tests that don't touch the DB or the registry pay no cost — pytest
+    collects this fixture lazily for autouse, but the work itself only
+    runs on session start. If the DB isn't reachable, log a WARN and
+    proceed; tests that need the registry will surface a clear failure
+    via empty BY_NAME rather than a confusing connection error.
+    """
+    import logging
+    logger = logging.getLogger("conftest._seed_and_load_api_registry")
+    try:
+        from pathlib import Path
+        from tools.seed_api_endpoints import _seed
+        repo_root = Path(__file__).resolve().parent.parent
+        json_path = repo_root / "data" / "api_registry.json"
+        await _seed(json_path, dry_run=False)
+        from backend.agent import api_registry
+        ep, dom = await api_registry.reload_from_db()
+        logger.info(
+            "[api_registry] session-seeded %d endpoints + %d domains", ep, dom,
+        )
+    except Exception as e:
+        logger.warning(
+            "[api_registry] seed/reload failed (%s) — tests that need "
+            "BY_NAME / DOMAIN_INDEX will fail visibly", e,
+        )
+    yield
+
+
 # ── Database Session Fixture ──────────────────────────────────
 
 @pytest_asyncio.fixture(autouse=True, loop_scope="function")

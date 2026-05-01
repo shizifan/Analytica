@@ -1,27 +1,21 @@
-"""Unified API Registry — 有生产数据的 143 个业务 API 端点定义。
+"""API Registry — 运行时容器（所有数据来自 DB）。
 
-单一数据源，从 mock_server_all.py 的 _META_APIS 提取。
-主键为真实 API 函数名（路径末段），不使用 M-code 或 D-code 编码。
+模块只持有 dataclass 定义、全局索引容器、和 DB → 索引的填充逻辑。
+真实数据由 ``data/api_registry.json`` 出厂；通过 ``tools.seed_api_endpoints``
+灌入 ``api_endpoints`` / ``domains`` 表；FastAPI 启动时调用
+``lifespan_apply_source`` 拉到内存全局变量供运行时使用。
 
-P2.2 — registry can be loaded from one of three sources via the
-``FF_API_REGISTRY_SOURCE`` setting:
+后续运维通过管理平台改 DB，写操作后调用 ``reload_from_db`` 立即生效。
 
-  * ``code`` (default) — the inline tuples below; canonical historical source.
-  * ``file``           — load from ``data/api_registry.json``.
-  * ``dual``           — load file, diff against code, log divergences as
-                         WARN, but keep ``code`` as the served source. Used
-                         to validate the file in production before promoting
-                         it to default.
-
-The ``code`` branch must always remain reachable as a rollback safety net,
-even after the default flips. See ``_resolve_source`` below.
+注意:
+- import 时全局变量是空的——必须先跑 lifespan 或 reload_from_db 才有数据
+- 测试通过 conftest session-scope fixture 自动 seed + reload
+- 启动时 DB 空表会 raise（fail-fast，强制部署流程跑过 seed）
 """
 from __future__ import annotations
 
-import json
 import logging
-from dataclasses import asdict, dataclass
-from pathlib import Path
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger("analytica.api_registry")
@@ -44,18 +38,13 @@ class ApiEndpoint:
     disambiguate: str   # 消歧说明
     # ── 语义增强字段（可选，有默认值）──
     field_schema: tuple[tuple[str, ...], ...] = ()
-    # 每元素 3 或 4 项 (P2.3a):
+    # 每元素 3 或 4 项:
     #   3: (字段名, 类型, 含义)
     #   4: (字段名, 类型, 含义, 中文显示名)
-    # e.g. ("dateMonth","str","年月yyyy-MM","月份")
-    # 中文显示名缺省时，下游回退到 backend.tools._field_labels.col_label() 的全局映射。
     use_cases: tuple[str, ...] = ()
-    # 典型分析问题，2-3条
     chain_with: tuple[str, ...] = ()
-    # 建议组合调用的API名
     analysis_note: str = ""
-    # 数据结构或注意事项
-    method: str = "GET" # HTTP 方法
+    method: str = "GET"
 
     def label_for(self, col_name: str) -> str | None:
         """Return the per-endpoint Chinese label for ``col_name``, or ``None``.
@@ -82,1629 +71,106 @@ class DomainInfo:
 
 
 # ════════════════════════════════════════════════════════════════
-# 域索引
+# 运行时容器 — 由 reload_from_db 填充，import 时为空
 # ════════════════════════════════════════════════════════════════
 
-DOMAIN_INDEX: dict[str, DomainInfo] = {
-    "D1": DomainInfo(code="D1", name="生产运营", desc="天气/交通管制/船舶动态/泊位占用/港存/装卸效率/商品车/集装箱", api_count=34, top_tags=('同比', '环比', '集装箱', '港区', '月度趋势', '业务类型', 'TEU', '月度')),
-    "D2": DomainInfo(code="D2", name="市场商务", desc="吞吐量分析(当月/累计/趋势/分业务/分区域/重点企业)", api_count=14, top_tags=('年累计', '商务驾驶舱', '当月', '同比', '业务板块', '全港', '占比', '当月吞吐')),
-    "D3": DomainInfo(code="D3", name="客户管理", desc="战略客户贡献(吞吐/收入/货类/排名/趋势)/客户信用/客户结构", api_count=12, top_tags=('战略客户', '商务驾驶舱', '货类贡献', '客户维度', '收入', '排名', '月度趋势', '当月')),
-    "D4": DomainInfo(code="D4", name="投企管理", desc="持股比例/董监事变更/业务到期/新设退出企业/会议议案", api_count=6, top_tags=('董事会', '持股比例', '投企', '股权结构', '会议', '监事会', '议案', '议案明细')),
-    "D5": DomainInfo(code="D5", name="资产管理", desc="资产总量/价值/分布/设备设施/房屋/土地海域/新增报废趋势", api_count=20, top_tags=('重要资产', '原值', '价值分布', '建筑面积', '港区', '实物资产', '金融资产', '土地')),
-    "D6": DomainInfo(code="D6", name="投资管理", desc="资本项目/成本项目/计划进度/按区域/按类型/计划外/交付率", api_count=23, top_tags=('资本项目', '成本项目', '计划外', '完成率', '交付率', '按港区', '年度对比', '分页')),
-    "D7": DomainInfo(code="D7", name="设备子屏", desc="生产设备利用率/完好率/台时效率/可靠性/单耗/燃油/电量/机种分析", api_count=34, top_tags=('月度', '港区', '年度', '同比', '完好率', '利用率', '月度分布', '设备成本')),
-}
+DOMAIN_INDEX: dict[str, DomainInfo] = {}
+ALL_ENDPOINTS: tuple[ApiEndpoint, ...] = ()
 
-
-# ════════════════════════════════════════════════════════════════
-# 有生产数据的 API 端点 (143)
-# ════════════════════════════════════════════════════════════════
-
-ALL_ENDPOINTS: tuple[ApiEndpoint, ...] = (
-    # ── D1 生产运营 ──
-    ApiEndpoint(name="getWeatherForecast", path="/api/gateway/getWeatherForecast", domain="D1",
-        intent="查询各港区未来5天天气预报（天气/温度/风速/湿度）",
-        time="T_RT", granularity="G_ZONE",
-        tags=('天气', '预报', '风速', '温度', '港区'),
-        required=(), optional=('regionName',),
-        param_note="regionName不填返回全部港区",
-        returns="forecasts数组：date/weather/tempHigh/tempLow/windDirection/windLevel（预报数据）",
-        disambiguate="区别getRealTimeWeather=当前实时；本接口=未来5天预报"),
-    ApiEndpoint(name="getRealTimeWeather", path="/api/gateway/getRealTimeWeather", domain="D1",
-        intent="查询各港区当前实时气象（温度/风速/能见度/浪高）",
-        time="T_RT", granularity="G_ZONE",
-        tags=('天气', '实时', '当前', '浪高', '能见度'),
-        required=(), optional=('regionName',),
-        param_note="regionName不填返回全部港区",
-        returns="currentWeather/temperature/windSpeed/visibility/waveHeight",
-        disambiguate="区别getWeatherForecast=未来5天预报；本接口=当前实况"),
-    ApiEndpoint(name="getProdShipDynNum", path="/api/gateway/getProdShipDynNum", domain="D1",
-        intent="查询全港船舶动态数量汇总（在泊/锚地/进港/出港总数）",
-        time="T_RT", granularity="G_PORT",
-        tags=('船舶数量', '在泊数', '锚地数', '动态', '汇总'),
-        required=(), optional=(),
-        param_note="无入参，返回当时快照",
-        returns="inBerth/anchor/entering/departing/total",
-        disambiguate="区别getKeyVesselList=明细列表；getProdShipDesc=描述摘要"),
-    ApiEndpoint(name="getProdShipDesc", path="/api/gateway/getProdShipDesc", domain="D1",
-        intent="查询重点船舶和锚地船舶的描述性摘要（驾驶舱展示用）",
-        time="T_RT", granularity="G_PORT",
-        tags=('船舶摘要', '重点船', '锚地', '驾驶舱'),
-        required=(), optional=(),
-        param_note="",
-        returns="keyShips数组 + anchorShips数组",
-        disambiguate="区别getProdShipDynNum=纯数量；getKeyVesselList=完整列表"),
-    ApiEndpoint(name="getShipStatisticsByBusinessType", path="/api/gateway/getShipStatisticsByBusinessType", domain="D1",
-        intent="按业务类型统计在港船舶数量（集装箱/散杂货/油化品/商品车）",
-        time="T_RT", granularity="G_BIZ",
-        tags=('船舶统计', '按业务', '货类', '数量'),
-        required=(), optional=('regionName',),
-        param_note="",
-        returns="businessType/inPortCount/anchorCount",
-        disambiguate="区别getShipStatisticsByRegion=按港区+船型分"),
-    ApiEndpoint(name="getKeyVesselList", path="/api/gateway/getKeyVesselList", domain="D1",
-        intent="查询重点船舶列表（在泊/锚地状态，含船名/货类/到港时间）",
-        time="T_RT", granularity="G_BERTH",
-        tags=('船舶', '在泊', '锚地', '重点船', '船舶动态'),
-        required=('shipStatus', 'regionName'), optional=(),
-        param_note="shipStatus: D=在泊 C=锚地；regionName=港区名称",
-        returns="shipName/shipType/status/berthNo/arrivalTime/expectedDeparture/cargoType",
-        disambiguate="区别getProdShipDesc=描述性摘要；getProdShipDynNum=数量汇总"),
-    ApiEndpoint(name="getShipStatisticsByRegion", path="/api/gateway/getShipStatisticsByRegion", domain="D1",
-        intent="按港区+船舶类型统计在港船舶数量（集装箱船/散货船/油轮等）",
-        time="T_RT", granularity="G_ZONE",
-        tags=('船舶统计', '按港区', '按船型', '数量'),
-        required=('regionName',), optional=(),
-        param_note="",
-        returns="regionName/shipType/inPortCount/anchorCount",
-        disambiguate="区别getShipStatisticsByBusinessType=按业务类型分；本接口=按港区+船型"),
-    ApiEndpoint(name="getImportantCargoPortInventoryByRegion", path="/api/gateway/getImportantCargoPortInventoryByRegion", domain="D1",
-        intent="查询各港区主要货物港存量（铁矿石/煤/粮食/石油/集装箱/商品车）",
-        time="T_RT", granularity="G_ZONE",
-        tags=('港存', '库存', '铁矿石', '煤炭', '粮食', '按港区'),
-        required=('regionName',), optional=(),
-        param_note="",
-        returns="ironOre/coal/grain/petroleum/containerTeu/vehicleCount",
-        disambiguate="区别ByCargoType=按货类；ByBusinessType=按业务类型"),
-    ApiEndpoint(name="getContainerAndVehicleTrade", path="/api/gateway/getContainerAndVehicleTrade", domain="D1",
-        intent="查询港区集装箱（内外贸）和商品车（进出口）数量",
-        time="T_RT", granularity="G_ZONE",
-        tags=('集装箱', '商品车', '内外贸', '进出口', 'TEU'),
-        required=('regionName',), optional=(),
-        param_note="",
-        returns="containerTotal/containerForeign/containerDomestic/vehicleTotal/vehicleExport",
-        disambiguate=""),
-    ApiEndpoint(name="getSingleShipRate", path="/api/gateway/getSingleShipRate", domain="D1",
-        intent="查询各公司单船效率（作业/小时），按时间段统计",
-        time="T_TREND", granularity="G_CMP",
-        tags=('单船效率', '自然箱/小时', '吨/小时'),
-        required=('startDate', 'endDate', 'regionName'), optional=(),
-        param_note="",
-        returns="companyName/avgEfficiency/maxEfficiency/totalShips",
-        disambiguate=""),
-    ApiEndpoint(name="getBusinessSegmentBranch", path="/api/gateway/getBusinessSegmentBranch", domain="D1",
-        intent="查询港区下各公司的业务分支组织关系",
-        time="T_NONE", granularity="G_CMP",
-        tags=('组织关系', '业务分支', '公司', '港区'),
-        required=('regionName',), optional=(),
-        param_note="",
-        returns="regionName/companyName/orgCode/businessType",
-        disambiguate=""),
-    ApiEndpoint(name="getBerthOccupancyRateByRegion", path="/api/gateway/getBerthOccupancyRateByRegion", domain="D1",
-        intent="按港区查询泊位占用率及在泊时间统计",
-        time="T_TREND", granularity="G_ZONE",
-        tags=('泊位占用率', '港区', '靠泊时长'),
-        required=(), optional=('startDate', 'endDate'),
-        param_note="",
-        returns="regionName/dateMonth/rate（多月×多港区，rate为小数）",
-        disambiguate="区别ByBusinessType=按业务类型",
-        field_schema=(("regionName", "str", ""), ("dateMonth", "str", ""), ("rate", "float", ""),),
-        use_cases=("各港区泊位占用率月度趋势", "泊位资源利用率对比分析",),
-        chain_with=("getProductViewShipOperationRateTrend",),
-        analysis_note="有startDate/endDate参数可做时间区间趋势，rate为小数，多港区×多月",),
-    ApiEndpoint(name="getBerthOccupancyRateByBusinessType", path="/api/gateway/getBerthOccupancyRateByBusinessType", domain="D1",
-        intent="按业务类型查询泊位占用率",
-        time="T_TREND", granularity="G_BIZ",
-        tags=('泊位占用率', '业务类型', '集装箱', '散货'),
-        required=(), optional=('startDate', 'endDate'),
-        param_note="",
-        returns="businessType/dateMonth/rate（多月×多业务类型，rate为小数）",
-        disambiguate="区别ByRegion=按港区"),
-    ApiEndpoint(name="getVesselOperationEfficiency", path="/api/gateway/getVesselOperationEfficiency", domain="D1",
-        intent="查询公司船舶作业效率（单船效率平均/最高/最低，按月区间）",
-        time="T_TREND", granularity="G_CMP",
-        tags=('船舶效率', '作业效率', '单船效率', '台时'),
-        required=('cmpName', 'startMonth', 'endMonth'), optional=(),
-        param_note="startMonth/endMonth=yyyy-MM",
-        returns="avgEfficiency/maxEfficiency/minEfficiency/totalShips/unit",
-        disambiguate="区别getVesselOperationEfficiencyTrend=月度趋势曲线"),
-    ApiEndpoint(name="getProductViewShipOperationRateAvg", path="/api/gateway/getProductViewShipOperationRateAvg", domain="D1",
-        intent="查询港口平均船舶作业效率（集装箱/散货/油品/滚装各业务类型）",
-        time="T_TREND", granularity="G_PORT",
-        tags=('平均效率', '作业效率', '各业务类型'),
-        required=(), optional=('startDate', 'endDate'),
-        param_note="",
-        returns="avgContainerRate/avgBulkRate/avgOilRate/avgRoroRate",
-        disambiguate="区别Trend=按月趋势；本接口=时段汇总均值"),
-    ApiEndpoint(name="getProductViewShipOperationRateTrend", path="/api/gateway/getProductViewShipOperationRateTrend", domain="D1",
-        intent="查询船舶作业效率月度趋势（集装箱/散货/油品曲线）",
-        time="T_TREND", granularity="G_PORT",
-        tags=('效率趋势', '月度趋势', '集装箱效率'),
-        required=(), optional=('startDate', 'endDate'),
-        param_note="startDate/endDate=yyyy-MM-dd（完整日期格式，不可用yyyy-MM）",
-        returns="monthId/monthStr/statCargoKind/tonQ/workTh（月度×货类多行）",
-        disambiguate="区别Avg=汇总均值",
-        field_schema=(("monthId", "str", ""), ("monthStr", "str", ""), ("statCargoKind", "str", ""), ("tonQ", "float", ""), ("workTh", "float", ""),),
-        use_cases=("船舶作业效率月度趋势", "各货类作业效率对比",),
-        chain_with=("getBerthOccupancyRateByRegion",),
-        analysis_note="月度×货类矩阵：monthId/statCargoKind/tonQ/workTh，需按statCargoKind分组",),
-    ApiEndpoint(name="getPersonalCenterCargoThroughput", path="/api/gateway/getPersonalCenterCargoThroughput", domain="D1",
-        intent="查询指定日期吞吐量及与环比日的对比（个人中心首页）",
-        time="T_DAY", granularity="G_PORT",
-        tags=('日吞吐', '当日', '环比', '个人中心'),
-        required=(), optional=('date', 'momDate', 'yoyDate'),
-        param_note="date=查询日，momDate=环比日，yoyDate=同比日",
-        returns="currentDay/momDay/momRate/unit",
-        disambiguate="区别Month=月度；Year=年累计"),
-    ApiEndpoint(name="getPersonalCenterMonthCargoThroughput", path="/api/gateway/getPersonalCenterMonthCargoThroughput", domain="D1",
-        intent="查询截至某日当月累计吞吐量及与环比月的对比",
-        time="T_MON", granularity="G_PORT",
-        tags=('月吞吐', '当月累计', '环比', '个人中心'),
-        required=(), optional=('endDate', 'momEndDate', 'yoyEndDate', 'momStartDate', 'startDate', 'yoyStartDate'),
-        param_note="endDate=截止日",
-        returns="currentMonthTotal/momMonthTotal/momRate",
-        disambiguate="区别Day=日；Year=年累计"),
-    ApiEndpoint(name="getPersonalCenterYearCargoThroughput", path="/api/gateway/getPersonalCenterYearCargoThroughput", domain="D1",
-        intent="查询截至某日年累计吞吐量及同比",
-        time="T_CUM", granularity="G_PORT",
-        tags=('年累计', '同比', '个人中心', '累计吞吐'),
-        required=(), optional=('endDate', 'yoyEndDate', 'startDate', 'yoyStartDate'),
-        param_note="",
-        returns="currentYearCumulative/prevYearCumulative/yoyRate",
-        disambiguate="区别Month=月度；Day=日"),
-    ApiEndpoint(name="getPersonalCenterYearCargoThroughputTrend", path="/api/gateway/getPersonalCenterYearCargoThroughputTrend", domain="D1",
-        intent="查询年度各月吞吐量趋势（含累计）",
-        time="T_TREND", granularity="G_PORT",
-        tags=('月度趋势', '个人中心', '年度趋势'),
-        required=(), optional=('startDate', 'endDate'),
-        param_note="",
-        returns="regionName/yearId/monthId/tonQ/teuQ（月度×港区多行）",
-        disambiguate="",
-        field_schema=(("regionName", "str", ""), ("yearId", "str", ""), ("monthId", "str", ""), ("tonQ", "float", ""), ("teuQ", "float", "")),
-        use_cases=("各港区分月吞吐量矩阵", "港区×月度交叉分析"),
-        analysis_note="返回regionName/yearId/monthId/tonQ/teuQ月度×港区矩阵"),
-    ApiEndpoint(name="getPortCompanyThroughput", path="/api/gateway/getPortCompanyThroughput", domain="D1",
-        intent="查询各公司指定月份吞吐量及同比",
-        time="T_MON", granularity="G_CMP",
-        tags=('公司吞吐', '各公司', '月度', '同比'),
-        required=('date', 'cmpName'), optional=(),
-        param_note="date=yyyy-MM",
-        returns="companyName/throughput/yoyRate",
-        disambiguate="",
-        field_schema=(("num", "float", ""), ("businessType", "str", ""), ("dateYear", "int", ""),),
-        use_cases=("指定公司吞吐量按业务类型分析", "港口公司业务结构对比",),
-        chain_with=("getThroughputAnalysisByYear",),
-        analysis_note="必填date+cmpName，返回该公司按businessType的吞吐量分布",),
-    ApiEndpoint(name="getThroughputAndTargetThroughputTon", path="/api/gateway/getThroughputAndTargetThroughputTon", domain="D1",
-        intent="查询年度吞吐量实际完成值与目标值对比（万吨，含完成率）",
-        time="T_CUM", granularity="G_ZONE",
-        tags=('吞吐量', '目标完成', '完成率', '万吨', '年度'),
-        required=(), optional=('regionName', 'dateYear'),
-        param_note="",
-        returns="targetQty/finishQty（仅1行KPI汇总，不可用于趋势）",
-        disambiguate="区别TEU版=集装箱箱量目标",
-        field_schema=(("targetQty", "float", ""), ("finishQty", "float", "")),
-        use_cases=("查询年度吞吐量目标完成率",),
-        chain_with=("getThroughputAndTargetThroughputTeu",),
-        analysis_note="仅返回1行KPI：targetQty/finishQty，不可用于趋势分析"),
-    ApiEndpoint(name="getThroughputAndTargetThroughputTeu", path="/api/gateway/getThroughputAndTargetThroughputTeu", domain="D1",
-        intent="查询年度集装箱吞吐量实际值与目标值对比（TEU）",
-        time="T_CUM", granularity="G_ZONE",
-        tags=('集装箱', 'TEU', '目标完成', '内外贸'),
-        required=(), optional=('regionName', 'dateYear'),
-        param_note="",
-        returns="targetQty/finishQty（仅1行TEU版KPI汇总，不可用于趋势）",
-        disambiguate="区别Ton版=万吨目标",
-        field_schema=(("targetQty", "float", ""), ("finishQty", "float", ""),),
-        use_cases=("查询年度集装箱TEU目标完成率",),
-        chain_with=("getThroughputAndTargetThroughputTon",),
-        analysis_note="仅返回1行KPI：targetQty/finishQty（TEU版），不可用于趋势分析",),
-    ApiEndpoint(name="getThroughputAnalysisByYear", path="/api/gateway/getThroughputAnalysisByYear", domain="D1",
-        intent="查询年度各月吞吐量趋势（当年vs上年同期月度对比）",
-        time="T_TREND", granularity="G_PORT",
-        tags=('月度趋势', '同比', '年度对比', '万吨'),
-        required=(), optional=('dateYear', 'preYear', 'regionName'),
-        param_note="dateYear/preYear=yyyy",
-        returns="dateMonth/qty（16行，当年+上年月度对比）",
-        disambiguate="区别getContainerThroughputAnalysisByYear=只看集装箱TEU",
-        field_schema=(("dateMonth", "str", ""), ("qty", "float", "")),
-        use_cases=("查询近12个月吞吐量月度走势", "对比当年与上年同期吞吐量"),
-        chain_with=("getThroughputAnalysisYoyMomByYear",),
-        analysis_note="月度序列，约16行，可直接绘制当年vs上年折线图；regionName 为可选，不传即查全港，【严禁传入'全港'字符串】，会导致返回空数据"),
-    ApiEndpoint(name="getContainerThroughputAnalysisByYear", path="/api/gateway/getContainerThroughputAnalysisByYear", domain="D1",
-        intent="查询集装箱吞吐量年度月趋势（当年vs上年，TEU）",
-        time="T_TREND", granularity="G_PORT",
-        tags=('集装箱', 'TEU', '月度趋势', '年度对比'),
-        required=(), optional=('dateYear', 'preYear', 'regionName'),
-        param_note="",
-        returns="dateMonth/qty（16行，TEU版月度对比）",
-        disambiguate="区别ByYear(吨版)=万吨",
-        field_schema=(("dateMonth", "str", ""), ("qty", "float", "")),
-        use_cases=("查询集装箱TEU月度趋势", "对比当年与上年TEU变化"),
-        chain_with=("getContainerAnalysisYoyMomByYear",),
-        analysis_note="TEU版月度序列，结构同getThroughputAnalysisByYear"),
-    ApiEndpoint(name="getThroughputAnalysisNonContainer", path="/api/gateway/getThroughputAnalysisNonContainer", domain="D1",
-        intent="查询年度非集装箱吞吐量（干散/液散/件杂/滚装）",
-        time="T_YR", granularity="G_PORT",
-        tags=('非集装箱', '散货', '散杂货', '滚装', '年度'),
-        required=(), optional=('dateYear',),
-        param_note="",
-        returns="totalTon/dryBulk/liquidBulk/breakBulk/ro_ro/yoyRate",
-        disambiguate="区别Container版=集装箱"),
-    ApiEndpoint(name="getThroughputAnalysisContainer", path="/api/gateway/getThroughputAnalysisContainer", domain="D1",
-        intent="查询年度集装箱吞吐量（内外贸/空重箱）",
-        time="T_YR", granularity="G_PORT",
-        tags=('集装箱', 'TEU', '内外贸', '空重箱', '年度'),
-        required=(), optional=('dateYear',),
-        param_note="",
-        returns="totalTeu/foreignTrade/domesticTrade/emptyBox/fullBox/yoyRate",
-        disambiguate=""),
-    ApiEndpoint(name="getOilsChemBreakBulkByBusinessType", path="/api/gateway/getOilsChemBreakBulkByBusinessType", domain="D1",
-        intent="查询各港区油化品和散杂货吞吐量（按月，支持同比/环比切换）",
-        time="T_MON", granularity="G_ZONE",
-        tags=('油化品', '散杂货', '港区', '月度'),
-        required=('businessType',), optional=('flag', 'dateMonth'),
-        param_note="businessType=1油化品/2散杂货；flag=0当月/1同比/2环比",
-        returns="regionName/oilChemical/breakBulk",
-        disambiguate="",
-        field_schema=(("regionName", "str", ""), ("targetQty", "float", ""), ("finishQty", "float", ""),),
-        use_cases=("各港区油化散杂货目标完成对比", "散杂货港区分布分析",),
-        chain_with=("getContainerByBusinessType",),
-        analysis_note="按港区返回油化品/散杂货targetQty/finishQty，适合对比柱状图",),
-    ApiEndpoint(name="getRoroByBusinessType", path="/api/gateway/getRoroByBusinessType", domain="D1",
-        intent="查询各港区滚装（商品车）吞吐量",
-        time="T_MON", granularity="G_ZONE",
-        tags=('滚装', '商品车', '港区', '月度'),
-        required=(), optional=('flag', 'dateMonth'),
-        param_note="",
-        returns="regionName/vehicleCount",
-        disambiguate=""),
-    ApiEndpoint(name="getContainerByBusinessType", path="/api/gateway/getContainerByBusinessType", domain="D1",
-        intent="查询各港区集装箱吞吐量（TEU，按月）",
-        time="T_MON", granularity="G_ZONE",
-        tags=('集装箱', 'TEU', '港区', '月度'),
-        required=('flag',), optional=('dateMonth',),
-        param_note="flag=TEU（固定值，必填）",
-        returns="regionName/totalTeu",
-        disambiguate="",
-        field_schema=(("regionName", "str", ""), ("targetQty", "float", ""), ("finishQty", "float", ""),),
-        use_cases=("各港区集装箱目标完成对比", "港区集装箱量分布",),
-        chain_with=("getOilsChemBreakBulkByBusinessType",),
-        analysis_note="按港区返回集装箱targetQty/finishQty，适合目标vs完成柱状对比图",),
-    ApiEndpoint(name="getThroughputAnalysisYoyMomByYear", path="/api/gateway/getThroughputAnalysisYoyMomByYear", domain="D1",
-        intent="查询指定年份吞吐量同比/环比（年度层面）",
-        time="T_YOY", granularity="G_PORT",
-        tags=('同比', '环比', '年度', '吞吐'),
-        required=(), optional=('date',),
-        param_note="date=yyyy-MM-dd",
-        returns="regionName/qty/statType/dateType（多港区×多统计类型）",
-        disambiguate="区别ByMonth=月度层面；ByDay=日层面",
-        field_schema=(("regionName", "str", ""), ("qty", "float", ""), ("statType", "str", ""), ("dateType", "str", "")),
-        use_cases=("各港区年度同比分析", "多港区吞吐量结构对比"),
-        chain_with=("getThroughputAnalysisByYear",),
-        analysis_note="透视格式：regionName×statType×dateType，需分组提取"),
-    ApiEndpoint(name="getThroughputAnalysisYoyMomByMonth", path="/api/gateway/getThroughputAnalysisYoyMomByMonth", domain="D1",
-        intent="查询指定月份吞吐量同比/环比（月度层面）",
-        time="T_YOY", granularity="G_PORT",
-        tags=('同比', '环比', '月度', '吞吐'),
-        required=(), optional=('dateMonth',),
-        param_note="dateMonth=yyyy-MM",
-        returns="regionName/qty/yoyQty/momQty（多港区同比环比）",
-        disambiguate="区别ByYear=年度；ByDay=日",
-        field_schema=(("regionName", "str", ""), ("qty", "float", ""), ("yoyQty", "float", ""), ("momQty", "float", "")),
-        use_cases=("当月各港区同比环比快照", "多港区月度对比"),
-        chain_with=("getThroughputAnalysisByYear",),
-        analysis_note="多港区同比环比，返回regionName/qty/yoyQty/momQty"),
-    ApiEndpoint(name="getThroughputAnalysisYoyMomByDay", path="/api/gateway/getThroughputAnalysisYoyMomByDay", domain="D1",
-        intent="查询指定日期吞吐量同比/环比（日层面）",
-        time="T_YOY", granularity="G_PORT",
-        tags=('同比', '环比', '日度', '吞吐'),
-        required=(), optional=('date',),
-        param_note="date=yyyy-MM-dd",
-        returns="date/currentDay/prevYearSameDay/yoyRate/momRate",
-        disambiguate="区别ByYear=年；ByMonth=月"),
-    ApiEndpoint(name="getContainerAnalysisYoyMomByYear", path="/api/gateway/getContainerAnalysisYoyMomByYear", domain="D1",
-        intent="查询集装箱吞吐量同比/环比（年度）",
-        time="T_YOY", granularity="G_PORT",
-        tags=('集装箱', '同比', '环比', 'TEU', '年度'),
-        required=(), optional=('date',),
-        param_note="",
-        returns="regionName/qty/statType/dateType（集装箱TEU版，多港区×多统计类型）",
-        disambiguate="",
-        field_schema=(("regionName", "str", ""), ("qty", "float", ""), ("statType", "str", ""), ("dateType", "str", ""),),
-        use_cases=("集装箱TEU年度同比分析", "多港区集装箱量结构对比",),
-        chain_with=("getContainerThroughputAnalysisByYear",),
-        analysis_note="透视格式：regionName×statType×dateType，结构同getThroughputAnalysisYoyMomByYear",),
-    ApiEndpoint(name="getCurBusinessDashboardThroughput", path="/api/gateway/getCurBusinessDashboardThroughput", domain="D2",
-        intent="查询当月吞吐量及同比（全港汇总，无港区筛选）",
-        time="T_MON", granularity="G_PORT",
-        tags=('当月吞吐', '同比', '全港', '商务驾驶舱'),
-        required=('date',), optional=(),
-        param_note="date=yyyy-MM",
-        returns="num/typeName（透视格式，多项指标KV）",
-        disambiguate="区别getMonthlyThroughput=有zoneName参数；本接口=全港无港区筛选",
-        field_schema=(("typeName", "str", ""), ("num", "float", "")),
-        use_cases=("当月全港各业务板块吞吐概览",),
-        chain_with=("getSumBusinessDashboardThroughput",),
-        analysis_note="透视格式num/typeName，需按typeName分组提取各板块数据"),
-    ApiEndpoint(name="getCumulativeThroughput", path="/api/gateway/getCumulativeThroughput", domain="D2",
-        intent="查询年累计吞吐量及同比（内外贸分拆）",
-        time="T_CUM", granularity="G_PORT",
-        tags=('累计吞吐', '年累计', '同比', '内外贸'),
-        required=('curDateYear', 'yearDateYear'), optional=('zoneName',),
-        param_note="curDateYear/yearDateYear=yyyy；zoneName非必填",
-        returns="currentYearCumulative/prevYearCumulative/yoyRate（内外贸分拆）",
-        disambiguate="区别getMonthlyThroughput=当月值；getSumBusinessDashboardThroughput=同功能无内外贸分拆"),
-    ApiEndpoint(name="getMonthlyRegionalThroughputAreaBusinessDashboard", path="/api/gateway/getMonthlyRegionalThroughputAreaBusinessDashboard", domain="D2",
-        intent="查询当月各港区吞吐量及占比（商务驾驶舱版）",
-        time="T_MON", granularity="G_ZONE",
-        tags=('港区吞吐', '当月', '商务驾驶舱'),
-        required=('date',), optional=(),
-        param_note="date=yyyy-MM",
-        returns="num/typeName/zoneName（透视格式，多港区×多指标）",
-        disambiguate="区别getMonthlyZoneThroughput=需三参数版",
-        field_schema=(("num", "float", ""), ("typeName", "str", ""), ("zoneName", "str", "")),
-        use_cases=("查询当月各港区吞吐量及占比分布",),
-        chain_with=("getCurBusinessDashboardThroughput",),
-        analysis_note="透视格式：num/typeName/zoneName，多港区×多指标"),
-    ApiEndpoint(name="getTrendChart", path="/api/gateway/getTrendChart", domain="D2",
-        intent="查询指定业务板块月度吞吐量趋势图数据（市场商务版）",
-        time="T_TREND", granularity="G_BIZ",
-        tags=('趋势图', '月度趋势', '业务板块'),
-        required=('businessSegment', 'startDate', 'endDate'), optional=(),
-        param_note="businessSegment=集装箱/散杂货/油化品/商品车",
-        returns="throughput/businessSegment/dateMonth（多月×单业务板块）",
-        disambiguate="区别getCumulativeTrendChart=累计版",
-        field_schema=(("throughput", "float", ""), ("businessSegment", "str", ""), ("dateMonth", "str", "")),
-        use_cases=("某业务板块月度吞吐趋势", "板块吞吐量同比走势"),
-        chain_with=("getCumulativeTrendChart", "getKeyEnterprise"),
-        analysis_note="必填businessSegment+startDate+endDate，每次只能传单个板块名（字符串），多板块需拆成多个独立调用，返回throughput/businessSegment/dateMonth"),
-    ApiEndpoint(name="getCumulativeTrendChart", path="/api/gateway/getCumulativeTrendChart", domain="D2",
-        intent="查询业务板块年累计吞吐量趋势（含月度/累计双序列）",
-        time="T_CUM", granularity="G_BIZ",
-        tags=('累计趋势', '月度+累计', '业务板块'),
-        required=('businessSegment', 'curDateYear', 'yearDateYear'), optional=(),
-        param_note="",
-        returns="throughput/businessSegment/dateYear（累计趋势按年）",
-        disambiguate="区别getTrendChart=仅月度",
-        field_schema=(("throughput", "float", ""), ("businessSegment", "str", ""), ("dateYear", "str", ""),),
-        use_cases=("某业务板块年累计吞吐趋势", "板块历年吞吐量对比",),
-        chain_with=("getTrendChart",),
-        analysis_note="必填businessSegment+curDateYear+yearDateYear，返回throughput/businessSegment/dateYear",),
-    ApiEndpoint(name="getKeyEnterprise", path="/api/gateway/getKeyEnterprise", domain="D2",
-        intent="查询当月重点企业吞吐量排名（Top10，按业务板块）",
-        time="T_MON", granularity="G_CLIENT",
-        tags=('重点企业', '排名', '当月', '贡献'),
-        required=('businessSegment', 'curDateMonth', 'yearDateMonth'), optional=(),
-        param_note="",
-        returns="throughput/companyName/dateMonth（多企业×多月）",
-        disambiguate="区别getCumulativeKeyEnterprise=累计排名",
-        field_schema=(("throughput", "float", ""), ("companyName", "str", ""), ("dateMonth", "str", "")),
-        use_cases=("某板块重点企业当月排名", "重点企业吞吐量排行榜"),
-        chain_with=("getCumulativeKeyEnterprise",),
-        analysis_note="必填businessSegment，返回companyName/throughput/dateMonth"),
-    ApiEndpoint(name="getCumulativeKeyEnterprise", path="/api/gateway/getCumulativeKeyEnterprise", domain="D2",
-        intent="查询年累计重点企业吞吐量排名",
-        time="T_CUM", granularity="G_CLIENT",
-        tags=('重点企业', '排名', '年累计'),
-        required=('businessSegment', 'curDateYear', 'yearDateYear'), optional=(),
-        param_note="",
-        returns="rank/enterpriseName/cumulativeThroughput/contributionRate",
-        disambiguate="区别getKeyEnterprise=当月版",
-        field_schema=(("throughput", "float", ""), ("companyName", "str", ""), ("dateYear", "str", "")),
-        use_cases=("年累计重点企业吞吐量排名", "重点企业年累计贡献率"),
-        analysis_note="必填businessSegment+curDateYear+yearDateYear"),
-    ApiEndpoint(name="getMonthlyThroughput", path="/api/gateway/getMonthlyThroughput", domain="D2",
-        intent="查询当月吞吐量及与去年同期对比（市场商务驾驶舱，可按港区筛选）",
-        time="T_MON", granularity="G_ZONE",
-        tags=('当月吞吐', '同比', '市场商务', '港区'),
-        required=('curDateMonth', 'yearDateMonth', 'zoneName'), optional=(),
-        param_note="curDateMonth/yearDateMonth=yyyy-MM；zoneName=港区名（必填）",
-        returns="currentMonthTotal/prevYearSameMonth/yoyRate/yoyDiff",
-        disambiguate="区别getCurBusinessDashboardThroughput=无zoneName参数；getCumulativeThroughput=累计"),
-    ApiEndpoint(name="getMonthlyZoneThroughput", path="/api/gateway/getMonthlyZoneThroughput", domain="D2",
-        intent="查询各港区当月吞吐量分布及占比",
-        time="T_MON", granularity="G_ZONE",
-        tags=('港区吞吐', '当月', '分港区', '占比'),
-        required=('curDateMonth', 'yearDateMonth', 'zoneName'), optional=(),
-        param_note="",
-        returns="zoneName/currentThroughput/yoyRate/shareRatio",
-        disambiguate="区别getMonthlyThroughput=全港汇总；区别CumulativeZone=累计版"),
-    ApiEndpoint(name="getCumulativeZoneThroughput", path="/api/gateway/getCumulativeZoneThroughput", domain="D2",
-        intent="查询各港区年累计吞吐量及占比",
-        time="T_CUM", granularity="G_ZONE",
-        tags=('港区累计', '年累计', '分港区', '占比'),
-        required=('curDateYear', 'yearDateYear', 'zoneName'), optional=(),
-        param_note="",
-        returns="zoneName/currentYearCumulative/yoyRate/shareRatio",
-        disambiguate="区别getMonthlyZoneThroughput=当月版"),
-    ApiEndpoint(name="getCurrentBusinessSegmentThroughput", path="/api/gateway/getCurrentBusinessSegmentThroughput", domain="D2",
-        intent="查询当月各业务板块（集装箱/散杂货/油化品/商品车）吞吐量",
-        time="T_MON", granularity="G_BIZ",
-        tags=('业务板块', '当月', '集装箱', '散杂货', '油化品', '商品车'),
-        required=('curDateMonth', 'yearDateMonth', 'zoneName'), optional=(),
-        param_note="",
-        returns="businessSegment/currentThroughput/prevYearThroughput/yoyRate",
-        disambiguate="区别getCumulativeBusinessSegmentThroughput=累计版"),
-    ApiEndpoint(name="getCumulativeBusinessSegmentThroughput", path="/api/gateway/getCumulativeBusinessSegmentThroughput", domain="D2",
-        intent="查询年累计各业务板块吞吐量",
-        time="T_CUM", granularity="G_BIZ",
-        tags=('业务板块', '年累计', '集装箱', '散杂货'),
-        required=('curDateYear', 'yearDateYear', 'zoneName'), optional=(),
-        param_note="",
-        returns="businessSegment/currentYearCumulative/yoyRate",
-        disambiguate="区别getCurrentBusinessSegment=当月版"),
-    # ── D3 客户管理 ──
-    ApiEndpoint(name="getCustomerQty", path="/api/gateway/getCustomerQty", domain="D3",
-        intent="查询客户总数量（含活跃/战略/新增统计）",
-        time="T_NONE", granularity="G_CLIENT",
-        tags=('客户数量', '战略客户数', '新增客户'),
-        required=(), optional=(),
-        param_note="无入参",
-        returns="totalQty/outPortQty/strategyClientQty/customerFilesNumber",
-        disambiguate="",
-        field_schema=(("totalQty", "int", ""), ("outPortQty", "int", ""), ("strategyClientQty", "int", ""), ("customerFilesNumber", "int", "")),
-        use_cases=("查询客户总量及战略客户数", "客户规模概览"),
-        chain_with=("getCustomerTypeAnalysis",),
-        analysis_note="静态快照：totalQty/outPortQty/strategyClientQty/customerFilesNumber"),
-    ApiEndpoint(name="getCustomerTypeAnalysis", path="/api/gateway/getCustomerTypeAnalysis", domain="D3",
-        intent="查询客户类型结构分析（货主/船公司/代理等分类及占比）",
-        time="T_NONE", granularity="G_CLIENT",
-        tags=('客户类型', '客户结构', '占比'),
-        required=(), optional=(),
-        param_note="无入参",
-        returns="clientType/qty",
-        disambiguate="区别FieldAnalysis=按行业",
-        field_schema=(("clientType", "str", ""), ("qty", "int", "")),
-        use_cases=("客户类型结构分析", "各类客户占比"),
-        chain_with=("getCustomerFieldAnalysis",),
-        analysis_note="返回clientType/qty，按类型分组"),
-    ApiEndpoint(name="getCustomerFieldAnalysis", path="/api/gateway/getCustomerFieldAnalysis", domain="D3",
-        intent="查询客户所属行业分析（钢铁/能源/汽车/粮食等）",
-        time="T_NONE", granularity="G_CLIENT",
-        tags=('行业分析', '客户行业', '货主行业'),
-        required=(), optional=(),
-        param_note="无入参",
-        returns="field/count/ratio",
-        disambiguate="区别TypeAnalysis=按客户类型",
-        field_schema=(("indstryFieldName", "str", ""), ("qty", "int", "")),
-        use_cases=("客户行业分布分析", "行业集中度分析"),
-        chain_with=("getCustomerTypeAnalysis",),
-        analysis_note="返回indstryFieldName/qty，按行业分组"),
-    ApiEndpoint(name="getCustomerCredit", path="/api/gateway/getCustomerCredit", domain="D3",
-        intent="查询客户信用级别和授信额度（已用/可用）",
-        time="T_NONE", granularity="G_CLIENT",
-        tags=('信用', '授信', '信用级别', '风险'),
-        required=('orgName', 'customerName', 'gradeResult'), optional=(),
-        param_note="gradeResult=信用等级筛选值",
-        returns="creditLevel/creditLimit/usedCredit/availableCredit/riskLevel",
-        disambiguate=""),
-    ApiEndpoint(name="getStrategicCustomerThroughput", path="/api/gateway/getStrategicCustomerThroughput", domain="D3",
-        intent="查询战略客户吞吐量贡献（按吞吐量排名）",
-        time="T_MON", granularity="G_CLIENT",
-        tags=('客户吞吐', '贡献', '战略客户'),
-        required=(), optional=('curDate', 'clientName', 'cargoCategoryName', 'statisticType', 'yearDate'),
-        param_note="curDate=yyyy-MM",
-        returns="clientName/throughput/contributionRate/yoyRate",
-        disambiguate="区别getStrategicCustomerRevenue=看收入",
-        field_schema=(("clientName", "str", ""), ("ttlNum", "str", ""), ("cargoCategoryName", "str", ""), ("ttlDate", "str", ""),),
-        use_cases=("战略客户吞吐量明细查询", "指定客户历史吞吐记录",),
-        chain_with=("getCurContributionRankOfStrategicCustomer",),
-        analysis_note="返回clientName/ttlNum/cargoCategoryName/ttlDate，数据量大（约297行），建议筛选客户后使用",),
-    ApiEndpoint(name="getStrategicCustomers", path="/api/gateway/getStrategicCustomers", domain="D3",
-        intent="查询战略客户名单及合作信息（级别/年份/合同状态）",
-        time="T_NONE", granularity="G_CLIENT",
-        tags=('战略客户', '客户名单', '合作级别'),
-        required=(), optional=(),
-        param_note="无入参，返回战略客户列表",
-        returns="displayCode/displayName",
-        disambiguate="",
-        field_schema=(("displayCode", "str", ""), ("displayName", "str", ""),),
-        use_cases=("获取战略客户名单", "战略客户列表查询",),
-        chain_with=("getCurContributionRankOfStrategicCustomer",),
-        analysis_note="仅返回displayCode/displayName，无业绩数据，约37个战略客户，可做后续分析的客户筛选源",),
-    ApiEndpoint(name="getCurStrategicCustomerContributionByCargoTypeThroughput", path="/api/gateway/getCurStrategicCustomerContributionByCargoTypeThroughput", domain="D3",
-        intent="查询当月战略客户按货类贡献的吞吐量",
-        time="T_MON", granularity="G_CARGO",
-        tags=('战略客户', '货类贡献', '当月', '商务驾驶舱'),
-        required=('date',), optional=(),
-        param_note="date=yyyy-MM",
-        returns="cargoType/strategicThroughput/contributionRate",
-        disambiguate="区别Sum版=累计",
-        field_schema=(("num", "float", ""), ("categoryName", "str", ""),),
-        use_cases=("当月战略客户按货类贡献分析", "各货类战略客户吞吐占比",),
-        chain_with=("getSumStrategicCustomerContributionByCargoTypeThroughput",),
-        analysis_note="按货类categoryName返回num（战略客户吞吐量），适合饼图/柱状图",),
-    ApiEndpoint(name="getCurContributionRankOfStrategicCustomer", path="/api/gateway/getCurContributionRankOfStrategicCustomer", domain="D3",
-        intent="查询当月战略客户贡献排名（商务驾驶舱版）",
-        time="T_MON", granularity="G_CLIENT",
-        tags=('战略客户排名', '当月排名', '商务驾驶舱'),
-        required=('date',), optional=(),
-        param_note="date=yyyy-MM",
-        returns="rank/clientName/throughput/contributionRate",
-        disambiguate="区别Sum版=累计排名",
-        field_schema=(("num", "float", ""), ("clientName", "str", "")),
-        use_cases=("战略客户当月贡献排名", "Top N战略客户识别"),
-        chain_with=("getSumContributionRankOfStrategicCustomer",),
-        analysis_note="返回num/clientName（prod_data实际字段），约37行"),
-    ApiEndpoint(name="getSumStrategyCustomerTrendAnalysis", path="/api/gateway/getSumStrategyCustomerTrendAnalysis", domain="D3",
-        intent="查询战略客户历年累计趋势分析",
-        time="T_HIST", granularity="G_CLIENT",
-        tags=('战略客户', '历年趋势', '累计趋势'),
-        required=(), optional=(),
-        param_note="无入参",
-        returns="月份序列：cumulativeStrategicThroughput/cumulativeRevenue/contributionRate",
-        disambiguate="区别Cur版=当年月度趋势",
-        field_schema=(("num", "float", ""), ("dateYear", "int", "")),
-        use_cases=("战略客户历年累计趋势", "长期客户贡献分析"),
-        chain_with=("getCurStrategyCustomerTrendAnalysis",),
-        analysis_note="返回num/dateYear年度序列"),
-    # ── D4 投企管理 ──
-    ApiEndpoint(name="investCorpShareholdingProp", path="/api/gateway/investCorpShareholdingProp", domain="D4",
-        intent="查询投资企业持股比例分布（0-20%/20-50%/50%以上/全资）",
-        time="T_NONE", granularity="G_CMP",
-        tags=('持股比例', '投企', '股权结构'),
-        required=(), optional=(),
-        param_note="无入参",
-        returns="shareholdingRange/count/ratio",
-        disambiguate=""),
-    ApiEndpoint(name="getMeetDetail", path="/api/gateway/getMeetDetail", domain="D4",
-        intent="查询指定月份会议议案明细（按议案状态筛选）",
-        time="T_MON", granularity="G_CMP",
-        tags=('议案明细', '董事会', '会议记录'),
-        required=('date', 'yianZt'), optional=(),
-        param_note="yianZt=议案状态编码",
-        returns="meetingType/motionTitle/motionStatus/proposer",
-        disambiguate="区别getMeetingInfo=汇总数量"),
-    ApiEndpoint(name="getNewEnterprise", path="/api/gateway/getNewEnterprise", domain="D4",
-        intent="查询年内新设企业信息（注册时间/注册资本/业务范围）",
-        time="T_YR", granularity="G_CMP",
-        tags=('新设企业', '新增', '注册资本'),
-        required=('date',), optional=(),
-        param_note="date=yyyy",
-        returns="enterpriseName/establishDate/registeredCapital/businessScope",
-        disambiguate="区别getWithdrawalInfo=注销退出"),
-    ApiEndpoint(name="getWithdrawalInfo", path="/api/gateway/getWithdrawalInfo", domain="D4",
-        intent="查询年内退出/注销企业信息",
-        time="T_YR", granularity="G_CMP",
-        tags=('退出企业', '注销', '退股', '合并'),
-        required=('date',), optional=(),
-        param_note="date=yyyy",
-        returns="enterpriseName/withdrawalType/withdrawalDate/reason",
-        disambiguate="区别getNewEnterprise=新设"),
-    ApiEndpoint(name="getBusinessExpirationInfo", path="/api/gateway/getBusinessExpirationInfo", domain="D4",
-        intent="查询营业执照即将到期的企业及续期状态",
-        time="T_NONE", granularity="G_CMP",
-        tags=('营业执照', '到期', '续期', '到期预警'),
-        required=('date',), optional=(),
-        param_note="date=当前日期",
-        returns="enterpriseName/businessLicenseExpiry/daysToExpiry/renewalStatus",
-        disambiguate=""),
-    ApiEndpoint(name="getSupervisorIncidentInfo", path="/api/gateway/getSupervisorIncidentInfo", domain="D4",
-        intent="查询监管人员变动信息（新任/离任/调任）",
-        time="T_YR", granularity="G_CMP",
-        tags=('人员变动', '董事长', '总经理', '监事'),
-        required=('date',), optional=(),
-        param_note="date=yyyy",
-        returns="enterpriseName/changeType/position/personName/changeDate",
-        disambiguate=""),
-    ApiEndpoint(name="getTotalssets", path="/api/gateway/getTotalssets", domain="D5",
-        intent="查询指定港区资产总数量（实物资产+金融资产）",
-        time="T_NONE", granularity="G_ZONE",
-        tags=('资产总数', '实物资产', '金融资产'),
-        required=('assetOwnerZone',), optional=(),
-        param_note="assetOwnerZone=港区名称",
-        returns="totalCount/physicalAssetCount/financialAssetCount",
-        disambiguate="区别getAssetValue=价值"),
-    ApiEndpoint(name="getAssetValue", path="/api/gateway/getAssetValue", domain="D5",
-        intent="查询港区资产原值和净值（含折旧率）",
-        time="T_NONE", granularity="G_ZONE",
-        tags=('资产价值', '原值', '净值', '折旧'),
-        required=('ownerZone',), optional=(),
-        param_note="",
-        returns="originalValue/netValue/depreciationRate",
-        disambiguate="区别getTotalssets=数量"),
-    ApiEndpoint(name="getMainAssetsInfo", path="/api/gateway/getMainAssetsInfo", domain="D5",
-        intent="查询港区主要资产类别数量（设备/设施/房屋/土地）",
-        time="T_NONE", granularity="G_ZONE",
-        tags=('主要资产', '设备数量', '设施', '房屋', '土地'),
-        required=('ownerZone',), optional=(),
-        param_note="",
-        returns="equipmentCount/facilityCount/buildingCount/landCount/importantAssetNetValue",
-        disambiguate=""),
-    ApiEndpoint(name="getRealAssetsDistribution", path="/api/gateway/getRealAssetsDistribution", domain="D5",
-        intent="查询实物资产类型分布（设备/设施/房屋/土地数量占比）",
-        time="T_NONE", granularity="G_ZONE",
-        tags=('资产分布', '类型分布', '实物资产'),
-        required=('ownerZone',), optional=(),
-        param_note="",
-        returns="assetType/count/ratio",
-        disambiguate=""),
-    ApiEndpoint(name="getOriginalValueDistribution", path="/api/gateway/getOriginalValueDistribution", domain="D5",
-        intent="查询各类资产原值分布",
-        time="T_NONE", granularity="G_ZONE",
-        tags=('原值分布', '资产原值'),
-        required=('ownerZone',), optional=(),
-        param_note="",
-        returns="assetType/originalValue/ratio",
-        disambiguate="区别getRealAssetsDistribution=数量分布"),
-    ApiEndpoint(name="getPhysicalAssets", path="/api/gateway/getPhysicalAssets", domain="D5",
-        intent="查询全港实物资产汇总（总数量/原值/净值）",
-        time="T_YR", granularity="G_PORT",
-        tags=('实物资产汇总', '总量', '原值净值'),
-        required=('dateYear',), optional=(),
-        param_note="",
-        returns="totalPhysicalAssets/totalOriginalValue/totalNetValue",
-        disambiguate=""),
-    ApiEndpoint(name="getRegionalAnalysis", path="/api/gateway/getRegionalAnalysis", domain="D5",
-        intent="查询各港区资产数量/原值/净值对比",
-        time="T_YR", granularity="G_ZONE",
-        tags=('港区资产', '区域对比', '资产分布'),
-        required=('dateYear',), optional=(),
-        param_note="",
-        returns="num/typeName/ownerZone（透视格式，多港区×多指标）",
-        disambiguate="",
-        field_schema=(("num", "float", ""), ("typeName", "str", ""), ("ownerZone", "str", "")),
-        use_cases=("各港区资产分布对比", "港区资产价值分析"),
-        chain_with=("getCategoryAnalysis",),
-        analysis_note="三维透视：num/typeName/ownerZone，需按typeName和ownerZone分组"),
-    ApiEndpoint(name="getCategoryAnalysis", path="/api/gateway/getCategoryAnalysis", domain="D5",
-        intent="查询各类别资产数量/原值/净值（设备/设施/房屋/土地）",
-        time="T_YR", granularity="G_ASSET",
-        tags=('资产类别', '类型分析', '设备设施房屋土地'),
-        required=('dateYear',), optional=(),
-        param_note="",
-        returns="num/typeName/assetTypeName（透视格式，多类型×多指标）",
-        disambiguate="区别getRegionalAnalysis=按港区",
-        field_schema=(("num", "float", ""), ("typeName", "str", ""), ("assetTypeName", "str", ""),),
-        use_cases=("资产按类别对比分析", "各类资产价值及数量结构",),
-        chain_with=("getRegionalAnalysis",),
-        analysis_note="三维透视：num/typeName/assetTypeName，需按typeName×assetTypeName分组",),
-    ApiEndpoint(name="getCategoryAnalysisTransparentTransmission", path="/api/gateway/getCategoryAnalysisTransparentTransmission", domain="D5",
-        intent="查询指定类型资产按港区穿透详情",
-        time="T_YR", granularity="G_ASSET",
-        tags=('类型穿透', '资产类型', '港区细分'),
-        required=('dateYear', 'assetTypeName'), optional=(),
-        param_note="",
-        returns="ownerZone/count/originalValue/netValue",
-        disambiguate=""),
-    ApiEndpoint(name="getEquipmentFacilityAnalysisYoy", path="/api/gateway/getEquipmentFacilityAnalysisYoy", domain="D5",
-        intent="查询设备设施数量和净值同比变化",
-        time="T_YOY", granularity="G_PORT",
-        tags=('设备同比', '净值同比', '设施同比'),
-        required=('dateYear',), optional=(),
-        param_note="",
-        returns="num/typeName/dateYear（透视格式，多年×多指标）",
-        disambiguate="",
-        field_schema=(("num", "int", ""), ("typeName", "str", ""), ("dateYear", "float", ""),),
-        use_cases=("设备设施年度同比分析", "各类设备设施历年数量变化",),
-        chain_with=("getRegionalAnalysis",),
-        analysis_note="透视格式：num/typeName/dateYear，需按typeName×dateYear分组解读",),
-    ApiEndpoint(name="getEquipmentFacilityAnalysis", path="/api/gateway/getEquipmentFacilityAnalysis", domain="D5",
-        intent="查询设备或设施分类分析（type=1设备/type=2设施）",
-        time="T_YR", granularity="G_ASSET",
-        tags=('设备分类', '设施分类', '装卸设备', '运输设备'),
-        required=('dateYear', 'type'), optional=(),
-        param_note="type=1查设备；type=2查设施",
-        returns="category/count/netValue",
-        disambiguate="区别StatusAnalysis=按状态；RegionalAnalysis=按港区"),
-    ApiEndpoint(name="getEquipmentFacilityStatusAnalysis", path="/api/gateway/getEquipmentFacilityStatusAnalysis", domain="D5",
-        intent="查询设备/设施按状态分布（正常/维修/超期/闲置等）",
-        time="T_YR", granularity="G_ASSET",
-        tags=('状态分析', '设备状态', '超期服役'),
-        required=('dateYear', 'type'), optional=(),
-        param_note="type=1设备/2设施",
-        returns="status/count/ratio",
-        disambiguate=""),
-    ApiEndpoint(name="getEquipmentFacilityRegionalAnalysis", path="/api/gateway/getEquipmentFacilityRegionalAnalysis", domain="D5",
-        intent="查询各港区设备/设施数量和净值分布",
-        time="T_YR", granularity="G_ZONE",
-        tags=('区域分析', '设备区域', '港区设备'),
-        required=('dateYear', 'type'), optional=(),
-        param_note="type=1设备/2设施",
-        returns="ownerZone/count/netValue/shareRatio",
-        disambiguate=""),
-    ApiEndpoint(name="getEquipmentFacilityWorthAnalysis", path="/api/gateway/getEquipmentFacilityWorthAnalysis", domain="D5",
-        intent="查询设备/设施净值区间分布",
-        time="T_YR", granularity="G_ASSET",
-        tags=('净值区间', '设备价值', '价值分布'),
-        required=('dateYear', 'type'), optional=(),
-        param_note="type=设备/设施名称字符串",
-        returns="netValueRange/count/totalNetValue",
-        disambiguate=""),
-    ApiEndpoint(name="getLandMaritimeAnalysisTransparentTransmission", path="/api/gateway/getLandMaritimeAnalysisTransparentTransmission", domain="D5",
-        intent="查询土地和海域资产穿透分析（面积/价值按港区）",
-        time="T_YR", granularity="G_ZONE",
-        tags=('土地', '海域', '面积', '港区'),
-        required=('dateYear',), optional=('ownerZone',),
-        param_note="",
-        returns="ownerZone/landArea/seaArea/landValue/seaValue",
-        disambiguate=""),
-    ApiEndpoint(name="getHousingAnalysisYoy", path="/api/gateway/getHousingAnalysisYoy", domain="D5",
-        intent="查询房屋资产同比（数量/面积/净值）",
-        time="T_YOY", granularity="G_PORT",
-        tags=('房屋同比', '建筑面积', '净值同比'),
-        required=('dateYear',), optional=(),
-        param_note="",
-        returns="currentCount/currentArea/currentNetValue/yoyNetValueRate",
-        disambiguate="",
-        field_schema=(("num", "float", ""), ("typeName", "str", ""), ("dateYear", "float", ""),),
-        use_cases=("房屋资产年度同比分析", "房屋建筑面积历年变化",),
-        chain_with=("getLandMaritimeAnalysisYoy",),
-        analysis_note="透视格式：num/typeName/dateYear，按typeName×dateYear分组解读",),
-    ApiEndpoint(name="getLandMaritimeAnalysisYoy", path="/api/gateway/getLandMaritimeAnalysisYoy", domain="D5",
-        intent="查询土地海域资产同比（面积/净值）",
-        time="T_YOY", granularity="G_PORT",
-        tags=('土地同比', '海域同比', '亩'),
-        required=('dateYear',), optional=(),
-        param_note="",
-        returns="totalLandArea/totalSeaArea/landNetValue/yoyNetValueRate",
-        disambiguate=""),
-    ApiEndpoint(name="getLandMaritimeRegionalAnalysis", path="/api/gateway/getLandMaritimeRegionalAnalysis", domain="D5",
-        intent="查询各港区土地海域面积和净值",
-        time="T_YR", granularity="G_ZONE",
-        tags=('土地按港区', '海域', '面积'),
-        required=('dateYear',), optional=(),
-        param_note="",
-        returns="ownerZone/landArea/seaArea/totalNetValue",
-        disambiguate="",
-        field_schema=(("num", "float", ""), ("typeName", "str", ""), ("ownerZone", "str", ""),),
-        use_cases=("各港区土地海域分布对比", "港区土地海域面积及净值分析",),
-        chain_with=("getRegionalAnalysis",),
-        analysis_note="三维透视：num/typeName/ownerZone，按港区比较土地海域资产",),
-    ApiEndpoint(name="getLandMaritimeWorthAnalysis", path="/api/gateway/getLandMaritimeWorthAnalysis", domain="D5",
-        intent="查询土地海域资产类型价值分析（工业/港口/绿化/海域使用权）",
-        time="T_YR", granularity="G_ASSET",
-        tags=('土地类型', '海域价值', '单价'),
-        required=('dateYear',), optional=(),
-        param_note="",
-        returns="assetSubType/totalArea/totalNetValue/pricePerUnit",
-        disambiguate=""),
-    ApiEndpoint(name="getImportAssertAnalysisList", path="/api/gateway/getImportAssertAnalysisList", domain="D5",
-        intent="查询重要资产明细列表（支持多条件筛选，分页）",
-        time="T_YR", granularity="G_ASSET",
-        tags=('资产列表', '明细', '分页'),
-        required=('dateYear',), optional=('portCode', 'assetTypeId', 'assetTypeName', 'ownerZone'),
-        param_note="分页：pageNo/pageSize",
-        returns="assetCode/assetName/assetType/originalValue/netValue/status",
-        disambiguate=""),
-    ApiEndpoint(name="getInvestPlanTypeProjectList", path="/api/gateway/getInvestPlanTypeProjectList", domain="D6",
-        intent="查询年度投资计划类型汇总（资本性/成本性/计划外项目数和金额）",
-        time="T_YR", granularity="G_ZONE",
-        tags=('投资计划', '资本项目', '成本项目', '计划外'),
-        required=(), optional=('ownerLgZoneName', 'currYear'),
-        param_note="",
-        returns="capitalProjects/costProjects/unplannedProjects/totalApproved",
-        disambiguate=""),
-    ApiEndpoint(name="planInvestAndPayYoy", path="/api/gateway/planInvestAndPayYoy", domain="D6",
-        intent="查询年度投资计划和付款额同比",
-        time="T_YOY", granularity="G_PORT",
-        tags=('投资同比', '付款同比', '年度对比'),
-        required=(), optional=('currYear', 'preYear', 'ownerLgZoneName'),
-        param_note="",
-        returns="dateYear/planInvestAmt/planPayAmt",
-        disambiguate="",
-        field_schema=(("dateYear", "int", ""), ("planInvestAmt", "float", ""), ("planPayAmt", "float", ""),),
-        use_cases=("年度投资计划同比快照", "年度计划金额对比",),
-        chain_with=("getInvestPlanByYear",),
-        analysis_note="同比快照：dateYear/planInvestAmt/planPayAmt，仅2行年度对比",),
-    ApiEndpoint(name="getFinishProgressAndDeliveryRate", path="/api/gateway/getFinishProgressAndDeliveryRate", domain="D6",
-        intent="查询年度投资完成进度和资本项目交付率",
-        time="T_YR", granularity="G_ZONE",
-        tags=('完成进度', '交付率', '资本项目'),
-        required=(), optional=('ownerLgZoneName', 'currYear'),
-        param_note="",
-        returns="completionRate/deliveredProjects/deliveryRate",
-        disambiguate=""),
-    ApiEndpoint(name="getInvestPlanByYear", path="/api/gateway/getInvestPlanByYear", domain="D6",
-        intent="查询近5年投资计划和完成情况历年对比",
-        time="T_HIST", granularity="G_ZONE",
-        tags=('历年投资', '投资趋势'),
-        required=(), optional=('ownerLgZoneName',),
-        param_note="",
-        returns="dateYear/finishInvestAmt/planInvestAmt/realFinishPayAmt/captPlanPayAmt（7行，2019-2025）",
-        disambiguate="仅用于多年趋势对比，不含单个项目维度；若需查询各项目完成率请用 getFinishProgressAndDeliveryRate 或 getPlanFinishByProjectType",
-        field_schema=(("dateYear", "int", ""), ("finishInvestAmt", "int", ""), ("planInvestAmt", "float", ""), ("realFinishPayAmt", "float", ""), ("captPlanPayAmt", "float", "")),
-        use_cases=("历年投资计划完成趋势", "投资金额年度对比"),
-        chain_with=("getPlanFinishByZone",),
-        analysis_note="7行2019-2025，包含finishInvestAmt/planInvestAmt等，可做趋势折线"),
-    ApiEndpoint(name="getCostProjectYoyList", path="/api/gateway/getCostProjectYoyList", domain="D6",
-        intent="查询成本性项目数量和金额同比",
-        time="T_YOY", granularity="G_PORT",
-        tags=('成本项目', '同比', '年度对比'),
-        required=(), optional=('currYear', 'preYear'),
-        param_note="",
-        returns="currYear/projectQty/investAmt/finishPayAmt/deliveryRate",
-        disambiguate=""),
-    ApiEndpoint(name="getCostProjectQtyList", path="/api/gateway/getCostProjectQtyList", domain="D6",
-        intent="查询成本性项目分类数量和金额占比",
-        time="T_YR", granularity="G_PORT",
-        tags=('成本项目分类', '设备维修', '安全整改'),
-        required=(), optional=('currYear',),
-        param_note="",
-        returns="category/count/ratio/amount",
-        disambiguate=""),
-    ApiEndpoint(name="getCostProjectAmtByOwnerLgZoneName", path="/api/gateway/getCostProjectAmtByOwnerLgZoneName", domain="D6",
-        intent="查询各港区成本性项目金额（批复/完成/招标）",
-        time="T_YR", granularity="G_ZONE",
-        tags=('成本项目', '按港区', '招标金额'),
-        required=(), optional=('currYear',),
-        param_note="",
-        returns="ownerLgZoneName/investAmt/finishPayAmt",
-        disambiguate="",
-        field_schema=(("ownerLgZoneName", "str", ""), ("investAmt", "float", ""), ("finishPayAmt", "float", ""),),
-        use_cases=("各港区成本项目金额对比", "港区成本支付完成率分析",),
-        chain_with=("getPlanFinishByZone",),
-        analysis_note="按港区返回investAmt/finishPayAmt，适合港区间对比柱状图",),
-    ApiEndpoint(name="getCostProjectQtyByProjectCmp", path="/api/gateway/getCostProjectQtyByProjectCmp", domain="D6",
-        intent="查询各公司成本性项目数量和完成情况",
-        time="T_YR", granularity="G_CMP",
-        tags=('成本项目', '按公司', '完成率'),
-        required=(), optional=('dateYear', 'zoneName'),
-        param_note="",
-        returns="companyName/projectCount/approvedAmount/completionRate",
-        disambiguate=""),
-    ApiEndpoint(name="getInvestAmtList", path="/api/gateway/getInvestAmtList", domain="D6",
-        intent="查询投资项目金额明细列表（分页，支持多条件筛选）",
-        time="T_YR", granularity="G_PROJ",
-        tags=('投资明细', '项目列表', '分页'),
-        required=('dateYear',), optional=('projectCmp', 'projectName', 'projectNo', 'adminName', 'currentStage', 'zoneName'),
-        param_note="分页：pageNo/pageSize",
-        returns="projectName/projectCmp/approvedAmount/completedAmount/startDate",
-        disambiguate=""),
-    ApiEndpoint(name="getOutOfPlanFinishProgressList", path="/api/gateway/getOutOfPlanFinishProgressList", domain="D6",
-        intent="查询计划外项目完成进度汇总",
-        time="T_YR", granularity="G_PORT",
-        tags=('计划外', '完成进度', '未计划项目'),
-        required=(), optional=('dateYear',),
-        param_note="",
-        returns="totalCount/completedCount/completionRate/totalAmount",
-        disambiguate=""),
-    ApiEndpoint(name="getOutOfPlanProjectQtyYoy", path="/api/gateway/getOutOfPlanProjectQtyYoy", domain="D6",
-        intent="查询计划外项目数量和金额同比",
-        time="T_YOY", granularity="G_PORT",
-        tags=('计划外', '同比', '年度对比'),
-        required=(), optional=('currYear', 'preYear'),
-        param_note="",
-        returns="currCount/prevCount/countYoyRate/amountYoyRate",
-        disambiguate=""),
-    ApiEndpoint(name="getOutOfPlanProjectInvestFinishList", path="/api/gateway/getOutOfPlanProjectInvestFinishList", domain="D6",
-        intent="查询计划外项目近5年投资完成历史",
-        time="T_HIST", granularity="G_PORT",
-        tags=('计划外', '历年', '投资完成'),
-        required=(), optional=(),
-        param_note="无入参",
-        returns="年份序列：projectCount/approvedAmount/completionRate",
-        disambiguate=""),
-    ApiEndpoint(name="getOutOfPlanProjectPayFinishList", path="/api/gateway/getOutOfPlanProjectPayFinishList", domain="D6",
-        intent="查询计划外项目近5年付款完成历史",
-        time="T_HIST", granularity="G_PORT",
-        tags=('计划外', '付款', '历年'),
-        required=(), optional=(),
-        param_note="无入参",
-        returns="年份序列：approvedAmount/paidAmount/paymentRate",
-        disambiguate=""),
-    ApiEndpoint(name="getPlanFinishByZone", path="/api/gateway/getPlanFinishByZone", domain="D6",
-        intent="查询各港区投资计划完成情况和交付率",
-        time="T_YR", granularity="G_ZONE",
-        tags=('各港区', '投资完成', '交付率'),
-        required=(), optional=('currYear',),
-        param_note="",
-        returns="ownerLgZoneName/planInvestAmt/finishInvestAmt/planPayAmt/finishPayAmt",
-        disambiguate="",
-        field_schema=(("ownerLgZoneName", "str", ""), ("planInvestAmt", "float", ""), ("finishInvestAmt", "float", ""), ("planPayAmt", "float", ""), ("finishPayAmt", "float", "")),
-        use_cases=("各港区投资计划完成对比", "港区投资进度归因"),
-        chain_with=("getCostProjectAmtByOwnerLgZoneName",),
-        analysis_note="按ownerLgZoneName返回planInvestAmt/finishInvestAmt，适合瀑布图归因"),
-    ApiEndpoint(name="getPlanFinishByProjectType", path="/api/gateway/getPlanFinishByProjectType", domain="D6",
-        intent="查询各项目类型完成情况（技改/新建/扩建/维护改造/安全环保）",
-        time="T_YR", granularity="G_PROJ",
-        tags=('项目类型', '技改', '新建', '完成率'),
-        required=(), optional=(),
-        param_note="无入参",
-        returns="projectType/count/approvedAmount/completionRate",
-        disambiguate=""),
-    ApiEndpoint(name="getPlanExcludedProjectPenetrationAnalysis", path="/api/gateway/getPlanExcludedProjectPenetrationAnalysis", domain="D6",
-        intent="查询计划外项目按港区/类型的穿透分析",
-        time="T_YR", granularity="G_ZONE",
-        tags=('计划外穿透', '按港区', '按类型'),
-        required=(), optional=('ownerLgZoneName', 'investProjectType', 'dateYear'),
-        param_note="",
-        returns="ownerLgZoneName/investProjectType/count/approvedAmount",
-        disambiguate=""),
-    ApiEndpoint(name="getUnplannedProjectsInquiry", path="/api/gateway/getUnplannedProjectsInquiry", domain="D6",
-        intent="查询计划外项目明细查询（分页）",
-        time="T_YR", granularity="G_PROJ",
-        tags=('计划外明细', '项目查询', '分页'),
-        required=(), optional=('dateYear', 'regionName', 'proMainTypeName'),
-        param_note="",
-        returns="projectName/regionName/approvedAmount/status",
-        disambiguate=""),
-    ApiEndpoint(name="getCapitalApprovalAnalysisLimitInquiry", path="/api/gateway/getCapitalApprovalAnalysisLimitInquiry", domain="D6",
-        intent="查询资本性项目批复金额/完成/付款汇总分析",
-        time="T_YR", granularity="G_PORT",
-        tags=('资本项目', '批复金额', '付款率'),
-        required=(), optional=('dateYear',),
-        param_note="",
-        returns="totalApprovedAmount/completedAmount/paymentRate",
-        disambiguate=""),
-    ApiEndpoint(name="getCapitalApprovalAnalysisProject", path="/api/gateway/getCapitalApprovalAnalysisProject", domain="D6",
-        intent="查询各项目类型资本性项目批复分析",
-        time="T_YR", granularity="G_PROJ",
-        tags=('资本项目', '项目类型', '批复'),
-        required=(), optional=('dateYear',),
-        param_note="",
-        returns="projectType/count/approvedAmount/completionRate",
-        disambiguate=""),
-    ApiEndpoint(name="getDeliveryRate", path="/api/gateway/getDeliveryRate", domain="D6",
-        intent="查询资本性项目交付率（已交付/按时交付）",
-        time="T_YR", granularity="G_PORT",
-        tags=('交付率', '按时交付', '资本项目'),
-        required=(), optional=('dateYear',),
-        param_note="",
-        returns="capitalProjects/deliveredProjects/deliveryRate/onTimeDeliveryRate",
-        disambiguate=""),
-    ApiEndpoint(name="getCapitalProjectsList", path="/api/gateway/getCapitalProjectsList", domain="D6",
-        intent="查询资本性项目明细列表，包含各项目物理进度和付款进度（分页，支持多维度筛选）",
-        time="T_YR", granularity="G_PROJ",
-        tags=('资本项目', '明细列表', '项目完成率', '物理进度', '付款进度'),
-        required=(), optional=('projectName', 'investProjectType', 'projectCurrentStage', 'investProjectStatus', 'ownerDept', 'dateYear', 'dateMonth', 'ownerLgZoneName'),
-        param_note="分页：pageNo/pageSize；dateYear=yyyy 筛选年份",
-        returns="projectName/captProjectPhysicalProgress/captProjectPayProgress/finishInvestAmt/planInvestAmt/investProjectStatusName",
-        disambiguate="各项目完成率/进度柱状图首选；按项目逐条返回物理进度(captProjectPhysicalProgress)和付款进度(captProjectPayProgress)"),
-    # ── D7 设备子屏 ──
-    ApiEndpoint(name="getEquipmentIndicatorOperationQty", path="/api/gateway/getEquipmentIndicatorOperationQty", domain="D7",
-        intent="查询各港区设备作业量指标（集装箱/散货，月度）",
-        time="T_MON", granularity="G_ZONE",
-        tags=('设备作业量', '指标', '月度', '港区'),
-        required=('dateMonth',), optional=('ownerZone', 'cmpName'),
-        param_note="dateMonth=yyyy-MM",
-        returns="num/firstLevelName（透视格式，多机种×多指标）",
-        disambiguate="区别getEquipmentIndicatorUseCost=使用成本",
-        field_schema=(("num", "float", ""), ("firstLevelName", "str", ""),),
-        use_cases=("设备作业量指标概览", "各类设备作业量对比",),
-        chain_with=("getEquipmentIndicatorUseCost",),
-        analysis_note="透视格式：num/firstLevelName，按设备一级分类汇总作业量指标",),
-    ApiEndpoint(name="getEquipmentIndicatorUseCost", path="/api/gateway/getEquipmentIndicatorUseCost", domain="D7",
-        intent="查询各港区设备使用成本指标（燃油/电力/维修，月度）",
-        time="T_MON", granularity="G_ZONE",
-        tags=('设备成本', '燃油', '电力', '维修'),
-        required=('dateMonth',), optional=('ownerZone', 'cmpName'),
-        param_note="",
-        returns="num/firstLevelName（透视格式，多机种×多指标）",
-        disambiguate="区别OperationQty=作业量",
-        field_schema=(("num", "float", ""), ("firstLevelName", "str", ""),),
-        use_cases=("设备使用成本指标概览", "各类设备成本效益分析",),
-        chain_with=("getEquipmentIndicatorOperationQty",),
-        analysis_note="透视格式：num/firstLevelName，按设备一级分类汇总成本指标",),
-    ApiEndpoint(name="getProductionEquipmentFaultNum", path="/api/gateway/getProductionEquipmentFaultNum", domain="D7",
-        intent="查询生产设备年度故障次数（重大/一般，含同比）",
-        time="T_YR", granularity="G_ZONE",
-        tags=('故障次数', '设备故障', '维修'),
-        required=('dateYear',), optional=('ownerZone', 'cmpName'),
-        param_note="",
-        returns="num/dateMonth（透视格式，多月×多指标）",
-        disambiguate="",
-        field_schema=(("num", "int", ""), ("dateMonth", "str", ""),),
-        use_cases=("设备故障次数月度趋势", "设备可靠性历史分析",),
-        chain_with=("getEquipmentUsageRate",),
-        analysis_note="透视格式：num/dateMonth，需按分组字段解析各类设备故障分布",),
-    ApiEndpoint(name="getProductionEquipmentStatistic", path="/api/gateway/getProductionEquipmentStatistic", domain="D7",
-        intent="查询生产设备月度概览（总数/在用/完好率/利用率/平均役龄）",
-        time="T_MON", granularity="G_ZONE",
-        tags=('设备概览', '完好率', '利用率', '役龄'),
-        required=('dateMonth',), optional=('ownerZone',),
-        param_note="",
-        returns="num/secondLevelName（透视格式，39行×多指标）",
-        disambiguate="",
-        field_schema=(("num", "int", ""), ("secondLevelName", "str", "")),
-        use_cases=("生产设备机种分布概览", "各类设备数量统计"),
-        chain_with=("getEquipmentUsageRate",),
-        analysis_note="39行按机种汇总，透视格式num/secondLevelName"),
-    ApiEndpoint(name="getOverviewQuery", path="/api/gateway/getOverviewQuery", domain="D7",
-        intent="查询单台设备综合概览（完好率/台时效率/单耗/作业量/成本，单据大屏）",
-        time="T_MON", granularity="G_EQUIP",
-        tags=('单机概览', '设备综合', '单据大屏'),
-        required=('date', 'equipmentNo', 'ownerLgZoneName', 'cmpName', 'firstLevelClassName'), optional=(),
-        param_note="equipmentNo=设备编号；若查看整体，equipmentNo可传空",
-        returns="integrityRate/utilizationRate/unitHourEfficiency/unitConsumption/totalCost",
-        disambiguate=""),
-    ApiEndpoint(name="getEquipmentUsageRate", path="/api/gateway/getEquipmentUsageRate", domain="D7",
-        intent="查询各港区年度设备利用率（含月度分布曲线）",
-        time="T_YR", granularity="G_ZONE",
-        tags=('利用率', '年度利用率', '港区', '月度分布'),
-        required=('dateYear',), optional=('ownerZone', 'cmpName', 'firstLevelClassName'),
-        param_note="",
-        returns="usageRate/dateMonth（月度利用率曲线）",
-        disambiguate="区别getProductEquipmentUsageRateByYear=历年对比；BYMonth=月度版",
-        field_schema=(("usageRate", "float", ""), ("dateMonth", "str", "")),
-        use_cases=("设备月度利用率趋势", "设备利用率同比"),
-        chain_with=("getEquipmentServiceableRate", "getProductEquipmentUsageRateByYear"),
-        analysis_note="返回usageRate/dateMonth月度序列，可做趋势折线"),
-    ApiEndpoint(name="getEquipmentServiceableRate", path="/api/gateway/getEquipmentServiceableRate", domain="D7",
-        intent="查询各港区年度设备完好率（含月度分布）",
-        time="T_YR", granularity="G_ZONE",
-        tags=('完好率', '年度完好率', '港区'),
-        required=('dateYear',), optional=('ownerZone', 'cmpName', 'firstLevelClassName'),
-        param_note="",
-        returns="serviceableRate/dateMonth（月度完好率曲线）",
-        disambiguate="区别getProductEquipmentIntegrityRateByYear=历年版",
-        field_schema=(("serviceableRate", "float", ""), ("dateMonth", "str", "")),
-        use_cases=("设备完好率月度趋势",),
-        chain_with=("getEquipmentUsageRate",),
-        analysis_note="返回serviceableRate/dateMonth"),
-    ApiEndpoint(name="getEquipmentFirstLevelClassNameList", path="/api/gateway/getEquipmentFirstLevelClassNameList", domain="D7",
-        intent="查询设备一级分类列表及数量（装卸/运输/起重/输送/特种）",
-        time="T_YR", granularity="G_ZONE",
-        tags=('设备分类', '一级分类', '分类列表'),
-        required=('dateYear',), optional=('ownerZone', 'cmpName'),
-        param_note="",
-        returns="firstLevelClassName/count",
-        disambiguate=""),
-    ApiEndpoint(name="getContainerMachineHourRate", path="/api/gateway/getContainerMachineHourRate", domain="D7",
-        intent="查询集装箱装卸设备台时效率（岸桥/RTG分项，月度曲线）",
-        time="T_YR", granularity="G_ZONE",
-        tags=('集装箱台时', '岸桥', 'RTG', '月度'),
-        required=('dateYear',), optional=('ownerZone', 'cmpName', 'firstLevelClassName'),
-        param_note="",
-        returns="machineHourRate/dateMonth（月度台时效率曲线）",
-        disambiguate="区别getEquipmentMachineHourRate=全类设备",
-        field_schema=(("machineHourRate", "float", ""), ("dateMonth", "str", ""),),
-        use_cases=("集装箱装卸台时效率月度趋势", "台时效率历史对比",),
-        chain_with=("getEquipmentUsageRate", "getEquipmentServiceableRate",),
-        analysis_note="月度序列machineHourRate/dateMonth，可做趋势折线",),
-    ApiEndpoint(name="getEquipmentEnergyConsumptionPerUnit", path="/api/gateway/getEquipmentEnergyConsumptionPerUnit", domain="D7",
-        intent="查询各港区年度设备能源单耗（含月度趋势）",
-        time="T_YR", granularity="G_ZONE",
-        tags=('能源单耗', '年度', '港区', 'kgce'),
-        required=('dateYear',), optional=('ownerZone', 'cmpName', 'firstLevelClassName'),
-        param_note="",
-        returns="workingAmount/dateMonth（月度能耗曲线）",
-        disambiguate="",
-        field_schema=(("workingAmount", "int", ""), ("dateMonth", "str", ""),),
-        use_cases=("设备单耗月度趋势", "能耗效率历史对比",),
-        chain_with=("getEquipmentUsageRate",),
-        analysis_note="月度序列workingAmount/dateMonth，可做能耗趋势折线",),
-    ApiEndpoint(name="getEquipmentFuelOilTonCost", path="/api/gateway/getEquipmentFuelOilTonCost", domain="D7",
-        intent="查询各港区年度燃油吨成本（元/自然箱，月度趋势）",
-        time="T_YR", granularity="G_ZONE",
-        tags=('燃油成本', '吨成本', '元/自然箱'),
-        required=('dateYear',), optional=('ownerZone', 'cmpName', 'firstLevelClassName'),
-        param_note="",
-        returns="ownerZone/fuelOilTonCost/yoyRate/byMonth",
-        disambiguate="区别getEquipmentElectricityTonCost=电量成本"),
-    ApiEndpoint(name="getEquipmentElectricityTonCost", path="/api/gateway/getEquipmentElectricityTonCost", domain="D7",
-        intent="查询各港区年度电量吨成本（元/自然箱，月度趋势）",
-        time="T_YR", granularity="G_ZONE",
-        tags=('电量成本', '电费', '元/自然箱'),
-        required=('dateYear',), optional=('ownerZone', 'cmpName', 'firstLevelClassName'),
-        param_note="",
-        returns="ownerZone/electricityTonCost/yoyRate/byMonth",
-        disambiguate="区别FuelOil=燃油成本"),
-    ApiEndpoint(name="getMachineDataDisplayScreenHourlyEfficiency", path="/api/gateway/getMachineDataDisplayScreenHourlyEfficiency", domain="D7",
-        intent="查询指定机种当月台时效率及各台设备明细（机种展示屏）",
-        time="T_MON", granularity="G_EQUIP",
-        tags=('机种台时', '机种展示', '月度'),
-        required=('secondLevelClassName', 'date'), optional=('ownerLgZoneName', 'cmpName'),
-        param_note="secondLevelClassName=设备二级分类（如岸桥/门机）；date=yyyy-MM",
-        returns="currentMonthAvg/yoyRate/byEquipment明细",
-        disambiguate="区别getEquipmentMachineHourRate=港区汇总版"),
-    ApiEndpoint(name="getModelDataDisplayScreenEnergyConsumptionPerUnit", path="/api/gateway/getModelDataDisplayScreenEnergyConsumptionPerUnit", domain="D7",
-        intent="查询指定机种当月能耗单耗（机种展示屏）",
-        time="T_MON", granularity="G_EQUIP",
-        tags=('机种能耗', '单耗', '月度'),
-        required=('secondLevelClassName', 'date'), optional=('ownerLgZoneName', 'cmpName'),
-        param_note="",
-        returns="avgConsumption/fuelConsumption/electricityConsumption",
-        disambiguate=""),
-    ApiEndpoint(name="getModelDataDisplayScreenUtilization", path="/api/gateway/getModelDataDisplayScreenUtilization", domain="D7",
-        intent="查询指定机种年度利用率（机种展示屏）",
-        time="T_YR", granularity="G_EQUIP",
-        tags=('机种利用率', '年度', '月度分布'),
-        required=('secondLevelClassName', 'dateYear'), optional=('ownerLgZoneName', 'cmpName'),
-        param_note="",
-        returns="annualUtilizationRate/byMonth",
-        disambiguate=""),
-    ApiEndpoint(name="getModelDataDisplayScreenEffectiveUtilization", path="/api/gateway/getModelDataDisplayScreenEffectiveUtilization", domain="D7",
-        intent="查询指定机种年度有效利用率（机种展示屏）",
-        time="T_YR", granularity="G_EQUIP",
-        tags=('机种有效利用率', '年度'),
-        required=('secondLevelClassName', 'dateYear'), optional=('ownerLgZoneName', 'cmpName'),
-        param_note="",
-        returns="annualEffectiveUtilRate/byMonth",
-        disambiguate="区别getModelDataDisplayScreenUtilization=总利用率"),
-    ApiEndpoint(name="getMachineDataDisplayScreenEquipmentIntegrityRate", path="/api/gateway/getMachineDataDisplayScreenEquipmentIntegrityRate", domain="D7",
-        intent="查询指定机种年度完好率（机种展示屏）",
-        time="T_YR", granularity="G_EQUIP",
-        tags=('机种完好率', '年度'),
-        required=('secondLevelClassName', 'dateYear'), optional=('ownerLgZoneName', 'cmpName'),
-        param_note="",
-        returns="annualIntegrityRate/byMonth",
-        disambiguate=""),
-    ApiEndpoint(name="getModelDataDisplayScreenHierarchyRelation", path="/api/gateway/getModelDataDisplayScreenHierarchyRelation", domain="D7",
-        intent="查询设备二级分类的层级关系（判断是否属于集装箱设备）",
-        time="T_NONE", granularity="G_EQUIP",
-        tags=('层级关系', '集装箱设备', '分类归属'),
-        required=('secondLevelClassName',), optional=(),
-        param_note="",
-        returns="firstLevelClassName/isContainerEquipment/relatedEquipCount",
-        disambiguate=""),
-    ApiEndpoint(name="getMachineDataDisplayEquipmentReliability", path="/api/gateway/getMachineDataDisplayEquipmentReliability", domain="D7",
-        intent="查询集装箱设备可靠性指标（MTBF/MTTR/故障次数，机种展示屏）",
-        time="T_YR", granularity="G_EQUIP",
-        tags=('可靠性', 'MTBF', 'MTTR', '集装箱设备'),
-        required=('secondLevelClassName', 'dateYear'), optional=('ownerLgZoneName', 'cmpName'),
-        param_note="",
-        returns="mtbf/mttr/reliability/faultCount",
-        disambiguate="区别getNonContainer=非集装箱版"),
-    ApiEndpoint(name="getNonContainerProductionEquipmentReliability", path="/api/gateway/getNonContainerProductionEquipmentReliability", domain="D7",
-        intent="查询非集装箱设备可靠性指标（散货/油化/滚装）",
-        time="T_YR", granularity="G_EQUIP",
-        tags=('可靠性', '非集装箱', '散货设备', 'MTBF'),
-        required=('secondLevelClassName', 'dateYear'), optional=('ownerLgZoneName', 'cmpName'),
-        param_note="",
-        returns="mtbf/mttr/reliability/faultCount",
-        disambiguate="区别getContainer版=集装箱设备"),
-    ApiEndpoint(name="getMachineDataDisplaySingleUnitEnergyConsumption", path="/api/gateway/getMachineDataDisplaySingleUnitEnergyConsumption", domain="D7",
-        intent="查询指定机种下各单台设备月度能耗（机种展示屏）",
-        time="T_MON", granularity="G_EQUIP",
-        tags=('单台能耗', '机种', '月度'),
-        required=('secondLevelClassName', 'date'), optional=('ownerLgZoneName', 'cmpName'),
-        param_note="",
-        returns="每台设备：consumption/fuel/electricity",
-        disambiguate=""),
-    ApiEndpoint(name="getProductEquipmentUsageRateByYear", path="/api/gateway/getProductEquipmentUsageRateByYear", domain="D7",
-        intent="查询近5年生产设备有效利用率历年对比",
-        time="T_HIST", granularity="G_ZONE",
-        tags=('历年利用率', '有效利用率', '年度趋势'),
-        required=(), optional=('ownerLgZoneName', 'firstLevelClassName'),
-        param_note="",
-        returns="usageRate/dateYear（历年利用率）",
-        disambiguate="区别ByMonth=当年月度分布",
-        field_schema=(("usageRate", "float", ""), ("dateYear", "int", ""),),
-        use_cases=("设备利用率历年趋势", "年度利用率同比分析",),
-        chain_with=("getEquipmentUsageRate",),
-        analysis_note="年度序列约4行(2023-2026)，usageRate/dateYear，可做历年趋势折线",),
-    ApiEndpoint(name="getProductEquipmentUsageRateByMonth", path="/api/gateway/getProductEquipmentUsageRateByMonth", domain="D7",
-        intent="查询年度生产设备有效利用率月度分布",
-        time="T_TREND", granularity="G_ZONE",
-        tags=('月度利用率', '设备利用率', '月度分布'),
-        required=('dateYear',), optional=('ownerLgZoneName', 'firstLevelClassName'),
-        param_note="",
-        returns="月份序列：effectiveUtilizationRate/momChange",
-        disambiguate="区别ByYear=历年趋势"),
-    ApiEndpoint(name="getProductEquipmentRateByYear", path="/api/gateway/getProductEquipmentRateByYear", domain="D7",
-        intent="查询近5年生产设备利用率历年对比",
-        time="T_HIST", granularity="G_ZONE",
-        tags=('历年利用率', '设备利用率'),
-        required=(), optional=('ownerLgZoneName', 'firstLevelClassName'),
-        param_note="",
-        returns="年份序列：utilizationRate",
-        disambiguate="区别UsageRate=有效利用率（更严格）"),
-    ApiEndpoint(name="getProductEquipmentIntegrityRateByYear", path="/api/gateway/getProductEquipmentIntegrityRateByYear", domain="D7",
-        intent="查询生产设备年度完好率（当年vs上年同比）",
-        time="T_YOY", granularity="G_ZONE",
-        tags=('完好率', '年度完好率', '同比'),
-        required=('dateYear', 'preYear'), optional=('ownerLgZoneName', 'firstLevelClassName'),
-        param_note="dateYear=当年；preYear=对比年",
-        returns="currentYearRate/prevYearRate/yoyChange/byEquipType",
-        disambiguate="区别ByMonth=月度版"),
-    ApiEndpoint(name="getProductEquipmentIntegrityRateByMonth", path="/api/gateway/getProductEquipmentIntegrityRateByMonth", domain="D7",
-        intent="查询生产设备月度完好率（当月vs去年同月同比）",
-        time="T_YOY", granularity="G_ZONE",
-        tags=('月度完好率', '同比', '当月'),
-        required=('dateMonth', 'preDateMonth'), optional=('ownerLgZoneName', 'firstLevelClassName'),
-        param_note="dateMonth=当月yyyy-MM；preDateMonth=去年同月",
-        returns="currentMonthRate/prevYearSameMonthRate/yoyChange",
-        disambiguate="区别ByYear=年度版"),
-    ApiEndpoint(name="getQuayEquipmentWorkingAmount", path="/api/gateway/getQuayEquipmentWorkingAmount", domain="D7",
-        intent="查询岸边设备月度作业量及同比（集装箱台数）",
-        time="T_MON", granularity="G_ZONE",
-        tags=('岸边设备', '作业量', '同比', '月度'),
-        required=('dateMonth',), optional=('ownerLgZoneName',),
-        param_note="",
-        returns="ownerLgZoneName/currentMonthQty/prevYearSameMonthQty/yoyRate",
-        disambiguate=""),
-    ApiEndpoint(name="getProductEquipmentDataAnalysisList", path="/api/gateway/getProductEquipmentDataAnalysisList", domain="D7",
-        intent="查询生产设备数据分析列表（分页，多指标）",
-        time="T_MON", granularity="G_EQUIP",
-        tags=('设备列表', '分析列表', '分页'),
-        required=('dateMonth',), optional=('pageNo', 'pageSize', 'ownerLgZoneName'),
-        param_note="",
-        returns="equipNo/usageRate/integrityRate/machineHourRate/unitConsumption/status",
-        disambiguate=""),
-    ApiEndpoint(name="getProductEquipmentWorkingAmountByYear", path="/api/gateway/getProductEquipmentWorkingAmountByYear", domain="D7",
-        intent="查询近5年生产设备作业量历年对比",
-        time="T_HIST", granularity="G_ZONE",
-        tags=('历年作业量', '设备作业', '年度趋势'),
-        required=('dateYear',), optional=('ownerLgZoneName', 'firstLevelClassName'),
-        param_note="",
-        returns="年份序列：totalWorkingQty/yoyRate",
-        disambiguate="区别ByMonth=当年月度"),
-    ApiEndpoint(name="getProductEquipmentWorkingAmountByMonth", path="/api/gateway/getProductEquipmentWorkingAmountByMonth", domain="D7",
-        intent="查询生产设备当月作业量及同比",
-        time="T_TREND", granularity="G_ZONE",
-        tags=('月度作业量', '同比', '当月'),
-        required=('dateMonth',), optional=('ownerLgZoneName', 'firstLevelClassName'),
-        param_note="",
-        returns="currentMonthQty/prevYearSameMonthQty/yoyRate",
-        disambiguate="区别ByYear=历年趋势"),
-    ApiEndpoint(name="getProductEquipmentReliabilityByYear", path="/api/gateway/getProductEquipmentReliabilityByYear", domain="D7",
-        intent="查询近5年生产设备可靠性（MTBF）历年趋势",
-        time="T_HIST", granularity="G_ZONE",
-        tags=('可靠性历年', 'MTBF趋势'),
-        required=(), optional=('ownerLgZoneName', 'firstLevelClassName'),
-        param_note="",
-        returns="年份序列：mtbf/reliability/faultCount",
-        disambiguate="区别ByMonth=当年月度"),
-    ApiEndpoint(name="getProductEquipmentReliabilityByMonth", path="/api/gateway/getProductEquipmentReliabilityByMonth", domain="D7",
-        intent="查询年度生产设备可靠性月度趋势",
-        time="T_TREND", granularity="G_ZONE",
-        tags=('月度可靠性', 'MTBF月度'),
-        required=('dateYear',), optional=('ownerLgZoneName', 'firstLevelClassName'),
-        param_note="",
-        returns="月份序列：mtbf/reliability/faultCount",
-        disambiguate="区别ByYear=历年趋势"),
-    ApiEndpoint(name="getProductEquipmentUnitConsumptionByYear", path="/api/gateway/getProductEquipmentUnitConsumptionByYear", domain="D7",
-        intent="查询近5年生产设备能耗单耗历年对比",
-        time="T_HIST", granularity="G_PORT",
-        tags=('历年单耗', '能耗趋势'),
-        required=('dateYear',), optional=(),
-        param_note="",
-        returns="年份序列：unitConsumption/fuelConsumption/electricityConsumption",
-        disambiguate="区别ByMonth=当年月度"),
-    ApiEndpoint(name="getProductEquipmentUnitConsumptionByMonth", path="/api/gateway/getProductEquipmentUnitConsumptionByMonth", domain="D7",
-        intent="查询生产设备当月能耗单耗及同比/环比",
-        time="T_TREND", granularity="G_PORT",
-        tags=('月度单耗', '同比', '环比'),
-        required=('dateMonth',), optional=(),
-        param_note="",
-        returns="unitConsumption/yoyRate/momRate",
-        disambiguate="区别ByYear=历年趋势"),
-    # ── D2 商务驾驶舱（新增有prod数据） ──
-    ApiEndpoint(name="getSumBusinessDashboardThroughput", path="/api/gateway/getSumBusinessDashboardThroughput", domain="D2",
-        intent="查询累计吞吐量驾驶舱指标（计划/实际/去年同期/增速/完成进度）",
-        time="T_CUM", granularity="G_PORT",
-        tags=('累计吞吐', '商务驾驶舱', '完成进度', '同比'),
-        required=('date',), optional=(),
-        param_note="date=yyyy-MM",
-        returns="num/typeName（8项指标）",
-        disambiguate="区别getCumulativeThroughput=有内外贸分拆",
-        field_schema=(("typeName", "str", ""), ("num", "float", ""),),
-        use_cases=("年累计全港各业务板块吞吐概览", "业务板块年度汇总对比",),
-        chain_with=("getCurBusinessDashboardThroughput",),
-        analysis_note="透视格式typeName/num，需按typeName分组，对应当月版getCurBusinessDashboardThroughput",),
-    ApiEndpoint(name="getCumulativeRegionalThroughput", path="/api/gateway/getCumulativeRegionalThroughput", domain="D2",
-        intent="查询各港区累计吞吐量驾驶舱指标（计划/实际/同比/完成进度）",
-        time="T_CUM", granularity="G_ZONE",
-        tags=('港区累计', '商务驾驶舱', '完成进度'),
-        required=('date',), optional=(),
-        param_note="date=yyyy-MM",
-        returns="num/typeName/zoneName（每港区6项指标）",
-        disambiguate="区别getCumulativeZoneThroughput=简版",
-        field_schema=(("num", "float", ""), ("typeName", "str", ""), ("zoneName", "str", ""),),
-        use_cases=("各港区年累计吞吐量对比", "港区业务结构占比分析",),
-        chain_with=("getCurBusinessDashboardThroughput",),
-        analysis_note="三维透视：num/typeName/zoneName，需按typeName和zoneName分组",),
-    # ── D3 客户驾驶舱（新增有prod数据） ──
-    ApiEndpoint(name="getCurStrategyCustomerTrendAnalysis", path="/api/gateway/getCurStrategyCustomerTrendAnalysis", domain="D3",
-        intent="查询当期战略客户趋势分析（月度吞吐/贡献率/营收趋势）",
-        time="T_TREND", granularity="G_PORT",
-        tags=('战略客户趋势', '商务驾驶舱', '月度'),
-        required=('date',), optional=(),
-        param_note="date=yyyy-MM",
-        returns="dateMonth/num/typeName（多项指标按月）",
-        disambiguate="区别getSumStrategyCustomerTrendAnalysis=累计版",
-        field_schema=(("num", "float", ""), ("dateMonth", "str", ""), ("typeName", "str", ""),),
-        use_cases=("战略客户当期月度多指标趋势", "战略客户各维度月度走势",),
-        chain_with=("getSumStrategyCustomerTrendAnalysis",),
-        analysis_note="透视格式：num/dateMonth/typeName，多月×多指标，需按typeName分组",),
-    ApiEndpoint(name="getSumStrategicCustomerContributionByCargoTypeThroughput", path="/api/gateway/getSumStrategicCustomerContributionByCargoTypeThroughput", domain="D3",
-        intent="查询战略客户累计贡献按货类分拆",
-        time="T_CUM", granularity="G_CARGO",
-        tags=('累计贡献', '按货类', '战略客户', '商务驾驶舱'),
-        required=('date',), optional=(),
-        param_note="date=yyyy-MM",
-        returns="categoryName/num",
-        disambiguate="区别当月版getCurStrategicCustomerContributionByCargoTypeThroughput；注意：生产环境存在已知SQL类型转换问题，若调用失败可降级使用当月版",
-        field_schema=(("num", "float", ""), ("categoryName", "str", ""),),
-        use_cases=("战略客户年累计按货类贡献分析", "各货类战略客户年度吞吐占比",),
-        chain_with=("getCurStrategicCustomerContributionByCargoTypeThroughput",),
-        analysis_note="累计版，按categoryName返回num，结构同当月版"),
-    ApiEndpoint(name="getSumContributionRankOfStrategicCustomer", path="/api/gateway/getSumContributionRankOfStrategicCustomer", domain="D3",
-        intent="查询战略客户累计贡献排名",
-        time="T_CUM", granularity="G_CLIENT",
-        tags=('累计排名', '战略客户', '商务驾驶舱'),
-        required=('date',), optional=(),
-        param_note="date=yyyy-MM",
-        returns="clientName/num",
-        disambiguate="区别getClientContributionOrder=当月版",
-        field_schema=(("num", "float", ""), ("clientName", "str", "")),
-        use_cases=("战略客户累计贡献排名",),
-        analysis_note="返回clientName/num，注意当前数据可能全为零"),
-    ApiEndpoint(name="getStrategicCustomerChurnRisk", path="/api/gateway/getStrategicCustomerChurnRisk", domain="D3",
-        intent="查询战略客户流失风险评估（基于吞吐趋势的风险评分）",
-        time="T_MON", granularity="G_CLIENT",
-        tags=('流失风险', '客户预警', '风险评分', '战略客户'),
-        required=(), optional=('date',),
-        param_note="date=yyyy-MM，默认当月",
-        returns="clientName/riskScore/riskLevel/curMonthThroughput/yoyRate/trend3m",
-        disambiguate="专用于流失风险/客户预警分析；riskLevel=高风险/中风险/低风险；riskScore∈[0,1]，越高风险越大",
-        field_schema=(
-            ("clientName", "str", "客户名称"),
-            ("riskScore", "float", "风险评分0-1"),
-            ("riskLevel", "str", "高风险/中风险/低风险"),
-            ("curMonthThroughput", "float", "当月吞吐量"),
-            ("yoyRate", "float", "同比增长率%"),
-        ),
-        use_cases=("战略客户流失预警", "识别高风险客户", "客户流失风险分析", "客户健康度评估"),
-        analysis_note="按riskScore降序返回，高风险客户排前；可结合贡献排名分析高价值高风险客户"),
-)
-
-
-# ════════════════════════════════════════════════════════════════
-# Source override (P2.2) — code | file | dual
-# ════════════════════════════════════════════════════════════════
-
-# Snapshot the code-defined registry. ``DOMAIN_INDEX`` / ``ALL_ENDPOINTS``
-# may be reassigned by ``_apply_source_override`` below; these references
-# stay pinned to the inline-defined "code" source so the exporter and the
-# dual-mode comparator always operate on the canonical version.
-_CODE_DOMAIN_INDEX: dict[str, DomainInfo] = dict(DOMAIN_INDEX)
-_CODE_ENDPOINTS: tuple[ApiEndpoint, ...] = ALL_ENDPOINTS
-
-
-def _to_jsonable(value: Any) -> Any:
-    """Recursively convert tuples → lists for JSON-equivalent shape."""
-    if isinstance(value, (tuple, list)):
-        return [_to_jsonable(v) for v in value]
-    if isinstance(value, dict):
-        return {k: _to_jsonable(v) for k, v in value.items()}
-    return value
-
-
-def serialize_to_dict() -> dict[str, Any]:
-    """Build the JSON-ready dict from the **code** source.
-
-    Always reflects ``_CODE_*`` regardless of the runtime source — the
-    on-disk JSON is authored from code, not the other way around.
-    """
-    return _to_jsonable({
-        "domains": {code: asdict(d) for code, d in _CODE_DOMAIN_INDEX.items()},
-        "endpoints": [asdict(ep) for ep in _CODE_ENDPOINTS],
-    })
-
-
-def load_from_json(payload: dict[str, Any]) -> tuple[dict[str, DomainInfo], tuple[ApiEndpoint, ...]]:
-    """Reconstruct dataclasses from a JSON payload (inverse of ``serialize_to_dict``)."""
-    domains = {
-        code: DomainInfo(
-            code=v["code"], name=v["name"], desc=v["desc"],
-            api_count=v["api_count"], top_tags=tuple(v["top_tags"]),
-        )
-        for code, v in payload["domains"].items()
-    }
-    endpoints = tuple(
-        ApiEndpoint(
-            name=ep["name"], path=ep["path"], domain=ep["domain"],
-            intent=ep["intent"], time=ep["time"], granularity=ep["granularity"],
-            tags=tuple(ep["tags"]), required=tuple(ep["required"]),
-            optional=tuple(ep["optional"]), param_note=ep["param_note"],
-            returns=ep["returns"], disambiguate=ep["disambiguate"],
-            field_schema=tuple(tuple(row) for row in ep.get("field_schema", ())),
-            use_cases=tuple(ep.get("use_cases", ())),
-            chain_with=tuple(ep.get("chain_with", ())),
-            analysis_note=ep.get("analysis_note", ""),
-            method=ep.get("method", "GET"),
-        )
-        for ep in payload["endpoints"]
-    )
-    return domains, endpoints
-
-
-def _registry_json_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "data" / "api_registry.json"
-
-
-def _diff_dual(
-    file_domains: dict[str, DomainInfo],
-    file_endpoints: tuple[ApiEndpoint, ...],
-) -> None:
-    """Log WARN on every code↔file divergence (run only under source=dual)."""
-    if file_domains != _CODE_DOMAIN_INDEX:
-        logger.warning("[dual] DOMAIN_INDEX divergence between code and file")
-
-    code_by = {ep.name: ep for ep in _CODE_ENDPOINTS}
-    file_by = {ep.name: ep for ep in file_endpoints}
-
-    only_code = sorted(set(code_by) - set(file_by))
-    only_file = sorted(set(file_by) - set(code_by))
-    if only_code:
-        logger.warning("[dual] endpoints only in code: %s", only_code)
-    if only_file:
-        logger.warning("[dual] endpoints only in file: %s", only_file)
-    for name in sorted(set(code_by) & set(file_by)):
-        if code_by[name] != file_by[name]:
-            logger.warning("[dual] field divergence on endpoint: %s", name)
-
-
-def _resolve_source(
-    source: str | None = None,
-) -> tuple[dict[str, DomainInfo], tuple[ApiEndpoint, ...]]:
-    """Pure dispatcher: returns the (domains, endpoints) pair to expose.
-
-    ``source`` defaults to ``settings.FF_API_REGISTRY_SOURCE``. Any failure
-    (unknown source, missing file, parse error) falls back to ``code`` with
-    a WARN — the system never errors out at import.
-    """
-    if source is None:
-        try:
-            from backend.config import get_settings
-            source = get_settings().FF_API_REGISTRY_SOURCE
-        except Exception as e:
-            logger.warning("[source] settings not loadable (%s); fall back to code", e)
-            return _CODE_DOMAIN_INDEX, _CODE_ENDPOINTS
-
-    if source == "code":
-        return _CODE_DOMAIN_INDEX, _CODE_ENDPOINTS
-
-    if source in ("db", "dual_db"):
-        # Module-init runs synchronously; the DB swap happens later in
-        # ``lifespan_apply_source`` (post-FastAPI-startup). Until then we
-        # serve the code source so import paths don't break.
-        logger.info(
-            "[source] FF_API_REGISTRY_SOURCE=%s; deferring DB load to lifespan",
-            source,
-        )
-        return _CODE_DOMAIN_INDEX, _CODE_ENDPOINTS
-
-    if source not in ("file", "dual"):
-        logger.warning("[source] unknown FF_API_REGISTRY_SOURCE=%s; fall back to code", source)
-        return _CODE_DOMAIN_INDEX, _CODE_ENDPOINTS
-
-    json_path = _registry_json_path()
-    if not json_path.exists():
-        logger.warning(
-            "[source] FF_API_REGISTRY_SOURCE=%s but %s missing; fall back to code",
-            source, json_path,
-        )
-        return _CODE_DOMAIN_INDEX, _CODE_ENDPOINTS
-
-    try:
-        with open(json_path, encoding="utf-8") as f:
-            payload = json.load(f)
-        file_domains, file_endpoints = load_from_json(payload)
-    except Exception as e:
-        logger.warning("[source] failed to load %s (%s); fall back to code", json_path, e)
-        return _CODE_DOMAIN_INDEX, _CODE_ENDPOINTS
-
-    if source == "dual":
-        _diff_dual(file_domains, file_endpoints)
-        # IMPORTANT (P2.2 → P2.4): code stays primary during dual mode.
-        # Do NOT remove this `code` branch when promoting `file` to default —
-        # it is the rollback safety net referenced in the migration plan.
-        return _CODE_DOMAIN_INDEX, _CODE_ENDPOINTS
-
-    # source == "file"
-    return file_domains, file_endpoints
-
-
-def _apply_source_override() -> None:
-    """Module-init: replace ``DOMAIN_INDEX`` / ``ALL_ENDPOINTS`` per FF setting."""
-    global DOMAIN_INDEX, ALL_ENDPOINTS
-    DOMAIN_INDEX, ALL_ENDPOINTS = _resolve_source()
-
-
-_apply_source_override()
-
-
-# ════════════════════════════════════════════════════════════════
-# 派生索引
-# ════════════════════════════════════════════════════════════════
-
-# Pre-declared so ``_rebuild_derived_indices`` can mutate them in place;
-# the actual content is computed by the call below.
 BY_NAME: dict[str, ApiEndpoint] = {}
 BY_PATH: dict[str, ApiEndpoint] = {}
 BY_DOMAIN: dict[str, list[ApiEndpoint]] = {}
 BY_TIME: dict[str, list[ApiEndpoint]] = {}
-VALID_ENDPOINT_IDS: frozenset[str] = frozenset()
+# Mutable set so reload via _rebuild_derived_indices is visible to
+# ``from backend.agent.api_registry import VALID_ENDPOINT_IDS`` callers
+# (a frozenset reassignment would only update the module attribute,
+# not pinned import references). Same in-place pattern as BY_NAME above.
+VALID_ENDPOINT_IDS: set[str] = set()
 
 
 def _rebuild_derived_indices() -> None:
-    """Recompute ``BY_NAME`` / ``BY_PATH`` / ``BY_DOMAIN`` / ``BY_TIME`` /
-    ``VALID_ENDPOINT_IDS`` from the current ``ALL_ENDPOINTS``.
-
-    Mutates the existing dict objects in place (so lazy ``from ... import``
-    inside functions sees the new content) and reassigns the frozenset
-    module attribute.
-    """
-    global VALID_ENDPOINT_IDS
+    """Recompute ``BY_*`` / ``VALID_ENDPOINT_IDS`` from the current
+    ``ALL_ENDPOINTS``. All mutations are in place so any ``from ... import``
+    pinned references see the new content."""
     BY_NAME.clear()
     BY_PATH.clear()
     BY_DOMAIN.clear()
     BY_TIME.clear()
+    VALID_ENDPOINT_IDS.clear()
     for ep in ALL_ENDPOINTS:
         BY_NAME[ep.name] = ep
         BY_PATH[ep.path] = ep
         BY_DOMAIN.setdefault(ep.domain, []).append(ep)
         BY_TIME.setdefault(ep.time, []).append(ep)
-    VALID_ENDPOINT_IDS = frozenset(BY_NAME)
-
-
-_rebuild_derived_indices()
+        VALID_ENDPOINT_IDS.add(ep.name)
 
 
 # ════════════════════════════════════════════════════════════════
-# DB source — async post-init swap (P2.4)
+# DB → 内存装载
 # ════════════════════════════════════════════════════════════════
 
-async def reload_from_db(session: Any | None = None) -> int:
-    """Replace the in-memory registry with the contents of ``api_endpoints``.
+async def reload_from_db(session: Any | None = None) -> tuple[int, int]:
+    """Pull endpoints + domains from DB into the in-memory registry.
 
-    Mirrors ``EmployeeManager.load_from_db`` but for the API registry.
-    Module-init runs synchronously and falls back to the inline ``code``
-    source; once the FastAPI lifespan is up it can call this to swap to
-    DB-backed data.
+    Always replaces ``ALL_ENDPOINTS`` and ``DOMAIN_INDEX`` atomically.
+    Caller controls the session: pass one in (for fixture/admin reload
+    flows), or omit to spin up a one-shot session via the global factory.
 
-    DOMAIN_INDEX is **not** swapped — it has no DB representation, so
-    domain metadata always comes from code.
+    Returns ``(endpoint_count, domain_count)`` actually loaded.
 
-    Returns the number of endpoints loaded. Does nothing & returns the
-    current count if the DB query fails (logs WARN); the registry stays
-    on the previous source.
+    Raises on DB failure — the registry stays empty rather than silently
+    serving stale or partial data.
     """
-    global ALL_ENDPOINTS
+    global ALL_ENDPOINTS, DOMAIN_INDEX
 
     from backend.memory import admin_store
 
-    async def _load(db: Any) -> list[dict[str, Any]]:
-        return await admin_store.list_api_endpoints(db, limit=10_000)
+    async def _load(db: Any) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        endpoints = await admin_store.list_api_endpoints(db, limit=10_000)
+        domains = await admin_store.list_domains(db)
+        return endpoints, domains
 
-    try:
-        if session is None:
-            from backend.database import get_session_factory
-            factory = get_session_factory()
-            async with factory() as db:
-                rows = await _load(db)
-        else:
-            rows = await _load(session)
-    except Exception as e:
-        logger.warning("[reload_from_db] DB read failed (%s); registry unchanged", e)
-        return len(ALL_ENDPOINTS)
+    if session is None:
+        from backend.database import get_session_factory
+        factory = get_session_factory()
+        async with factory() as db:
+            ep_rows, dom_rows = await _load(db)
+    else:
+        ep_rows, dom_rows = await _load(session)
 
-    rebuilt: list[ApiEndpoint] = []
-    for row in rows:
+    rebuilt_eps: list[ApiEndpoint] = []
+    for row in ep_rows:
         try:
-            rebuilt.append(_endpoint_from_db_row(row))
+            rebuilt_eps.append(_endpoint_from_db_row(row))
         except Exception as e:
             logger.warning(
-                "[reload_from_db] skipping malformed row %r (%s)",
+                "[reload_from_db] skipping malformed endpoint %r (%s)",
                 row.get("name"), e,
             )
 
-    ALL_ENDPOINTS = tuple(rebuilt)
+    rebuilt_doms: dict[str, DomainInfo] = {}
+    for row in dom_rows:
+        try:
+            rebuilt_doms[row["code"]] = _domain_from_db_row(row)
+        except Exception as e:
+            logger.warning(
+                "[reload_from_db] skipping malformed domain %r (%s)",
+                row.get("code"), e,
+            )
+
+    ALL_ENDPOINTS = tuple(rebuilt_eps)
+    DOMAIN_INDEX = rebuilt_doms
     _rebuild_derived_indices()
-    logger.info("[reload_from_db] loaded %d endpoints from DB", len(ALL_ENDPOINTS))
-    return len(ALL_ENDPOINTS)
+    logger.info(
+        "[reload_from_db] loaded %d endpoints + %d domains",
+        len(ALL_ENDPOINTS), len(DOMAIN_INDEX),
+    )
+    return len(ALL_ENDPOINTS), len(DOMAIN_INDEX)
 
 
 def _endpoint_from_db_row(row: dict[str, Any]) -> ApiEndpoint:
-    """Reconstruct ``ApiEndpoint`` from an ``admin_store._api_row`` dict.
-
-    DB column names (``time_type`` / ``required_params`` / ``optional_params``)
-    differ from the dataclass; this is the single bridge.
-    """
+    """DB column names (``time_type`` / ``required_params`` / ...) differ
+    from the dataclass — this is the single bridge."""
     return ApiEndpoint(
         name=row["name"],
         path=row["path"],
@@ -1726,52 +192,41 @@ def _endpoint_from_db_row(row: dict[str, Any]) -> ApiEndpoint:
     )
 
 
-def _diff_dual_db() -> None:
-    """Log WARN for every code↔DB divergence under source=dual_db.
-
-    Mirror of ``_diff_dual`` with inverted polarity: the registry has
-    just been swapped to DB-loaded data (``BY_NAME`` reflects DB), and
-    we flag drift relative to the inline ``_CODE_*`` source. Used in
-    the 14-day pre-cutover observation window: 0 entries → safe to
-    promote ``db`` to default.
-    """
-    code_by = {ep.name: ep for ep in _CODE_ENDPOINTS}
-    db_by = dict(BY_NAME)
-
-    only_code = sorted(set(code_by) - set(db_by))
-    only_db = sorted(set(db_by) - set(code_by))
-    if only_code:
-        logger.warning("[dual_db] endpoints only in code: %s", only_code)
-    if only_db:
-        logger.warning("[dual_db] endpoints only in DB: %s", only_db)
-    for name in sorted(set(code_by) & set(db_by)):
-        if code_by[name] != db_by[name]:
-            logger.warning("[dual_db] field divergence on endpoint: %s", name)
+def _domain_from_db_row(row: dict[str, Any]) -> DomainInfo:
+    """``description`` (DB) → ``desc`` (dataclass); ``api_count`` is a
+    SUM-computed column from ``admin_store.list_domains``."""
+    return DomainInfo(
+        code=row["code"],
+        name=row["name"],
+        desc=row.get("description") or "",
+        api_count=int(row.get("api_count") or 0),
+        top_tags=tuple(row.get("top_tags") or ()),
+    )
 
 
 async def lifespan_apply_source() -> None:
-    """FastAPI lifespan hook for ``FF_API_REGISTRY_SOURCE in {db, dual_db}``.
+    """FastAPI lifespan hook — load registry from DB.
 
-    Module init can only do sync sources (``code``/``file``/``dual``) and
-    leaves the registry on code when the FF picks a DB mode. This call
-    swaps to DB content once the async session factory is available.
-
-    On any failure the registry stays on the prior (code) source — see
-    ``reload_from_db``.
+    Empty DB or any failure raises immediately. This is intentional:
+    a backend running with an empty registry would silently break LLM
+    planning, so we'd rather refuse to start and force the operator
+    to run ``tools.seed_api_endpoints``.
     """
-    try:
-        from backend.config import get_settings
-        source = get_settings().FF_API_REGISTRY_SOURCE
-    except Exception as e:
-        logger.warning("[lifespan] settings not loadable (%s); skipping DB swap", e)
-        return
-    if source not in ("db", "dual_db"):
-        return
-
-    count = await reload_from_db()
-    if source == "dual_db":
-        _diff_dual_db()
-    logger.info("[lifespan] FF_API_REGISTRY_SOURCE=%s active (%d endpoints)", source, count)
+    ep_count, dom_count = await reload_from_db()
+    if ep_count == 0:
+        raise RuntimeError(
+            "api_endpoints table is empty — run "
+            "`uv run python -m tools.seed_api_endpoints` after applying migrations"
+        )
+    if dom_count == 0:
+        raise RuntimeError(
+            "domains table is empty — run "
+            "`uv run python -m tools.seed_api_endpoints` after applying migrations"
+        )
+    logger.info(
+        "[lifespan] api_registry loaded from DB (%d endpoints, %d domains)",
+        ep_count, dom_count,
+    )
 
 
 # ── 槽位 → 注册表维度映射 ──
@@ -1800,7 +255,7 @@ GRANULARITY_MAP: dict[str, str] = {
 
 
 # ════════════════════════════════════════════════════════════════
-# 工具函数
+# 工具函数 — 调用方通过这些访问 registry，不直接读全局变量
 # ════════════════════════════════════════════════════════════════
 
 def resolve_endpoint_id(raw_id: str) -> str | None:
@@ -1887,8 +342,6 @@ def get_endpoints_description(
         if ep.returns:
             line += f"\n    返回字段: {ep.returns}"
         if ep.field_schema:
-            # P2.3a: rows are 3 or 4 elements (last is optional ``label_zh``).
-            # Index by position so both shapes render identically here.
             schema_str = " | ".join(f"{row[0]}({row[1]})" for row in ep.field_schema)
             line += f"\n    字段结构: {schema_str}"
         if ep.analysis_note:

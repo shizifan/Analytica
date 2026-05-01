@@ -74,14 +74,11 @@ async def lifespan(app: FastAPI):
         else:
             logger.info("All employee profiles validated successfully")
 
-    # API registry — Phase 6.4: optional swap to DB source.
-    # No-op when FF_API_REGISTRY_SOURCE is code/file/dual (already applied
-    # at module import). For db / dual_db the swap happens here.
+    # API registry — load endpoints + domains from DB (the only source).
+    # Empty DB raises immediately to surface a missing seed step before
+    # the backend silently degrades.
     from backend.agent import api_registry
-    try:
-        await api_registry.lifespan_apply_source()
-    except Exception:
-        logger.exception("API registry DB swap failed — staying on code source")
+    await api_registry.lifespan_apply_source()
 
     yield
     engine = get_engine()

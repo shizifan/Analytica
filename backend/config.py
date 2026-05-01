@@ -114,11 +114,6 @@ class Settings(BaseSettings):
                     "DB mode requires the seed script to have run. YAML is a safe fallback "
                     "(lifespan catches DB failure and falls back automatically).",
     )
-    FF_API_REGISTRY_SOURCE: str = Field(
-        default="code",
-        description="Phase 6: 'code' (backend/agent/api_registry.py) or 'db' (api_endpoints table)",
-    )
-
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 

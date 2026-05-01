@@ -123,13 +123,32 @@ cp .env.example .env
 uv run alembic upgrade head
 ```
 
-### 4. 启动后端服务
+### 4. 灌入出厂数据
+
+API 注册表（端点 + 域）以 JSON 出厂在 `data/api_registry.json`，必须 seed 进 DB 才能启动后端：
+
+```bash
+# 必须：API 注册表（142 个端点 + 7 个域）
+uv run python -m tools.seed_api_endpoints
+
+# 必须：内置工具（描述/归因/可视化/报告等）
+uv run python -m migrations.scripts.seed_admin_tables
+
+# 必须：员工角色档案
+uv run python -m migrations.scripts.seed_employees_from_yaml --force
+```
+
+后续 API/域的增删改通过管理平台直接写 DB（无需重跑 seed）；只有 `data/api_registry.json` 更新时（即用 git 拉到了新的出厂数据）才需要再跑一次 `seed_api_endpoints`，UPSERT 是幂等的。
+
+### 5. 启动后端服务
 
 ```bash
 uv run uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 5. 安装并启动前端
+> 启动时会强制从 DB 拉取 API 注册表，若 `api_endpoints` 或 `domains` 表为空将立即报错退出（fail-fast），提示你回到第 4 步跑 seed。
+
+### 6. 安装并启动前端
 
 ```bash
 cd frontend
@@ -139,7 +158,7 @@ npm run dev
 
 访问 http://localhost:5173 即可使用。
 
-### 6. 启动 Mock API 服务器 (开发环境)
+### 7. 启动 Mock API 服务器 (开发环境)
 
 ```bash
 uv run python -m mock_server.mock_server_all
