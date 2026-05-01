@@ -93,10 +93,6 @@ class Settings(BaseSettings):
 
     # UI/UE revamp feature flags — see specs/ui-revamp-v2 phased plan.
     # All default to the pre-revamp behavior so flipping them off rolls back cleanly.
-    FF_NEW_UI: bool = Field(
-        default=False,
-        description="Phase 1: enable three-pane workbench layout + new design tokens",
-    )
     FF_THINKING_STREAM: bool = Field(
         default=True,
         description="Phase 2/3: persist thinking_events (node + tool + decision). "
