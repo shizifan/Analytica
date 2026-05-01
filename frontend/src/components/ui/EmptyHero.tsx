@@ -1,10 +1,11 @@
+import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import type { EmployeeSummary } from '../../types';
 import type { FAQ } from '../../data/employeeFaq';
 
 interface Props {
   employee: EmployeeSummary | null;
-  faqs: FAQ[];
+  pages: FAQ[][];
   onPick(question: string): void;
   disabled?: boolean;
 }
@@ -14,13 +15,25 @@ function initials(name: string): string {
   const trimmed = name.trim();
   if (!trimmed) return 'AN';
   // Chinese names: take first 2 chars; otherwise take up to 2 uppercase letters.
-  if (/[\u4e00-\u9fa5]/.test(trimmed)) return trimmed.slice(0, 2);
+  if (/[一-龥]/.test(trimmed)) return trimmed.slice(0, 2);
   const words = trimmed.split(/\s+/).slice(0, 2);
   return words.map((w) => w[0]?.toUpperCase() ?? '').join('') || 'AN';
 }
 
-export function EmptyHero({ employee, faqs, onPick, disabled }: Props) {
+export function EmptyHero({ employee, pages, onPick, disabled }: Props) {
   const halo = employee ? initials(employee.name) : 'AN';
+  const totalPages = pages.length;
+  const [pageIndex, setPageIndex] = useState(0);
+
+  // Reset to first page whenever the underlying page list identity changes
+  // (e.g. switching between a digital employee and 通用模式).
+  useEffect(() => {
+    setPageIndex(0);
+  }, [pages]);
+
+  const safeIndex = totalPages > 0 ? pageIndex % totalPages : 0;
+  const faqs = totalPages > 0 ? pages[safeIndex] : [];
+
   return (
     <div className="an-empty-hero">
       <div className="an-halo">{halo}</div>
@@ -35,8 +48,23 @@ export function EmptyHero({ employee, faqs, onPick, disabled }: Props) {
             <span className="an-left">
               <Icon name="sparkles" size={12} /> 常见问题 · FAQ
             </span>
-            <span className="an-mono" style={{ fontSize: 10 }}>
-              {faqs.length} 个问题
+            <span className="an-faq-meta">
+              {totalPages > 1 && (
+                <button
+                  type="button"
+                  className="an-faq-rotate"
+                  onClick={() => setPageIndex((i) => (i + 1) % totalPages)}
+                  disabled={disabled}
+                  title="换一批"
+                >
+                  <Icon name="refresh" size={11} /> 换一批
+                </button>
+              )}
+              <span className="an-mono" style={{ fontSize: 10 }}>
+                {totalPages > 1
+                  ? `${safeIndex + 1}/${totalPages} · ${faqs.length} 个问题`
+                  : `${faqs.length} 个问题`}
+              </span>
             </span>
           </div>
           <div className="an-faq-grid">

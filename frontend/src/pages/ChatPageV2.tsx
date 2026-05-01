@@ -6,7 +6,7 @@ import { useSlotStore } from '../stores/slotStore';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useEmployeeStore } from '../stores/employeeStore';
 import { api } from '../api/client';
-import { universalFAQs } from '../data/employeeFaq';
+import { universalFAQPages } from '../data/employeeFaq';
 
 import { InputBar } from '../components/InputBar';
 
@@ -295,11 +295,17 @@ export function ChatPageV2() {
     else clearDetail();
   }, [selectedId, fetchDetail, clearDetail]);
 
-  const faqs = (() => {
+  const faqPages = (() => {
     if (selectedId && detail?.employee_id === selectedId && detail.faqs?.length) {
-      return detail.faqs.map((f) => ({ id: f.id, question: f.question }));
+      const flat = detail.faqs.map((f) => ({ id: f.id, question: f.question }));
+      const PAGE_SIZE = 5;
+      const pages: { id: string; question: string }[][] = [];
+      for (let i = 0; i < flat.length; i += PAGE_SIZE) {
+        pages.push(flat.slice(i, i + PAGE_SIZE));
+      }
+      return pages.length > 0 ? pages : [flat];
     }
-    return universalFAQs;
+    return universalFAQPages;
   })();
 
   const inputDisabled = !sessionId || wsStatus !== 'connected';
@@ -364,7 +370,7 @@ export function ChatPageV2() {
               {messages.length === 0 ? (
                 <EmptyHero
                   employee={selectedEmployee}
-                  faqs={faqs}
+                  pages={faqPages}
                   onPick={handleSend}
                   disabled={inputDisabled}
                 />

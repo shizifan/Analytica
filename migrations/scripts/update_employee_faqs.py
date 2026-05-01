@@ -1,10 +1,16 @@
 """Phase 5.6 — canonical FAQ set per employee.
 
-Each employee gets 5 FAQs covering three complexity tiers:
+Each employee gets 10 FAQs split across two pages of 5 (the welcome screen
+shows page 1; users rotate to page 2 via "换一批"). Every page mirrors the
+same complexity ladder:
 
   - 2 × **simple_table** (data query)  — tag "数据查询" / type "数据"
   - 2 × **chart_text**   (chart + text) — tag "图文分析" / type "图表"
   - 1 × **full_report**  (L3 report)    — tag "深度报告" / type "报告"
+
+Page 1 leads with the employee's signature analytical scenarios (structure
+breakdowns, ranking shifts, attribution, predictions). Page 2 keeps the
+classic quick-look queries.
 
 Every question explicitly spells out (subject × time range × output
 format) so the perception node can fill all required slots without
@@ -35,6 +41,33 @@ REPORT = {"tag": "深度报告", "type": "报告"}
 FAQ_SETS: dict[str, list[dict[str, Any]]] = {
     # D1 生产运营 / D2 市场商务
     "throughput_analyst": [
+        # ── Page 1：聚焦目标完成、效率与归因 ──
+        {
+            "id": "tp-p1-simple-1",
+            **SIMPLE,
+            "question": "2026年3月全港集装箱吞吐量（TEU）目标完成率，以表格列出目标量、完成量、完成率",
+        },
+        {
+            "id": "tp-p1-simple-2",
+            **SIMPLE,
+            "question": "2026年3月各港区泊位占用率，以表格列出各港区数据",
+        },
+        {
+            "id": "tp-p1-chart-1",
+            **CHART,
+            "question": "2026年集装箱吞吐量目标完成率月度趋势，当年与上年对比，以折线图展示",
+        },
+        {
+            "id": "tp-p1-chart-2",
+            **CHART,
+            "question": "2026年3月油化品、散杂货、商品车吞吐量结构对比，按港区拆解，以堆叠柱状图展示",
+        },
+        {
+            "id": "tp-p1-report",
+            **REPORT,
+            "question": "生成2026年3月吞吐量同比环比深度归因报告（按港区、按业务板块），以 HTML 格式交付",
+        },
+        # ── Page 2：经典快速查询（保留原有 5 题） ──
         {
             "id": "tp-simple-1",
             **SIMPLE,
@@ -63,6 +96,33 @@ FAQ_SETS: dict[str, list[dict[str, Any]]] = {
     ],
     # D2 市场商务 / D3 战略客户 / D4 营销
     "customer_insight": [
+        # ── Page 1：聚焦排名变化、信用、结构演变 ──
+        {
+            "id": "ci-p1-simple-1",
+            **SIMPLE,
+            "question": "2026年3月战略客户信用等级分布及高风险客户清单，以表格列出",
+        },
+        {
+            "id": "ci-p1-simple-2",
+            **SIMPLE,
+            "question": "2026年3月集装箱业务重点企业 TOP10 排名，以表格列出企业名称、吞吐量与环比",
+        },
+        {
+            "id": "ci-p1-chart-1",
+            **CHART,
+            "question": "2026年3月战略客户 TOP10 吞吐贡献排名及上月环比变化，识别新晋与掉队客户，以表格+柱状图展示",
+        },
+        {
+            "id": "ci-p1-chart-2",
+            **CHART,
+            "question": "2026年3月战略客户按货类（集装箱、散杂货、油化品、商品车）贡献结构，以堆叠柱状图展示",
+        },
+        {
+            "id": "ci-p1-report",
+            **REPORT,
+            "question": "生成2026年3月战略客户深度洞察报告（贡献排名、环比变化、流失风险、信用分布），以 HTML 格式交付",
+        },
+        # ── Page 2：经典快速查询（保留原有 5 题） ──
         {
             "id": "ci-simple-1",
             **SIMPLE,
@@ -91,6 +151,33 @@ FAQ_SETS: dict[str, list[dict[str, Any]]] = {
     ],
     # D5 资产 / D6 投资 / D7 设备
     "asset_investment": [
+        # ── Page 1：聚焦房屋土地、计划外项目、机种效能 ──
+        {
+            "id": "ai-p1-simple-1",
+            **SIMPLE,
+            "question": "当前房屋与土地资产分布，按港区列出建筑面积与原值",
+        },
+        {
+            "id": "ai-p1-simple-2",
+            **SIMPLE,
+            "question": "2026年资本项目计划外项目清单及金额，以表格列出",
+        },
+        {
+            "id": "ai-p1-chart-1",
+            **CHART,
+            "question": "2026年3月各机种生产设备利用率与完好率对比，识别低效机种并归因，以柱状图展示",
+        },
+        {
+            "id": "ai-p1-chart-2",
+            **CHART,
+            "question": "2026年资本项目计划完成情况，按港区与项目类型拆解，识别进度滞后项目，以表格+柱状图展示",
+        },
+        {
+            "id": "ai-p1-report",
+            **REPORT,
+            "question": "生成2026年Q1设备运营效能深度报告（利用率、完好率、故障次数、设备成本），以 HTML 格式交付",
+        },
+        # ── Page 2：经典快速查询（保留原有 5 题） ──
         {
             "id": "ai-simple-1",
             **SIMPLE,

@@ -2027,6 +2027,35 @@ html.analytica-v2 [data-density="spacious"] { font-size: 14px; }
   align-items: center;
   gap: 6px;
 }
+.an-faq-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.an-faq-rotate {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--an-border);
+  background: var(--an-bg-raised);
+  border-radius: 999px;
+  color: var(--an-ink-3);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.an-faq-rotate:hover:not(:disabled) {
+  border-color: var(--an-accent-border);
+  background: var(--an-accent-bg);
+  color: var(--an-accent-ink);
+}
+.an-faq-rotate:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .an-faq-grid {
   display: grid;
   grid-template-columns: 1fr;
