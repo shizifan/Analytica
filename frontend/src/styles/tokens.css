@@ -1672,8 +1672,24 @@ html.analytica-v2 [data-density="spacious"] { font-size: 14px; }
   border-color: var(--an-accent);
   background: var(--an-accent-bg);
 }
+/* In active rows the avatar shares the same --an-accent-bg as the row background,
+   so boost it to the actual accent color to keep it distinguishable. */
+.an-emp-row.active .an-emp-avatar {
+  background: var(--an-accent);
+  color: var(--an-accent-fg);
+  border-color: transparent;
+}
 .an-emp-row.draft { border-style: dashed; }
 .an-emp-row.archived { opacity: 0.5; }
+.an-emp-row.active .an-emp-row-stats .stat {
+  background: var(--an-accent-border);
+  border-color: var(--an-accent-border);
+  color: var(--an-accent-ink);
+}
+.an-emp-row.active .an-emp-row-info {
+  border-color: var(--an-accent-border);
+  color: var(--an-accent-ink);
+}
 
 .an-emp-row .an-emp-row-id {
   display: flex;
@@ -1722,9 +1738,10 @@ html.analytica-v2 [data-density="spacious"] { font-size: 14px; }
 }
 .an-emp-row .an-emp-row-stats .stat {
   padding: 2px 6px;
-  border: 1px solid var(--an-border-subtle);
+  border: 1px solid var(--an-border);
   border-radius: 3px;
-  background: var(--an-bg);
+  background: var(--an-bg-raised);
+  color: var(--an-ink-3);
   white-space: nowrap;
 }
 .an-emp-row-info {

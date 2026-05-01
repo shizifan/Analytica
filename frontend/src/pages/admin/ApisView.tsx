@@ -18,6 +18,7 @@ export function ApisView() {
   const [domainNames, setDomainNames] = useState<Record<string, string>>({});
   const [testTarget, setTestTarget] = useState<AdminApi | null>(null);
   const [editTarget, setEditTarget] = useState<string | null>(null);
+  const [viewTarget, setViewTarget] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -121,8 +122,11 @@ export function ApisView() {
                     {it.method}
                   </span>
                 </td>
-                <td className="mono" title={it.path}>
-                  {it.name}
+                <td className="mono" title={it.path}
+                  onClick={() => setViewTarget(it.name)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <span style={{ color: 'var(--an-accent)' }}>{it.name}</span>
                   <div style={{ color: 'var(--an-ink-4)', fontSize: 10, marginTop: 2 }}>
                     {it.path}
                   </div>
@@ -175,9 +179,15 @@ export function ApisView() {
         name={editTarget}
         onClose={() => setEditTarget(null)}
         onSaved={(updated) => {
-          // Replace the row in-place so the table reflects the save without a full refetch.
           setItems((arr) => arr.map((it) => it.name === updated.name ? updated : it));
         }}
+      />
+    )}
+    {viewTarget && (
+      <ApiEditDrawer
+        name={viewTarget}
+        onClose={() => setViewTarget(null)}
+        readOnly
       />
     )}
     </>

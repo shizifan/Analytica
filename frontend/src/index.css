@@ -11,3 +11,23 @@ body {
   width: 100%;
   height: 100vh;
 }
+
+.an-input {
+  background: var(--an-bg-raised);
+  border: 1px solid var(--an-border);
+  color: var(--an-ink);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.an-input::placeholder {
+  color: var(--an-ink-4);
+}
+.an-input:focus {
+  border-color: var(--an-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--an-accent) 20%, transparent);
+}
+.an-input:disabled {
+  background: var(--an-bg-sunken);
+  color: var(--an-ink-4);
+  cursor: not-allowed;
+}

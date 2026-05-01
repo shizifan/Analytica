@@ -1,11 +1,48 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, type AdminApi } from '../../../api/client';
 
+const DOMAIN_OPTIONS: Array<{ code: string; label: string }> = [
+  { code: 'D1', label: '生产运营' },
+  { code: 'D2', label: '市场商务' },
+  { code: 'D3', label: '客户管理' },
+  { code: 'D4', label: '投企管理' },
+  { code: 'D5', label: '资产管理' },
+  { code: 'D6', label: '投资管理' },
+  { code: 'D7', label: '设备子屏' },
+];
+
+const TIME_TYPE_OPTIONS: Array<{ code: string; label: string }> = [
+  { code: 'T_RT',    label: '实时' },
+  { code: 'T_DAY',   label: '日度' },
+  { code: 'T_MON',   label: '月度' },
+  { code: 'T_TREND', label: '月度趋势' },
+  { code: 'T_CUM',   label: '累计' },
+  { code: 'T_YOY',   label: '同比年度' },
+  { code: 'T_HIST',  label: '历史' },
+];
+
+const GRANULARITY_OPTIONS: Array<{ code: string; label: string }> = [
+  { code: 'G_PORT',   label: '港区' },
+  { code: 'G_ZONE',   label: '区域' },
+  { code: 'G_BIZ',    label: '业务板块' },
+  { code: 'G_CARGO',  label: '货类' },
+  { code: 'G_CLIENT', label: '客户' },
+  { code: 'G_CMP',    label: '公司' },
+  { code: 'G_BERTH',  label: '泊位' },
+  { code: 'G_EQUIP',  label: '设备' },
+];
+
+function codeLabel(options: Array<{ code: string; label: string }>, code: string): string {
+  return options.find((o) => o.code === code)?.label ?? code;
+}
+
 interface Props {
   /** API endpoint name to load / edit. Drawer fetches its own copy via GET. */
   name: string;
   onClose: () => void;
   onSaved?: (updated: AdminApi) => void;
+  /** When true, all fields are read-only and the save button is hidden. */
+  readOnly?: boolean;
 }
 
 type Tab = 'basic' | 'params' | 'schema' | 'semantic';
@@ -47,7 +84,7 @@ function emptyDraft(): Draft {
     time_type: '', granularity: '',
     tags: [], required_params: [], optional_params: [],
     param_note: '', returns: '', disambiguate: '',
-    source: 'mock', enabled: true,
+    source: 'prod', enabled: true,
     field_schema: [],
     use_cases: [], chain_with: [], analysis_note: '',
   };
@@ -106,7 +143,7 @@ function draftToPayload(name: string, d: Draft) {
   };
 }
 
-export function ApiEditDrawer({ name, onClose, onSaved }: Props) {
+export function ApiEditDrawer({ name, onClose, onSaved, readOnly = false }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<Tab>('basic');
   const [draft, setDraft] = useState<Draft>(emptyDraft());
@@ -189,7 +226,7 @@ export function ApiEditDrawer({ name, onClose, onSaved }: Props) {
         {/* Header */}
         <div className="an-drawer-head">
           <div className="an-drawer-title">
-            <span style={{ fontWeight: 600 }}>编辑 API</span>
+            <span style={{ fontWeight: 600 }}>{readOnly ? '查看 API' : '编辑 API'}</span>
             <span style={{ fontFamily: 'var(--an-font-mono)', fontSize: 11, color: 'var(--an-ink-4)' }}>
               {name}
             </span>
@@ -230,6 +267,7 @@ export function ApiEditDrawer({ name, onClose, onSaved }: Props) {
                   <select
                     value={draft.method}
                     onChange={(e) => setDraft({ ...draft, method: e.target.value })}
+                    disabled={readOnly}
                     style={{ ...inputStyle, width: 140 }}
                   >
                     {['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].map((m) => (
@@ -240,41 +278,84 @@ export function ApiEditDrawer({ name, onClose, onSaved }: Props) {
                 <FieldRow label="路径">
                   <input type="text" value={draft.path}
                     onChange={(e) => setDraft({ ...draft, path: e.target.value })}
+                    disabled={readOnly}
                     style={{ ...inputStyle, fontFamily: 'var(--an-font-mono)' }} />
                 </FieldRow>
                 <FieldRow label="域">
-                  <input type="text" value={draft.domain}
-                    onChange={(e) => setDraft({ ...draft, domain: e.target.value })}
-                    placeholder="D1 / D2 / ..." style={{ ...inputStyle, width: 160 }} />
+                  {readOnly ? (
+                    <span style={{ fontSize: 12, color: 'var(--an-ink-2)' }}>
+                      {codeLabel(DOMAIN_OPTIONS, draft.domain) || '—'}
+                    </span>
+                  ) : (
+                    <select
+                      value={draft.domain}
+                      onChange={(e) => setDraft({ ...draft, domain: e.target.value })}
+                      style={{ ...inputStyle, width: 160 }}
+                    >
+                      <option value="">请选择…</option>
+                      {DOMAIN_OPTIONS.map((o) => (
+                        <option key={o.code} value={o.code}>{o.label}（{o.code}）</option>
+                      ))}
+                    </select>
+                  )}
                 </FieldRow>
                 <FieldRow label="语义说明">
                   <textarea value={draft.intent}
                     onChange={(e) => setDraft({ ...draft, intent: e.target.value })}
+                    disabled={readOnly}
                     rows={2}
-                    style={{ ...inputStyle, height: 'auto', resize: 'vertical' }} />
+                    style={{ ...inputStyle, height: 'auto', resize: readOnly ? 'none' : 'vertical' }} />
                 </FieldRow>
                 <FieldRow label="时间类型">
-                  <input type="text" value={draft.time_type}
-                    onChange={(e) => setDraft({ ...draft, time_type: e.target.value })}
-                    placeholder="T_RT / T_MON / T_TREND..." style={{ ...inputStyle, width: 200 }} />
+                  {readOnly ? (
+                    <span style={{ fontSize: 12, color: 'var(--an-ink-2)' }}>
+                      {codeLabel(TIME_TYPE_OPTIONS, draft.time_type) || '—'}
+                    </span>
+                  ) : (
+                    <select
+                      value={draft.time_type}
+                      onChange={(e) => setDraft({ ...draft, time_type: e.target.value })}
+                      style={{ ...inputStyle, width: 200 }}
+                    >
+                      <option value="">请选择…</option>
+                      {TIME_TYPE_OPTIONS.map((o) => (
+                        <option key={o.code} value={o.code}>{o.label}（{o.code}）</option>
+                      ))}
+                    </select>
+                  )}
                 </FieldRow>
                 <FieldRow label="粒度">
-                  <input type="text" value={draft.granularity}
-                    onChange={(e) => setDraft({ ...draft, granularity: e.target.value })}
-                    placeholder="G_PORT / G_ZONE..." style={{ ...inputStyle, width: 200 }} />
+                  {readOnly ? (
+                    <span style={{ fontSize: 12, color: 'var(--an-ink-2)' }}>
+                      {codeLabel(GRANULARITY_OPTIONS, draft.granularity) || '—'}
+                    </span>
+                  ) : (
+                    <select
+                      value={draft.granularity}
+                      onChange={(e) => setDraft({ ...draft, granularity: e.target.value })}
+                      style={{ ...inputStyle, width: 200 }}
+                    >
+                      <option value="">请选择…</option>
+                      {GRANULARITY_OPTIONS.map((o) => (
+                        <option key={o.code} value={o.code}>{o.label}（{o.code}）</option>
+                      ))}
+                    </select>
+                  )}
                 </FieldRow>
                 <FieldRow label="数据源">
                   <select value={draft.source}
                     onChange={(e) => setDraft({ ...draft, source: e.target.value })}
+                    disabled={readOnly}
                     style={{ ...inputStyle, width: 140 }}>
-                    <option value="mock">mock</option>
-                    <option value="prod">prod</option>
+                    <option value="prod">生产</option>
+                    <option value="mock">模拟</option>
                   </select>
                 </FieldRow>
                 <FieldRow label="启用">
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                     <input type="checkbox" checked={draft.enabled}
-                      onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })} />
+                      onChange={(e) => setDraft({ ...draft, enabled: e.target.checked })}
+                      disabled={readOnly} />
                     {draft.enabled ? '启用中' : '已停用'}
                   </label>
                 </FieldRow>
@@ -285,6 +366,7 @@ export function ApiEditDrawer({ name, onClose, onSaved }: Props) {
                     onUpdate={setListField('tags').update}
                     onRemove={setListField('tags').remove}
                     placeholder="如 同比 / 月度 / 港区"
+                    readOnly={readOnly}
                   />
                 </FieldRow>
               </div>
@@ -300,6 +382,7 @@ export function ApiEditDrawer({ name, onClose, onSaved }: Props) {
                     onRemove={setListField('required_params').remove}
                     placeholder="参数名（如 startDate）"
                     mono
+                    readOnly={readOnly}
                   />
                 </FieldRow>
                 <FieldRow label="可选参数">
@@ -310,19 +393,22 @@ export function ApiEditDrawer({ name, onClose, onSaved }: Props) {
                     onRemove={setListField('optional_params').remove}
                     placeholder="参数名"
                     mono
+                    readOnly={readOnly}
                   />
                 </FieldRow>
                 <FieldRow label="参数说明">
                   <textarea value={draft.param_note}
                     onChange={(e) => setDraft({ ...draft, param_note: e.target.value })}
+                    disabled={readOnly}
                     rows={3}
-                    style={{ ...inputStyle, height: 'auto', resize: 'vertical' }} />
+                    style={{ ...inputStyle, height: 'auto', resize: readOnly ? 'none' : 'vertical' }} />
                 </FieldRow>
                 <FieldRow label="返回字段">
                   <textarea value={draft.returns}
                     onChange={(e) => setDraft({ ...draft, returns: e.target.value })}
+                    disabled={readOnly}
                     rows={2} placeholder="如 dateMonth/qty/yoyRate"
-                    style={{ ...inputStyle, height: 'auto', resize: 'vertical', fontFamily: 'var(--an-font-mono)' }} />
+                    style={{ ...inputStyle, height: 'auto', resize: readOnly ? 'none' : 'vertical', fontFamily: 'var(--an-font-mono)' }} />
                 </FieldRow>
               </div>
             )}
@@ -331,8 +417,10 @@ export function ApiEditDrawer({ name, onClose, onSaved }: Props) {
               <div className="an-drawer-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <SectionLabel>field_schema</SectionLabel>
-                  <button type="button" className="an-btn ghost" onClick={addSchemaRow}
-                    style={{ padding: '2px 8px', fontSize: 11 }}>+ 添加字段</button>
+                  {!readOnly && (
+                    <button type="button" className="an-btn ghost" onClick={addSchemaRow}
+                      style={{ padding: '2px 8px', fontSize: 11 }}>+ 添加字段</button>
+                  )}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--an-ink-4)', marginTop: -6 }}>
                   4 列：字段名 / 类型 / 含义 / 中文显示名（最后一列留空表示沿用全局映射）
@@ -342,22 +430,28 @@ export function ApiEditDrawer({ name, onClose, onSaved }: Props) {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {draft.field_schema.map((row, i) => (
-                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.8fr 2fr 1.4fr auto', gap: 6, alignItems: 'center' }}>
+                      <div key={i} style={{ display: 'grid', gridTemplateColumns: readOnly ? '1.4fr 0.8fr 2fr 1.4fr' : '1.4fr 0.8fr 2fr 1.4fr auto', gap: 6, alignItems: 'center' }}>
                         <input value={row[0]} placeholder="字段名"
                           onChange={(e) => updateSchemaCell(i, 0, e.target.value)}
+                          disabled={readOnly}
                           style={{ ...inputStyle, fontFamily: 'var(--an-font-mono)' }} />
                         <input value={row[1]} placeholder="类型"
                           onChange={(e) => updateSchemaCell(i, 1, e.target.value)}
+                          disabled={readOnly}
                           style={{ ...inputStyle, fontFamily: 'var(--an-font-mono)' }} />
                         <input value={row[2]} placeholder="含义"
                           onChange={(e) => updateSchemaCell(i, 2, e.target.value)}
+                          disabled={readOnly}
                           style={inputStyle} />
                         <input value={row[3]} placeholder="中文显示名（可空）"
                           onChange={(e) => updateSchemaCell(i, 3, e.target.value)}
+                          disabled={readOnly}
                           style={inputStyle} />
-                        <button type="button" className="an-btn ghost"
-                          onClick={() => removeSchemaRow(i)}
-                          style={{ padding: '2px 8px', fontSize: 11 }}>×</button>
+                        {!readOnly && (
+                          <button type="button" className="an-btn ghost"
+                            onClick={() => removeSchemaRow(i)}
+                            style={{ padding: '2px 8px', fontSize: 11 }}>×</button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -370,9 +464,10 @@ export function ApiEditDrawer({ name, onClose, onSaved }: Props) {
                 <FieldRow label="消歧">
                   <textarea value={draft.disambiguate}
                     onChange={(e) => setDraft({ ...draft, disambiguate: e.target.value })}
+                    disabled={readOnly}
                     rows={2}
                     placeholder="如 区别getXxx=A；本接口=B"
-                    style={{ ...inputStyle, height: 'auto', resize: 'vertical' }} />
+                    style={{ ...inputStyle, height: 'auto', resize: readOnly ? 'none' : 'vertical' }} />
                 </FieldRow>
                 <FieldRow label="典型用例">
                   <ListEditor
@@ -381,6 +476,7 @@ export function ApiEditDrawer({ name, onClose, onSaved }: Props) {
                     onUpdate={setListField('use_cases').update}
                     onRemove={setListField('use_cases').remove}
                     placeholder="如 历年投资计划完成趋势"
+                    readOnly={readOnly}
                   />
                 </FieldRow>
                 <FieldRow label="建议组合">
@@ -391,14 +487,16 @@ export function ApiEditDrawer({ name, onClose, onSaved }: Props) {
                     onRemove={setListField('chain_with').remove}
                     placeholder="组合调用的端点名"
                     mono
+                    readOnly={readOnly}
                   />
                 </FieldRow>
                 <FieldRow label="分析要点">
                   <textarea value={draft.analysis_note}
                     onChange={(e) => setDraft({ ...draft, analysis_note: e.target.value })}
+                    disabled={readOnly}
                     rows={3}
                     placeholder="数据结构特征 / 注意事项"
-                    style={{ ...inputStyle, height: 'auto', resize: 'vertical' }} />
+                    style={{ ...inputStyle, height: 'auto', resize: readOnly ? 'none' : 'vertical' }} />
                 </FieldRow>
               </div>
             )}
@@ -412,16 +510,18 @@ export function ApiEditDrawer({ name, onClose, onSaved }: Props) {
               <div style={{ flex: 1, fontSize: 11, color: 'var(--an-err)' }}>{saveErr}</div>
             )}
             <button type="button" className="an-btn ghost" onClick={onClose} disabled={saving}
-              style={{ fontSize: 12 }}>取消</button>
-            <button
-              type="button"
-              className="an-btn primary"
-              onClick={handleSave}
-              disabled={saving || !draft.path.trim() || !draft.domain.trim()}
-              style={{ fontSize: 12, minWidth: 72 }}
-            >
-              {saving ? '保存中…' : '保存'}
-            </button>
+              style={{ fontSize: 12 }}>{readOnly ? '关闭' : '取消'}</button>
+            {!readOnly && (
+              <button
+                type="button"
+                className="an-btn primary"
+                onClick={handleSave}
+                disabled={saving || !draft.path.trim() || !draft.domain.trim()}
+                style={{ fontSize: 12, minWidth: 72 }}
+              >
+                {saving ? '保存中…' : '保存'}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -438,9 +538,10 @@ interface ListEditorProps {
   onRemove(i: number): void;
   placeholder?: string;
   mono?: boolean;
+  readOnly?: boolean;
 }
 
-function ListEditor({ values, onAdd, onUpdate, onRemove, placeholder, mono }: ListEditorProps) {
+function ListEditor({ values, onAdd, onUpdate, onRemove, placeholder, mono, readOnly }: ListEditorProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       {values.length === 0 && (
@@ -453,16 +554,21 @@ function ListEditor({ values, onAdd, onUpdate, onRemove, placeholder, mono }: Li
             value={v}
             placeholder={placeholder}
             onChange={(e) => onUpdate(i, e.target.value)}
+            disabled={readOnly}
             style={{ ...inputStyle, flex: 1, ...(mono ? { fontFamily: 'var(--an-font-mono)' } : {}) }}
           />
-          <button type="button" className="an-btn ghost"
-            onClick={() => onRemove(i)}
-            style={{ padding: '2px 8px', fontSize: 11 }}>×</button>
+          {!readOnly && (
+            <button type="button" className="an-btn ghost"
+              onClick={() => onRemove(i)}
+              style={{ padding: '2px 8px', fontSize: 11 }}>×</button>
+          )}
         </div>
       ))}
-      <button type="button" className="an-btn ghost"
-        onClick={onAdd}
-        style={{ alignSelf: 'flex-start', padding: '2px 10px', fontSize: 11 }}>+ 添加</button>
+      {!readOnly && (
+        <button type="button" className="an-btn ghost"
+          onClick={onAdd}
+          style={{ alignSelf: 'flex-start', padding: '2px 10px', fontSize: 11 }}>+ 添加</button>
+      )}
     </div>
   );
 }

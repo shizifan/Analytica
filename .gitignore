@@ -45,3 +45,8 @@ nginx.conf
 
 #Design
 design/
+
+# 参考素材（本地分析参考用，不入仓）
+tests/fixtures/analytica_dc179b0a_*.json
+tests/fixtures/asset_report_*.docx
+tests/fixtures/asset_report_*.pptx

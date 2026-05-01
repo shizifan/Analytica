@@ -35,7 +35,7 @@ logger = logging.getLogger("seed.employees")
 # Curated distinctive initials — avoids "生产" vs "生产运营专家" duplication.
 # Fall back to a more generic heuristic for employees we don't know about.
 _CURATED_INITIALS: dict[str, str] = {
-    "throughput_analyst": "吞吐",
+    "throughput_analyst": "生产",
     "customer_insight": "客户",
     "asset_investment": "资产",
 }

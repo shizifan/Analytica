@@ -23,6 +23,7 @@ export function EmployeeDetailDrawer({ employeeId, onClose }: Props) {
 
   // 编辑状态
   const [name, setName] = useState('');
+  const [initials, setInitials] = useState('');
   const [description, setDescription] = useState('');
   const [faqs, setFaqs] = useState<EmployeeFAQ[]>([]);
   const [saving, setSaving] = useState(false);
@@ -65,6 +66,7 @@ export function EmployeeDetailDrawer({ employeeId, onClose }: Props) {
       .then((d) => {
         setDetail(d);
         setName(d.name);
+        setInitials(d.initials ?? '');
         setDescription(d.description);
         setFaqs(d.faqs.map((f) => ({ ...f })));
         setPerceptionPrompt((d.perception?.system_prompt_suffix as string) ?? '');
@@ -93,7 +95,7 @@ export function EmployeeDetailDrawer({ employeeId, onClose }: Props) {
         prompt_suffix: planningPrompt,
       };
       const updated = await api.updateEmployee(detail.employee_id, {
-        name, description, faqs,
+        name, initials: initials.trim() || null, description, faqs,
         perception, planning,
         snapshot_note: 'admin edit',
       });
@@ -310,6 +312,16 @@ export function EmployeeDetailDrawer({ employeeId, onClose }: Props) {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         style={inputStyle}
+                      />
+                    </FieldRow>
+                    <FieldRow label="头像文字">
+                      <input
+                        type="text"
+                        value={initials}
+                        onChange={(e) => setInitials(e.target.value.slice(0, 2))}
+                        maxLength={2}
+                        placeholder="最多 2 字"
+                        style={{ ...inputStyle, width: 80 }}
                       />
                     </FieldRow>
                     <FieldRow label="ID">
