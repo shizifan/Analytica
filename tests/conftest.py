@@ -16,6 +16,38 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+# ── Employees: seed DB + load EmployeeManager once per session ─
+
+@pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")
+async def _seed_and_load_employees():
+    """Once per pytest session, ensure the ``employees`` table is seeded
+    from ``employees/*.yaml`` and ``EmployeeManager`` has loaded them.
+
+    The new design treats DB as the only source — the manager imports
+    with empty ``_profiles``, and tests that touch ``manager.list_employees()``
+    or hit ``/api/employees/*`` would see nothing without this fixture.
+    Cost is one-time per session (~3 UPSERTs, idempotent).
+
+    If the DB isn't reachable, log a WARN and proceed; tests that need
+    employees will surface a clear failure instead of a confusing
+    connection error.
+    """
+    import logging
+    logger = logging.getLogger("conftest._seed_and_load_employees")
+    try:
+        from migrations.scripts.seed_employees_from_yaml import run as seed_run
+        await seed_run(force=False, dry_run=False)
+        from backend.employees.manager import EmployeeManager
+        n = await EmployeeManager.get_instance().load_from_db()
+        logger.info("[employees] session-seeded %d profiles", n)
+    except Exception as e:
+        logger.warning(
+            "[employees] seed/reload failed (%s) — tests that need "
+            "manager.list_employees() will fail visibly", e,
+        )
+    yield
+
+
 # ── API Registry: seed DB + load into memory once per session ─
 
 @pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")

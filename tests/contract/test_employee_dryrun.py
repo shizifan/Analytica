@@ -25,15 +25,12 @@ pytestmark = pytest.mark.contract
 
 
 @pytest.fixture(scope="module", autouse=True)
-def _ensure_profiles_loaded():
-    from pathlib import Path
-    from backend.employees.manager import EmployeeManager
+def _ensure_tools_loaded():
+    """Tool registry needs explicit loading; employees are seeded into the
+    DB and loaded into ``EmployeeManager`` by the session-scope conftest
+    fixture, so we don't touch them here."""
     from backend.tools.loader import load_all_tools
-
     load_all_tools()
-    manager = EmployeeManager.get_instance()
-    if not manager.list_employees():
-        manager.load_all_profiles(Path(__file__).resolve().parents[2] / "employees")
 
 
 # ── Override merge helper ───────────────────────────────────────────

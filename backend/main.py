@@ -35,44 +35,27 @@ async def lifespan(app: FastAPI):
     tool_count = load_all_tools()
     logger.info("Loaded %d tool modules", tool_count)
 
-    # 加载员工配置 — Phase 4: picks DB or YAML based on FF.
-    from pathlib import Path
-    from backend.config import get_settings
+    # 加载员工配置 — DB is the only source. Empty table raises so the
+    # operator notices a missing seed step instead of silently serving
+    # the "general assistant" stub UI with no employees.
     from backend.employees.manager import EmployeeManager
-    settings = get_settings()
     manager = EmployeeManager.get_instance()
-    if settings.FF_EMPLOYEE_SOURCE == "db":
-        try:
-            emp_count = await manager.load_from_db()
-            logger.info("Loaded %d employee profiles from DB", emp_count)
-            # 兜底：DB 可用但表里是空的（seed 未跑 / 还没导入）时也回退
-            # 到 YAML，避免前端拿到空列表只剩"通用模式"。
-            if emp_count == 0:
-                logger.warning(
-                    "DB returned 0 employees — falling back to YAML "
-                    "(run `python -m migrations.scripts.seed_employees_from_yaml` to seed DB)"
-                )
-                config_dir = Path(__file__).resolve().parent.parent / "employees"
-                emp_count = manager.load_all_profiles(config_dir)
-        except Exception:
-            logger.exception(
-                "DB load failed for employees — falling back to YAML",
-            )
-            config_dir = Path(__file__).resolve().parent.parent / "employees"
-            emp_count = manager.load_all_profiles(config_dir)
-    else:
-        config_dir = Path(__file__).resolve().parent.parent / "employees"
-        emp_count = manager.load_all_profiles(config_dir)
-        logger.info("Loaded %d employee profiles from YAML", emp_count)
+    emp_count = await manager.load_from_db()
+    if emp_count == 0:
+        raise RuntimeError(
+            "employees table is empty — run "
+            "`uv run python -m migrations.scripts.seed_employees_from_yaml` "
+            "after applying migrations"
+        )
+    logger.info("Loaded %d employee profiles from DB", emp_count)
 
     # 启动校验
-    if emp_count > 0:
-        errors = manager.validate_all_profiles()
-        if errors:
-            for e in errors:
-                logger.error("Profile validation: %s", e)
-        else:
-            logger.info("All employee profiles validated successfully")
+    errors = manager.validate_all_profiles()
+    if errors:
+        for e in errors:
+            logger.error("Profile validation: %s", e)
+    else:
+        logger.info("All employee profiles validated successfully")
 
     # API registry — load endpoints + domains from DB (the only source).
     # Empty DB raises immediately to surface a missing seed step before
@@ -198,45 +181,31 @@ async def get_employee(employee_id: str):
 
 @app.post("/api/employees/reload", status_code=200)
 async def reload_employees():
-    """Re-read employee profiles from the current source (DB or YAML).
+    """Re-read employee profiles from the DB.
 
-    Used by maintenance scripts (e.g. FAQ bulk update) to invalidate the
-    in-memory cache without restarting uvicorn. No auth guard here — gate
-    behind RBAC in Phase 7.
+    Useful when a maintenance script writes the ``employees`` table
+    directly (bypassing the admin routes) and needs the in-memory cache
+    refreshed without restarting uvicorn. Admin routes that go through
+    ``manager.upsert_employee`` already refresh the cache themselves.
     """
-    from pathlib import Path
-    from backend.config import get_settings
     from backend.employees.manager import EmployeeManager
     manager = EmployeeManager.get_instance()
-    settings = get_settings()
-    if settings.FF_EMPLOYEE_SOURCE == "db":
-        count = await manager.load_from_db()
-    else:
-        config_dir = Path(__file__).resolve().parent.parent / "employees"
-        count = manager.load_all_profiles(config_dir)
-    return {"status": "ok", "count": count, "source": settings.FF_EMPLOYEE_SOURCE}
+    count = await manager.load_from_db()
+    return {"status": "ok", "count": count}
 
 
 @app.post("/api/employees/{employee_id}", status_code=201)
 async def create_or_replace_employee(
     employee_id: str, req: UpsertEmployeeRequest,
 ):
-    """Create (or full-replace) an employee — DB mode only."""
+    """Create (or full-replace) an employee."""
     from backend.employees.manager import EmployeeManager
     manager = EmployeeManager.get_instance()
-    if manager.source != "db":
-        raise HTTPException(
-            status_code=400,
-            detail="Employee creation requires FF_EMPLOYEE_SOURCE=db",
-        )
-    try:
-        profile = await manager.upsert_employee(
-            employee_id,
-            **req.model_dump(exclude={"snapshot_note"}),
-            snapshot_note=req.snapshot_note,
-        )
-    except RuntimeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+    profile = await manager.upsert_employee(
+        employee_id,
+        **req.model_dump(exclude={"snapshot_note"}),
+        snapshot_note=req.snapshot_note,
+    )
     if profile is None:
         raise HTTPException(status_code=500, detail="Employee upsert failed")
     return _profile_to_detail(profile)
@@ -244,23 +213,11 @@ async def create_or_replace_employee(
 
 @app.put("/api/employees/{employee_id}")
 async def update_employee(employee_id: str, req: PatchEmployeeRequest):
-    """Patch an employee. YAML mode: name/description only (in-memory).
-    DB mode: all fields; persisted + version snapshot."""
+    """Patch an employee — persists to DB + version snapshot."""
     from backend.employees.manager import EmployeeManager
     manager = EmployeeManager.get_instance()
 
-    if manager.source == "yaml":
-        # Back-compat: YAML mode only supports the two simple fields.
-        updated = manager.update_employee(
-            employee_id,
-            name=req.name,
-            description=req.description,
-        )
-        if updated is None:
-            raise HTTPException(status_code=404, detail=f"Employee not found: {employee_id}")
-        return _profile_to_detail(updated)
-
-    # DB mode — merge over current profile for fields the caller omitted.
+    # Merge over current profile for fields the caller omitted.
     current = manager.get_employee(employee_id)
     if current is None:
         raise HTTPException(status_code=404, detail=f"Employee not found: {employee_id}")
@@ -296,14 +253,9 @@ async def update_employee(employee_id: str, req: PatchEmployeeRequest):
 
 @app.delete("/api/employees/{employee_id}")
 async def archive_employee(employee_id: str):
-    """Archive (soft delete) an employee — DB mode only."""
+    """Archive (soft delete) an employee."""
     from backend.employees.manager import EmployeeManager
     manager = EmployeeManager.get_instance()
-    if manager.source != "db":
-        raise HTTPException(
-            status_code=400,
-            detail="Archive requires FF_EMPLOYEE_SOURCE=db",
-        )
     ok = await manager.archive_employee(employee_id)
     if not ok:
         raise HTTPException(
@@ -315,14 +267,8 @@ async def archive_employee(employee_id: str):
 
 @app.get("/api/employees/{employee_id}/versions")
 async def list_employee_versions(employee_id: str, db=Depends(get_db_session)):
-    """Return the version history for an employee (DB mode only)."""
-    from backend.employees.manager import EmployeeManager
+    """Return the version history for an employee."""
     from backend.memory import employee_store
-    if EmployeeManager.get_instance().source != "db":
-        raise HTTPException(
-            status_code=400,
-            detail="Version history requires FF_EMPLOYEE_SOURCE=db",
-        )
     items = await employee_store.list_versions(db, employee_id)
     return {"items": items, "count": len(items)}
 
@@ -331,14 +277,8 @@ async def list_employee_versions(employee_id: str, db=Depends(get_db_session)):
 async def get_employee_version(
     employee_id: str, version: str, db=Depends(get_db_session),
 ):
-    """Return the snapshot of a specific employee version (DB mode only)."""
-    from backend.employees.manager import EmployeeManager
+    """Return the snapshot of a specific employee version."""
     from backend.memory import employee_store
-    if EmployeeManager.get_instance().source != "db":
-        raise HTTPException(
-            status_code=400,
-            detail="Version history requires FF_EMPLOYEE_SOURCE=db",
-        )
     snap = await employee_store.get_version_snapshot(db, employee_id, version)
     if snap is None:
         raise HTTPException(

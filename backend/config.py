@@ -108,12 +108,6 @@ class Settings(BaseSettings):
                     "WS events are always forwarded so the inspector renders "
                     "in real time even when persistence is off.",
     )
-    FF_EMPLOYEE_SOURCE: str = Field(
-        default="db",
-        description="Phase 4: 'yaml' (files are source of truth) or 'db' (employees table). "
-                    "DB mode requires the seed script to have run. YAML is a safe fallback "
-                    "(lifespan catches DB failure and falls back automatically).",
-    )
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 

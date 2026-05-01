@@ -1,18 +1,17 @@
 """EmployeeManager — 员工管理单例。
 
-Phase 4: dual-source —
-  * `FF_EMPLOYEE_SOURCE=yaml` (default) → load from `employees/*.yaml`;
-    admin writes are in-memory only.
-  * `FF_EMPLOYEE_SOURCE=db` → load from `employees` table; admin writes
-    persist to DB, snapshot to `employee_versions`, and invalidate the
-    compiled-graph cache so the next session picks up the change.
+DB-backed: profiles live in ``employees`` (with version snapshots in
+``employee_versions``). YAML files in ``employees/*.yaml`` are factory
+data for first-time seed only — at runtime the manager never reads
+them. Admin writes go through ``upsert_employee`` / ``archive_employee``,
+which persist to DB and refresh the in-memory cache + invalidate the
+compiled-graph cache so the next session picks up the change.
 """
 from __future__ import annotations
 
 import copy
 import logging
-from pathlib import Path
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator
 
 from backend.employees.profile import EmployeeProfile, FAQItem
 
@@ -25,12 +24,10 @@ class EmployeeManager:
     _instance: EmployeeManager | None = None
     _profiles: dict[str, EmployeeProfile]
     _graphs: dict[str, Any]  # employee_id -> CompiledGraph
-    _source: str  # "yaml" | "db"
 
     def __init__(self) -> None:
         self._profiles = {}
         self._graphs = {}
-        self._source = "yaml"
 
     @classmethod
     def get_instance(cls) -> EmployeeManager:
@@ -43,53 +40,18 @@ class EmployeeManager:
         """Reset singleton (for testing)."""
         cls._instance = None
 
-    # ── source selection ────────────────────────────────────
-
-    @property
-    def source(self) -> str:
-        return self._source
-
-    def set_source(self, source: str) -> None:
-        if source not in ("yaml", "db"):
-            raise ValueError(f"Unknown employee source: {source!r}")
-        self._source = source
-
     # ── loaders ─────────────────────────────────────────────
 
-    def load_all_profiles(self, config_dir: Path) -> int:
-        """从目录加载所有 YAML 员工配置。返回加载数量。"""
-        self._source = "yaml"
-        loaded = 0
-        if not config_dir.is_dir():
-            logger.warning("Employee config directory not found: %s", config_dir)
-            return loaded
-
-        for yaml_path in sorted(config_dir.glob("*.yaml")):
-            try:
-                profile = EmployeeProfile.from_yaml(yaml_path)
-                self._profiles[profile.employee_id] = profile
-                loaded += 1
-                logger.info(
-                    "Loaded employee profile from YAML: %s (%s) <- %s",
-                    profile.employee_id, profile.name, yaml_path.name,
-                )
-            except Exception:
-                logger.exception("Failed to load employee YAML: %s", yaml_path)
-
-        logger.info("Loaded %d employee profiles from YAML", loaded)
-        return loaded
-
     async def load_from_db(self) -> int:
-        """Phase 4 — load profiles from the employees table.
+        """Load profiles from the ``employees`` table.
 
-        Replaces in-memory cache with DB state; subsequent admin writes
-        go through `upsert_employee()` / `delete_employee()` which also
-        refresh the cache.
+        Replaces the in-memory cache with DB state; subsequent admin writes
+        go through ``upsert_employee()`` / ``archive_employee()`` which
+        also refresh the cache.
         """
         from backend.database import get_session_factory
         from backend.memory import employee_store
 
-        self._source = "db"
         factory = get_session_factory()
         async with factory() as db:
             rows = await employee_store.list_employees(db, include_archived=False)
@@ -155,26 +117,7 @@ class EmployeeManager:
         async for event in graph.astream(initial):
             yield event
 
-    # ── admin writes (Phase 4) ─────────────────────────────
-
-    def update_employee(self, employee_id: str, **kwargs) -> EmployeeProfile | None:
-        """In-memory update (back-compat for YAML mode).
-
-        DB mode admins should call ``upsert_employee`` instead so writes
-        persist. This shim still works in DB mode but its changes are
-        lost on restart.
-        """
-        profile = self._profiles.get(employee_id)
-        if profile is None:
-            return None
-        updates = {k: v for k, v in kwargs.items() if v is not None}
-        if not updates:
-            return profile
-        updated = profile.model_copy(update=updates)
-        self._profiles[employee_id] = updated
-        self._graphs.pop(employee_id, None)
-        logger.info("In-memory update %s: %s", employee_id, list(updates.keys()))
-        return updated
+    # ── admin writes ───────────────────────────────────────
 
     async def upsert_employee(
         self,
@@ -193,15 +136,9 @@ class EmployeeManager:
         planning: dict[str, Any] | None = None,
         snapshot_note: str | None = None,
     ) -> EmployeeProfile | None:
-        """DB-mode create-or-update. Writes employees row + a version
-        snapshot, then refreshes the in-memory profile and invalidates
-        the graph cache."""
-        if self._source != "db":
-            raise RuntimeError(
-                "upsert_employee requires FF_EMPLOYEE_SOURCE=db "
-                f"(current: {self._source})"
-            )
-
+        """Create-or-update. Writes employees row + a version snapshot,
+        then refreshes the in-memory profile and invalidates the graph
+        cache so the next session sees the change."""
         from backend.database import get_session_factory
         from backend.memory import employee_store
 
@@ -247,13 +184,7 @@ class EmployeeManager:
         return profile
 
     async def archive_employee(self, employee_id: str) -> bool:
-        """DB-mode soft delete. Returns True if the row was archived."""
-        if self._source != "db":
-            raise RuntimeError(
-                "archive_employee requires FF_EMPLOYEE_SOURCE=db "
-                f"(current: {self._source})"
-            )
-
+        """Soft-delete. Returns True if the row was archived."""
         from backend.database import get_session_factory
         from backend.memory import employee_store
 
