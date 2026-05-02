@@ -178,9 +178,33 @@ async def planning_node(state: AgentState) -> AgentState:
 
         llm = build_llm("qwen3-235b", request_timeout=200)
         engine = PlanningEngine(llm=llm, llm_timeout=120.0, max_retries=3)
+
+        # Pull employee-scoped whitelist + planning hints when an employee is
+        # bound to the session. Without this, the planning prompt sees the
+        # default (unfiltered) tool/endpoint set and misses the employee's
+        # rule_hints — so optional tools like tool_web_search never surface
+        # in the generated plan even when the employee enables them.
+        employee_id = state.get("employee_id")
+        allowed_endpoints: list[str] | None = None
+        allowed_tools: list[str] | None = None
+        prompt_suffix = ""
+        rule_hints: dict = {}
+        if employee_id:
+            from backend.employees.manager import EmployeeManager
+            profile = EmployeeManager.get_instance().get_employee(employee_id)
+            if profile is not None:
+                allowed_endpoints = profile.get_endpoint_names()
+                allowed_tools = profile.get_tool_ids()
+                prompt_suffix = profile.planning.prompt_suffix or ""
+                rule_hints = profile.planning.rule_hints or {}
+
         plan = await engine.generate_plan(
             intent,
-            employee_id=state.get("employee_id"),
+            allowed_endpoints=allowed_endpoints,
+            allowed_tools=allowed_tools,
+            prompt_suffix=prompt_suffix,
+            rule_hints=rule_hints,
+            employee_id=employee_id,
         )
 
         plan_dict = plan.model_dump()
