@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-05-02 09:56:33",
+  "total_checked": 1,
+  "summary": {
+    "aligned": 0,
+    "blocked": 1,
+    "misaligned": 0,
+    "minor": 0,
+    "no_prod_data": 0
+  },
+  "by_type": {
+    "P0": 1,
+    "P1": 0,
+    "P2": 0
+  },
+  "results": [
+    {
+      "api": "getProductEquipmentUsageRateByYear",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 500: ",
+          "severity": "P0",
+          "mock_params_sent": {}
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [],
+      "registry_params": [
+        "firstLevelClassName",
+        "ownerLgZoneName"
+      ],
+      "prod_fields": [
+        "dateYear",
+        "usageRate"
+      ],
+      "mock_fields": []
+    }
+  ]
+}

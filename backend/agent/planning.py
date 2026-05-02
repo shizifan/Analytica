@@ -1999,7 +1999,7 @@ def _summarize_deliverables(grouped: dict[str, list[TaskItem]]) -> str:
     return "；".join(parts) if parts else "分析结果"
 
 
-def format_plan_as_markdown(plan: AnalysisPlan, auto_confirmed: bool = False, web_search_enabled: bool = False) -> str:
+def format_plan_as_markdown(plan: AnalysisPlan, auto_confirmed: bool = False, web_search_enabled: bool = False, search_domain_prefix: str = "") -> str:
     """Format an AnalysisPlan as a user-facing **summary** in Markdown.
 
     The chat bubble is intentionally summary-only — the full interactive
@@ -2008,7 +2008,7 @@ def format_plan_as_markdown(plan: AnalysisPlan, auto_confirmed: bool = False, we
     1. Deliverables (what will I actually get)
     2. Execution scope by layer (counts + subtotal time)
     3. Total time and action line
-    4. Web search toggle status (always visible for diagnostics)
+    4. Web search toggle status + domain prefix (always visible for diagnostics)
 
     When `auto_confirmed` is True (simple plans that skip the confirmation
     prompt), the trailing action line is omitted so the frontend renders
@@ -2029,10 +2029,12 @@ def format_plan_as_markdown(plan: AnalysisPlan, auto_confirmed: bool = False, we
         f"**分析目标：** {plan.analysis_goal or plan.title}",
     ]
     if web_search_enabled:
-        if search_tasks:
-            lines.append(f"  **联网搜索:** 已开启，计划中包含 {len(search_tasks)} 个搜索任务")
+        if not search_domain_prefix:
+            lines.append("  **联网搜索:** [异常] 开关已开启但 search_domain_prefix 为空（员工 profile 缺失配置）")
+        elif search_tasks:
+            lines.append(f"  **联网搜索:** 已开启 (prefix: {search_domain_prefix[:40]}...)，计划中包含 {len(search_tasks)} 个搜索任务")
         else:
-            lines.append("  **联网搜索:** [已开启] 但计划中未包含搜索任务（异常，请检查服务端日志）")
+            lines.append(f"  **联网搜索:** [异常] 开关已开启 (prefix: {search_domain_prefix[:40]}...) 但未注入搜索任务（检查 _inject_search_tasks 日志）")
     else:
         lines.append("  **联网搜索:** 未开启")
     lines.append("")

@@ -1,0 +1,4954 @@
+{
+  "generated_at": "2026-05-02 09:57:06",
+  "total_checked": 141,
+  "summary": {
+    "aligned": 37,
+    "blocked": 15,
+    "misaligned": 73,
+    "minor": 16,
+    "no_prod_data": 0
+  },
+  "by_type": {
+    "P0": 15,
+    "P1": 129,
+    "P2": 58
+  },
+  "results": [
+    {
+      "api": "getWeatherForecast",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'furtherDate': prod_only=['2026-04-17', '2026-04-18', '2026-04-19'], mock_only=['2026-05-03', '2026-05-04', '2026-05-05']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'weather': prod_only=['多云夜间转小雨,西南风02时前后转北风5到6级阵风7级,9℃~20℃', '多云转小雨,西南风转北风5级到6级,8℃~19℃', '多云转晴,偏南风3到4级,6℃~17℃', '多云转晴,偏南风5级到6级,10℃~17℃', '多云转阵雨,西南风4-5级,9℃~19℃', '晴,偏南风3到4级,7℃~19℃', '晴,偏南风4到5级,10℃~18℃', '晴,南风5到6级20时前后转5到6级阵风7级,13℃~19℃', '晴,西南风3-5级,11℃~20℃', '晴,西南风4-5级,8℃~20℃', '晴,西南风6级到7级,13℃~21℃', '晴转多云,偏南风4到5级转4到6级、阵风7级,7℃~19℃', '晴转阴局部有小雨,偏南风5级转偏北风6到7级,8℃~21℃', '晴间多云,偏南风4到5级增强到5到6级,11℃~19℃', '晴间多云,西南风5到6级阵风7级,11℃~18℃'], mock_only=['中雨,偏北风3到6级,8℃~19℃', '中雨,偏南风3到4级,6℃~22℃', '多云,西风3到6级,6℃~23℃', '小雨,偏南风3到5级,8℃~16℃', '小雨,偏南风4到7级,5℃~16℃', '小雨,偏南风4到7级,5℃~22℃', '小雨,西风3到7级,5℃~18℃', '晴,偏南风3到4级,14℃~21℃', '晴,偏南风4到4级,15℃~16℃', '晴,西风3到4级,14℃~17℃', '晴,西风4到7级,8℃~17℃', '阴,偏北风2到5级,12℃~26℃', '阴,偏南风4到4级,7℃~26℃', '阴,西风2到5级,10℃~20℃', '阴,西风2到6级,7℃~16℃']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [],
+      "registry_params": [
+        "regionName"
+      ],
+      "prod_fields": [
+        "furtherDate",
+        "regionCode",
+        "regionName",
+        "weather"
+      ],
+      "mock_fields": [
+        "furtherDate",
+        "regionCode",
+        "regionName",
+        "weather"
+      ]
+    },
+    {
+      "api": "getRealTimeWeather",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'createTime': prod_only=['2026-04-16 00:00:01', '2026-04-16 00:00:02', '2026-04-16 00:30:01', '2026-04-16 00:30:03', '2026-04-16 01:00:01', '2026-04-16 01:00:02', '2026-04-16 01:30:01', '2026-04-16 02:00:01', '2026-04-16 02:30:01', '2026-04-16 02:30:02', '2026-04-16 03:00:01', '2026-04-16 03:00:02', '2026-04-16 03:30:01', '2026-04-16 03:30:02', '2026-04-16 04:00:01'], mock_only=['2026-05-02 09:57:06']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'stationId': prod_only=['54660', 'L2241', 'L2506', 'L2651', 'L6039', 'L6086', 'L6087', 'L6089', 'L6149'], mock_only=['D3001', 'L2414', 'L2415', 'P4001', 'S5001', 'Y2001']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'stationName': prod_only=['仙人岛港区', '大港港区', '旅顺口港区', '鲅鱼圈港区'], mock_only=['营口港区']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'weather': prod_only=['当前温度10.1℃,东北风2级', '当前温度10.1℃,南风2级', '当前温度10.2℃,东北风3级', '当前温度10.4℃,东南风3级', '当前温度10.6℃,东北风3级', '当前温度10.6℃,北风3级', '当前温度10.6℃,西北风2级', '当前温度10.8℃,东北风1级', '当前温度10.8℃,东风2级', '当前温度10.9℃,西南风1级', '当前温度11.0℃,东南风3级', '当前温度11.1℃,西风1级', '当前温度11.2℃,东北风1级', '当前温度11.2℃,东北风3级', '当前温度11.3℃,东北风2级'], mock_only=['当前温度10.1℃,东风4级', '当前温度10.2℃,北风2级', '当前温度11.0℃,西风4级', '当前温度11.2℃,东风4级', '当前温度11.2℃,西风5级', '当前温度11.4℃,北风2级', '当前温度11.5℃,东风5级', '当前温度11.8℃,北风3级', '当前温度11.8℃,北风6级', '当前温度12.4℃,南风2级', '当前温度12.6℃,西风1级', '当前温度13.4℃,东风6级', '当前温度13.5℃,南风5级', '当前温度13.8℃,西风4级', '当前温度14.0℃,北风5级']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [],
+      "registry_params": [
+        "regionName"
+      ],
+      "prod_fields": [
+        "createTime",
+        "regionName",
+        "stationId",
+        "stationName",
+        "weather"
+      ],
+      "mock_fields": [
+        "createTime",
+        "regionName",
+        "stationId",
+        "stationName",
+        "weather"
+      ]
+    },
+    {
+      "api": "getProdShipDynNum",
+      "domain": "D1",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [],
+      "registry_params": [],
+      "prod_fields": [
+        "num",
+        "orgType",
+        "typeName"
+      ],
+      "mock_fields": [
+        "num",
+        "orgType",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getProdShipDesc",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'anchorageVesselDesc': prod_only=['', '%3Cp%3E%EF%BC%88%E4%B8%80%EF%BC%89%E7%B2%AE%E8%88%B9%3C/p%3E%3Cp%3E1.%E2%80%9C%E6%98%8E%E4%B9%902%E2%80%9D%E8%BD%AE%E8%A3%85%E7%8E%89%E7%B1%B34.3%E4%B8%87%E5%90%A8%EF%BC%88%E5%BB%BA%E5%8F%91%E3%80%81186%E7%B1%B3%E3%80%81%E5%90%83%E6%B0%B411.40%EF%BC%89%EF%BC%8C4%E6%9C%8815%E6%97%A523:33%E6%8A%B5%E9%94%9A%EF%BC%88%E6%AD%A3%E5%9C%A8%E9%9D%A0%E6%B3%8A%EF%BC%89%E3%80%82%3C/p%3E'], mock_only=['%3Cp%3E%E9%94%9A%E5%9C%B0%E8%88%B9%E8%88%B62%E8%89%98%E3%80%82%3C/p%3E', '%3Cp%3E%E9%94%9A%E5%9C%B0%E8%88%B9%E8%88%B64%E8%89%98%E3%80%82%3C/p%3E']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'portVesselDesc': prod_only=['', '%3Cp%20class=%22ql-align-justify%22%3E%E4%B8%89%E3%80%81%3Cstrong%3E%E9%87%8D%E7%82%B9%E8%88%B9%E8%88%B6%E5%8A%A8%E6%80%81%EF%BC%9A%3C/strong%3E%3C/p%3E%3Cp%20class=%22ql-align-justify%22%3E%3Cstrong%3E1.%3C/strong%3E%E7%9F%BF%E5%A4%A7%E2%80%9C%E5%8D%B0%E5%B0%BC%E2%80%9D%E8%BD%AE%EF%BC%8C%E5%8D%B8%E7%9F%BF39.2%E4%B8%87%E5%90%A8%EF%BC%88%E6%B7%A1%E6%B0%B4%E6%B2%B3%E8%B0%B7%E3%80%81361%E7%B1%B3%E3%80%81%E5%90%83%E6%B0%B422.77%E7%B1%B3%EF%BC%89%EF%BC%8C4%E6%9C%8810%E6%97%A505:30%E6%8A%B5%E9%94%9A%EF%BC%88%E7%AD%89%E6%B3%8A%E4%BD%8D%EF%BC%89%EF%BC%8C4%E6%9C%8812%E6%97%A519:00%E9%9D%A0%E6%B3%8A%EF%BC%88%E7%AD%89%E4%BB%A3%E7%90%86%E5%8A%9E%E6%89%8B%E7%BB%AD%EF%BC%89%EF%BC%8C23:00%E5%BC%80%E5%B7%A5%EF%BC%8C%E6%9C%AC%E7%8F%AD%E6%AC%A1%E4%BD%9C%E4%B8%9A3%E4%B8%87%E5%90%A8%EF%BC%8C4%E6%9C%8815%E6%97%A514:20%E5%AE%8C%E5%B7%A5%EF%BC%88%E5%8A%9E%E7%90%86%E6%89%8B%E7%BB%AD%EF%BC%89%EF%BC%8C18:10%E7%A6%BB%E6%B3%8A%EF%BC%9B%3C/p%3E%3Cp%20class=%22ql-align-justify%22%3E%3Cstrong%3E2.%3C/strong%3E%E6%96%B00%E2%80%9C%E5%87%B1%E5%82%91%E2%80%9D%E8%BD%AE%EF%BC%8C%E5%8D%B8%E5%8E%9F%E6%B2%B913.3%E4%B8%87%E5%90%A8%EF%BC%88%E7%9B%98%E9%94%A6%E5%8C%97%E7%87%83%E3%80%81333%E7%B1%B3%E3%80%81%E5%90%83%E6%B0%B414.5%E7%B1%B3%E3%80%81%E4%B8%8A%E4%B8%80%E6%B8%AF%E6%83%A0%E5%B7%9E%EF%BC%89%EF%BC%8C4%E6%9C%8814%E6%97%A511:48%E6%8A%B5%E9%94%9A%EF%BC%88%E7%AD%89%E6%B3%8A%E4%BD%8D%E3%80%81%E7%AD%89%E6%BD%AE%EF%BC%89%EF%BC%8C4%E6%9C%8815%E6%97%A507:35%E9%9D%A0%E6%B3%8A%EF%BC%88%E7%AD%89%E4%BB%A3%E7%90%86%E5%8A%9E%E6%89%8B%E7%BB%AD%EF%BC%89%EF%BC%8C13:48%E5%BC%80%E5%B7%A5%EF%BC%8C%E6%9C%AC%E7%8F%AD%E6%AC%A1%E4%BD%9C%E4%B8%9A8.3%E4%B8%87%E5%90%A8%EF%BC%8C%E4%BB%8A%E6%97%A9%E4%BD%995%E4%B8%87%E5%90%A8%E7%BB%A7%E7%BB%AD%EF%BC%9B%3C/p%3E%3Cp%20class=%22ql-align-justify%22%3E%3Cstrong%3E3.%3C/strong%3E%E6%96%B022%E2%80%9C%E4%BD%B3%E5%AE%9D%E2%80%9D%E8%BD%AE%EF%BC%8C%E5%8D%B8%E5%8E%9F%E6%B2%B913.5%E4%B8%87%E5%90%A8%EF%BC%88%E5%8C%97%E7%87%83%E3%80%81333%E7%B1%B3%E3%80%81%E5%90%83%E6%B0%B420.5%E7%B1%B3%E3%80%81%E4%B8%8B%E4%B8%80%E6%B8%AF%E5%A4%A9%E6%B4%A5%EF%BC%89%EF%BC%8C4%E6%9C%8813%E6%97%A506:00%E6%8A%B5%E9%94%9A%EF%BC%88%E7%AD%89%E6%BD%AE%EF%BC%89%EF%BC%8C4%E6%9C%8814%E6%97%A507:00%E9%9D%A0%E6%B3%8A%EF%BC%88%E7%AD%89%E4%BB%A3%E7%90%86%E5%8A%9E%E6%89%8B%E7%BB%AD%EF%BC%89%EF%BC%8C17:48%E5%BC%80%E5%B7%A5%EF%BC%8C%E6%9C%AC%E7%8F%AD%E6%AC%A1%E4%BD%9C%E4%B8%9A8%E4%B8%87%E5%90%A8%EF%BC%8C4%E6%9C%8816%E6%97%A501:18%E5%AE%8C%E5%B7%A5%EF%BC%88%E5%8A%9E%E7%90%86%E6%89%8B%E7%BB%AD%EF%BC%89%EF%BC%8C%E8%AE%A1%E5%88%9208:00%E7%A6%BB%E6%B3%8A%EF%BC%9B%3C/p%3E%3Cp%20class=%22ql-align-justify%22%3E%3Cstrong%3E4.%3C/strong%3E%E6%B9%BE11%E2%80%9C%E9%93%B6%E8%87%B4%E2%80%9D%E8%BD%AE%EF%BC%8C%E5%8D%B8%E7%85%A45.6%E4%B8%87%E5%90%A8%EF%BC%88%E5%8D%8E%E8%83%BD%E3%80%81200%E7%B1%B3%E3%80%81%E5%90%83%E6%B0%B412.5%E7%B1%B3%EF%BC%89%EF%BC%8C4%E6%9C%8815%E6%97%A508:20%E9%9D%A0%E6%B3%8A%EF%BC%88%E7%AD%89%E4%BB%A3%E7%90%86%E5%8A%9E%E6%89%8B%E7%BB%AD%EF%BC%89%EF%BC%8C09:40%E5%BC%80%E5%B7%A5%EF%BC%8C%E6%9C%AC%E7%8F%AD%E6%AC%A1%E4%BD%9C%E4%B8%9A3.5%E4%B8%87%E5%90%A8%EF%BC%8C%E4%BB%8A%E6%97%A9%E4%BD%992.1%E4%B8%87%E5%90%A8%E7%BB%A7%E7%BB%AD%EF%BC%9B%3C/p%3E%3Cp%20class=%22ql-align-justify%22%3E%3Cstrong%3E5.%3C/strong%3E%E2%80%9C%E6%A0%BC%E7%91%9E%E5%8D%A1%E2%80%9D%E8%BD%AE%EF%BC%8C%E5%8D%B8%E5%A4%A7%E8%B1%866.9%E4%B8%87%E5%90%A8%EF%BC%88%E4%B9%9D%E4%B8%89%E3%80%81229%E7%B1%B3%E3%80%81%E5%90%83%E6%B0%B413.05%E7%B1%B3%EF%BC%89%EF%BC%8C4%E6%9C%8816%E6%97%A506:30%E9%9D%A0%E6%B3%8A%EF%BC%8C%E7%AD%89%E4%BB%A3%E7%90%86%E5%8A%9E%E6%89%8B%E7%BB%AD%E3%80%82%3C/p%3E%3Cp%20class=%22ql-align-justify%22%3E%3Cbr%3E%3C/p%3E', '%3Cp%3E(%E4%B8%80)%E9%B2%85%E9%B1%BC%E5%9C%88%E6%B8%AF%E5%8C%BA%3C/p%3E%3Cp%3E1%E3%80%8126#%E2%80%9C%E4%B8%9C%E2%BD%85%E2%BB%86%E2%80%9D%E8%BD%AE%EF%BC%8C%E5%8D%B8%E2%BC%A4%E2%BE%967.0%E4%B8%87%E5%90%A8%EF%BC%88%E4%B8%AD%E5%82%A8%E7%B2%AE%E3%80%81229%E2%BD%B6%EF%BC%8C%E5%90%83%E2%BD%9413.3%E2%BD%B6%EF%BC%89%EF%BC%8C4%E2%BD%8915%E2%BD%8700:00%E6%8A%B5%E9%94%9A%EF%BC%8C4%E6%9C%8815%E6%97%A503:40%E9%9D%A0%E6%B3%8A%EF%BC%8C11:10%E5%BC%80%E5%B7%A5%E3%80%82%E6%9C%AC%E7%8F%AD%E6%AC%A1%E4%BD%9C%E4%B8%9A2.3%E4%B8%87%E5%90%A8%EF%BC%8C%E4%BB%8A%E6%97%A9%E4%BD%994.7%E4%B8%87%E5%90%A8%E7%BB%A7%E7%BB%AD%E3%80%82%3C/p%3E%3Cp%3E2%E3%80%81A4#%E2%80%9C%E5%A4%A7%E6%B0%B8%E5%93%B2%E2%80%9D%E8%BD%AE%EF%BC%8C%E5%8D%B8%E5%A4%96%E8%B4%B8%E7%85%A4%E7%82%AD7.3%E4%B8%87%E5%90%A8%EF%BC%88%E5%A4%A7%E8%BF%9E%E4%B9%BE%E9%80%9A%E8%BE%BE%E3%80%81225%E7%B1%B3%E3%80%81%E5%90%83%E6%B0%B414.17%E7%B1%B3%EF%BC%89%EF%BC%8C4%E6%9C%8814%E6%97%A518:00%E6%8A%B5%E9%94%9A%EF%BC%8C4%E6%9C%8816%E6%97%A500:30%E9%9D%A0%E6%B3%8A%EF%BC%8C02:00%E5%BC%80%E5%B7%A5%E3%80%82%E6%9C%AC%E7%8F%AD%E6%AC%A1%E4%BD%9C%E4%B8%9A1.2%E4%B8%87%E5%90%A8%EF%BC%8C%E4%BB%8A%E6%97%A9%E4%BD%996.1%E4%B8%87%E5%90%A8%E7%BB%A7%E7%BB%AD%E3%80%82%3C/p%3E', '%3Cp%3E1.20%E4%B8%87%E5%90%A8%E6%B3%8A%E4%BD%8D%E2%80%9C%E7%9B%9B%E5%AE%89%E6%B4%8B%E2%80%9D%E8%BD%AE%E5%8D%B8%E9%93%81%E7%9F%BF7.5%E4%B8%87%E5%90%A8%EF%BC%88%E6%9C%AC%E9%92%A2%E3%80%81225%E7%B1%B3%E3%80%81%E5%90%83%E6%B0%B414.3%EF%BC%89%EF%BC%8C4%E6%9C%8812%E6%97%A504:25%E7%9B%B4%E9%9D%A0%EF%BC%8C%E7%AD%89%E6%B5%B7%E5%85%B3%E6%89%8B%E7%BB%AD%EF%BC%8C11:00%E5%BC%80%E5%B7%A5%EF%BC%8C%E6%9C%AC%E7%8F%AD%E6%AC%A1%E4%BD%9C%E4%B8%9A0.4%E4%B8%87%E5%90%A8%EF%BC%8C%E4%BD%994.3%E4%B8%87%E5%90%A8%E7%BB%A7%E7%BB%AD%EF%BC%88%E7%8E%B0%E4%BD%9C%E4%B8%9A%E5%8D%8A%E8%88%B1%E4%BB%A5%E4%B8%8B%E8%B4%A7%E7%89%A9%EF%BC%8C%E6%96%99%E6%B9%BF%E7%B2%98%E7%A8%8B%E5%BA%A6%E4%B8%A5%E9%87%8D%EF%BC%8C%E6%B8%85%E6%96%99%E9%A2%91%E7%B9%81%E5%BD%B1%E5%93%8D%E5%8D%B8%E8%88%B9%E6%95%88%E7%8E%87%EF%BC%89%E3%80%82%3C/p%3E', '%3Cp%3E5%E4%B8%87%E5%90%A8%E7%BA%A7%E9%87%8D%E7%82%B9%E8%88%B9%E8%88%B63%E6%9D%A1%EF%BC%9B%3C/p%3E%3Cp%3E1.%E2%80%9C%E6%9C%B1%E5%B0%BC%E7%8F%80%E2%80%9D%E8%BD%AE%EF%BC%8C%E8%AE%A1%E5%88%92%E8%A3%85%E5%A4%96%E8%B4%B8%E8%A2%8B%E6%B0%A7%E5%8C%96%E9%93%9D4.5%E4%B8%87%E5%90%A8%EF%BC%88%E8%88%B9%E9%95%BF190%E7%B1%B3%EF%BC%8C%E8%BF%9B%E6%B8%AF%E5%90%83%E6%B0%B46.5%E7%B1%B3%EF%BC%89%EF%BC%8C16:30/31%E6%8A%B5%E9%94%9A%EF%BC%8C12:00/09%E9%9D%A0%E6%B3%8A%EF%BC%8C18:00/09%E8%81%94%E6%A3%80%E7%BB%93%E6%9D%9F%EF%BC%8C13:20/10%E5%BC%80%E5%B7%A5%EF%BC%8C4%E6%9D%A1%E8%B7%AF%E4%BD%9C%E4%B8%9A%EF%BC%8C%E6%98%BC%E5%A4%9C%E5%AE%8C%E6%88%900.5%E4%B8%87%E5%90%A8%EF%BC%8C%E5%85%A8%E8%88%B9%E5%AE%8C%E6%88%902.4%E4%B8%87%E5%90%A8%EF%BC%8C%E4%BD%992.1%E4%B8%87%E5%90%A8%EF%BC%8C%E6%97%A908%E7%82%B9%E7%BB%A7%E7%BB%AD4%E6%9D%A1%E8%B7%AF%E4%BD%9C%E4%B8%9A%E3%80%82%3C/p%3E%3Cp%3E2.%E2%80%9C%E5%9B%BD%E5%AE%B6%E8%83%BD%E6%BA%90610%E2%80%9D%E8%BD%AE%EF%BC%8C%E8%AE%A1%E5%88%92%E8%A3%85%E7%8E%89%E7%B1%B36.4%E4%B8%87%E5%90%A8%EF%BC%88%E8%88%B9%E9%95%BF209.95%E7%B1%B3%EF%BC%8C%E8%BF%9B%E6%B8%AF%E5%90%83%E6%B0%B47.0%E7%B1%B3%EF%BC%89%EF%BC%8C08:40/09%E6%8A%B5%E9%94%9A%EF%BC%8C22:30/09%E9%9D%A0%E6%B3%8A%EF%BC%8C00:20/10%E5%BC%80%E5%B7%A5%EF%BC%8C2%E6%9D%A1%E8%B7%AF%E4%BD%9C%E4%B8%9A%EF%BC%8C%E6%98%BC%E5%A4%9C%E5%AE%8C%E6%88%900.6%E4%B8%87%E5%90%A8%EF%BC%8C%E5%85%A8%E8%88%B9%E5%AE%8C%E6%88%904.8%E4%B8%87%E5%90%A8%EF%BC%8C%E4%BD%991.6%E4%B8%87%E5%90%A8%EF%BC%8C%E6%97%A908%E7%82%B9%E7%BB%A7%E7%BB%AD2%E6%9D%A1%E8%B7%AF%E4%BD%9C%E4%B8%9A%EF%BC%9B%3C/p%3E%3Cp%3E3.%E2%80%9C%E5%A4%AA%E5%B9%B3%E6%B4%8B%E5%A5%B3%E7%A5%9E%E2%80%9D%E8%BD%AE%EF%BC%8C%E8%AE%A1%E5%88%92%E5%8D%B8%E5%A4%96%E8%B4%B8%E7%9B%905.8%E4%B8%87%E5%90%A8%EF%BC%88%E8%88%B9%E9%95%BF199.9%E7%B1%B3%EF%BC%8C%E8%BF%9B%E6%B8%AF%E5%90%83%E6%B0%B412.96%E7%B1%B3%EF%BC%89%EF%BC%8C21:00/15%E6%8A%B5%E9%94%9A%EF%BC%8C04:40/16%E9%9D%A0%E6%B3%8A%EF%BC%8C%E7%AD%89%E8%81%94%E6%A3%80%E3%80%82%3C/p%3E'], mock_only=['%3Cp%3E%E5%9C%A8%E6%B3%8A%E8%88%B9%E8%88%B612%E8%89%98%EF%BC%8C%E6%AD%A3%E5%B8%B8%E4%BD%9C%E4%B8%9A%E4%B8%AD%E3%80%82%3C/p%3E', '%3Cp%3E%E5%9C%A8%E6%B3%8A%E8%88%B9%E8%88%B617%E8%89%98%EF%BC%8C%E6%AD%A3%E5%B8%B8%E4%BD%9C%E4%B8%9A%E4%B8%AD%E3%80%82%3C/p%3E', '%3Cp%3E%E5%9C%A8%E6%B3%8A%E8%88%B9%E8%88%B621%E8%89%98%EF%BC%8C%E6%AD%A3%E5%B8%B8%E4%BD%9C%E4%B8%9A%E4%B8%AD%E3%80%82%3C/p%3E', '%3Cp%3E%E5%9C%A8%E6%B3%8A%E8%88%B9%E8%88%B623%E8%89%98%EF%BC%8C%E6%AD%A3%E5%B8%B8%E4%BD%9C%E4%B8%9A%E4%B8%AD%E3%80%82%3C/p%3E', '%3Cp%3E%E5%9C%A8%E6%B3%8A%E8%88%B9%E8%88%B627%E8%89%98%EF%BC%8C%E6%AD%A3%E5%B8%B8%E4%BD%9C%E4%B8%9A%E4%B8%AD%E3%80%82%3C/p%3E']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [],
+      "registry_params": [],
+      "prod_fields": [
+        "anchorageVesselDesc",
+        "orgType",
+        "portVesselDesc"
+      ],
+      "mock_fields": [
+        "anchorageVesselDesc",
+        "orgType",
+        "portVesselDesc"
+      ]
+    },
+    {
+      "api": "getShipStatisticsByBusinessType",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'businessType': prod_only=[], mock_only=['滚装船']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [],
+      "registry_params": [
+        "regionName"
+      ],
+      "prod_fields": [
+        "anchorageQty",
+        "berthQty",
+        "businessType",
+        "planQty"
+      ],
+      "mock_fields": [
+        "anchorageQty",
+        "berthQty",
+        "businessType",
+        "planQty"
+      ]
+    },
+    {
+      "api": "getKeyVesselList",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['regionName']",
+          "registry_params": [
+            "regionName",
+            "shipStatus"
+          ],
+          "prod_params": [
+            "shipStatus"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 422: [{'type': 'missing', 'loc': ['query', 'regionName'], 'msg': 'Field required', 'input': None}]",
+          "severity": "P0",
+          "mock_params_sent": {
+            "shipStatus": "D"
+          }
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [
+        "shipStatus"
+      ],
+      "registry_params": [
+        "regionName",
+        "shipStatus"
+      ],
+      "prod_fields": [
+        "anchorTime",
+        "atbTime",
+        "atcTime",
+        "berthName",
+        "cargoName",
+        "planEndWorkTime",
+        "planQ",
+        "regionName",
+        "shipDynName",
+        "shipRecordId",
+        "shipStatus",
+        "vesselName"
+      ],
+      "mock_fields": []
+    },
+    {
+      "api": "getShipStatisticsByRegion",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 422: [{'type': 'missing', 'loc': ['query', 'regionName'], 'msg': 'Field required', 'input': None}]",
+          "severity": "P0",
+          "mock_params_sent": {}
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [],
+      "registry_params": [
+        "regionName"
+      ],
+      "prod_fields": [
+        "anchorageQty",
+        "berthQty",
+        "businessType",
+        "planQty",
+        "regionName"
+      ],
+      "mock_fields": []
+    },
+    {
+      "api": "getImportantCargoPortInventoryByRegion",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 422: [{'type': 'missing', 'loc': ['query', 'regionName'], 'msg': 'Field required', 'input': None}]",
+          "severity": "P0",
+          "mock_params_sent": {}
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [],
+      "registry_params": [
+        "regionName"
+      ],
+      "prod_fields": [
+        "bsCargoKind",
+        "cargoKind",
+        "portRegion",
+        "tonQ"
+      ],
+      "mock_fields": []
+    },
+    {
+      "api": "getContainerAndVehicleTrade",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 422: [{'type': 'missing', 'loc': ['query', 'regionName'], 'msg': 'Field required', 'input': None}]",
+          "severity": "P0",
+          "mock_params_sent": {}
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [],
+      "registry_params": [
+        "regionName"
+      ],
+      "prod_fields": [
+        "cargoKind",
+        "cntQ",
+        "regionName",
+        "tradeType",
+        "transType"
+      ],
+      "mock_fields": []
+    },
+    {
+      "api": "getSingleShipRate",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['regionName']",
+          "registry_params": [
+            "endDate",
+            "regionName",
+            "startDate"
+          ],
+          "prod_params": [
+            "endDate",
+            "startDate"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 422: [{'type': 'missing', 'loc': ['query', 'regionName'], 'msg': 'Field required', 'input': None}]",
+          "severity": "P0",
+          "mock_params_sent": {
+            "startDate": "2026-03-01",
+            "endDate": "2026-03-31"
+          }
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [
+        "endDate",
+        "startDate"
+      ],
+      "registry_params": [
+        "endDate",
+        "regionName",
+        "startDate"
+      ],
+      "prod_fields": [
+        "cargoType",
+        "cmpName",
+        "regionName",
+        "tonQ",
+        "workTh"
+      ],
+      "mock_fields": []
+    },
+    {
+      "api": "getBusinessSegmentBranch",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 422: [{'type': 'missing', 'loc': ['query', 'regionName'], 'msg': 'Field required', 'input': None}]",
+          "severity": "P0",
+          "mock_params_sent": {}
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [],
+      "registry_params": [
+        "regionName"
+      ],
+      "prod_fields": [
+        "bsCargoKind",
+        "mainOrgCode",
+        "orgName",
+        "shortName",
+        "snOrgName",
+        "sndStatName"
+      ],
+      "mock_fields": []
+    },
+    {
+      "api": "getBerthOccupancyRateByRegion",
+      "domain": "D1",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "endDate",
+        "startDate"
+      ],
+      "registry_params": [
+        "endDate",
+        "startDate"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "rate",
+        "regionName"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "rate",
+        "regionName"
+      ]
+    },
+    {
+      "api": "getBerthOccupancyRateByBusinessType",
+      "domain": "D1",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "endDate",
+        "startDate"
+      ],
+      "registry_params": [
+        "endDate",
+        "startDate"
+      ],
+      "prod_fields": [
+        "businessType",
+        "dateMonth",
+        "rate"
+      ],
+      "mock_fields": [
+        "businessType",
+        "dateMonth",
+        "rate"
+      ]
+    },
+    {
+      "api": "getVesselOperationEfficiency",
+      "domain": "D1",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "cmpName",
+        "endMonth",
+        "startMonth"
+      ],
+      "registry_params": [
+        "cmpName",
+        "endMonth",
+        "startMonth"
+      ],
+      "prod_fields": [
+        "curEfficiency",
+        "lastEfficiency"
+      ],
+      "mock_fields": [
+        "curEfficiency",
+        "lastEfficiency"
+      ]
+    },
+    {
+      "api": "getProductViewShipOperationRateAvg",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'statCargoKind': prod_only=['煤炭'], mock_only=[]",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "endDate",
+        "startDate"
+      ],
+      "registry_params": [
+        "endDate",
+        "startDate"
+      ],
+      "prod_fields": [
+        "statCargoKind",
+        "tonQ",
+        "workTh"
+      ],
+      "mock_fields": [
+        "statCargoKind",
+        "tonQ",
+        "workTh"
+      ]
+    },
+    {
+      "api": "getProductViewShipOperationRateTrend",
+      "domain": "D1",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "endDate",
+        "startDate"
+      ],
+      "registry_params": [
+        "endDate",
+        "startDate"
+      ],
+      "prod_fields": [
+        "monthId",
+        "monthStr",
+        "statCargoKind",
+        "tonQ",
+        "workTh"
+      ],
+      "mock_fields": [
+        "monthId",
+        "monthStr",
+        "statCargoKind",
+        "tonQ",
+        "workTh"
+      ]
+    },
+    {
+      "api": "getPersonalCenterCargoThroughput",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "MOCK_FIELD",
+          "detail": "type mismatches: {'yoyTeuQ': 'prod=int, mock=float', 'curTeuQ': 'prod=int, mock=float', 'momTeuQ': 'prod=int, mock=float'}",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "date",
+        "momDate",
+        "yoyDate"
+      ],
+      "registry_params": [
+        "date",
+        "momDate",
+        "yoyDate"
+      ],
+      "prod_fields": [
+        "curTeuQ",
+        "curTonQ",
+        "momTeuQ",
+        "momTonQ",
+        "regionName",
+        "yoyTeuQ",
+        "yoyTonQ"
+      ],
+      "mock_fields": [
+        "curTeuQ",
+        "curTonQ",
+        "momTeuQ",
+        "momTonQ",
+        "regionName",
+        "yoyTeuQ",
+        "yoyTonQ"
+      ]
+    },
+    {
+      "api": "getPersonalCenterMonthCargoThroughput",
+      "domain": "D1",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "endDate",
+        "momEndDate",
+        "momStartDate",
+        "startDate",
+        "yoyEndDate",
+        "yoyStartDate"
+      ],
+      "registry_params": [
+        "endDate",
+        "momEndDate",
+        "momStartDate",
+        "startDate",
+        "yoyEndDate",
+        "yoyStartDate"
+      ],
+      "prod_fields": [
+        "curTeuQ",
+        "curTonQ",
+        "momTeuQ",
+        "momTonQ",
+        "regionName",
+        "yoyTeuQ",
+        "yoyTonQ"
+      ],
+      "mock_fields": [
+        "curTeuQ",
+        "curTonQ",
+        "momTeuQ",
+        "momTonQ",
+        "regionName",
+        "yoyTeuQ",
+        "yoyTonQ"
+      ]
+    },
+    {
+      "api": "getPersonalCenterYearCargoThroughput",
+      "domain": "D1",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "endDate",
+        "startDate",
+        "yoyEndDate",
+        "yoyStartDate"
+      ],
+      "registry_params": [
+        "endDate",
+        "startDate",
+        "yoyEndDate",
+        "yoyStartDate"
+      ],
+      "prod_fields": [
+        "curTeuQ",
+        "curTonQ",
+        "regionName",
+        "yoyTeuQ",
+        "yoyTonQ"
+      ],
+      "mock_fields": [
+        "curTeuQ",
+        "curTonQ",
+        "regionName",
+        "yoyTeuQ",
+        "yoyTonQ"
+      ]
+    },
+    {
+      "api": "getPersonalCenterYearCargoThroughputTrend",
+      "domain": "D1",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "endDate",
+        "startDate"
+      ],
+      "registry_params": [
+        "endDate",
+        "startDate"
+      ],
+      "prod_fields": [
+        "monthId",
+        "regionName",
+        "teuQ",
+        "tonQ",
+        "yearId"
+      ],
+      "mock_fields": [
+        "monthId",
+        "regionName",
+        "teuQ",
+        "tonQ",
+        "yearId"
+      ]
+    },
+    {
+      "api": "getPortCompanyThroughput",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'businessType': prod_only=[], mock_only=['散杂货']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "cmpName",
+        "date"
+      ],
+      "registry_params": [
+        "cmpName",
+        "date"
+      ],
+      "prod_fields": [
+        "businessType",
+        "dateYear",
+        "num"
+      ],
+      "mock_fields": [
+        "businessType",
+        "dateYear",
+        "num"
+      ]
+    },
+    {
+      "api": "getThroughputAndTargetThroughputTon",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['regionName']",
+          "registry_params": [
+            "dateYear",
+            "regionName"
+          ],
+          "prod_params": [
+            "dateYear"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear",
+        "regionName"
+      ],
+      "prod_fields": [
+        "finishQty",
+        "targetQty"
+      ],
+      "mock_fields": [
+        "finishQty",
+        "targetQty"
+      ]
+    },
+    {
+      "api": "getThroughputAndTargetThroughputTeu",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['regionName']",
+          "registry_params": [
+            "dateYear",
+            "regionName"
+          ],
+          "prod_params": [
+            "dateYear"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear",
+        "regionName"
+      ],
+      "prod_fields": [
+        "finishQty",
+        "targetQty"
+      ],
+      "mock_fields": [
+        "finishQty",
+        "targetQty"
+      ]
+    },
+    {
+      "api": "getThroughputAnalysisByYear",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['regionName']",
+          "registry_params": [
+            "dateYear",
+            "preYear",
+            "regionName"
+          ],
+          "prod_params": [
+            "dateYear",
+            "preYear"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateMonth': prod_only=['2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12'], mock_only=['2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10', '2026-11', '2026-12', '2027-01', '2027-02', '2027-03', '2027-04']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear",
+        "preYear"
+      ],
+      "registry_params": [
+        "dateYear",
+        "preYear",
+        "regionName"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "qty"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "qty"
+      ]
+    },
+    {
+      "api": "getContainerThroughputAnalysisByYear",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['regionName']",
+          "registry_params": [
+            "dateYear",
+            "preYear",
+            "regionName"
+          ],
+          "prod_params": [
+            "dateYear",
+            "preYear"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_FIELD",
+          "detail": "fields in prod but missing in mock: ['dateMonth', 'qty']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_FIELD",
+          "detail": "fields in mock but not in prod: ['currentYearTeu', 'month', 'prevYearTeu', 'yoyRate']",
+          "severity": "P2"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear",
+        "preYear"
+      ],
+      "registry_params": [
+        "dateYear",
+        "preYear",
+        "regionName"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "qty"
+      ],
+      "mock_fields": [
+        "currentYearTeu",
+        "month",
+        "prevYearTeu",
+        "yoyRate"
+      ]
+    },
+    {
+      "api": "getThroughputAnalysisNonContainer",
+      "domain": "D1",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear"
+      ],
+      "prod_fields": [
+        "finishQty",
+        "regionName",
+        "targetQty"
+      ],
+      "mock_fields": [
+        "finishQty",
+        "regionName",
+        "targetQty"
+      ]
+    },
+    {
+      "api": "getThroughputAnalysisContainer",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "MOCK_FIELD",
+          "detail": "fields in prod but missing in mock: ['finishQty', 'regionName', 'targetQty']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_FIELD",
+          "detail": "fields in mock but not in prod: ['dateMonth', 'qty']",
+          "severity": "P2"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear"
+      ],
+      "prod_fields": [
+        "finishQty",
+        "regionName",
+        "targetQty"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "qty"
+      ]
+    },
+    {
+      "api": "getOilsChemBreakBulkByBusinessType",
+      "domain": "D1",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "businessType",
+        "dateMonth",
+        "flag"
+      ],
+      "registry_params": [
+        "businessType",
+        "dateMonth",
+        "flag"
+      ],
+      "prod_fields": [
+        "finishQty",
+        "regionName",
+        "targetQty"
+      ],
+      "mock_fields": [
+        "finishQty",
+        "regionName",
+        "targetQty"
+      ]
+    },
+    {
+      "api": "getRoroByBusinessType",
+      "domain": "D1",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "dateMonth",
+        "flag"
+      ],
+      "registry_params": [
+        "dateMonth",
+        "flag"
+      ],
+      "prod_fields": [
+        "finishQty",
+        "regionName",
+        "targetQty"
+      ],
+      "mock_fields": [
+        "finishQty",
+        "regionName",
+        "targetQty"
+      ]
+    },
+    {
+      "api": "getContainerByBusinessType",
+      "domain": "D1",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "dateMonth",
+        "flag"
+      ],
+      "registry_params": [
+        "dateMonth",
+        "flag"
+      ],
+      "prod_fields": [
+        "finishQty",
+        "regionName",
+        "targetQty"
+      ],
+      "mock_fields": [
+        "finishQty",
+        "regionName",
+        "targetQty"
+      ]
+    },
+    {
+      "api": "getThroughputAnalysisYoyMomByYear",
+      "domain": "D1",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [
+        "dateType",
+        "qty",
+        "regionName",
+        "statType"
+      ],
+      "mock_fields": [
+        "dateType",
+        "qty",
+        "regionName",
+        "statType"
+      ]
+    },
+    {
+      "api": "getThroughputAnalysisYoyMomByMonth",
+      "domain": "D1",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "dateMonth"
+      ],
+      "registry_params": [
+        "dateMonth"
+      ],
+      "prod_fields": [
+        "momQty",
+        "qty",
+        "regionName",
+        "yoyQty"
+      ],
+      "mock_fields": [
+        "momQty",
+        "qty",
+        "regionName",
+        "yoyQty"
+      ]
+    },
+    {
+      "api": "getThroughputAnalysisYoyMomByDay",
+      "domain": "D1",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [
+        "momQty",
+        "qty",
+        "regionName",
+        "yoyQty"
+      ],
+      "mock_fields": [
+        "momQty",
+        "qty",
+        "regionName",
+        "yoyQty"
+      ]
+    },
+    {
+      "api": "getContainerAnalysisYoyMomByYear",
+      "domain": "D1",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateType': prod_only=['日', '月'], mock_only=[]",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'regionName': prod_only=['辽港'], mock_only=[]",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [
+        "dateType",
+        "qty",
+        "regionName",
+        "statType"
+      ],
+      "mock_fields": [
+        "dateType",
+        "qty",
+        "regionName",
+        "statType"
+      ]
+    },
+    {
+      "api": "getCurBusinessDashboardThroughput",
+      "domain": "D2",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=['同期海铁联吞吐量', '同期集装箱吞吐量', '当期中转量吞吐量', '当期海铁联吞吐量', '当期集装箱吞吐量'], mock_only=['同期完成率', '同比增速', '实际完成率', '计划吞吐量', '计划完成率']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [
+        "num",
+        "typeName"
+      ],
+      "mock_fields": [
+        "num",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getCumulativeThroughput",
+      "domain": "D2",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['zoneName']",
+          "registry_params": [
+            "curDateYear",
+            "yearDateYear",
+            "zoneName"
+          ],
+          "prod_params": [
+            "curDateYear",
+            "yearDateYear"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "curDateYear",
+        "yearDateYear"
+      ],
+      "registry_params": [
+        "curDateYear",
+        "yearDateYear",
+        "zoneName"
+      ],
+      "prod_fields": [
+        "dateYear",
+        "ioTrade",
+        "throughput"
+      ],
+      "mock_fields": [
+        "dateYear",
+        "ioTrade",
+        "throughput"
+      ]
+    },
+    {
+      "api": "getMonthlyRegionalThroughputAreaBusinessDashboard",
+      "domain": "D2",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=[], mock_only=['实际完成率']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [
+        "num",
+        "typeName",
+        "zoneName"
+      ],
+      "mock_fields": [
+        "num",
+        "typeName",
+        "zoneName"
+      ]
+    },
+    {
+      "api": "getTrendChart",
+      "domain": "D2",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateMonth': prod_only=[], mock_only=['2026-01', '2026-03']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "businessSegment",
+        "endDate",
+        "startDate"
+      ],
+      "registry_params": [
+        "businessSegment",
+        "endDate",
+        "startDate"
+      ],
+      "prod_fields": [
+        "businessSegment",
+        "dateMonth",
+        "throughput"
+      ],
+      "mock_fields": [
+        "businessSegment",
+        "dateMonth",
+        "throughput"
+      ]
+    },
+    {
+      "api": "getCumulativeTrendChart",
+      "domain": "D2",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "businessSegment",
+        "curDateYear",
+        "yearDateYear"
+      ],
+      "registry_params": [
+        "businessSegment",
+        "curDateYear",
+        "yearDateYear"
+      ],
+      "prod_fields": [
+        "businessSegment",
+        "dateYear",
+        "throughput"
+      ],
+      "mock_fields": [
+        "businessSegment",
+        "dateYear",
+        "throughput"
+      ]
+    },
+    {
+      "api": "getKeyEnterprise",
+      "domain": "D2",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'companyName': prod_only=['散杂货码头', '散粮码头', '集装箱码头公司'], mock_only=['营口集装箱码头有限公司']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateMonth': prod_only=[], mock_only=['2026-03']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "businessSegment",
+        "curDateMonth",
+        "yearDateMonth"
+      ],
+      "registry_params": [
+        "businessSegment",
+        "curDateMonth",
+        "yearDateMonth"
+      ],
+      "prod_fields": [
+        "companyName",
+        "dateMonth",
+        "throughput"
+      ],
+      "mock_fields": [
+        "companyName",
+        "dateMonth",
+        "throughput"
+      ]
+    },
+    {
+      "api": "getCumulativeKeyEnterprise",
+      "domain": "D2",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'companyName': prod_only=['散杂货码头', '散粮码头'], mock_only=['营口集装箱码头有限公司']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "businessSegment",
+        "curDateYear",
+        "yearDateYear"
+      ],
+      "registry_params": [
+        "businessSegment",
+        "curDateYear",
+        "yearDateYear"
+      ],
+      "prod_fields": [
+        "companyName",
+        "dateYear",
+        "throughput"
+      ],
+      "mock_fields": [
+        "companyName",
+        "dateYear",
+        "throughput"
+      ]
+    },
+    {
+      "api": "getMonthlyThroughput",
+      "domain": "D2",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['zoneName']",
+          "registry_params": [
+            "curDateMonth",
+            "yearDateMonth",
+            "zoneName"
+          ],
+          "prod_params": [
+            "curDateMonth",
+            "yearDateMonth"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 422: [{'type': 'missing', 'loc': ['query', 'zoneName'], 'msg': 'Field required', 'input': None}]",
+          "severity": "P0",
+          "mock_params_sent": {
+            "curDateMonth": "2026-03",
+            "yearDateMonth": "2025-03"
+          }
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [
+        "curDateMonth",
+        "yearDateMonth"
+      ],
+      "registry_params": [
+        "curDateMonth",
+        "yearDateMonth",
+        "zoneName"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "ioTrade",
+        "throughput"
+      ],
+      "mock_fields": []
+    },
+    {
+      "api": "getMonthlyZoneThroughput",
+      "domain": "D2",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['zoneName']",
+          "registry_params": [
+            "curDateMonth",
+            "yearDateMonth",
+            "zoneName"
+          ],
+          "prod_params": [
+            "curDateMonth",
+            "yearDateMonth"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 422: [{'type': 'missing', 'loc': ['query', 'zoneName'], 'msg': 'Field required', 'input': None}]",
+          "severity": "P0",
+          "mock_params_sent": {
+            "curDateMonth": "2026-03",
+            "yearDateMonth": "2025-03"
+          }
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [
+        "curDateMonth",
+        "yearDateMonth"
+      ],
+      "registry_params": [
+        "curDateMonth",
+        "yearDateMonth",
+        "zoneName"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "throughput",
+        "zoneName"
+      ],
+      "mock_fields": []
+    },
+    {
+      "api": "getCumulativeZoneThroughput",
+      "domain": "D2",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['zoneName']",
+          "registry_params": [
+            "curDateYear",
+            "yearDateYear",
+            "zoneName"
+          ],
+          "prod_params": [
+            "curDateYear",
+            "yearDateYear"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 422: [{'type': 'missing', 'loc': ['query', 'zoneName'], 'msg': 'Field required', 'input': None}]",
+          "severity": "P0",
+          "mock_params_sent": {
+            "curDateYear": "2026",
+            "yearDateYear": "2025"
+          }
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [
+        "curDateYear",
+        "yearDateYear"
+      ],
+      "registry_params": [
+        "curDateYear",
+        "yearDateYear",
+        "zoneName"
+      ],
+      "prod_fields": [
+        "dateYear",
+        "throughput",
+        "zoneName"
+      ],
+      "mock_fields": []
+    },
+    {
+      "api": "getCurrentBusinessSegmentThroughput",
+      "domain": "D2",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['zoneName']",
+          "registry_params": [
+            "curDateMonth",
+            "yearDateMonth",
+            "zoneName"
+          ],
+          "prod_params": [
+            "curDateMonth",
+            "yearDateMonth"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 422: [{'type': 'missing', 'loc': ['query', 'zoneName'], 'msg': 'Field required', 'input': None}]",
+          "severity": "P0",
+          "mock_params_sent": {
+            "curDateMonth": "2026-03",
+            "yearDateMonth": "2025-03"
+          }
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [
+        "curDateMonth",
+        "yearDateMonth"
+      ],
+      "registry_params": [
+        "curDateMonth",
+        "yearDateMonth",
+        "zoneName"
+      ],
+      "prod_fields": [
+        "bigCategory",
+        "businessSegment",
+        "dateMonth",
+        "inOutFlag",
+        "ioTrade",
+        "midCategory",
+        "throughput",
+        "unitName",
+        "zoneName"
+      ],
+      "mock_fields": []
+    },
+    {
+      "api": "getCumulativeBusinessSegmentThroughput",
+      "domain": "D2",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['zoneName']",
+          "registry_params": [
+            "curDateYear",
+            "yearDateYear",
+            "zoneName"
+          ],
+          "prod_params": [
+            "curDateYear",
+            "yearDateYear"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 422: [{'type': 'missing', 'loc': ['query', 'zoneName'], 'msg': 'Field required', 'input': None}]",
+          "severity": "P0",
+          "mock_params_sent": {
+            "curDateYear": "2026",
+            "yearDateYear": "2025"
+          }
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [
+        "curDateYear",
+        "yearDateYear"
+      ],
+      "registry_params": [
+        "curDateYear",
+        "yearDateYear",
+        "zoneName"
+      ],
+      "prod_fields": [
+        "bigCategory",
+        "businessSegment",
+        "dateYear",
+        "inOutFlag",
+        "ioTrade",
+        "midCategory",
+        "throughput",
+        "unitName",
+        "zoneName"
+      ],
+      "mock_fields": []
+    },
+    {
+      "api": "getCustomerQty",
+      "domain": "D3",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [],
+      "registry_params": [],
+      "prod_fields": [
+        "customerFilesNumber",
+        "outPortQty",
+        "strategyClientQty",
+        "totalQty"
+      ],
+      "mock_fields": [
+        "customerFilesNumber",
+        "outPortQty",
+        "strategyClientQty",
+        "totalQty"
+      ]
+    },
+    {
+      "api": "getCustomerTypeAnalysis",
+      "domain": "D3",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'clientType': prod_only=['其它', '场站', '物流商', '码头', '终端客户', '船公司', '船舶代理', '行政事业', '货运代理', '贸易商', '车队', '铁路公司'], mock_only=['个人独资企业', '个体工商户', '临时账户', '企业法人', '其他组织', '合伙企业', '外国人', '外国法人', '机关团体', '非企业单位', '非法人组织', '非自然人']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [],
+      "registry_params": [],
+      "prod_fields": [
+        "clientType",
+        "qty"
+      ],
+      "mock_fields": [
+        "clientType",
+        "qty"
+      ]
+    },
+    {
+      "api": "getCustomerFieldAnalysis",
+      "domain": "D3",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'indstryFieldName': prod_only=['其他杂货', '农林牧渔', '化工', '大件设备', '客运', '服务行业', '滚装汽车', '石油天然气', '矿建材料', '金属矿石', '钢铁', '非金属矿石'], mock_only=['其他', '农副产品', '建材', '日用百货', '木材', '机械设备', '水泥', '汽车', '石油化工', '矿石', '纸浆', '钢材']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [],
+      "registry_params": [],
+      "prod_fields": [
+        "indstryFieldName",
+        "qty"
+      ],
+      "mock_fields": [
+        "indstryFieldName",
+        "qty"
+      ]
+    },
+    {
+      "api": "getCustomerCredit",
+      "domain": "D3",
+      "issues": [
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 422: [{'type': 'missing', 'loc': ['query', 'orgName'], 'msg': 'Field required', 'input': None}, {'type': 'missing', 'loc': ['query', 'customerName'], 'msg': 'Field required', 'input': None}, {'type': 'missing', 'loc': ['query', 'gradeResult'], 'msg': 'Field required', 'input': None}]",
+          "severity": "P0",
+          "mock_params_sent": {}
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [],
+      "registry_params": [
+        "customerName",
+        "gradeResult",
+        "orgName"
+      ],
+      "prod_fields": [
+        "creditLimit",
+        "creditTerm",
+        "cstmId",
+        "customerName",
+        "frequency",
+        "gradeResult",
+        "gradeScore",
+        "orgCode",
+        "orgName",
+        "year"
+      ],
+      "mock_fields": []
+    },
+    {
+      "api": "getStrategicCustomerThroughput",
+      "domain": "D3",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['clientName']",
+          "registry_params": [
+            "cargoCategoryName",
+            "clientName",
+            "curDate",
+            "statisticType",
+            "yearDate"
+          ],
+          "prod_params": [
+            "cargoCategoryName",
+            "curDate",
+            "statisticType",
+            "yearDate"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'clientName': prod_only=['上海中谷物流股份有限公司', '中国远洋海运集团有限公司', '信风（宁波）海运物流有限公司', '地中海航运有限公司', '泉州安通物流有限公司', '法国达飞轮船（中国）有限公司', '马士基航运（中国）有限公司'], mock_only=['ONE(日本海洋网联船务)', '中远海运集团', '地中海航运', '本溪钢铁集团', '现代商船', '赫伯罗特', '达飞轮船', '长荣海运', '鞍钢集团', '马士基航运']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'ttlNum': prod_only=['0', '0.0', '1.7004', '119.34654', '12.5318', '124.40353', '127.67176', '13.0565', '15.8966', '159.7726', '18.703', '2.0524', '2.1939', '2.2554', '23.4378'], mock_only=['1.5', '115.2', '146.3', '174.2', '196.4', '216.0', '233.3', '244.9', '247.5', '262.3', '298.0', '326.0', '326.1', '335.7', '415.8']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "cargoCategoryName",
+        "curDate",
+        "statisticType",
+        "yearDate"
+      ],
+      "registry_params": [
+        "cargoCategoryName",
+        "clientName",
+        "curDate",
+        "statisticType",
+        "yearDate"
+      ],
+      "prod_fields": [
+        "cargoCategoryName",
+        "clientName",
+        "ttlDate",
+        "ttlNum"
+      ],
+      "mock_fields": [
+        "cargoCategoryName",
+        "clientName",
+        "ttlDate",
+        "ttlNum"
+      ]
+    },
+    {
+      "api": "getStrategicCustomers",
+      "domain": "D3",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'displayCode': prod_only=['68c7d73b7cfb65000157bfad', '68ca10367cfb650001cfb8c3', '68cb6e685539b4000185e00b', '68cb752f12553700017c82fb', '68cb75ed7cfb6500010495dc', '68cb77c45539b400018805f5', '68cb77fc125537000180d8e7', '68cb7909125537000180e28a', '68cb79b61255370001826ab5', '68cb7a655539b400018e79a6', '68cb9c967cfb65000111d93d', '68cb9cc05539b4000190facd', '68cb9ce64dd0b80001dab59d', '68cb9d35125537000183f480', '68cb9dc34dd0b80001db2ed6'], mock_only=['00fb30033c21705c12b127f2', '01b2f42be1ea37747da63364', '0465c5bd6b2011e549821d06', '046933827e25c9b0f4ea280b', '056259a74517d9fa913e75b3', '069d86af8c301a5100db10ca', '28fa77a020b97637ad5b36f3', '2c2be89dc9682ae4de83794b', '2c4c2dfcb374565633750066', '31a97fd564b27f23c6e3978a', '3212419f8736783409a943f4', '3f578f3827a00985b847254f', '4715b5a89c97e73860634a8c', '4b4ab9d59a35e62562ab77e2', '531455017a6eafe44c2a34de']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'displayName': prod_only=['VALE INTERNATIONAL SA', '上海中谷物流股份有限公司', '上海汽车集团股份有限公司', '中国石油国际事业有限公司', '中国石油天然气股份有限公司东北销售分公司', '中国石油天然气股份有限公司大连石化分公司', '中国第一汽车集团有限公司', '中国远洋海运集团有限公司', '九三粮油工业集团有限公司', '信风（宁波）海运物流有限公司', '冀东发展集团国际贸易有限公司', '力拓矿业商贸（上海）有限公司', '北大荒粮食集团有限公司', '北方华锦化学工业股份有限公司', '华晨宝马汽车有限公司'], mock_only=['ONE(日本海洋网联船务)', '一汽集团', '上汽通用五菱', '东北特殊钢集团股份有限公司', '中国交通建设集团有限公司', '中国华电集团有限公司', '中国建筑股份有限公司', '中国能源建设集团有限公司', '中国铝业集团有限公司', '中石化大连分公司', '中石油大连石化', '中远海运集团', '凌源钢铁集团有限责任公司', '华能国际电力股份有限公司', '国家电力投资集团有限公司']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [],
+      "registry_params": [],
+      "prod_fields": [
+        "displayCode",
+        "displayName"
+      ],
+      "mock_fields": [
+        "displayCode",
+        "displayName"
+      ]
+    },
+    {
+      "api": "getCurStrategicCustomerContributionByCargoTypeThroughput",
+      "domain": "D3",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'categoryName': prod_only=['滚装'], mock_only=['商品车']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [
+        "categoryName",
+        "num"
+      ],
+      "mock_fields": [
+        "categoryName",
+        "num"
+      ]
+    },
+    {
+      "api": "getCurContributionRankOfStrategicCustomer",
+      "domain": "D3",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'clientName': prod_only=['上海中谷物流股份有限公司', '上海汽车集团股份有限公司', '中国石油国际事业有限公司', '中国石油天然气股份有限公司东北销售分公司', '中国石油天然气股份有限公司大连石化分公司', '中国第一汽车集团有限公司', '中国远洋海运集团有限公司', '九三粮油工业集团有限公司', '信风（宁波）海运物流有限公司', '力拓矿业商贸（上海）有限公司', '北大荒粮食集团有限公司', '北方华锦化学工业股份有限公司', '华晨宝马汽车有限公司', '厦门象屿集团有限公司', '吉林省吉电国际贸易有限公司'], mock_only=['ONE(日本海洋网联船务)', '一汽集团', '上汽通用五菱', '东北特殊钢集团股份有限公司', '中国交通建设集团有限公司', '中国华电集团有限公司', '中国建筑股份有限公司', '中国能源建设集团有限公司', '中国铝业集团有限公司', '中石化大连分公司', '中石油大连石化', '中远海运集团', '凌源钢铁集团有限责任公司', '华能国际电力股份有限公司', '国家电力投资集团有限公司']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [
+        "clientName",
+        "num"
+      ],
+      "mock_fields": [
+        "clientName",
+        "num"
+      ]
+    },
+    {
+      "api": "getSumStrategyCustomerTrendAnalysis",
+      "domain": "D3",
+      "issues": [
+        {
+          "type": "MOCK_FIELD",
+          "detail": "fields in prod but missing in mock: ['dateYear', 'num']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_FIELD",
+          "detail": "fields in mock but not in prod: ['contributionRate', 'cumulativeRevenue', 'cumulativeStrategicThroughput', 'dateMonth', 'strategicThroughput']",
+          "severity": "P2"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [],
+      "registry_params": [],
+      "prod_fields": [
+        "dateYear",
+        "num"
+      ],
+      "mock_fields": [
+        "contributionRate",
+        "cumulativeRevenue",
+        "cumulativeStrategicThroughput",
+        "dateMonth",
+        "strategicThroughput"
+      ]
+    },
+    {
+      "api": "investCorpShareholdingProp",
+      "domain": "D4",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'ratio': prod_only=['20%', '30%', '5%'], mock_only=[]",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'ratioName': prod_only=['临时会议线', '临时提案权', '竞争警示线', '股改警示线', '要约收购线'], mock_only=['临时股东会召开线', '提案权', '资产收益及选任管理者', '重大决议否决线', '重大决议基本否决线']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [],
+      "registry_params": [],
+      "prod_fields": [
+        "num",
+        "ratio",
+        "ratioName"
+      ],
+      "mock_fields": [
+        "num",
+        "ratio",
+        "ratioName"
+      ]
+    },
+    {
+      "api": "getMeetDetail",
+      "domain": "D4",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['yianZt']",
+          "registry_params": [
+            "date",
+            "yianZt"
+          ],
+          "prod_params": [
+            "date"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date",
+        "yianZt"
+      ],
+      "prod_fields": [],
+      "mock_fields": []
+    },
+    {
+      "api": "getNewEnterprise",
+      "domain": "D4",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [],
+      "mock_fields": []
+    },
+    {
+      "api": "getWithdrawalInfo",
+      "domain": "D4",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [],
+      "mock_fields": []
+    },
+    {
+      "api": "getBusinessExpirationInfo",
+      "domain": "D4",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [],
+      "mock_fields": []
+    },
+    {
+      "api": "getSupervisorIncidentInfo",
+      "domain": "D4",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [],
+      "mock_fields": []
+    },
+    {
+      "api": "getTotalssets",
+      "domain": "D5",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "assetOwnerZone"
+      ],
+      "registry_params": [
+        "assetOwnerZone"
+      ],
+      "prod_fields": [
+        "assetQty",
+        "realAssetQty"
+      ],
+      "mock_fields": [
+        "assetQty",
+        "realAssetQty"
+      ]
+    },
+    {
+      "api": "getAssetValue",
+      "domain": "D5",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "ownerZone"
+      ],
+      "registry_params": [
+        "ownerZone"
+      ],
+      "prod_fields": [
+        "netlValue",
+        "originalValue",
+        "periodNetlValue",
+        "periodOriginalValue"
+      ],
+      "mock_fields": [
+        "netlValue",
+        "originalValue",
+        "periodNetlValue",
+        "periodOriginalValue"
+      ]
+    },
+    {
+      "api": "getMainAssetsInfo",
+      "domain": "D5",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "ownerZone"
+      ],
+      "registry_params": [
+        "ownerZone"
+      ],
+      "prod_fields": [],
+      "mock_fields": []
+    },
+    {
+      "api": "getRealAssetsDistribution",
+      "domain": "D5",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "ownerZone"
+      ],
+      "registry_params": [
+        "ownerZone"
+      ],
+      "prod_fields": [],
+      "mock_fields": []
+    },
+    {
+      "api": "getOriginalValueDistribution",
+      "domain": "D5",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "ownerZone"
+      ],
+      "registry_params": [
+        "ownerZone"
+      ],
+      "prod_fields": [],
+      "mock_fields": []
+    },
+    {
+      "api": "getPhysicalAssets",
+      "domain": "D5",
+      "issues": [
+        {
+          "type": "MOCK_FIELD",
+          "detail": "type mismatches: {'num': 'prod=int, mock=float'}",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear"
+      ],
+      "prod_fields": [
+        "dateYear",
+        "num",
+        "typeName"
+      ],
+      "mock_fields": [
+        "dateYear",
+        "num",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getRegionalAnalysis",
+      "domain": "D5",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'ownerZone': prod_only=[], mock_only=['绥中', '综合事业部']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=['资产净值'], mock_only=[]",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear"
+      ],
+      "prod_fields": [
+        "num",
+        "ownerZone",
+        "typeName"
+      ],
+      "mock_fields": [
+        "num",
+        "ownerZone",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getCategoryAnalysis",
+      "domain": "D5",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'assetTypeName': prod_only=['IT基础设施', 'IT硬件设备', '海域土地', '软件', '销售地产', '附属设施'], mock_only=['土地海域', '在建工程', '房屋', '林木']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=[], mock_only=['面积']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear"
+      ],
+      "prod_fields": [
+        "assetTypeName",
+        "num",
+        "typeName"
+      ],
+      "mock_fields": [
+        "assetTypeName",
+        "num",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getCategoryAnalysisTransparentTransmission",
+      "domain": "D5",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'ownerUnitName': prod_only=['丹东海洋红港建设有限公司', '丹东港口集团电力分公司', '丹东港口集团集装箱分公司', '内蒙古陆港保税物流园有限公司', '办公室', '大连保税区永德信房地产开发建设有限公司', '大连口岸物流网股份有限公司', '大连国际航运中心大厦有限公司', '大连国际集装箱服务有限公司', '大连外轮理货有限公司', '大连太平湾投资发展有限公司', '大连太平湾港口有限公司', '大连宏誉大厦有限公司', '大连海嘉汽车码头有限公司', '大连海港大厦有限公司'], mock_only=[]",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "assetTypeName",
+        "dateYear"
+      ],
+      "registry_params": [
+        "assetTypeName",
+        "dateYear"
+      ],
+      "prod_fields": [
+        "num",
+        "ownerUnitName",
+        "typeName"
+      ],
+      "mock_fields": [
+        "num",
+        "ownerUnitName",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getEquipmentFacilityAnalysisYoy",
+      "domain": "D5",
+      "issues": [
+        {
+          "type": "MOCK_FIELD",
+          "detail": "type mismatches: {'num': 'prod=int, mock=float'}",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear"
+      ],
+      "prod_fields": [
+        "dateYear",
+        "num",
+        "typeName"
+      ],
+      "mock_fields": [
+        "dateYear",
+        "num",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getEquipmentFacilityAnalysis",
+      "domain": "D5",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'assetTypeName': prod_only=['专用车辆', '其他装卸机械设备', '其他车辆', '办公车辆', '压力容器设备', '压力管道设备', '工属具', '机车', '油运设备', '电梯设备', '船舶', '装卸搬运机械', '计量设备', '起重机械', '辅助生产机械设备'], mock_only=['交通运输设备', '仪器仪表', '动力设备', '工具器具', '电子设备', '通信设备', '通用机械']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=[], mock_only=['处置数', '报废数', '面积']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear",
+        "type"
+      ],
+      "registry_params": [
+        "dateYear",
+        "type"
+      ],
+      "prod_fields": [
+        "assetTypeName",
+        "num",
+        "typeName"
+      ],
+      "mock_fields": [
+        "assetTypeName",
+        "num",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getEquipmentFacilityStatusAnalysis",
+      "domain": "D5",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'assetStatus': prod_only=['出借', '出租', '外包再使用', '调拨', '转让'], mock_only=['停用', '在建', '闲置']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=[], mock_only=['面积']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear",
+        "type"
+      ],
+      "registry_params": [
+        "dateYear",
+        "type"
+      ],
+      "prod_fields": [
+        "assetStatus",
+        "num",
+        "typeName"
+      ],
+      "mock_fields": [
+        "assetStatus",
+        "num",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getEquipmentFacilityRegionalAnalysis",
+      "domain": "D5",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'ownerZone': prod_only=[], mock_only=['绥中', '综合事业部']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=['资产净值'], mock_only=[]",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear",
+        "type"
+      ],
+      "registry_params": [
+        "dateYear",
+        "type"
+      ],
+      "prod_fields": [
+        "num",
+        "ownerZone",
+        "typeName"
+      ],
+      "mock_fields": [
+        "num",
+        "ownerZone",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getEquipmentFacilityWorthAnalysis",
+      "domain": "D5",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=['资产原值'], mock_only=['实物资产数']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear",
+        "type"
+      ],
+      "registry_params": [
+        "dateYear",
+        "type"
+      ],
+      "prod_fields": [
+        "num",
+        "rate",
+        "typeName"
+      ],
+      "mock_fields": [
+        "num",
+        "rate",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getLandMaritimeAnalysisTransparentTransmission",
+      "domain": "D5",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['ownerZone']",
+          "registry_params": [
+            "dateYear",
+            "ownerZone"
+          ],
+          "prod_params": [
+            "dateYear"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'ownerUnitName': prod_only=['大连国际物流园发展有限公司', '大连太平湾港口有限公司', '大连庄河港兴投资有限公司', '大连海嘉汽车码头有限公司', '大连港北岸投资开发有限公司', '大连港北岸汽车码头有限公司', '大连港北岸集装箱码头有限公司', '大连港地产集团有限公司', '大连港旅顺港务有限公司', '大连港湾东车物流有限公司', '大连港石化有限公司', '大连港集发物流有限责任公司', '大连港集装箱发展有限公司', '大连港集装箱股份有限公司', '大连长兴岛港口投资发展有限公司'], mock_only=['大连港散杂货码头分公司', '大连港油码头有限公司', '营口集装箱码头有限公司']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear",
+        "ownerZone"
+      ],
+      "prod_fields": [
+        "num",
+        "ownerUnitName",
+        "typeName"
+      ],
+      "mock_fields": [
+        "num",
+        "ownerUnitName",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getHousingAnalysisYoy",
+      "domain": "D5",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear"
+      ],
+      "prod_fields": [
+        "dateYear",
+        "num",
+        "typeName"
+      ],
+      "mock_fields": [
+        "dateYear",
+        "num",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getLandMaritimeAnalysisYoy",
+      "domain": "D5",
+      "issues": [
+        {
+          "type": "MOCK_FIELD",
+          "detail": "type mismatches: {'num': 'prod=int, mock=float'}",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear"
+      ],
+      "prod_fields": [
+        "dateYear",
+        "num",
+        "typeName"
+      ],
+      "mock_fields": [
+        "dateYear",
+        "num",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getLandMaritimeRegionalAnalysis",
+      "domain": "D5",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'ownerZone': prod_only=[], mock_only=['丹东', '盘锦', '绥中', '综合事业部']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=['资产净值', '资产原值'], mock_only=[]",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear"
+      ],
+      "prod_fields": [
+        "num",
+        "ownerZone",
+        "typeName"
+      ],
+      "mock_fields": [
+        "num",
+        "ownerZone",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getLandMaritimeWorthAnalysis",
+      "domain": "D5",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'rate': prod_only=['1000以上'], mock_only=['50-100']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=['资产原值'], mock_only=['实物资产数']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear"
+      ],
+      "prod_fields": [
+        "num",
+        "rate",
+        "typeName"
+      ],
+      "mock_fields": [
+        "num",
+        "rate",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getImportAssertAnalysisList",
+      "domain": "D5",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['assetTypeId', 'assetTypeName', 'ownerZone', 'portCode']",
+          "registry_params": [
+            "assetTypeId",
+            "assetTypeName",
+            "dateYear",
+            "ownerZone",
+            "portCode"
+          ],
+          "prod_params": [
+            "dateYear",
+            "pageNo",
+            "pageSize"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "PARAM_NAME",
+          "detail": "prod has params not in registry: ['pageNo', 'pageSize']",
+          "registry_params": [
+            "assetTypeId",
+            "assetTypeName",
+            "dateYear",
+            "ownerZone",
+            "portCode"
+          ],
+          "prod_params": [
+            "dateYear",
+            "pageNo",
+            "pageSize"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_FIELD",
+          "detail": "type mismatches: {'originalValue': 'prod=NoneType, mock=float', 'netValue': 'prod=NoneType, mock=float', 'ownerZone': 'prod=NoneType, mock=str', 'specModel': 'prod=NoneType, mock=str'}",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'assetCode': prod_only=['A02030220262108000017', 'A51020220262102000016', 'A51020220262102000025', 'A51020220262102000034', 'A51020220262102000043'], mock_only=['A1679091c5a880faf6fb5', 'A1f0e3dad99908345f743', 'A45c48cce2e2d7fbdea1a', 'A6512bd43d9caa6e02c99', 'A6f4922f45568161a8cdf', 'A70efdf2ec9b086079795', 'A8f14e45fceea167a5a36', 'A9bf31c7ff062936a96d3', 'Aa87ff679a2f3e71d9181', 'Aaab3238922bcc25a6f60', 'Ac20ad4d76fe97759aa27', 'Ac4ca4238a0b923820dcc', 'Ac51ce410c124a10e0db5', 'Ac74d97b01eae257e44aa', 'Ac81e728d9d4c2f636f06']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'assetFirstname': prod_only=['装卸搬运机械'], mock_only=['交通设备', '机械设备', '通信设备']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'assetName': prod_only=['3吨电动叉车', '危险货物场站系统信创项目', '危险货物安全生产管理系统升级项目', '智慧运营和数字孪生系统升级项目', '股份公司安全云平台采集危险货物监管数据项目'], mock_only=['资产项目0', '资产项目1', '资产项目10', '资产项目11', '资产项目12', '资产项目13', '资产项目14', '资产项目15', '资产项目16', '资产项目17', '资产项目18', '资产项目19', '资产项目2', '资产项目3', '资产项目4']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'assetStatus': prod_only=[], mock_only=['启用', '封存']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'assetStatusName': prod_only=[], mock_only=['封存', '报废']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'assetTypeName': prod_only=['生产操作系统', '电动平衡重式叉车'], mock_only=['房屋', '设备', '设施']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'buyDate': prod_only=['2026-01-01', '2026-09-01'], mock_only=['2025-01-01', '2025-02-01', '2025-03-01', '2025-04-01', '2025-05-01', '2025-07-01', '2025-08-01', '2025-09-01', '2025-10-01', '2025-11-01', '2025-12-01']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'cardId': prod_only=['108623', '70444', '70445', '70446', '70447'], mock_only=['C0a3d72134fb3d6c0', 'C0ae79a56a8ffad7b', 'C25ea1682e16466c0', 'C47cfc27c36f07700', 'C4d3a21d8c684c09c', 'C4d41ca3ae901a60c', 'C5a34d1edaea4e328', 'C5c385d6d334ea0a9', 'C647e24fdbfcbc54e', 'C7cd1d2b54911b95b', 'C856deecf45fa4ace', 'C99c91b979d234058', 'C9ab62b5ef34a9854', 'Ca3098322f75f2a3e', 'Ca9f7e97965d6cf79']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'propertyUnit': prod_only=['大连集发南岸国际物流有限公司', '辽港控股（营口）有限公司集装箱码头分公司'], mock_only=['大连汽车码头有限公司', '大连港散杂货码头分公司', '大连港油码头有限公司', '大连集装箱码头有限公司', '营口集装箱码头有限公司']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'realAssetTypeName': prod_only=['设备', '软件'], mock_only=['固定资产', '无形资产']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'useUnit': prod_only=['大连集发南岸国际物流有限公司', '辽港控股（营口）有限公司集装箱码头分公司'], mock_only=['大连汽车码头有限公司', '大连港散杂货码头分公司', '大连港油码头有限公司', '大连集装箱码头有限公司', '营口集装箱码头有限公司']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear",
+        "pageNo",
+        "pageSize"
+      ],
+      "registry_params": [
+        "assetTypeId",
+        "assetTypeName",
+        "dateYear",
+        "ownerZone",
+        "portCode"
+      ],
+      "prod_fields": [
+        "assetCode",
+        "assetFirstname",
+        "assetName",
+        "assetStatus",
+        "assetStatusName",
+        "assetTypeName",
+        "buyDate",
+        "cardId",
+        "netValue",
+        "originalValue",
+        "ownerZone",
+        "propertyUnit",
+        "realAssetTypeName",
+        "specModel",
+        "useUnit"
+      ],
+      "mock_fields": [
+        "assetCode",
+        "assetFirstname",
+        "assetName",
+        "assetStatus",
+        "assetStatusName",
+        "assetTypeName",
+        "buyDate",
+        "cardId",
+        "netValue",
+        "originalValue",
+        "ownerZone",
+        "propertyUnit",
+        "realAssetTypeName",
+        "specModel",
+        "useUnit"
+      ]
+    },
+    {
+      "api": "getInvestPlanTypeProjectList",
+      "domain": "D6",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['ownerLgZoneName']",
+          "registry_params": [
+            "currYear",
+            "ownerLgZoneName"
+          ],
+          "prod_params": [
+            "currYear"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "currYear"
+      ],
+      "registry_params": [
+        "currYear",
+        "ownerLgZoneName"
+      ],
+      "prod_fields": [
+        "engineeringQty",
+        "importantQty",
+        "investProjectType",
+        "planInvestAmt",
+        "planPayAmt",
+        "total"
+      ],
+      "mock_fields": [
+        "engineeringQty",
+        "importantQty",
+        "investProjectType",
+        "planInvestAmt",
+        "planPayAmt",
+        "total"
+      ]
+    },
+    {
+      "api": "planInvestAndPayYoy",
+      "domain": "D6",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['ownerLgZoneName']",
+          "registry_params": [
+            "currYear",
+            "ownerLgZoneName",
+            "preYear"
+          ],
+          "prod_params": [
+            "currYear",
+            "preYear"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "currYear",
+        "preYear"
+      ],
+      "registry_params": [
+        "currYear",
+        "ownerLgZoneName",
+        "preYear"
+      ],
+      "prod_fields": [
+        "dateYear",
+        "planInvestAmt",
+        "planPayAmt"
+      ],
+      "mock_fields": [
+        "dateYear",
+        "planInvestAmt",
+        "planPayAmt"
+      ]
+    },
+    {
+      "api": "getFinishProgressAndDeliveryRate",
+      "domain": "D6",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['ownerLgZoneName']",
+          "registry_params": [
+            "currYear",
+            "ownerLgZoneName"
+          ],
+          "prod_params": [
+            "currYear"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "currYear"
+      ],
+      "registry_params": [
+        "currYear",
+        "ownerLgZoneName"
+      ],
+      "prod_fields": [
+        "captProjectQty",
+        "deliveryCaptProjectQty",
+        "planInvestAmt",
+        "planPayAmt",
+        "realFinishInvestAmt",
+        "realFinishPayAmt"
+      ],
+      "mock_fields": [
+        "captProjectQty",
+        "deliveryCaptProjectQty",
+        "planInvestAmt",
+        "planPayAmt",
+        "realFinishInvestAmt",
+        "realFinishPayAmt"
+      ]
+    },
+    {
+      "api": "getInvestPlanByYear",
+      "domain": "D6",
+      "issues": [
+        {
+          "type": "MOCK_FIELD",
+          "detail": "type mismatches: {'finishInvestAmt': 'prod=int, mock=float'}",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [],
+      "registry_params": [
+        "ownerLgZoneName"
+      ],
+      "prod_fields": [
+        "captPlanPayAmt",
+        "dateYear",
+        "finishInvestAmt",
+        "planInvestAmt",
+        "realFinishPayAmt"
+      ],
+      "mock_fields": [
+        "captPlanPayAmt",
+        "dateYear",
+        "finishInvestAmt",
+        "planInvestAmt",
+        "realFinishPayAmt"
+      ]
+    },
+    {
+      "api": "getCostProjectYoyList",
+      "domain": "D6",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "currYear",
+        "preYear"
+      ],
+      "registry_params": [
+        "currYear",
+        "preYear"
+      ],
+      "prod_fields": [
+        "currYear",
+        "deliveryRate",
+        "finishPayAmt",
+        "investAmt",
+        "projectQty"
+      ],
+      "mock_fields": [
+        "currYear",
+        "deliveryRate",
+        "finishPayAmt",
+        "investAmt",
+        "projectQty"
+      ]
+    },
+    {
+      "api": "getCostProjectQtyList",
+      "domain": "D6",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "currYear"
+      ],
+      "registry_params": [
+        "currYear"
+      ],
+      "prod_fields": [
+        "ownerLgZoneName",
+        "projectQty"
+      ],
+      "mock_fields": [
+        "ownerLgZoneName",
+        "projectQty"
+      ]
+    },
+    {
+      "api": "getCostProjectAmtByOwnerLgZoneName",
+      "domain": "D6",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "currYear"
+      ],
+      "registry_params": [
+        "currYear"
+      ],
+      "prod_fields": [
+        "finishPayAmt",
+        "investAmt",
+        "ownerLgZoneName"
+      ],
+      "mock_fields": [
+        "finishPayAmt",
+        "investAmt",
+        "ownerLgZoneName"
+      ]
+    },
+    {
+      "api": "getCostProjectQtyByProjectCmp",
+      "domain": "D6",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['zoneName']",
+          "registry_params": [
+            "dateYear",
+            "zoneName"
+          ],
+          "prod_params": [
+            "dateYear"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'projectCmp': prod_only=['丹东港口集团有限公司港口服务分公司', '丹东港口集团杂货码头分公司', '丹东港口集团轮驳分公司', '丹东港口集团铁路分公司', '内蒙古陆港保税物流园有限公司', '大连口岸物流网股份有限公司', '大连国际物流园发展有限公司', '大连外轮理货有限公司', '大连海嘉汽车码头有限公司', '大连港保安公司', '大连港口建设监理咨询有限公司', '大连港引航站', '大连港教育培训中心', '大连港散杂货码头分公司（矿石）', '大连港旅顺港务有限公司'], mock_only=['营口集装箱码头有限公司']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear",
+        "zoneName"
+      ],
+      "prod_fields": [
+        "finishPayAmt",
+        "investAmt",
+        "projectCmp",
+        "projectQty"
+      ],
+      "mock_fields": [
+        "finishPayAmt",
+        "investAmt",
+        "projectCmp",
+        "projectQty"
+      ]
+    },
+    {
+      "api": "getInvestAmtList",
+      "domain": "D6",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['adminName', 'currentStage', 'projectCmp', 'projectName', 'projectNo', 'zoneName']",
+          "registry_params": [
+            "adminName",
+            "currentStage",
+            "dateYear",
+            "projectCmp",
+            "projectName",
+            "projectNo",
+            "zoneName"
+          ],
+          "prod_params": [
+            "dateYear",
+            "pageNo",
+            "pageSize"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "PARAM_NAME",
+          "detail": "prod has params not in registry: ['pageNo', 'pageSize']",
+          "registry_params": [
+            "adminName",
+            "currentStage",
+            "dateYear",
+            "projectCmp",
+            "projectName",
+            "projectNo",
+            "zoneName"
+          ],
+          "prod_params": [
+            "dateYear",
+            "pageNo",
+            "pageSize"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_FIELD",
+          "detail": "type mismatches: {'startDate': 'prod=NoneType, mock=str', 'winnerPrice': 'prod=NoneType, mock=float'}",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'adminName': prod_only=['侯博', '刘永胜', '刘阳', '房圣然', '汤志敬', '王峥', '王希印', '苗军', '邵铄洋'], mock_only=['管理员0', '管理员1', '管理员10', '管理员11', '管理员12', '管理员13', '管理员14', '管理员15', '管理员16', '管理员17', '管理员18', '管理员19', '管理员2', '管理员3', '管理员4']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'ownerDept': prod_only=['大连港集团有限公司', '盘锦港集团有限公司', '辽宁港口股份有限公司', '辽港控股（营口）有限公司'], mock_only=['大连汽车码头有限公司', '大连港散杂货码头分公司', '大连港油码头有限公司', '大连集装箱码头有限公司', '营口集装箱码头有限公司']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'phaseName': prod_only=['采购'], mock_only=['完工', '验收']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'projectCmp': prod_only=['大连外轮理货有限公司', '大连港资产经营管理公司', '盘锦港物流发展有限公司', '辽港控股（营口）有限公司机械分公司', '辽港控股（营口）有限公司第一分公司', '辽港控股（营口）有限公司第六分公司'], mock_only=['大连汽车码头有限公司', '大连港油码头有限公司', '大连集装箱码头有限公司', '营口集装箱码头有限公司']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'projectName': prod_only=['10台非生产用车清洗、保洁等服务', '2026年设施临时损坏抢修项目', 'EDI报文电子传输服务', '信息技术服务费', '办公设备维护保养', '壹资产物资管理系统服务费', '外理一站式服务平台网付手续费', '大窑湾、矿石港区、保税区道路、桥梁维护', '大连外理2026年度集装箱智能理货系统运维', '市出市入车辆管理服务费', '平板终端链路费', '库场部堆场内高杆灯升降维修', '数字化设备维修', '数字对讲机集群基站服务', '杂货大型衡器维保'], mock_only=['投资项目0', '投资项目1', '投资项目10', '投资项目11', '投资项目12', '投资项目13', '投资项目14', '投资项目15', '投资项目16', '投资项目17', '投资项目18', '投资项目19', '投资项目2', '投资项目3', '投资项目4']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'projectNo': prod_only=['DL-SBWB-2026-068', 'DL-SBWB-2026-140', 'DL-SSWB-2026-001', 'DL-SSWB-2026-119', 'DL-SSWB-2026-121', 'DL-SZHWB-2026-197', 'DL-SZHWB-2026-197_01', 'DL-SZHWB-2026-199', 'DL-SZHWB-2026-200_01', 'DL-SZHWB-2026-201', 'DL-SZHWB-2026-205', 'PJ-SZHWB-2025-013', 'YK-SBWB-2026-007', 'YK-SBWB-2026-013', 'YK-SSWB-2026-003'], mock_only=['INV00000', 'INV00001', 'INV00002', 'INV00003', 'INV00004', 'INV00005', 'INV00006', 'INV00007', 'INV00008', 'INV00009', 'INV00010', 'INV00011', 'INV00012', 'INV00013', 'INV00014']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'requestingDept': prod_only=['大连外轮理货有限公司', '大连港资产经营管理公司', '盘锦港物流发展有限公司', '辽港控股（营口）有限公司机械分公司', '辽港控股（营口）有限公司第一分公司', '辽港控股（营口）有限公司第六分公司'], mock_only=['大连汽车码头有限公司', '大连港油码头有限公司', '大连集装箱码头有限公司', '营口集装箱码头有限公司']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear",
+        "pageNo",
+        "pageSize"
+      ],
+      "registry_params": [
+        "adminName",
+        "currentStage",
+        "dateYear",
+        "projectCmp",
+        "projectName",
+        "projectNo",
+        "zoneName"
+      ],
+      "prod_fields": [
+        "adminName",
+        "investAmt",
+        "ownerDept",
+        "phaseCode",
+        "phaseName",
+        "projectCmp",
+        "projectName",
+        "projectNo",
+        "requestingDept",
+        "startDate",
+        "winnerPrice"
+      ],
+      "mock_fields": [
+        "adminName",
+        "investAmt",
+        "ownerDept",
+        "phaseCode",
+        "phaseName",
+        "projectCmp",
+        "projectName",
+        "projectNo",
+        "requestingDept",
+        "startDate",
+        "winnerPrice"
+      ]
+    },
+    {
+      "api": "getOutOfPlanFinishProgressList",
+      "domain": "D6",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [],
+      "registry_params": [
+        "dateYear"
+      ],
+      "prod_fields": [
+        "finishInvestAmt",
+        "finishPayAmt",
+        "planInvestAmt",
+        "planPayAmt"
+      ],
+      "mock_fields": [
+        "finishInvestAmt",
+        "finishPayAmt",
+        "planInvestAmt",
+        "planPayAmt"
+      ]
+    },
+    {
+      "api": "getOutOfPlanProjectQtyYoy",
+      "domain": "D6",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "currYear",
+        "preYear"
+      ],
+      "registry_params": [
+        "currYear",
+        "preYear"
+      ],
+      "prod_fields": [
+        "dateYear",
+        "projectDeliveryRate",
+        "projectQty"
+      ],
+      "mock_fields": [
+        "dateYear",
+        "projectDeliveryRate",
+        "projectQty"
+      ]
+    },
+    {
+      "api": "getOutOfPlanProjectInvestFinishList",
+      "domain": "D6",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [],
+      "registry_params": [],
+      "prod_fields": [
+        "dateYear",
+        "finishInvestAmt",
+        "planInvestAmt"
+      ],
+      "mock_fields": [
+        "dateYear",
+        "finishInvestAmt",
+        "planInvestAmt"
+      ]
+    },
+    {
+      "api": "getOutOfPlanProjectPayFinishList",
+      "domain": "D6",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [],
+      "registry_params": [],
+      "prod_fields": [
+        "dateYear",
+        "finishPayAmt",
+        "planPayAmt"
+      ],
+      "mock_fields": [
+        "dateYear",
+        "finishPayAmt",
+        "planPayAmt"
+      ]
+    },
+    {
+      "api": "getPlanFinishByZone",
+      "domain": "D6",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "currYear"
+      ],
+      "registry_params": [
+        "currYear"
+      ],
+      "prod_fields": [
+        "finishInvestAmt",
+        "finishPayAmt",
+        "ownerLgZoneName",
+        "planInvestAmt",
+        "planPayAmt"
+      ],
+      "mock_fields": [
+        "finishInvestAmt",
+        "finishPayAmt",
+        "ownerLgZoneName",
+        "planInvestAmt",
+        "planPayAmt"
+      ]
+    },
+    {
+      "api": "getPlanFinishByProjectType",
+      "domain": "D6",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'investProjectType': prod_only=['IT', '其它', '土地', '机械设备', '船舶'], mock_only=['信息化', '其他', '安全环保', '技术改造', '设备购置']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [],
+      "registry_params": [],
+      "prod_fields": [
+        "finishInvestAmt",
+        "finishPayAmt",
+        "investProjectType",
+        "planInvestAmt",
+        "planPayAmt"
+      ],
+      "mock_fields": [
+        "finishInvestAmt",
+        "finishPayAmt",
+        "investProjectType",
+        "planInvestAmt",
+        "planPayAmt"
+      ]
+    },
+    {
+      "api": "getPlanExcludedProjectPenetrationAnalysis",
+      "domain": "D6",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'projectCmp': prod_only=['丹东港口集团散粮码头分公司', '丹东港口集团杂货码头分公司', '产融事业部', '党委', '办公室', '大连保税区永德信房地产开发建设有限公司', '大连外轮理货有限公司', '大连太平湾港口有限公司', '大连港保安公司', '大连港北岸投资开发有限公司', '大连港北岸汽车码头有限公司', '大连港北岸集装箱码头有限公司', '大连港城综合开发有限公司', '大连港散杂货码头分公司（矿石）', '大连港旅顺港务有限公司'], mock_only=['营口集装箱码头有限公司', '辽港控股（营口）有限公司']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=['投资完成额', '支付完成额'], mock_only=['项目数']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [],
+      "registry_params": [
+        "dateYear",
+        "investProjectType",
+        "ownerLgZoneName"
+      ],
+      "prod_fields": [
+        "projectCmp",
+        "qty",
+        "typeName"
+      ],
+      "mock_fields": [
+        "projectCmp",
+        "qty",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getUnplannedProjectsInquiry",
+      "domain": "D6",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['proMainTypeName', 'regionName']",
+          "registry_params": [
+            "dateYear",
+            "proMainTypeName",
+            "regionName"
+          ],
+          "prod_params": [
+            "dateYear",
+            "pageNo",
+            "pageSize"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "PARAM_NAME",
+          "detail": "prod has params not in registry: ['pageNo', 'pageSize']",
+          "registry_params": [
+            "dateYear",
+            "proMainTypeName",
+            "regionName"
+          ],
+          "prod_params": [
+            "dateYear",
+            "pageNo",
+            "pageSize"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_FIELD",
+          "detail": "type mismatches: {'planYear': 'prod=str, mock=int'}",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'chkStatus': prod_only=['编辑'], mock_only=['退回', '通过']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'deptName': prod_only=['大连太平湾港口有限公司', '大连港北岸汽车码头有限公司', '大连港城综合开发有限公司', '营口新世纪集装箱码头有限公司', '营口港务集团有限公司物流分公司', '辽港控股（营口）有限公司粮食分公司', '辽港控股（营口）有限公司集装箱码头分公司', '集中采购中心'], mock_only=['大连汽车码头有限公司', '大连港散杂货码头分公司', '大连港油码头有限公司', '大连集装箱码头有限公司']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'onstructionTime': prod_only=['2013-08-30 / 2028-12-31', '2013-09-01 / 2027-12-31', '2019-07-01 / 2021-12-31', '2023-01-01 / 2023-12-31', '2024-01-01 / 2024-12-31', '2024-01-01 / 2027-12-31', '2025-01-01 / 2025-12-31', '2025-01-01 / 2026-12-31', '2025-09-01 / 2026-06-30'], mock_only=['2020-01-01 / 2028-12-31']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'proMainTypeName': prod_only=['IT', '其它', '机械设备', '码头仓库'], mock_only=['技术改造', '设备购置']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'proName': prod_only=['10套充电桩建设项目', '三四乙丙码头文保方案编制（2019年）', '中转散粮系统皮带机防腐改造', '中转散粮系统除尘器改造', '企业资产管理系统项目', '企业资产管理系统（EAM）', '原址重建30#磅秤项目', '大连港大窑湾北岸汽车物流中心配套码头工程（5#-7#泊位）', '大连港太平湾港区散粮作业区301#-302#泊位一期工程', '太平湾沉箱预制场资产转让项目-相关咨询费用', '岸桥减速机运行系统监测改造', '改造2台150t磅秤项目', '散粮线新增防坠落系统', '智慧磅房运营中心项目', '智慧磅秤改造项目（仙人岛港区1#、2#）'], mock_only=['计划外项目0', '计划外项目1', '计划外项目10', '计划外项目11', '计划外项目12', '计划外项目13', '计划外项目14', '计划外项目15', '计划外项目16', '计划外项目17', '计划外项目18', '计划外项目19', '计划外项目2', '计划外项目3', '计划外项目4']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'proNo': prod_only=['DL-YLKF-2023-N-7-001', 'DLBA-2013-N-1-1-002', 'LGJCZX-2024-N-4-3-6', 'LGTPW-2013-N-1-1-003', 'LGTPW-2025-N-7-JHW', 'YK-GFSCT-2025-N-1-7-003', 'YK-PGB-2025-N-2-6-7-009', 'YK-PGB-2025-N-4-3-15', 'YK-PGB-2025-N-4-4', 'YK-PGB-2025-Q-1-1', 'YK-PGB-2025-Q-2-4-1', 'YK-SCT-2025-Q-2-5-1', 'YK-YGWL-2023-Q-1-8', 'YK-YGWL-2024-N-4-3-3', 'YK-YGWL-2024-Q-4-1-9-4-001'], mock_only=['OOP00000', 'OOP00001', 'OOP00002', 'OOP00003', 'OOP00004', 'OOP00005', 'OOP00006', 'OOP00007', 'OOP00008', 'OOP00009', 'OOP00010', 'OOP00011', 'OOP00012', 'OOP00013', 'OOP00014']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear",
+        "pageNo",
+        "pageSize"
+      ],
+      "registry_params": [
+        "dateYear",
+        "proMainTypeName",
+        "regionName"
+      ],
+      "prod_fields": [
+        "chkStatus",
+        "deptName",
+        "foreignLoans",
+        "onstructionTime",
+        "ownFunds",
+        "planYear",
+        "proMainTypeName",
+        "proName",
+        "proNo",
+        "theYearInvestAmt",
+        "theYearInvestPlanNums",
+        "theYearPayAmt",
+        "theYearPayPlanNums"
+      ],
+      "mock_fields": [
+        "chkStatus",
+        "deptName",
+        "foreignLoans",
+        "onstructionTime",
+        "ownFunds",
+        "planYear",
+        "proMainTypeName",
+        "proName",
+        "proNo",
+        "theYearInvestAmt",
+        "theYearInvestPlanNums",
+        "theYearPayAmt",
+        "theYearPayPlanNums"
+      ]
+    },
+    {
+      "api": "getCapitalApprovalAnalysisLimitInquiry",
+      "domain": "D6",
+      "issues": [
+        {
+          "type": "MOCK_FIELD",
+          "detail": "type mismatches: {'num': 'prod=NoneType, mock=float'}",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=['去年计划投资额', '去年计划支付额'], mock_only=['当年资本项目批复投资额', '当年资本项目计划投资额']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear"
+      ],
+      "prod_fields": [
+        "num",
+        "typeName"
+      ],
+      "mock_fields": [
+        "num",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getCapitalApprovalAnalysisProject",
+      "domain": "D6",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=['去年交付项目数', '去年项目数', '当年项目数'], mock_only=['在建项目数', '当年完工项目数', '资本项目总数']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear"
+      ],
+      "prod_fields": [
+        "num",
+        "typeName"
+      ],
+      "mock_fields": [
+        "num",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getDeliveryRate",
+      "domain": "D6",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear"
+      ],
+      "prod_fields": [
+        "dateYear",
+        "rate"
+      ],
+      "mock_fields": [
+        "dateYear",
+        "rate"
+      ]
+    },
+    {
+      "api": "getCapitalProjectsList",
+      "domain": "D6",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['dateMonth', 'dateYear', 'investProjectStatus', 'investProjectType', 'ownerDept', 'ownerLgZoneName', 'projectCurrentStage', 'projectName']",
+          "registry_params": [
+            "dateMonth",
+            "dateYear",
+            "investProjectStatus",
+            "investProjectType",
+            "ownerDept",
+            "ownerLgZoneName",
+            "projectCurrentStage",
+            "projectName"
+          ],
+          "prod_params": [
+            "pageNo",
+            "pageSize"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "PARAM_NAME",
+          "detail": "prod has params not in registry: ['pageNo', 'pageSize']",
+          "registry_params": [
+            "dateMonth",
+            "dateYear",
+            "investProjectStatus",
+            "investProjectType",
+            "ownerDept",
+            "ownerLgZoneName",
+            "projectCurrentStage",
+            "projectName"
+          ],
+          "prod_params": [
+            "pageNo",
+            "pageSize"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_FIELD",
+          "detail": "type mismatches: {'captProjectPhysicalProgress': 'prod=NoneType, mock=float', 'planYear': 'prod=str, mock=int'}",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateMonth': prod_only=['2023-07', '2023-11', '2023-12', '2024-08', '2024-09', '2024-10', '2024-11', '2024-12', '2025-02', '2025-07', '2025-08', '2025-09'], mock_only=['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-07', '2026-09', '2026-12']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'investProjectStatus': prod_only=[], mock_only=['1']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'investProjectStatusName': prod_only=['取消', '待建'], mock_only=['交付', '暂停']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'investProjectType': prod_only=['IT', '行政办公'], mock_only=['仓库码头', '安全环保', '技术改造', '设备购置']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'ownerDept': prod_only=['无归口部门'], mock_only=['大连汽车码头有限公司', '大连港散杂货码头分公司', '大连港油码头有限公司', '大连集装箱码头有限公司', '营口集装箱码头有限公司']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'ownerLgZoneName': prod_only=[], mock_only=['盘锦港', '绥中港', '营口港']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'projectCurrentStage': prod_only=[], mock_only=['完工', '实施', '验收']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'projectName': prod_only=['台式机', '更新打印一体机', '火箭楼机房空调更换', '财务共享中心壹招报系统切换项目', '辽港股份台式电脑采购', '辽港股份审计部台式机', '辽港股份总部档案室建设项目', '辽港股份董事会打印机', '辽港财务共享（二期）'], mock_only=['项目0', '项目1', '项目10', '项目11', '项目12', '项目13', '项目14', '项目15', '项目16', '项目17', '项目18', '项目19', '项目2', '项目3', '项目4']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'projectNo': prod_only=['DL-GF-2023-N-1-7-1', 'DL-GF-2023-N-4-1-4-3', 'DL-GF-2023-N-4-1-8-003', 'DL-GF-2023-N-5-2-002', 'DL-GF-2024-N-4-1-7-003', 'DL-GF-2024-N-4-1-7-014', 'DL-GF-2024-N-4-1-8-1-002', 'DL-GF-2024-N-4-3-6', 'DL-GF-2024-N-4-3-6-03'], mock_only=['PRJ00000', 'PRJ00001', 'PRJ00002', 'PRJ00003', 'PRJ00004', 'PRJ00005', 'PRJ00006', 'PRJ00007', 'PRJ00008', 'PRJ00009', 'PRJ00010', 'PRJ00011', 'PRJ00012', 'PRJ00013', 'PRJ00014']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "pageNo",
+        "pageSize"
+      ],
+      "registry_params": [
+        "dateMonth",
+        "dateYear",
+        "investProjectStatus",
+        "investProjectType",
+        "ownerDept",
+        "ownerLgZoneName",
+        "projectCurrentStage",
+        "projectName"
+      ],
+      "prod_fields": [
+        "captProjectPayProgress",
+        "captProjectPhysicalProgress",
+        "dateMonth",
+        "finishInvestAmt",
+        "finishPayAmt",
+        "investProjectStatus",
+        "investProjectStatusName",
+        "investProjectType",
+        "ownerDept",
+        "ownerLgZoneName",
+        "planInvestAmt",
+        "planPayAmt",
+        "planYear",
+        "proAmt",
+        "projectCurrentStage",
+        "projectName",
+        "projectNo"
+      ],
+      "mock_fields": [
+        "captProjectPayProgress",
+        "captProjectPhysicalProgress",
+        "dateMonth",
+        "finishInvestAmt",
+        "finishPayAmt",
+        "investProjectStatus",
+        "investProjectStatusName",
+        "investProjectType",
+        "ownerDept",
+        "ownerLgZoneName",
+        "planInvestAmt",
+        "planPayAmt",
+        "planYear",
+        "proAmt",
+        "projectCurrentStage",
+        "projectName",
+        "projectNo"
+      ]
+    },
+    {
+      "api": "getEquipmentIndicatorOperationQty",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'ownerZone']",
+          "registry_params": [
+            "cmpName",
+            "dateMonth",
+            "ownerZone"
+          ],
+          "prod_params": [
+            "dateMonth"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_FIELD",
+          "detail": "type mismatches: {'num': 'prod=float, mock=int'}",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'firstLevelName': prod_only=['其他装卸机械设备', '机车', '船舶', '装卸搬运机械', '起重机械', '辅助生产机械设备', '连续输送机械'], mock_only=['交通运输设备', '仪器仪表', '动力设备', '工具器具', '电子设备', '通信设备', '通用机械']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateMonth"
+      ],
+      "registry_params": [
+        "cmpName",
+        "dateMonth",
+        "ownerZone"
+      ],
+      "prod_fields": [
+        "firstLevelName",
+        "num"
+      ],
+      "mock_fields": [
+        "firstLevelName",
+        "num"
+      ]
+    },
+    {
+      "api": "getEquipmentIndicatorUseCost",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'ownerZone']",
+          "registry_params": [
+            "cmpName",
+            "dateMonth",
+            "ownerZone"
+          ],
+          "prod_params": [
+            "dateMonth"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'firstLevelName': prod_only=['其他装卸机械设备', '船舶', '装卸搬运机械', '起重机械', '辅助生产机械设备', '连续输送机械'], mock_only=['交通运输设备', '仪器仪表', '动力设备', '工具器具', '电子设备', '通用机械']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateMonth"
+      ],
+      "registry_params": [
+        "cmpName",
+        "dateMonth",
+        "ownerZone"
+      ],
+      "prod_fields": [
+        "firstLevelName",
+        "num"
+      ],
+      "mock_fields": [
+        "firstLevelName",
+        "num"
+      ]
+    },
+    {
+      "api": "getProductionEquipmentFaultNum",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'ownerZone']",
+          "registry_params": [
+            "cmpName",
+            "dateYear",
+            "ownerZone"
+          ],
+          "prod_params": [
+            "dateYear"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateMonth': prod_only=[], mock_only=['2026-04', '2026-05']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "cmpName",
+        "dateYear",
+        "ownerZone"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "num"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "num"
+      ]
+    },
+    {
+      "api": "getProductionEquipmentStatistic",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['ownerZone']",
+          "registry_params": [
+            "dateMonth",
+            "ownerZone"
+          ],
+          "prod_params": [
+            "dateMonth"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'secondLevelName': prod_only=['内燃机车', '固定皮带机', '天吊', '引水船', '循环拖车', '抓料机', '挖掘机', '推耙机', '散货装车机', '斗提机', '桥式抓斗卸船机', '泵', '液压倾转平台', '滑移装载机清扫车', '煤炭散货装船机'], mock_only=['动力设备', '卸船机', '场桥', '抓斗卸船机', '拖头', '散货专用设备', '机车', '桥式起重机', '汽车起重机', '油运设备', '流动机械', '皮带机', '翻车机', '螺旋卸船机', '装船机']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateMonth"
+      ],
+      "registry_params": [
+        "dateMonth",
+        "ownerZone"
+      ],
+      "prod_fields": [
+        "num",
+        "secondLevelName"
+      ],
+      "mock_fields": [
+        "num",
+        "secondLevelName"
+      ]
+    },
+    {
+      "api": "getOverviewQuery",
+      "domain": "D7",
+      "issues": [],
+      "status": "aligned",
+      "prod_params": [
+        "cmpName",
+        "date",
+        "equipmentNo",
+        "firstLevelClassName",
+        "ownerLgZoneName"
+      ],
+      "registry_params": [
+        "cmpName",
+        "date",
+        "equipmentNo",
+        "firstLevelClassName",
+        "ownerLgZoneName"
+      ],
+      "prod_fields": [
+        "num",
+        "typeName"
+      ],
+      "mock_fields": [
+        "num",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getEquipmentUsageRate",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'firstLevelClassName', 'ownerZone']",
+          "registry_params": [
+            "cmpName",
+            "dateYear",
+            "firstLevelClassName",
+            "ownerZone"
+          ],
+          "prod_params": [
+            "dateYear"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateMonth': prod_only=[], mock_only=['2026-04', '2026-05']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "cmpName",
+        "dateYear",
+        "firstLevelClassName",
+        "ownerZone"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "usageRate"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "usageRate"
+      ]
+    },
+    {
+      "api": "getEquipmentServiceableRate",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'firstLevelClassName', 'ownerZone']",
+          "registry_params": [
+            "cmpName",
+            "dateYear",
+            "firstLevelClassName",
+            "ownerZone"
+          ],
+          "prod_params": [
+            "dateYear"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateMonth': prod_only=[], mock_only=['2026-04', '2026-05']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "cmpName",
+        "dateYear",
+        "firstLevelClassName",
+        "ownerZone"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "serviceableRate"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "serviceableRate"
+      ]
+    },
+    {
+      "api": "getEquipmentFirstLevelClassNameList",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'dateYear', 'ownerZone']",
+          "registry_params": [
+            "cmpName",
+            "dateYear",
+            "ownerZone"
+          ],
+          "prod_params": [
+            "dateMonth"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "PARAM_NAME",
+          "detail": "prod has params not in registry: ['dateMonth']",
+          "registry_params": [
+            "cmpName",
+            "dateYear",
+            "ownerZone"
+          ],
+          "prod_params": [
+            "dateMonth"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'firstLevelClassName': prod_only=['其他装卸机械设备', '机车', '船舶', '装卸搬运机械', '起重机械', '辅助生产机械设备', '连续输送机械'], mock_only=['交通运输设备', '仪器仪表', '动力设备', '工具器具', '电子设备', '通信设备', '通用机械']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateMonth"
+      ],
+      "registry_params": [
+        "cmpName",
+        "dateYear",
+        "ownerZone"
+      ],
+      "prod_fields": [
+        "firstLevelClassName",
+        "num"
+      ],
+      "mock_fields": [
+        "firstLevelClassName",
+        "num"
+      ]
+    },
+    {
+      "api": "getContainerMachineHourRate",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'firstLevelClassName', 'ownerZone']",
+          "registry_params": [
+            "cmpName",
+            "dateYear",
+            "firstLevelClassName",
+            "ownerZone"
+          ],
+          "prod_params": [
+            "dateYear"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateMonth': prod_only=[], mock_only=['2026-04', '2026-05']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "cmpName",
+        "dateYear",
+        "firstLevelClassName",
+        "ownerZone"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "machineHourRate"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "machineHourRate"
+      ]
+    },
+    {
+      "api": "getEquipmentEnergyConsumptionPerUnit",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'firstLevelClassName', 'ownerZone']",
+          "registry_params": [
+            "cmpName",
+            "dateYear",
+            "firstLevelClassName",
+            "ownerZone"
+          ],
+          "prod_params": [
+            "dateYear"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateMonth': prod_only=[], mock_only=['2026-04', '2026-05']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "cmpName",
+        "dateYear",
+        "firstLevelClassName",
+        "ownerZone"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "workingAmount"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "workingAmount"
+      ]
+    },
+    {
+      "api": "getEquipmentFuelOilTonCost",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'firstLevelClassName', 'ownerZone']",
+          "registry_params": [
+            "cmpName",
+            "dateYear",
+            "firstLevelClassName",
+            "ownerZone"
+          ],
+          "prod_params": [
+            "dateYear"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateMonth': prod_only=[], mock_only=['2026-04', '2026-05']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "cmpName",
+        "dateYear",
+        "firstLevelClassName",
+        "ownerZone"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "tonCost"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "tonCost"
+      ]
+    },
+    {
+      "api": "getEquipmentElectricityTonCost",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'firstLevelClassName', 'ownerZone']",
+          "registry_params": [
+            "cmpName",
+            "dateYear",
+            "firstLevelClassName",
+            "ownerZone"
+          ],
+          "prod_params": [
+            "dateYear"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateMonth': prod_only=[], mock_only=['2026-04', '2026-05']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "cmpName",
+        "dateYear",
+        "firstLevelClassName",
+        "ownerZone"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "tonCost"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "tonCost"
+      ]
+    },
+    {
+      "api": "getMachineDataDisplayScreenHourlyEfficiency",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'ownerLgZoneName']",
+          "registry_params": [
+            "cmpName",
+            "date",
+            "ownerLgZoneName",
+            "secondLevelClassName"
+          ],
+          "prod_params": [
+            "date",
+            "secondLevelClassName"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "date",
+        "secondLevelClassName"
+      ],
+      "registry_params": [
+        "cmpName",
+        "date",
+        "ownerLgZoneName",
+        "secondLevelClassName"
+      ],
+      "prod_fields": [
+        "ownerLgZoneName",
+        "usageRate"
+      ],
+      "mock_fields": [
+        "ownerLgZoneName",
+        "usageRate"
+      ]
+    },
+    {
+      "api": "getModelDataDisplayScreenEnergyConsumptionPerUnit",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'ownerLgZoneName']",
+          "registry_params": [
+            "cmpName",
+            "date",
+            "ownerLgZoneName",
+            "secondLevelClassName"
+          ],
+          "prod_params": [
+            "date",
+            "secondLevelClassName"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "date",
+        "secondLevelClassName"
+      ],
+      "registry_params": [
+        "cmpName",
+        "date",
+        "ownerLgZoneName",
+        "secondLevelClassName"
+      ],
+      "prod_fields": [
+        "ownerLgZoneName",
+        "workingAmount"
+      ],
+      "mock_fields": [
+        "ownerLgZoneName",
+        "workingAmount"
+      ]
+    },
+    {
+      "api": "getModelDataDisplayScreenUtilization",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'ownerLgZoneName']",
+          "registry_params": [
+            "cmpName",
+            "dateYear",
+            "ownerLgZoneName",
+            "secondLevelClassName"
+          ],
+          "prod_params": [
+            "dateYear",
+            "secondLevelClassName"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "dateYear",
+        "secondLevelClassName"
+      ],
+      "registry_params": [
+        "cmpName",
+        "dateYear",
+        "ownerLgZoneName",
+        "secondLevelClassName"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "usageRate"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "usageRate"
+      ]
+    },
+    {
+      "api": "getModelDataDisplayScreenEffectiveUtilization",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'ownerLgZoneName']",
+          "registry_params": [
+            "cmpName",
+            "dateYear",
+            "ownerLgZoneName",
+            "secondLevelClassName"
+          ],
+          "prod_params": [
+            "dateYear",
+            "secondLevelClassName"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "dateYear",
+        "secondLevelClassName"
+      ],
+      "registry_params": [
+        "cmpName",
+        "dateYear",
+        "ownerLgZoneName",
+        "secondLevelClassName"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "usageRate"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "usageRate"
+      ]
+    },
+    {
+      "api": "getMachineDataDisplayScreenEquipmentIntegrityRate",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'ownerLgZoneName']",
+          "registry_params": [
+            "cmpName",
+            "dateYear",
+            "ownerLgZoneName",
+            "secondLevelClassName"
+          ],
+          "prod_params": [
+            "dateYear",
+            "secondLevelClassName"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "dateYear",
+        "secondLevelClassName"
+      ],
+      "registry_params": [
+        "cmpName",
+        "dateYear",
+        "ownerLgZoneName",
+        "secondLevelClassName"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "usageRate"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "usageRate"
+      ]
+    },
+    {
+      "api": "getModelDataDisplayScreenHierarchyRelation",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'secondLevelClassName': prod_only=['岸桥'], mock_only=['正面吊']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "secondLevelClassName"
+      ],
+      "registry_params": [
+        "secondLevelClassName"
+      ],
+      "prod_fields": [
+        "firstLevelClassName",
+        "secondLevelClassName"
+      ],
+      "mock_fields": [
+        "firstLevelClassName",
+        "secondLevelClassName"
+      ]
+    },
+    {
+      "api": "getMachineDataDisplayEquipmentReliability",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'ownerLgZoneName']",
+          "registry_params": [
+            "cmpName",
+            "dateYear",
+            "ownerLgZoneName",
+            "secondLevelClassName"
+          ],
+          "prod_params": [
+            "dateYear",
+            "secondLevelClassName"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateMonth': prod_only=['2025-04', '2025-05', '2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12'], mock_only=[]",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear",
+        "secondLevelClassName"
+      ],
+      "registry_params": [
+        "cmpName",
+        "dateYear",
+        "ownerLgZoneName",
+        "secondLevelClassName"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "dateYear",
+        "usageRate"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "dateYear",
+        "usageRate"
+      ]
+    },
+    {
+      "api": "getNonContainerProductionEquipmentReliability",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'ownerLgZoneName']",
+          "registry_params": [
+            "cmpName",
+            "dateYear",
+            "ownerLgZoneName",
+            "secondLevelClassName"
+          ],
+          "prod_params": [
+            "dateYear",
+            "secondLevelClassName"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateMonth': prod_only=['2025-04', '2025-05', '2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12'], mock_only=[]",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear",
+        "secondLevelClassName"
+      ],
+      "registry_params": [
+        "cmpName",
+        "dateYear",
+        "ownerLgZoneName",
+        "secondLevelClassName"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "dateYear",
+        "usageRate"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "dateYear",
+        "usageRate"
+      ]
+    },
+    {
+      "api": "getMachineDataDisplaySingleUnitEnergyConsumption",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['cmpName', 'ownerLgZoneName']",
+          "registry_params": [
+            "cmpName",
+            "date",
+            "ownerLgZoneName",
+            "secondLevelClassName"
+          ],
+          "prod_params": [
+            "date",
+            "secondLevelClassName"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'equipmentNo': prod_only=['A02050119982102100012', 'A02050119982102100021', 'A02050119982102100030', 'A02050119982102100049', 'A02050120032102100012', 'A02050120032102100021', 'A02050120032102100030', 'A02050120032102100049', 'A02050120042102100019', 'A02050120042102100028', 'A02050120042102100037', 'A02050120042111100011', 'A02050120042111100020', 'A02050120052102100016', 'A02050120052102100025'], mock_only=['A02e74f10e0327ad868d1', 'A03afdbd66e7929b125f8', 'A072b030ba126b2f4b237', 'A093f65e080a295f8076b', 'A14bfa6bb14875e45bba0', 'A1679091c5a880faf6fb5', 'A17e62166fc8586dfa4d1', 'A182be0c5cdcd5072bb18', 'A19ca14e7ea6328a42e0e', 'A1c383cd30b7c298ab502', 'A1f0e3dad99908345f743', 'A1ff1de774005f8da13f4', 'A2838023a778dfaecdc21', 'A3295c76acbf4caaed33c', 'A32bb90e8976aab5298d5']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "date",
+        "secondLevelClassName"
+      ],
+      "registry_params": [
+        "cmpName",
+        "date",
+        "ownerLgZoneName",
+        "secondLevelClassName"
+      ],
+      "prod_fields": [
+        "equipmentNo",
+        "workingAmount"
+      ],
+      "mock_fields": [
+        "equipmentNo",
+        "workingAmount"
+      ]
+    },
+    {
+      "api": "getProductEquipmentUsageRateByYear",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 500: ",
+          "severity": "P0",
+          "mock_params_sent": {}
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [],
+      "registry_params": [
+        "firstLevelClassName",
+        "ownerLgZoneName"
+      ],
+      "prod_fields": [
+        "dateYear",
+        "usageRate"
+      ],
+      "mock_fields": []
+    },
+    {
+      "api": "getProductEquipmentUsageRateByMonth",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['firstLevelClassName', 'ownerLgZoneName']",
+          "registry_params": [
+            "dateYear",
+            "firstLevelClassName",
+            "ownerLgZoneName"
+          ],
+          "prod_params": [
+            "dateYear"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear",
+        "firstLevelClassName",
+        "ownerLgZoneName"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "usageRate"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "usageRate"
+      ]
+    },
+    {
+      "api": "getProductEquipmentRateByYear",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 500: ",
+          "severity": "P0",
+          "mock_params_sent": {}
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [],
+      "registry_params": [
+        "firstLevelClassName",
+        "ownerLgZoneName"
+      ],
+      "prod_fields": [
+        "dateYear",
+        "usageRate"
+      ],
+      "mock_fields": []
+    },
+    {
+      "api": "getProductEquipmentIntegrityRateByYear",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['firstLevelClassName', 'ownerLgZoneName']",
+          "registry_params": [
+            "dateYear",
+            "firstLevelClassName",
+            "ownerLgZoneName",
+            "preYear"
+          ],
+          "prod_params": [
+            "dateYear",
+            "preYear"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "dateYear",
+        "preYear"
+      ],
+      "registry_params": [
+        "dateYear",
+        "firstLevelClassName",
+        "ownerLgZoneName",
+        "preYear"
+      ],
+      "prod_fields": [
+        "dateYear",
+        "ownerZone",
+        "usageRate"
+      ],
+      "mock_fields": [
+        "dateYear",
+        "ownerZone",
+        "usageRate"
+      ]
+    },
+    {
+      "api": "getProductEquipmentIntegrityRateByMonth",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['firstLevelClassName', 'ownerLgZoneName']",
+          "registry_params": [
+            "dateMonth",
+            "firstLevelClassName",
+            "ownerLgZoneName",
+            "preDateMonth"
+          ],
+          "prod_params": [
+            "dateMonth",
+            "preDateMonth"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateMonth': prod_only=['2025-03', '2026-03'], mock_only=['2026-01', '2026-02']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateMonth",
+        "preDateMonth"
+      ],
+      "registry_params": [
+        "dateMonth",
+        "firstLevelClassName",
+        "ownerLgZoneName",
+        "preDateMonth"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "ownerZone",
+        "usageRate"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "ownerZone",
+        "usageRate"
+      ]
+    },
+    {
+      "api": "getQuayEquipmentWorkingAmount",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['ownerLgZoneName']",
+          "registry_params": [
+            "dateMonth",
+            "ownerLgZoneName"
+          ],
+          "prod_params": [
+            "dateMonth"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=['同比集装箱', '散杂货', '散杂货同比', '矿石', '矿石同比', '粮食', '粮食同比', '集装箱'], mock_only=['岸桥作业量', '岸桥作业量同比', '总作业量', '总作业量同比', '散货设备作业量', '散货设备作业量同比', '门机作业量', '门机作业量同比']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateMonth"
+      ],
+      "registry_params": [
+        "dateMonth",
+        "ownerLgZoneName"
+      ],
+      "prod_fields": [
+        "num",
+        "typeName"
+      ],
+      "mock_fields": [
+        "num",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getProductEquipmentDataAnalysisList",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['ownerLgZoneName']",
+          "registry_params": [
+            "dateMonth",
+            "ownerLgZoneName",
+            "pageNo",
+            "pageSize"
+          ],
+          "prod_params": [
+            "dateMonth",
+            "pageNo",
+            "pageSize"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'deptName': prod_only=['大连港散杂货码头公司（矿石）', '大连港散粮码头公司', '大连长兴岛港口有限公司', '盘锦港集团有限公司集装箱分公司', '营口新港矿石码头有限公司', '营口港务股份有限公司机械分公司', '营口港务股份有限公司粮食分公司', '营口港务股份有限公司集装箱码头分公司', '辽港控股（营口）有限公司第三分公司'], mock_only=['丹东港口集团散粮码头分公司', '丹东港口集团有限公司', '丹东港口集团煤矿码头分公司', '大连汽车码头有限公司', '大连港散杂货码头分公司', '大连港油码头有限公司', '大连港集团有限公司', '散杂货码头分公司', '散粮码头公司', '盘锦港集团有限公司', '绥中港集团有限公司', '辽港控股（营口）有限公司', '辽港控股（营口）有限公司第一分公司', '辽港控股（营口）有限公司第二分公司', '辽港控股（营口）有限公司粮食分公司']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'ownerLgZoneName': prod_only=[], mock_only=['绥中港区域']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateMonth",
+        "pageNo",
+        "pageSize"
+      ],
+      "registry_params": [
+        "dateMonth",
+        "ownerLgZoneName",
+        "pageNo",
+        "pageSize"
+      ],
+      "prod_fields": [
+        "containerElec",
+        "containerOil",
+        "deptName",
+        "elecCostTeu",
+        "fee",
+        "maintenanceFee",
+        "oilCostTeul",
+        "ownerLgZoneName"
+      ],
+      "mock_fields": [
+        "containerElec",
+        "containerOil",
+        "deptName",
+        "elecCostTeu",
+        "fee",
+        "maintenanceFee",
+        "oilCostTeul",
+        "ownerLgZoneName"
+      ]
+    },
+    {
+      "api": "getProductEquipmentWorkingAmountByYear",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['firstLevelClassName', 'ownerLgZoneName']",
+          "registry_params": [
+            "dateYear",
+            "firstLevelClassName",
+            "ownerLgZoneName"
+          ],
+          "prod_params": [
+            "dateYear"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear",
+        "firstLevelClassName",
+        "ownerLgZoneName"
+      ],
+      "prod_fields": [
+        "num",
+        "ownerLgZoneName"
+      ],
+      "mock_fields": [
+        "num",
+        "ownerLgZoneName"
+      ]
+    },
+    {
+      "api": "getProductEquipmentWorkingAmountByMonth",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['firstLevelClassName', 'ownerLgZoneName']",
+          "registry_params": [
+            "dateMonth",
+            "firstLevelClassName",
+            "ownerLgZoneName"
+          ],
+          "prod_params": [
+            "dateMonth"
+          ],
+          "severity": "P2"
+        },
+        {
+          "type": "MOCK_FIELD",
+          "detail": "type mismatches: {'num': 'prod=int, mock=float'}",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateMonth"
+      ],
+      "registry_params": [
+        "dateMonth",
+        "firstLevelClassName",
+        "ownerLgZoneName"
+      ],
+      "prod_fields": [
+        "num",
+        "ownerLgZoneName"
+      ],
+      "mock_fields": [
+        "num",
+        "ownerLgZoneName"
+      ]
+    },
+    {
+      "api": "getProductEquipmentReliabilityByYear",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "MOCK_BUG",
+          "detail": "mock returned HTTP 500: ",
+          "severity": "P0",
+          "mock_params_sent": {}
+        }
+      ],
+      "status": "blocked",
+      "prod_params": [],
+      "registry_params": [
+        "firstLevelClassName",
+        "ownerLgZoneName"
+      ],
+      "prod_fields": [
+        "dateYear",
+        "ownerLgZoneName",
+        "usageRate"
+      ],
+      "mock_fields": []
+    },
+    {
+      "api": "getProductEquipmentReliabilityByMonth",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "PARAM_NAME",
+          "detail": "registry has params not in prod: ['firstLevelClassName', 'ownerLgZoneName']",
+          "registry_params": [
+            "dateYear",
+            "firstLevelClassName",
+            "ownerLgZoneName"
+          ],
+          "prod_params": [
+            "dateYear"
+          ],
+          "severity": "P2"
+        }
+      ],
+      "status": "minor",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear",
+        "firstLevelClassName",
+        "ownerLgZoneName"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "ownerLgZoneName",
+        "usageRate"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "ownerLgZoneName",
+        "usageRate"
+      ]
+    },
+    {
+      "api": "getProductEquipmentUnitConsumptionByYear",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'secondLevelClassName': prod_only=['内燃机车', '固定皮带机', '天吊', '引水船', '循环拖车', '抓料机', '挖掘机', '推耙机', '散货装车机', '斗提机', '桥式抓斗卸船机', '汽车吊', '泵', '液压倾转平台', '滑移装载机清扫车'], mock_only=['其他设备', '卸船机', '场桥', '抓斗卸船机', '拖头', '散货专用设备', '机车', '桥式起重机', '汽车起重机', '油运设备', '流动机械', '皮带机', '翻车机', '螺旋卸船机', '装船机']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateYear"
+      ],
+      "registry_params": [
+        "dateYear"
+      ],
+      "prod_fields": [
+        "secondLevelClassName",
+        "unitConsumption"
+      ],
+      "mock_fields": [
+        "secondLevelClassName",
+        "unitConsumption"
+      ]
+    },
+    {
+      "api": "getProductEquipmentUnitConsumptionByMonth",
+      "domain": "D7",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'secondLevelClassName': prod_only=['内燃机车', '固定皮带机', '天吊', '引水船', '循环拖车', '抓料机', '挖掘机', '推耙机', '散货装车机', '斗提机', '桥式抓斗卸船机', '泵', '液压倾转平台', '滑移装载机清扫车', '煤炭散货装船机'], mock_only=['其他设备', '卸船机', '场桥', '抓斗卸船机', '拖头', '散货专用设备', '机车', '桥式起重机', '汽车起重机', '油运设备', '流动机械', '皮带机', '翻车机', '螺旋卸船机', '装船机']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "dateMonth"
+      ],
+      "registry_params": [
+        "dateMonth"
+      ],
+      "prod_fields": [
+        "secondLevelClassName",
+        "unitConsumption"
+      ],
+      "mock_fields": [
+        "secondLevelClassName",
+        "unitConsumption"
+      ]
+    },
+    {
+      "api": "getSumBusinessDashboardThroughput",
+      "domain": "D2",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=['同期海铁联吞吐量', '同期集装箱吞吐量', '当期中转量吞吐量', '当期海铁联吞吐量', '当期集装箱吞吐量'], mock_only=['同期完成率', '同比增速', '实际完成率', '计划吞吐量', '计划完成率']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [
+        "num",
+        "typeName"
+      ],
+      "mock_fields": [
+        "num",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getCumulativeRegionalThroughput",
+      "domain": "D2",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=[], mock_only=['去年同期完成进度', '去年同期累计吞吐量', '同比增速', '当期完成进度', '累计吞吐量']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'zoneName': prod_only=['辽港'], mock_only=[]",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [
+        "num",
+        "typeName",
+        "zoneName"
+      ],
+      "mock_fields": [
+        "num",
+        "typeName",
+        "zoneName"
+      ]
+    },
+    {
+      "api": "getCurStrategyCustomerTrendAnalysis",
+      "domain": "D3",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'dateMonth': prod_only=['2025-01', '2025-02', '2025-03', '2025-04', '2025-05', '2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12'], mock_only=['2026-01', '2026-02']",
+          "severity": "P1"
+        },
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'typeName': prod_only=['同期吞吐量', '当年吞吐量'], mock_only=['全港吞吐量', '去年同期战略客户吞吐量', '战略客户吞吐量', '战略客户营收', '战略客户贡献率']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [
+        "dateMonth",
+        "num",
+        "typeName"
+      ],
+      "mock_fields": [
+        "dateMonth",
+        "num",
+        "typeName"
+      ]
+    },
+    {
+      "api": "getSumStrategicCustomerContributionByCargoTypeThroughput",
+      "domain": "D3",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'categoryName': prod_only=['滚装'], mock_only=['商品车']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [
+        "categoryName",
+        "num"
+      ],
+      "mock_fields": [
+        "categoryName",
+        "num"
+      ]
+    },
+    {
+      "api": "getSumContributionRankOfStrategicCustomer",
+      "domain": "D3",
+      "issues": [
+        {
+          "type": "MOCK_VALUE",
+          "detail": "enum mismatch on 'clientName': prod_only=['上海中谷物流股份有限公司', '上海汽车集团股份有限公司', '中国石油国际事业有限公司', '中国石油天然气股份有限公司东北销售分公司', '中国石油天然气股份有限公司大连石化分公司', '中国第一汽车集团有限公司', '中国远洋海运集团有限公司', '九三粮油工业集团有限公司', '信风（宁波）海运物流有限公司', '力拓矿业商贸（上海）有限公司', '北京建龙重工集团有限公司', '北大荒粮食集团有限公司', '北方华锦化学工业股份有限公司', '华晨宝马汽车有限公司', '厦门象屿集团有限公司'], mock_only=['ONE(日本海洋网联船务)', '一汽集团', '上汽通用五菱', '中国华电集团有限公司', '中国铝业集团有限公司', '中石化大连分公司', '中石油大连石化', '中远海运集团', '华能国际电力股份有限公司', '国家电力投资集团有限公司', '地中海航运', '太原钢铁集团有限公司', '宝武钢铁集团有限公司', '本溪钢铁集团', '河钢集团有限公司']",
+          "severity": "P1"
+        }
+      ],
+      "status": "misaligned",
+      "prod_params": [
+        "date"
+      ],
+      "registry_params": [
+        "date"
+      ],
+      "prod_fields": [
+        "clientName",
+        "num"
+      ],
+      "mock_fields": [
+        "clientName",
+        "num"
+      ]
+    }
+  ]
+}

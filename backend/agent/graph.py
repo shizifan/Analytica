@@ -277,7 +277,12 @@ async def planning_node(state: AgentState) -> AgentState:
             duration_str = (
                 f"约 {est // 60} 分钟" if est >= 60 else f"约 {est} 秒"
             )
-            search_status = " 联网搜索未开启。" if not state.get("web_search_enabled") else " 联网搜索已开启。"
+            if not state.get("web_search_enabled"):
+                search_status = " 联网搜索未开启。"
+            elif not search_domain_prefix:
+                search_status = " 联网搜索开关ON，但 search_domain_prefix 为空（员工 profile 缺失或未加载）。"
+            else:
+                search_status = f" 联网搜索已开启 (prefix: {search_domain_prefix[:30]}...)。"
             state["messages"].append({
                 "role": "assistant",
                 "content": (
@@ -292,7 +297,8 @@ async def planning_node(state: AgentState) -> AgentState:
             state["messages"].append({
                 "role": "assistant",
                 "content": format_plan_as_markdown(plan, auto_confirmed=False,
-                                                    web_search_enabled=state.get("web_search_enabled", False)),
+                                                    web_search_enabled=state.get("web_search_enabled", False),
+                                                    search_domain_prefix=search_domain_prefix),
             })
 
     except Exception as e:
