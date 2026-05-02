@@ -1086,8 +1086,14 @@ def _build_task_results_payload(
     # entries — the user can preview or download to see the full
     # contents, and the PlanTab / Thinking stream still expose the
     # intermediate steps for anyone curious.
+    #
+    # Detection uses plan task types (not output_type alone) so the
+    # pipeline flag is set even when the report tool returns an
+    # unexpected output type, preventing intermediate results from
+    # flooding the chat.
+    has_report = any(t.type == "report_gen" for t in tasks)
     file_entries = [e for e in out_tasks if e["output_type"] == "file"]
-    if file_entries:
+    if has_report:
         return {"tasks": file_entries, "pipeline": "report"}
 
     return {"tasks": out_tasks}
@@ -1352,11 +1358,21 @@ async def execution_node(
                 file_count = len(structured.get("tasks", []))
                 total = len(tasks)
                 done_count = sum(1 for v in task_statuses.values() if v == "done")
-                content = (
-                    f"已生成深度分析报告（{file_count} 份文件 · "
-                    f"{done_count}/{total} 个子任务）。"
-                    f"可在下方预览 / 下载，或按需导出其它格式。"
-                )
+                if file_count > 0:
+                    content = (
+                        f"已生成深度分析报告（{file_count} 份文件 · "
+                        f"{done_count}/{total} 个子任务）。"
+                        f"可在下方预览 / 下载，或按需导出其它格式。"
+                    )
+                else:
+                    # Report task exists but no file output — partial
+                    # grace. Still use summary mode so intermediate
+                    # results stay collapsed.
+                    content = (
+                        f"分析完成（{done_count}/{total} 个任务），"
+                        f"报告生成中遇到问题，"
+                        f"详细数据请查看 Plan 选项卡。"
+                    )
             else:
                 content = "\n\n---\n\n".join(result_parts)
             state["messages"].append({
@@ -1421,11 +1437,18 @@ async def execution_node(
             if is_report_partial:
                 file_count = len(structured_partial.get("tasks", []))
                 done_count = sum(1 for v in task_statuses.values() if v == "done")
-                content = (
-                    f"已生成深度分析报告（{file_count} 份文件 · "
-                    f"{done_count}/{len(tasks)} 个子任务）。"
-                    f"可在下方预览 / 下载，或按需导出其它格式。"
-                )
+                if file_count > 0:
+                    content = (
+                        f"已生成深度分析报告（{file_count} 份文件 · "
+                        f"{done_count}/{len(tasks)} 个子任务）。"
+                        f"可在下方预览 / 下载，或按需导出其它格式。"
+                    )
+                else:
+                    content = (
+                        f"分析完成（{done_count}/{len(tasks)} 个任务），"
+                        f"报告生成中遇到问题，"
+                        f"详细数据请查看 Plan 选项卡。"
+                    )
             else:
                 content = "\n\n---\n\n".join(result_parts)
             state["messages"].append({

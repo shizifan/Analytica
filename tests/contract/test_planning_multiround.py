@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.agent.planning import PlanningEngine
+from backend.agent.planning import PlanningEngine, _extract_time_hints
 from backend.exceptions import PlanningError
 from backend.models.schemas import PlanSection, PlanSkeleton, TaskItem
 from backend.tools.loader import load_all_tools
@@ -225,3 +225,141 @@ def test_enrich_preserves_existing_hints(engine):
     ])
     engine._enrich_section_endpoints(skel)
     assert skel.sections[0].endpoint_hints == ["already_set_endpoint"]
+
+
+# ── Tier 1: _extract_time_hints ─────────────────────────────────
+
+def test_extract_time_hints_full_range():
+    intent = {
+        "slots": {
+            "time_range": {
+                "value": {"start": "2026-01-01", "end": "2026-03-31",
+                          "description": "2026年Q1"},
+            }
+        }
+    }
+    hints = _extract_time_hints(intent)
+    assert hints == {
+        "date": "2026-03-31",
+        "dateMonth": "2026-03",
+        "dateYear": "2026",
+        "endDate": "2026-03-31",
+        "startDate": "2026-01-01",
+    }
+
+
+def test_extract_time_hints_no_slots():
+    assert _extract_time_hints({}) is None
+
+
+def test_extract_time_hints_no_time_range():
+    intent = {"slots": {"domain": {"value": "D2"}}}
+    assert _extract_time_hints(intent) is None
+
+
+def test_extract_time_hints_time_range_not_dict():
+    """slots.time_range.value 为非 dict 时的防御"""
+    intent = {"slots": {"time_range": {"value": "2026年Q1"}}}
+    assert _extract_time_hints(intent) is None
+
+
+def test_extract_time_hints_no_start():
+    """仅有 end 时的推导"""
+    intent = {
+        "slots": {
+            "time_range": {
+                "value": {"end": "2026-12-31", "description": "2026年"},
+            }
+        }
+    }
+    hints = _extract_time_hints(intent)
+    assert hints["dateYear"] == "2026"
+    assert hints["dateMonth"] == "2026-12"
+    assert "startDate" not in hints
+
+
+def test_extract_time_hints_no_end():
+    """仅有 start 时的推导"""
+    intent = {
+        "slots": {
+            "time_range": {
+                "value": {"start": "2026-01-01"},
+            }
+        }
+    }
+    hints = _extract_time_hints(intent)
+    assert hints["startDate"] == "2026-01-01"
+    assert "dateYear" not in hints
+
+
+# ── Tier 2: _validate_section_tasks ────────────────────────────
+
+def test_validate_section_tasks_clean(engine):
+    """所有任务有效 → 返回空列表"""
+    tasks = [
+        TaskItem(
+            task_id="S1.T1", type="data_fetch", tool="tool_api_fetch",
+            params={"endpoint_id": "getInvestPlanByYear", "dateYear": "2026"},
+        ),
+    ]
+    valid_tools = {"tool_api_fetch"}
+    valid_endpoints = {"getInvestPlanByYear"}
+    issues = engine._validate_section_tasks(tasks, valid_tools, valid_endpoints)
+    assert issues == []
+
+
+def test_validate_section_tasks_missing_required_param(engine):
+    """缺必填参数 → 返回 issue"""
+    tasks = [
+        TaskItem(
+            task_id="S1.T1", type="data_fetch", tool="tool_api_fetch",
+            params={"endpoint_id": "getEquipmentUsageRate"},  # 缺 dateYear
+        ),
+    ]
+    valid_tools = {"tool_api_fetch"}
+    valid_endpoints = {"getEquipmentUsageRate"}
+    issues = engine._validate_section_tasks(tasks, valid_tools, valid_endpoints)
+    assert len(issues) == 1
+    assert issues[0]["task_id"] == "S1.T1"
+    assert "missing required params" in issues[0]["reason"]
+    assert "dateYear" in issues[0]["reason"]
+
+
+def test_validate_section_tasks_hallucinated_endpoint(engine):
+    """幻觉端点 → 返回 issue"""
+    tasks = [
+        TaskItem(
+            task_id="S1.T1", type="data_fetch", tool="tool_api_fetch",
+            params={"endpoint_id": "nonexistentEndpoint"},
+        ),
+    ]
+    valid_tools = {"tool_api_fetch"}
+    valid_endpoints = {"getThroughputAndTargetThroughputTon"}
+    issues = engine._validate_section_tasks(tasks, valid_tools, valid_endpoints)
+    assert len(issues) == 1
+    assert "hallucinated endpoint" in issues[0]["reason"]
+
+
+def test_validate_section_tasks_mixed(engine):
+    """混合场景：部分有效、部分无效"""
+    tasks = [
+        TaskItem(
+            task_id="S1.T1", type="data_fetch", tool="tool_api_fetch",
+            params={"endpoint_id": "getEquipmentUsageRate"},  # 缺 dateYear
+        ),
+        TaskItem(
+            task_id="S1.T2", type="data_fetch", tool="tool_api_fetch",
+            params={"endpoint_id": "getInvestPlanByYear", "dateYear": "2026"},
+        ),
+        TaskItem(
+            task_id="S1.T3", type="data_fetch", tool="tool_api_fetch",
+            params={"endpoint_id": "getProductionEquipmentFaultNum"},  # 缺 dateYear
+        ),
+    ]
+    valid_tools = {"tool_api_fetch"}
+    valid_endpoints = {"getEquipmentUsageRate", "getInvestPlanByYear",
+                       "getProductionEquipmentFaultNum"}
+    issues = engine._validate_section_tasks(tasks, valid_tools, valid_endpoints)
+    assert len(issues) == 2
+    affected_ids = {i["task_id"] for i in issues}
+    assert affected_ids == {"S1.T1", "S1.T3"}

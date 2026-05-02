@@ -103,6 +103,39 @@ def resolve_rule_hint(key: str, overrides: dict[str, str] | None) -> str:
     return PLANNING_RULE_HINTS.get(key, "")
 
 
+def _extract_time_hints(intent: dict[str, Any]) -> dict[str, str] | None:
+    """从 intent 的 time_range slot 提取具体时间参数候选值。
+
+    用于注入 section prompt，减少 LLM 自行解析 JSON 并推导
+    参数值时的遗漏概率（Tier 1 核心优化）。
+    """
+    slots = intent.get("slots", {})
+    if not isinstance(slots, dict):
+        return None
+
+    tr = slots.get("time_range", {})
+    if not isinstance(tr, dict):
+        return None
+
+    tr_val = tr.get("value")
+    if not isinstance(tr_val, dict):
+        return None
+
+    start = tr_val.get("start", "")
+    end = tr_val.get("end", "")
+
+    hints: dict[str, str] = {}
+    if start:
+        hints["startDate"] = start
+    if end:
+        hints["endDate"] = end
+        if "-" in end:
+            hints["dateYear"] = end[:4]       # "2026-03-31" → "2026"
+            hints["dateMonth"] = end[:7]      # "2026-03-31" → "2026-03"
+            hints["date"] = end               # 完整日期
+    return hints if hints else None
+
+
 # ── Planning LLM Prompt ──────────────────────────────────────
 
 PLANNING_PROMPT = """你是一个数据分析规划专家。根据用户的分析意图，制定一份分析执行方案。
@@ -331,10 +364,15 @@ expected_task_count: {expected_task_count}（允许 ±2）
 【可用工具】
 {tools_description}
 
+{time_hints}
+
+{required_warning}
+
 {time_param_rules}
 
 {cargo_selection_rules}
 {employee_cookbook}
+{error_feedback}
 【硬约束】
 - 所有 task_id 必须以 "{section_id}." 前缀，例如 {section_id}.T1, {section_id}.T2
 - depends_on 只能引用本章节内的 task_id（跨章节依赖由汇总层处理）
@@ -343,6 +381,8 @@ expected_task_count: {expected_task_count}（允许 ±2）
 - analysis 任务遵循"intent 字段描述目标，params 只写 data_ref"原则
 - visualization 任务遵循"intent 字段描述图表意图，params 只写 chart_type"原则
 - 工具必须从【可用工具】清单中选取，端点必须从【本章节可用端点】中选取
+- data_fetch 任务的 params 必须包含所选端点【端点必填参数总览】中列出的全部必填参数
+- 时间类参数值必须使用【时间参数具体值】中的候选值
 
 【输出严格 JSON，无 <think>，无 markdown】
 {{
@@ -354,7 +394,7 @@ expected_task_count: {expected_task_count}（允许 ±2）
       "description": "对用户友好的描述",
       "depends_on": [],
       "tool": "tool_api_fetch",
-      "params": {{"endpoint_id": "..."}},
+      "params": {{"endpoint_id": "端点名", "必填参数1": "值1", "必填参数2": "值2"}},
       "intent": "",
       "estimated_seconds": 10
     }}
@@ -775,19 +815,44 @@ class PlanningEngine:
 
         sem = asyncio.Semaphore(_PLANNING_SECTION_PARALLELISM)
 
+        async def _try_section(sec, error_feedback=None):
+            """调用 section LLM + 预验证，返回 (tasks, feedback_or_none)。
+
+            - 正常无问题：返回 (tasks, None)
+            - 有验证问题：返回 (tasks, error_feedback_str) — 调用方应 retry
+            - TimeoutError/PlanningError：向上传播给 _fill_one 的系统级重试
+            """
+            tasks = await self._call_section_llm(
+                intent, sec, valid_tools, valid_endpoints,
+                rule_hints=rule_hints,
+                prompt_suffix=prompt_suffix,
+                error_feedback=error_feedback,
+            )
+
+            issues = self._validate_section_tasks(
+                tasks, valid_tools, valid_endpoints,
+            )
+            if not issues:
+                return tasks, None
+
+            # 构造错误反馈（最多 5 条，防止 prompt 膨胀）
+            lines = ["上一轮规划任务因以下问题被拒绝："]
+            for issue in issues[:5]:
+                lines.append(f"  - {issue['task_id']}: {issue['reason']}")
+            lines.append("请重新规划本章节，修正上述问题。")
+            return tasks, "\n".join(lines)
+
         async def _fill_one(sec):
             async with sem:
+                # ── 首次尝试 ──
                 try:
-                    return await self._call_section_llm(
-                        intent, sec, valid_tools, valid_endpoints,
-                        rule_hints=rule_hints,
-                        prompt_suffix=prompt_suffix,
-                    )
+                    tasks, feedback = await _try_section(sec, None)
                 except (asyncio.TimeoutError, PlanningError) as e:
                     logger.warning(
                         "[planning-multiround] section %s first attempt failed: %s",
                         sec.section_id, e,
                     )
+                    # 系统级盲重试（保留现有行为）
                     try:
                         return await self._call_section_llm(
                             intent, sec, valid_tools, valid_endpoints,
@@ -800,6 +865,26 @@ class PlanningEngine:
                             sec.section_id, e2,
                         )
                         return e2
+
+                # ── 验证级重试（带错误上下文） ──
+                if feedback:
+                    logger.info(
+                        "[planning-multiround] section %s has validation issues, "
+                        "retrying with feedback",
+                        sec.section_id,
+                    )
+                    try:
+                        tasks2, _feedback2 = await _try_section(sec, feedback)
+                        return tasks2  # 二次结果直接采纳
+                    except (asyncio.TimeoutError, PlanningError) as e:
+                        logger.warning(
+                            "[planning-multiround] section %s feedback retry "
+                            "failed: %s, using first-attempt result",
+                            sec.section_id, e,
+                        )
+                        return tasks  # 回退到首次结果
+
+                return tasks
 
         t1 = time.monotonic()
         results = await asyncio.gather(*[_fill_one(s) for s in skeleton.sections])
@@ -919,6 +1004,7 @@ class PlanningEngine:
         valid_endpoints: set[str],
         rule_hints: dict[str, str] | None = None,
         prompt_suffix: str = "",
+        error_feedback: str | None = None,
     ) -> list[TaskItem]:
         """Round 2 (one section): produce concrete data_fetch/analysis/viz tasks."""
         # Only feed endpoints relevant to this section. If domain reverse-lookup
@@ -945,6 +1031,38 @@ class PlanningEngine:
             if prompt_suffix else ""
         )
 
+        # ── Tier 1.1: 注入具体时间参数候选值 ──
+        time_hints = _extract_time_hints(intent)
+        time_hints_block = ""
+        if time_hints:
+            parts = [f"  {k} = {v}" for k, v in sorted(time_hints.items())]
+            time_hints_block = (
+                "【时间参数具体值】（从用户 time_range 推导，data_fetch 任务必须使用）\n"
+                + "\n".join(parts) + "\n"
+            )
+
+        # ── Tier 1.2: 必填参数集中警告 ──
+        required_summary = []
+        for ep_name in sorted(section_eps):
+            ep = get_endpoint(ep_name)
+            if ep and ep.required:
+                required_summary.append(
+                    f"  - {ep_name} 必填: {', '.join(ep.required)}"
+                )
+        required_warning = ""
+        if required_summary:
+            required_warning = (
+                "【端点必填参数总览】（⚠️ 每个 data_fetch 任务必须在 params 中包含下列参数）\n"
+                + "\n".join(required_summary) + "\n"
+            )
+
+        # ── Tier 2: 错误反馈（retry 时非空） ──
+        error_feedback_block = ""
+        if error_feedback:
+            error_feedback_block = (
+                "\n【上一轮规划错误，请修正】\n" + error_feedback + "\n"
+            )
+
         prompt = SECTION_PROMPT.format(
             section_id=section.section_id,
             section_name=section.name,
@@ -957,6 +1075,9 @@ class PlanningEngine:
             time_param_rules=resolve_rule_hint("time_param", rule_hints),
             cargo_selection_rules=resolve_rule_hint("cargo_selection", rule_hints),
             employee_cookbook=cookbook_block,
+            time_hints=time_hints_block,
+            required_warning=required_warning,
+            error_feedback=error_feedback_block,
         )
 
         async with trace_span(
@@ -1455,6 +1576,27 @@ class PlanningEngine:
             report_structure=report_structure,
             revision_log=[],
         )
+
+    def _validate_section_tasks(
+        self,
+        tasks: list[TaskItem],
+        valid_tools: set[str],
+        valid_endpoints: set[str],
+    ) -> list[dict[str, str]]:
+        """预验证单个 section 的任务列表。
+
+        在 section 生成任务后、stitch 前调用，检测可修正的问题
+        （如缺必填参数），为 retry 提供结构化错误反馈。
+
+        返回被判定为 drop 的任务列表 [{task_id, reason}]。
+        注意：此处不执行级联删除，级联逻辑保留在 _validate_tasks 中。
+        """
+        issues: list[dict[str, str]] = []
+        for task in tasks:
+            reason = self._task_drop_reason(task, valid_tools, valid_endpoints)
+            if reason:
+                issues.append({"task_id": task.task_id, "reason": reason})
+        return issues
 
     def _task_drop_reason(
         self,
