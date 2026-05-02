@@ -133,6 +133,7 @@ perception:
       allowed_values: [port, zone, asset, project, company, equipment]
 
 planning:
+  search_domain_prefix: "辽港集团 港口设备 资产管理 投资分析"
   prompt_suffix: |
     ## 分析策略 Cookbook
 
@@ -157,9 +158,11 @@ planning:
     - 注意：planInvestAndPayYoy 返回 dateYear/planInvestAmt/planPayAmt，是同比快照
 
     ### D7 设备分析策略
-    - 设备概览 → getProductionEquipmentStatistic（num/secondLevelName 透视格式，39行按机种汇总）
-    - 设备利用率月度曲线 → getEquipmentUsageRate（usageRate/dateMonth）
-    - 设备完好率月度曲线 → getEquipmentServiceableRate（serviceableRate/dateMonth）
+    - 各机种利用率+完好率对比（含低效机种识别） → getProductionEquipmentStatistic（num/secondLevelName 透视格式，39行按机种汇总，一次获取所有机种的利用率和完好率）
+    - 设备概览（总数/役龄） → getProductionEquipmentStatistic
+    - 设备利用率月度曲线（港区汇总，不区分机种） → getEquipmentUsageRate（usageRate/dateMonth）
+    - 设备完好率月度曲线（港区汇总，不区分机种） → getEquipmentServiceableRate（serviceableRate/dateMonth）
+    - 注意：getEquipmentUsageRate和getEquipmentServiceableRate仅返回港区级别汇总，无按机种分类。当用户问"各机种"、"低效机种"、"机种对比"时，必须使用getProductionEquipmentStatistic
     - 集装箱台时效率 → getContainerMachineHourRate（machineHourRate/dateMonth）
     - 历年利用率趋势 → getProductEquipmentUsageRateByYear（usageRate/dateYear，4行2023-2026）
     - 设备能耗曲线 → getEquipmentEnergyConsumptionPerUnit（workingAmount/dateMonth）

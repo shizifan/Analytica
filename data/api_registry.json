@@ -3715,14 +3715,17 @@
       "name": "getProductionEquipmentStatistic",
       "path": "/api/gateway/getProductionEquipmentStatistic",
       "domain": "D7",
-      "intent": "查询生产设备月度概览（总数/在用/完好率/利用率/平均役龄）",
+      "intent": "查询生产设备月度概览（总数/在用/完好率/利用率/平均役龄），按机种<secondLevelName>分类返回39行透视表",
       "time": "T_MON",
-      "granularity": "G_ZONE",
+      "granularity": "G_EQUIP",
       "tags": [
         "设备概览",
         "完好率",
         "利用率",
-        "役龄"
+        "役龄",
+        "机种对比",
+        "多机种",
+        "各机种"
       ],
       "required": [
         "dateMonth"
@@ -3730,9 +3733,9 @@
       "optional": [
         "ownerZone"
       ],
-      "param_note": "",
-      "returns": "num/secondLevelName（透视格式，39行×多指标）",
-      "disambiguate": "",
+      "param_note": "dateMonth格式YYYY-MM，如2026-03",
+      "returns": "num/secondLevelName（透视格式，39行×多指标，含各机种利用率/完好率/总台数/在用台数/平均役龄）",
+      "disambiguate": "一次性获取所有机种的利用率和完好率数据，适合'各机种对比'、'多机种分析'、'识别低效机种'场景。与getEquipmentUsageRate的区别：后者只返回港区汇总利用率（无按机种分类）",
       "field_schema": [
         [
           "num",
@@ -3747,12 +3750,16 @@
       ],
       "use_cases": [
         "生产设备机种分布概览",
-        "各类设备数量统计"
+        "各类设备数量统计",
+        "各机种利用率与完好率对比",
+        "识别低效机种"
       ],
       "chain_with": [
-        "getEquipmentUsageRate"
+        "getEquipmentUsageRate",
+        "getMachineDataDisplayScreenEquipmentIntegrityRate",
+        "getModelDataDisplayScreenUtilization"
       ],
-      "analysis_note": "39行按机种汇总，透视格式num/secondLevelName",
+      "analysis_note": "39行按机种汇总，透视格式num/secondLevelName。一次调用同时获得各机种的利用率、完好率、总台数、在用台数、平均役龄。适合机种横向对比和低效机种识别",
       "method": "GET"
     },
     {
@@ -3788,7 +3795,7 @@
       "name": "getEquipmentUsageRate",
       "path": "/api/gateway/getEquipmentUsageRate",
       "domain": "D7",
-      "intent": "查询各港区年度设备利用率（含月度分布曲线）",
+      "intent": "查询各港区年度设备利用率（含月度分布曲线），不区分机种",
       "time": "T_YR",
       "granularity": "G_ZONE",
       "tags": [
@@ -3807,7 +3814,7 @@
       ],
       "param_note": "",
       "returns": "usageRate/dateMonth（月度利用率曲线）",
-      "disambiguate": "区别getProductEquipmentUsageRateByYear=历年对比；BYMonth=月度版",
+      "disambiguate": "区别getProductEquipmentUsageRateByYear=历年对比；BYMonth=月度版。注意：此端点按港区汇总，无按机种分类，不适用于'各机种'对比分析。如需各机种利用率请用getProductionEquipmentStatistic（单月全机种）或getModelDataDisplayScreenUtilization（指定机种年度趋势）",
       "field_schema": [
         [
           "usageRate",
@@ -3835,7 +3842,7 @@
       "name": "getEquipmentServiceableRate",
       "path": "/api/gateway/getEquipmentServiceableRate",
       "domain": "D7",
-      "intent": "查询各港区年度设备完好率（含月度分布）",
+      "intent": "查询各港区年度设备完好率（含月度分布），不区分机种",
       "time": "T_YR",
       "granularity": "G_ZONE",
       "tags": [
@@ -3853,7 +3860,7 @@
       ],
       "param_note": "",
       "returns": "serviceableRate/dateMonth（月度完好率曲线）",
-      "disambiguate": "区别getProductEquipmentIntegrityRateByYear=历年版",
+      "disambiguate": "区别getProductEquipmentIntegrityRateByYear=历年版。注意：此端点按港区汇总，无按机种分类，不适用于'各机种'对比分析。如需各机种完好率请用getProductionEquipmentStatistic（单月全机种）或getMachineDataDisplayScreenEquipmentIntegrityRate（指定机种年度趋势）",
       "field_schema": [
         [
           "serviceableRate",
