@@ -49,6 +49,14 @@ async def lifespan(app: FastAPI):
         )
     logger.info("Loaded %d employee profiles from DB", emp_count)
 
+    # API registry — load endpoints + domains from DB (the only source).
+    # Empty DB raises immediately to surface a missing seed step before
+    # the backend silently degrades.
+    # MUST load BEFORE validate_all_profiles() — profile validation calls
+    # get_endpoint_names() which intersects with the runtime BY_NAME.
+    from backend.agent import api_registry
+    await api_registry.lifespan_apply_source()
+
     # 启动校验
     errors = manager.validate_all_profiles()
     if errors:
@@ -56,12 +64,6 @@ async def lifespan(app: FastAPI):
             logger.error("Profile validation: %s", e)
     else:
         logger.info("All employee profiles validated successfully")
-
-    # API registry — load endpoints + domains from DB (the only source).
-    # Empty DB raises immediately to surface a missing seed step before
-    # the backend silently degrades.
-    from backend.agent import api_registry
-    await api_registry.lifespan_apply_source()
 
     yield
     engine = get_engine()
@@ -1424,6 +1426,7 @@ async def websocket_chat(ws: WebSocket, session_id: str):
 
             user_message = data.get("message", data.get("content", ""))
             user_id = data.get("user_id", "anonymous")
+            web_search_enabled = data.get("web_search_enabled", False) if isinstance(data, dict) else False
 
             if not user_message:
                 await ws.send_json({"type": "error", "message": "Empty message"})
@@ -1523,6 +1526,7 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                     async for event in run_stream(
                         session_id, user_id, user_message, employee_id=employee_id,
                         ws_callback=_ws_callback,
+                        web_search_enabled=web_search_enabled,
                     ):
                         # 处理 run_stream 发出的初始元信息（消息基线）
                         if "__meta__" in event:
