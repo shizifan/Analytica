@@ -53,6 +53,7 @@ perception:
       allowed_values: [port, zone, company, cargo, business]
 
 planning:
+  search_domain_prefix: "辽港集团 港航物流 大连港 营口港"
   prompt_suffix: |
     ## 分析策略 Cookbook
 

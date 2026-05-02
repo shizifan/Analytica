@@ -77,6 +77,7 @@ class AgentState(TypedDict, total=False):
     # Control
     current_phase: str
     error: str | None
+    web_search_enabled: bool  # 联网搜索开关
 
 
 def make_initial_state(
@@ -84,6 +85,7 @@ def make_initial_state(
     user_id: str,
     user_message: str,
     employee_id: str | None = None,
+    web_search_enabled: bool = False,
 ) -> AgentState:
     """Create the initial agent state for a new conversation turn."""
     return AgentState(
@@ -107,6 +109,7 @@ def make_initial_state(
         reflection_summary=None,
         current_phase="perception",
         error=None,
+        web_search_enabled=web_search_enabled,
     )
 
 
@@ -181,6 +184,7 @@ async def planning_node(state: AgentState) -> AgentState:
         plan = await engine.generate_plan(
             intent,
             employee_id=state.get("employee_id"),
+            web_search_enabled=state.get("web_search_enabled", False),
         )
 
         plan_dict = plan.model_dump()
@@ -470,6 +474,7 @@ async def run_stream(
     user_message: str,
     employee_id: str | None = None,
     ws_callback: Callable[[dict], Any] | None = None,
+    web_search_enabled: bool = False,
 ) -> AsyncGenerator[dict, None]:
     """Run the agent graph and stream state updates.
 
@@ -512,6 +517,7 @@ async def run_stream(
         state["plan_confirmed"] = True
         state["current_phase"] = "execution"
         state["error"] = None
+        state["web_search_enabled"] = web_search_enabled
 
         yield {"__meta__": {"initial_msg_count": len(state.get("messages", []))}}
 
@@ -567,9 +573,12 @@ async def run_stream(
         state["current_target_slot"] = None
         state["current_phase"] = "perception"
         state["error"] = None
+        state["web_search_enabled"] = web_search_enabled
     else:
         state = dict(
-            make_initial_state(session_id, user_id, user_message, employee_id=employee_id)
+            make_initial_state(session_id, user_id, user_message,
+                              employee_id=employee_id,
+                              web_search_enabled=web_search_enabled)
         )
 
     # 3. 获取对应的编译图

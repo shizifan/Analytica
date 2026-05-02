@@ -86,6 +86,16 @@ class Settings(BaseSettings):
         description="API mode: 'mock' or 'prod'",
     )
 
+    # ── MCP (Model Context Protocol) 搜索服务 ───────────────────────────
+    MCP_SEARCH_URL: str = Field(
+        default="https://aiagentplatform.cmft.com/api/proxy/mcp",
+        description="MCP 搜索服务端点 URL",
+    )
+    MCP_SEARCH_API_KEY: str = Field(
+        default="d7qatlud83clu410ajog",
+        description="MCP 搜索服务 API Key（作为 query 参数附加）",
+    )
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 

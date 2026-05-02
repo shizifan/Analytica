@@ -47,6 +47,11 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
             state["error"] = "No structured intent available for planning"
             return state
 
+        # ── 根据联网搜索开关动态过滤 allowed_tools ──
+        effective_tools = allowed_tools
+        if not state.get("web_search_enabled", False):
+            effective_tools = allowed_tools - {"tool_web_search"}
+
         try:
             from backend.agent.planning import PlanningEngine, format_plan_as_markdown
             from backend.agent.graph import build_llm
@@ -55,10 +60,12 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
             plan = await engine.generate_plan(
                 intent,
                 allowed_endpoints=allowed_endpoints,
-                allowed_tools=allowed_tools,
+                allowed_tools=effective_tools,
                 prompt_suffix=planning_prompt_suffix,
                 rule_hints=planning_rule_hints,
                 employee_id=profile.employee_id,
+                web_search_enabled=state.get("web_search_enabled", False),
+                search_domain_prefix=profile.planning.search_domain_prefix or "",
             )
 
             plan_dict = plan.model_dump()
@@ -103,7 +110,20 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
 
     async def emp_execution_node(state: AgentState) -> AgentState:
         from backend.agent.execution import execution_node as _exec_node
-        return await _exec_node(state, allowed_tools=allowed_tools)
+
+        effective_tools = allowed_tools
+        if not state.get("web_search_enabled", False):
+            effective_tools = allowed_tools - {"tool_web_search"}
+
+        # 注入搜索领域前缀到搜索任务 params 中
+        search_prefix = profile.planning.search_domain_prefix or ""
+        if search_prefix and state.get("analysis_plan"):
+            for t in state["analysis_plan"].get("tasks", []):
+                if isinstance(t, dict) and t.get("type") == "search":
+                    t.setdefault("params", {})
+                    t["params"]["__search_domain_prefix__"] = search_prefix
+
+        return await _exec_node(state, allowed_tools=effective_tools)
 
     async def emp_reflection_node(state: AgentState) -> AgentState:
         """反思节点 — 复用通用逻辑。"""

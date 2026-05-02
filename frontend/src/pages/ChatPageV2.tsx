@@ -66,6 +66,7 @@ export function ChatPageV2() {
   const [agentCollapsed, setAgentCollapsed] = useState(true);
   const [employeesDrawerOpen, setEmployeesDrawerOpen] = useState(false);
   const [reflectionSummary, setReflectionSummary] = useState<ReflectionSummary | null>(null);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
   const [history, setHistory] = useState<ConversationItem[]>([]);
   const resetThinking = useThinkingStore((s) => s.reset);
@@ -153,6 +154,7 @@ export function ChatPageV2() {
 
   useEffect(() => {
     if (!initRef.current) return;
+    setWebSearchEnabled(false);
     if (sessionId) {
       clearConversation();
       resetPlan();
@@ -170,13 +172,13 @@ export function ChatPageV2() {
 
   const handleSend = useCallback(
     (content: string) => {
-      sendMessage(content, userId);
+      sendMessage(content, userId, webSearchEnabled);
       if (agentCollapsed) setAgentCollapsed(false);
       // Refresh the history rail once the backend has a title; fire-and-
       // forget with a short delay so the INSERT lands first.
       setTimeout(refreshHistory, 1200);
     },
-    [sendMessage, userId, agentCollapsed, refreshHistory],
+    [sendMessage, userId, webSearchEnabled, agentCollapsed, refreshHistory],
   );
 
   const handlePlanAction = useCallback(
@@ -228,6 +230,7 @@ export function ChatPageV2() {
       setHistory((h) => h.filter((it) => it.id !== id));
       // If the user just deleted the active conversation, spin up a fresh one.
       if (id === sessionId) {
+        setWebSearchEnabled(false);
         clearConversation();
         resetPlan();
         resetSlots();
@@ -260,6 +263,7 @@ export function ChatPageV2() {
   const handleSelectHistory = useCallback(
     (id: string) => {
       if (id === sessionId) return;
+      setWebSearchEnabled(false);
       clearConversation();
       resetPlan();
       resetSlots();
@@ -447,6 +451,8 @@ export function ChatPageV2() {
             onCancel={handleCancel}
             disabled={inputDisabled && !isRunning}
             isRunning={isRunning}
+            webSearchEnabled={webSearchEnabled}
+            onToggleWebSearch={setWebSearchEnabled}
           />
         </main>
 

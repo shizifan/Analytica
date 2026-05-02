@@ -54,6 +54,7 @@ class PlanningConfig(BaseModel):
     #   * value is non-""  → REPLACE the default with this string
     # Unknown keys are ignored — they don't crash the prompt builder.
     rule_hints: dict[str, str] = Field(default_factory=dict)
+    search_domain_prefix: str = ""  # 搜索 query 自动追加的领域前缀（如"辽港集团 港航物流"）
 
 
 # ── EmployeeProfile ────────────────────────────────────────

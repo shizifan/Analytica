@@ -6,9 +6,13 @@ interface Props {
   disabled?: boolean;
   /** When true, shows a stop button instead of send */
   isRunning?: boolean;
+  /** 联网搜索是否开启 */
+  webSearchEnabled: boolean;
+  /** 切换联网搜索状态 */
+  onToggleWebSearch: (v: boolean) => void;
 }
 
-export function InputBar({ onSend, onCancel, disabled = false, isRunning = false }: Props) {
+export function InputBar({ onSend, onCancel, disabled = false, isRunning = false, webSearchEnabled, onToggleWebSearch }: Props) {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -58,6 +62,21 @@ export function InputBar({ onSend, onCancel, disabled = false, isRunning = false
         rows={1}
         className="an-input max-h-40 min-h-[36px] flex-1 resize-none rounded-lg px-3 py-2 text-sm"
       />
+      {/* 联网搜索开关 */}
+      <button
+        type="button"
+        data-testid="web-search-toggle"
+        onClick={() => onToggleWebSearch(!webSearchEnabled)}
+        title={webSearchEnabled ? "关闭联网搜索" : "开启联网搜索"}
+        className="shrink-0 rounded-lg px-2 py-2 text-xs font-medium transition-colors"
+        style={{
+          background: webSearchEnabled ? 'var(--an-accent)' : 'transparent',
+          color: webSearchEnabled ? '#fff' : 'var(--an-ink-4)',
+          border: webSearchEnabled ? 'none' : '1px solid var(--an-border)',
+        }}
+      >
+        联网搜索
+      </button>
       {isRunning ? (
         <button
           data-testid="cancel-button"

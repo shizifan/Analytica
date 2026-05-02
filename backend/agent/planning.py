@@ -632,6 +632,8 @@ class PlanningEngine:
         prompt_suffix: str = "",
         rule_hints: dict[str, str] | None = None,
         employee_id: str | None = None,
+        web_search_enabled: bool = False,
+        search_domain_prefix: str = "",
     ) -> AnalysisPlan:
         """Generate an analysis plan from a structured intent.
 
@@ -644,6 +646,8 @@ class PlanningEngine:
             rule_hints: 员工对 ``PLANNING_RULE_HINTS`` 的覆写（P3.2）。
                 None / 空 dict → 全部走默认。详见 ``resolve_rule_hint``。
             employee_id: 员工 ID，用于模板匹配。
+            web_search_enabled: 是否启用联网搜索（开关驱动，非 LLM 自主判断）。
+            search_domain_prefix: 搜索 query 自动追加的领域前缀。
         """
         # 确定合法工具集
         if allowed_tools is not None:
@@ -671,6 +675,8 @@ class PlanningEngine:
                 bypassed = match_template(employee_id, raw_query, complexity)
                 if bypassed is not None:
                     bypassed = _apply_time_params(bypassed, intent)
+                    if web_search_enabled and search_domain_prefix:
+                        bypassed = self._inject_search_tasks(bypassed, intent, search_domain_prefix)
                     logger.info("Template bypass: employee=%s, tasks=%d", employee_id, len(bypassed.tasks))
                     return bypassed
             except Exception as e:
@@ -705,6 +711,8 @@ class PlanningEngine:
                         rule_hints=rule_hints,
                         prompt_suffix=prompt_suffix,
                     )
+                    if web_search_enabled and search_domain_prefix:
+                        plan = self._inject_search_tasks(plan, intent, search_domain_prefix)
                     phase_out["mode"] = "multi_round"
                     phase_out["tasks"] = len(plan.tasks)
                     return plan
@@ -781,6 +789,8 @@ class PlanningEngine:
                                 "error_type": type(multi_round_fallback_error).__name__,
                                 "error": str(multi_round_fallback_error),
                             })
+                        if web_search_enabled and search_domain_prefix:
+                            plan = self._inject_search_tasks(plan, intent, search_domain_prefix)
                         sr_out["attempts"] = attempt + 1
                         sr_out["tasks"] = len(plan.tasks)
                         phase_out["tasks"] = len(plan.tasks)
@@ -1655,6 +1665,72 @@ class PlanningEngine:
                     return f"endpoint {endpoint_id} missing required params: {', '.join(missing)}"
 
         return None
+
+    def _inject_search_tasks(
+        self,
+        plan: AnalysisPlan,
+        intent: dict[str, Any],
+        search_domain_prefix: str,
+    ) -> AnalysisPlan:
+        """Deterministically inject web-search task(s) into the plan.
+
+        This is the SINGLE point where search tasks enter any plan. When the
+        user enables web search, we guarantee at least one search task — never
+        left to LLM discretion. The query is built from plan metadata and the
+        employee's search domain prefix.
+
+        Strategy:
+        1. Remove any LLM-generated search tasks (shouldn't exist, but clean slate).
+        2. Build a query from plan title + domain prefix.
+        3. Insert a single G_SEARCH task after the last data_fetch task.
+        """
+        if not search_domain_prefix:
+            return plan
+
+        # ── Remove any existing search tasks (idempotent clean-up) ──
+        plan.tasks = [t for t in plan.tasks if t.type != "search"]
+
+        # ── Derive search query ──
+        title = plan.title or intent.get("raw_query", "") or "数据分析"
+        query = f"{search_domain_prefix} {title}"
+        # Truncate to a reasonable keyword length (avoid overly long queries)
+        if len(query) > 200:
+            query = query[:200]
+
+        # ── Build the search task ──
+        search_task = TaskItem(
+            task_id="G_SEARCH",
+            type="search",
+            name=f"搜索：{title[:40]}",
+            description="互联网检索分析主题相关外部信息，为分析提供宏观背景和行业参考",
+            depends_on=[],
+            tool="tool_web_search",
+            params={
+                "query": query,
+                "__search_domain_prefix__": search_domain_prefix,
+            },
+            intent=(
+                f"了解{title[:50]}的行业背景、政策环境和市场趋势，"
+                f"补充外部信息以增强分析的全面性"
+            ),
+            estimated_seconds=10,
+        )
+
+        # ── Insert after the last data_fetch task, or at head ──
+        insert_at = 0
+        for i, t in enumerate(plan.tasks):
+            if t.type == "data_fetch":
+                insert_at = i + 1
+        plan.tasks.insert(insert_at, search_task)
+
+        plan.estimated_duration += search_task.estimated_seconds
+
+        logger.info(
+            "Injected search task G_SEARCH after %d data_fetch tasks, query=%s",
+            sum(1 for t in plan.tasks[:insert_at] if t.type == "data_fetch"),
+            query[:80],
+        )
+        return plan
 
     def _validate_tasks(
         self,
