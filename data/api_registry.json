@@ -258,10 +258,11 @@
         "船舶动态"
       ],
       "required": [
-        "shipStatus",
+        "shipStatus"
+      ],
+      "optional": [
         "regionName"
       ],
-      "optional": [],
       "param_note": "shipStatus: D=在泊 C=锚地；regionName=港区名称",
       "returns": "shipName/shipType/status/berthNo/arrivalTime/expectedDeparture/cargoType",
       "disambiguate": "区别getProdShipDesc=描述性摘要；getProdShipDynNum=数量汇总",
@@ -284,10 +285,10 @@
         "按船型",
         "数量"
       ],
-      "required": [
+      "required": [],
+      "optional": [
         "regionName"
       ],
-      "optional": [],
       "param_note": "",
       "returns": "regionName/shipType/inPortCount/anchorCount",
       "disambiguate": "区别getShipStatisticsByBusinessType=按业务类型分；本接口=按港区+船型",
@@ -312,10 +313,10 @@
         "粮食",
         "按港区"
       ],
-      "required": [
+      "required": [],
+      "optional": [
         "regionName"
       ],
-      "optional": [],
       "param_note": "",
       "returns": "ironOre/coal/grain/petroleum/containerTeu/vehicleCount",
       "disambiguate": "区别ByCargoType=按货类；ByBusinessType=按业务类型",
@@ -339,10 +340,10 @@
         "进出口",
         "TEU"
       ],
-      "required": [
+      "required": [],
+      "optional": [
         "regionName"
       ],
-      "optional": [],
       "param_note": "",
       "returns": "containerTotal/containerForeign/containerDomestic/vehicleTotal/vehicleExport",
       "disambiguate": "",
@@ -365,11 +366,12 @@
         "吨/小时"
       ],
       "required": [
-        "startDate",
         "endDate",
+        "startDate"
+      ],
+      "optional": [
         "regionName"
       ],
-      "optional": [],
       "param_note": "",
       "returns": "companyName/avgEfficiency/maxEfficiency/totalShips",
       "disambiguate": "",
@@ -392,10 +394,10 @@
         "公司",
         "港区"
       ],
-      "required": [
+      "required": [],
+      "optional": [
         "regionName"
       ],
-      "optional": [],
       "param_note": "",
       "returns": "regionName/companyName/orgCode/businessType",
       "disambiguate": "",
@@ -1639,10 +1641,11 @@
       ],
       "required": [
         "curDateMonth",
-        "yearDateMonth",
+        "yearDateMonth"
+      ],
+      "optional": [
         "zoneName"
       ],
-      "optional": [],
       "param_note": "curDateMonth/yearDateMonth=yyyy-MM；zoneName=港区名（必填）",
       "returns": "currentMonthTotal/prevYearSameMonth/yoyRate/yoyDiff",
       "disambiguate": "区别getCurBusinessDashboardThroughput=无zoneName参数；getCumulativeThroughput=累计",
@@ -1667,10 +1670,11 @@
       ],
       "required": [
         "curDateMonth",
-        "yearDateMonth",
+        "yearDateMonth"
+      ],
+      "optional": [
         "zoneName"
       ],
-      "optional": [],
       "param_note": "",
       "returns": "zoneName/currentThroughput/yoyRate/shareRatio",
       "disambiguate": "区别getMonthlyThroughput=全港汇总；区别CumulativeZone=累计版",
@@ -1695,10 +1699,11 @@
       ],
       "required": [
         "curDateYear",
-        "yearDateYear",
+        "yearDateYear"
+      ],
+      "optional": [
         "zoneName"
       ],
-      "optional": [],
       "param_note": "",
       "returns": "zoneName/currentYearCumulative/yoyRate/shareRatio",
       "disambiguate": "区别getMonthlyZoneThroughput=当月版",
@@ -1725,10 +1730,11 @@
       ],
       "required": [
         "curDateMonth",
-        "yearDateMonth",
+        "yearDateMonth"
+      ],
+      "optional": [
         "zoneName"
       ],
-      "optional": [],
       "param_note": "",
       "returns": "businessSegment/currentThroughput/prevYearThroughput/yoyRate",
       "disambiguate": "区别getCumulativeBusinessSegmentThroughput=累计版",
@@ -1753,10 +1759,11 @@
       ],
       "required": [
         "curDateYear",
-        "yearDateYear",
+        "yearDateYear"
+      ],
+      "optional": [
         "zoneName"
       ],
-      "optional": [],
       "param_note": "",
       "returns": "businessSegment/currentYearCumulative/yoyRate",
       "disambiguate": "区别getCurrentBusinessSegment=当月版",
@@ -1906,12 +1913,12 @@
         "信用级别",
         "风险"
       ],
-      "required": [
-        "orgName",
+      "required": [],
+      "optional": [
         "customerName",
-        "gradeResult"
+        "gradeResult",
+        "orgName"
       ],
-      "optional": [],
       "param_note": "gradeResult=信用等级筛选值",
       "returns": "creditLevel/creditLimit/usedCredit/availableCredit/riskLevel",
       "disambiguate": "",
@@ -2173,10 +2180,11 @@
         "会议记录"
       ],
       "required": [
-        "date",
+        "date"
+      ],
+      "optional": [
         "yianZt"
       ],
-      "optional": [],
       "param_note": "yianZt=议案状态编码",
       "returns": "meetingType/motionTitle/motionStatus/proposer",
       "disambiguate": "区别getMeetingInfo=汇总数量",
@@ -2896,10 +2904,12 @@
         "dateYear"
       ],
       "optional": [
-        "portCode",
         "assetTypeId",
         "assetTypeName",
-        "ownerZone"
+        "ownerZone",
+        "pageNo",
+        "pageSize",
+        "portCode"
       ],
       "param_note": "分页：pageNo/pageSize",
       "returns": "assetCode/assetName/assetType/originalValue/netValue/status",
@@ -3205,11 +3215,13 @@
         "dateYear"
       ],
       "optional": [
+        "adminName",
+        "currentStage",
+        "pageNo",
+        "pageSize",
         "projectCmp",
         "projectName",
         "projectNo",
-        "adminName",
-        "currentStage",
         "zoneName"
       ],
       "param_note": "分页：pageNo/pageSize",
@@ -3440,8 +3452,10 @@
       "required": [],
       "optional": [
         "dateYear",
-        "regionName",
-        "proMainTypeName"
+        "pageNo",
+        "pageSize",
+        "proMainTypeName",
+        "regionName"
       ],
       "param_note": "",
       "returns": "projectName/regionName/approvedAmount/status",
@@ -3543,14 +3557,16 @@
       ],
       "required": [],
       "optional": [
-        "projectName",
-        "investProjectType",
-        "projectCurrentStage",
-        "investProjectStatus",
-        "ownerDept",
-        "dateYear",
         "dateMonth",
-        "ownerLgZoneName"
+        "dateYear",
+        "investProjectStatus",
+        "investProjectType",
+        "ownerDept",
+        "ownerLgZoneName",
+        "pageNo",
+        "pageSize",
+        "projectCurrentStage",
+        "projectName"
       ],
       "param_note": "分页：pageNo/pageSize；dateYear=yyyy 筛选年份",
       "returns": "projectName/captProjectPhysicalProgress/captProjectPayProgress/finishInvestAmt/planInvestAmt/investProjectStatusName",
@@ -3871,12 +3887,12 @@
         "一级分类",
         "分类列表"
       ],
-      "required": [
-        "dateYear"
-      ],
+      "required": [],
       "optional": [
-        "ownerZone",
-        "cmpName"
+        "cmpName",
+        "dateMonth",
+        "dateYear",
+        "ownerZone"
       ],
       "param_note": "",
       "returns": "firstLevelClassName/count",

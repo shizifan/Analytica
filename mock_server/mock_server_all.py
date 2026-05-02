@@ -411,7 +411,7 @@ async def get_traffic_control(request: Request, regionName: str = None):
 
 # [PROD_DATA]
 @app.get("/api/gateway/getKeyVesselList")
-async def get_key_vessel_list(request: Request, shipStatus: str, regionName: str):
+async def get_key_vessel_list(request: Request, shipStatus: str, regionName: str = None):
     # 生产对齐: 字段对齐生产：shipRecordId/vesselName/berthName/cargoName/planQ/shipDynName/atbTime等
     check_token(request, T["key_vessel"])
     r = rng({"status": shipStatus, "region": regionName})
@@ -479,7 +479,7 @@ async def get_tp_target_teu(request: Request, dateYear: str = "2026", regionName
 
 # [PROD_DATA]
 @app.get("/api/gateway/getSingleShipRate")
-async def get_single_ship_rate(request: Request, startDate: str, endDate: str, regionName: str):
+async def get_single_ship_rate(request: Request, startDate: str, endDate: str, regionName: str = None):
     # 生产对齐: 字段对齐生产：regionName/cmpName/cargoType/tonQ/workTh
     check_token(request, T["single_ship_rate"])
     r = rng({"s": startDate, "e": endDate, "reg": regionName})
@@ -563,7 +563,7 @@ async def get_berth_by_biz(request: Request, startDate: str = "2026-01-01", endD
 
 # [PROD_DATA]
 @app.get("/api/gateway/getImportantCargoPortInventoryByRegion")
-async def get_inv_by_region(request: Request, regionName: str):
+async def get_inv_by_region(request: Request, regionName: str = None):
     # 生产对齐: 字段对齐：{cargoKind, tonQ, portRegion, bsCargoKind}
     check_token(request, T["cargo_inv_region"])
     CARGO_MAP = [
@@ -584,7 +584,7 @@ async def get_inv_by_region(request: Request, regionName: str):
 
 # [PROD_DATA]
 @app.get("/api/gateway/getContainerAndVehicleTrade")
-async def get_container_vehicle_trade(request: Request, regionName: str):
+async def get_container_vehicle_trade(request: Request, regionName: str = None):
     # 生产对齐: 字段对齐：{regionName, cargoKind, tradeType, transType, cntQ}
     check_token(request, T["container_vehicle"])
     REGIONS_SHORT2 = {"大连港": "大连", "营口港": "营口", "丹东港": "丹东", "盘锦港": "盘锦", "绥中港": "绥中"}
@@ -899,7 +899,7 @@ async def get_biz_tp_yoy_day(request: Request, date: str = "2026-04-15", regionN
 
 # [PROD_DATA]
 @app.get("/api/gateway/getShipStatisticsByRegion")
-async def get_ship_stats_region(request: Request, regionName: str):
+async def get_ship_stats_region(request: Request, regionName: str = None):
     # 生产对齐: 字段对齐：planQty/berthQty/anchorageQty/regionName/businessType
     check_token(request, T["ship_stat_region"])
     r = rng({"reg": regionName})
@@ -932,7 +932,7 @@ async def get_ship_stats_biz(request: Request, regionName: str = None):
 
 # [PROD_DATA]
 @app.get("/api/gateway/getBusinessSegmentBranch")
-async def get_biz_branch(request: Request, regionName: str):
+async def get_biz_branch(request: Request, regionName: str = None):
     # 生产对齐: 字段对齐：mainOrgCode/orgName/bsCargoKind/sndStatName/snOrgName/shortName
     check_token(request, T["biz_branch"])
     # 真实生产数据：公司组织层级静态表
@@ -1281,7 +1281,7 @@ async def get_ship_desc(request: Request):
 
 # [PROD_DATA]
 @app.get("/api/gateway/getMonthlyThroughput")
-async def get_mkt_monthly(request: Request, curDateMonth: str, yearDateMonth: str, zoneName: str):
+async def get_mkt_monthly(request: Request, curDateMonth: str, yearDateMonth: str, zoneName: str = None):
     # 生产对齐: 返回列表：[{ioTrade, throughput, dateMonth}]，含当期和同比年份
     check_token(request, T["mkt_monthly"])
     cy, cm, _ = parse_date(curDateMonth)
@@ -1298,7 +1298,7 @@ async def get_mkt_monthly(request: Request, curDateMonth: str, yearDateMonth: st
 
 # [PROD_DATA]
 @app.get("/api/gateway/getMonthlyZoneThroughput")
-async def get_mkt_zone_monthly(request: Request, curDateMonth: str, yearDateMonth: str, zoneName: str):
+async def get_mkt_zone_monthly(request: Request, curDateMonth: str, yearDateMonth: str, zoneName: str = None):
     # 生产对齐: 返回扁平列表：{throughput, dateMonth, zoneName}，含当期和同比
     check_token(request, T["mkt_zone_monthly"])
     cy, cm, _ = parse_date(curDateMonth)
@@ -1334,7 +1334,7 @@ async def get_mkt_cumul(request: Request, curDateYear: str, yearDateYear: str, z
 
 # [PROD_DATA]
 @app.get("/api/gateway/getCumulativeZoneThroughput")
-async def get_mkt_zone_cumul(request: Request, curDateYear: str, yearDateYear: str, zoneName: str):
+async def get_mkt_zone_cumul(request: Request, curDateYear: str, yearDateYear: str, zoneName: str = None):
     # 生产对齐: 返回扁平列表：{throughput, dateYear, zoneName}，含当期年和同比年
     check_token(request, T["mkt_zone_cumul"])
     cy, py = int(curDateYear), int(yearDateYear)
@@ -1352,7 +1352,7 @@ async def get_mkt_zone_cumul(request: Request, curDateYear: str, yearDateYear: s
 
 # [PROD_DATA]
 @app.get("/api/gateway/getCurrentBusinessSegmentThroughput")
-async def get_mkt_curr_biz(request: Request, curDateMonth: str, yearDateMonth: str, zoneName: str):
+async def get_mkt_curr_biz(request: Request, curDateMonth: str, yearDateMonth: str, zoneName: str = None):
     # 生产对齐: 复杂结构：{dateMonth,zoneName,ioTrade,inOutFlag,businessSegment,bigCategory,midCategory,unitName,throughput}
     check_token(request, T["mkt_curr_biz"])
     ZONE_NAMES = ["大连区域", "营口区域", "丹东区域", "盘锦区域", "绥中区域"]
@@ -1384,7 +1384,7 @@ async def get_mkt_curr_biz(request: Request, curDateMonth: str, yearDateMonth: s
 
 # [PROD_DATA]
 @app.get("/api/gateway/getCumulativeBusinessSegmentThroughput")
-async def get_mkt_cumul_biz(request: Request, curDateYear: str, yearDateYear: str, zoneName: str):
+async def get_mkt_cumul_biz(request: Request, curDateYear: str, yearDateYear: str, zoneName: str = None):
     # 生产对齐: 与getCurrentBusinessSegmentThroughput相同结构，dateYear替换dateMonth
     check_token(request, T["mkt_cumul_biz"])
     ZONE_NAMES = ["大连区域", "营口区域", "丹东区域", "盘锦区域", "绥中区域"]
@@ -1690,7 +1690,7 @@ async def get_strategic_enterprises(request: Request, displayCode: str):
 
 # [PROD_DATA]
 @app.get("/api/gateway/getCustomerCredit")
-async def get_customer_credit(request: Request, orgName: str, customerName: str, gradeResult: str):
+async def get_customer_credit(request: Request, orgName: str = None, customerName: str = None, gradeResult: str = None):
     # 生产对齐: 字段对齐：orgName/orgCode/customerName/cstmId/year/frequency/gradeScore/gradeResult/creditLimit/creditTerm
     check_token(request, T["customer_credit"])
     r = rng({"org": orgName, "cust": customerName})
@@ -2966,8 +2966,8 @@ async def get_equip_indicator_op_qty(request: Request, dateMonth: str, ownerZone
     year, month, _ = parse_date(dateMonth)
     r = rng({"dm": dateMonth, "z": ownerZone})
     zones = [ownerZone] if ownerZone else ZONES
-    class_names = ["专用机械", "交通运输设备", "动力设备", "工具器具",
-        "电子设备", "仪器仪表", "通信设备", "通用机械", "集装箱专用设备", "油运设备"]
+    class_names = ["辅助生产机械设备", "连续输送机械", "集装箱专用设备", "船舶",
+        "机车", "装卸搬运机械", "其他装卸机械设备", "油运设备", "起重机械", "专用机械"]
     return ok([{
         "firstLevelName": cn,
         "num": r.randint(100000, 20000000),
@@ -2979,8 +2979,8 @@ async def get_equip_indicator_cost(request: Request, dateMonth: str, ownerZone: 
     check_token(request, T["equipment_indicator_use_cost"])
     r = rng({"dm": dateMonth, "z": ownerZone})
     zones = [ownerZone] if ownerZone else ZONES
-    class_names = ["机车", "专用机械", "动力设备", "通用机械", "集装箱专用设备",
-        "交通运输设备", "电子设备", "工具器具", "仪器仪表", "油运设备"]
+    class_names = ["辅助生产机械设备", "连续输送机械", "集装箱专用设备", "船舶",
+        "机车", "装卸搬运机械", "其他装卸机械设备", "油运设备", "起重机械", "专用机械"]
     return ok([{
         "firstLevelName": cn,
         "num": round(r.uniform(100, 50000), 1),
@@ -2993,7 +2993,7 @@ async def get_equip_fault_num(request: Request, dateYear: str, ownerZone: str = 
     r = rng({"y": dateYear, "z": ownerZone})
     year = str(dateYear)[:4]
     zones = [ownerZone] if ownerZone else ZONES
-    months_count = min(int(datetime.now().strftime("%m")), 12) if str(year) == "2026" else 12
+    months_count = 3 if str(year) == "2026" else 12  # prod snapshot cap at 2026-03
     return ok([{
         "dateMonth": f"{year}-{m:02d}",
         "num": rng({"mo": f"{year}-{m:02d}", "k": "fault"}).randint(500, 1500),
@@ -3120,7 +3120,7 @@ async def get_equip_usage_rate(request: Request, dateYear: int, ownerZone: str =
     r = rng({"y": dateYear, "z": ownerZone})
     year = str(dateYear)
     zones = [ownerZone] if ownerZone else ZONES
-    months_count = min(int(datetime.now().strftime("%m")), 12) if year == "2026" else 12
+    months_count = 3 if year == "2026" else 12  # prod snapshot cap at 2026-03
     return ok([{
         "dateMonth": f"{year}-{m:02d}",
         "usageRate": round(rng({"mo": f"{year}-{m:02d}", "k": "usage"}).uniform(2, 8), 1),
@@ -3133,7 +3133,7 @@ async def get_equip_serviceable(request: Request, dateYear: int, ownerZone: str 
     r = rng({"y": dateYear, "z": ownerZone})
     year = str(dateYear)
     zones = [ownerZone] if ownerZone else ZONES
-    months_count = min(int(datetime.now().strftime("%m")), 12) if year == "2026" else 12
+    months_count = 3 if year == "2026" else 12  # prod snapshot cap at 2026-03
     return ok([{
         "dateMonth": f"{year}-{m:02d}",
         "serviceableRate": round(rng({"mo": f"{year}-{m:02d}", "k": "svc"}).uniform(0.95, 1.0), 4),
@@ -3144,8 +3144,8 @@ async def get_equip_serviceable(request: Request, dateYear: int, ownerZone: str 
 async def get_equip_l1_list(request: Request, dateMonth: str, ownerZone: str = None, cmpName: str = None):
     check_token(request, T["equipment_first_level_class_name_list"])
     r = rng({"y": dateMonth, "z": ownerZone})
-    class_names = ["油运设备", "集装箱专用设备", "通用机械", "专用机械",
-        "动力设备", "交通运输设备", "电子设备", "仪器仪表", "工具器具", "通信设备"]
+    class_names = ["辅助生产机械设备", "连续输送机械", "集装箱专用设备", "船舶",
+        "机车", "装卸搬运机械", "其他装卸机械设备", "油运设备", "起重机械", "专用机械"]
     return ok([{
         "firstLevelClassName": cn,
         "num": float(r.randint(10, 500)),
@@ -3169,7 +3169,7 @@ async def get_container_machine_hour(request: Request, dateYear: int, ownerZone:
     r = rng({"y": dateYear, "z": ownerZone})
     year = str(dateYear)
     zones = [ownerZone] if ownerZone else ZONES
-    months_count = min(int(datetime.now().strftime("%m")), 12) if year == "2026" else 12
+    months_count = 3 if year == "2026" else 12  # prod snapshot cap at 2026-03
     return ok([{
         "dateMonth": f"{year}-{m:02d}",
         "machineHourRate": round(rng({"mo": f"{year}-{m:02d}", "k": "mhr"}).uniform(8, 15), 1),
@@ -3182,7 +3182,7 @@ async def get_equip_energy(request: Request, dateYear: int, ownerZone: str = Non
     r = rng({"y": dateYear, "z": ownerZone})
     year = str(dateYear)
     zones = [ownerZone] if ownerZone else ZONES
-    months_count = min(int(datetime.now().strftime("%m")), 12) if year == "2026" else 12
+    months_count = 3 if year == "2026" else 12  # prod snapshot cap at 2026-03
     return ok([{
         "dateMonth": f"{year}-{m:02d}",
         "workingAmount": rng({"mo": f"{year}-{m:02d}", "k": "energy"}).randint(50000000, 200000000),
@@ -3195,7 +3195,7 @@ async def get_equip_fuel_cost(request: Request, dateYear: int, ownerZone: str = 
     r = rng({"y": dateYear, "z": ownerZone})
     year = str(dateYear)
     zones = [ownerZone] if ownerZone else ZONES
-    months_count = min(int(datetime.now().strftime("%m")), 12) if year == "2026" else 12
+    months_count = 3 if year == "2026" else 12  # prod snapshot cap at 2026-03
     return ok([{
         "dateMonth": f"{year}-{m:02d}",
         "tonCost": round(rng({"mo": f"{year}-{m:02d}", "k": "fuel"}).uniform(0, 0.5), 2),
@@ -3208,7 +3208,7 @@ async def get_equip_elec_cost(request: Request, dateYear: int, ownerZone: str = 
     r = rng({"y": dateYear, "z": ownerZone})
     year = str(dateYear)
     zones = [ownerZone] if ownerZone else ZONES
-    months_count = min(int(datetime.now().strftime("%m")), 12) if year == "2026" else 12
+    months_count = 3 if year == "2026" else 12  # prod snapshot cap at 2026-03
     return ok([{
         "dateMonth": f"{year}-{m:02d}",
         "tonCost": round(rng({"mo": f"{year}-{m:02d}", "k": "elec"}).uniform(0, 1), 2),
@@ -3347,6 +3347,7 @@ async def get_machine_single_energy(request: Request, secondLevelClassName: str,
 @app.get("/api/gateway/getProductEquipmentUsageRateByYear")
 async def get_prod_equip_usage_year(request: Request, ownerLgZoneName: str = None, firstLevelClassName: str = None):
     check_token(request, T["product_equipment_usage_rate_by_year"])
+    year = datetime.now().year
     r = rng({"z": ownerLgZoneName})
     return ok([{
         "dateYear": y,
@@ -3368,6 +3369,7 @@ async def get_prod_equip_usage_month(request: Request, dateYear: int, ownerLgZon
 @app.get("/api/gateway/getProductEquipmentRateByYear")
 async def get_prod_equip_rate_year(request: Request, ownerLgZoneName: str = None, firstLevelClassName: str = None):
     check_token(request, T["product_equipment_rate_by_year"])
+    year = datetime.now().year
     r = rng({"z": ownerLgZoneName, "k": "rate_year"})
     return ok([{
         "dateYear": y,
@@ -3478,6 +3480,7 @@ async def get_prod_working_month(request: Request, dateMonth: str, ownerLgZoneNa
 @app.get("/api/gateway/getProductEquipmentReliabilityByYear")
 async def get_prod_reliability_year(request: Request, ownerLgZoneName: str = None, firstLevelClassName: str = None):
     check_token(request, T["product_equipment_reliability_by_year"])
+    year = datetime.now().year
     r = rng({"z": ownerLgZoneName, "cls": firstLevelClassName})
     return ok([{
         "dateYear": y,
