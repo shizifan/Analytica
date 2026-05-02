@@ -1304,6 +1304,7 @@ async def execution_node(
         registry.clear_cancel(session_id)
         done_count = sum(1 for v in task_statuses.values() if v == "done")
         state["needs_replan"] = False
+        state["current_phase"] = "cancelled"
         state["messages"] = state.get("messages", [])
         state["messages"].append({
             "role": "assistant",
@@ -1396,6 +1397,7 @@ async def execution_node(
             })
         # Signal to graph: proceed to reflection
         state.setdefault("next_action", "reflection")
+        state["current_phase"] = "done"
     elif needs_replan:
         state["messages"] = state.get("messages", [])
         state["messages"].append({
@@ -1457,5 +1459,7 @@ async def execution_node(
                 "content": content,
                 "payload": structured_partial,
             })
+
+        state["current_phase"] = "done"
 
     return state
