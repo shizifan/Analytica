@@ -1406,7 +1406,13 @@ async def websocket_chat(ws: WebSocket, session_id: str):
             "last_message_id": last_message_id,   # T3
         })
     except Exception:
-        pass
+        # Client disconnected before receiving the connected event.
+        # The WebSocket's application_state is now DISCONNECTED; any
+        # further receive_json()/send_json() would raise RuntimeError
+        # ("Need to call 'accept' first") instead of WebSocketDisconnect.
+        # Exit cleanly rather than proceeding into the receive loop.
+        logger.info("WebSocket disconnected before connected event: %s", session_id)
+        return
 
     try:
         while True:
@@ -1632,6 +1638,14 @@ async def websocket_chat(ws: WebSocket, session_id: str):
 
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected: %s", session_id)
+    except RuntimeError as e:
+        # Starlette raises RuntimeError("Need to call 'accept' first") when
+        # ws.application_state is not CONNECTED — can happen if the connection
+        # drops between accept() and the first receive_json() call.
+        if "WebSocket is not connected" in str(e):
+            logger.info("WebSocket disconnected (state): %s", session_id)
+        else:
+            logger.exception("WebSocket runtime error: %s", e)
     except Exception as e:
         logger.exception("WebSocket error: %s", e)
     finally:
