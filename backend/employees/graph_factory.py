@@ -15,6 +15,54 @@ from backend.employees.profile import EmployeeProfile
 logger = logging.getLogger("analytica.employees.graph_factory")
 
 
+def _ensure_search_task_in_plan(plan: dict[str, Any], search_domain_prefix: str) -> bool:
+    """兜底注入搜索任务到 plan dict 中（幂等：已有则跳过）。
+
+    返回 True 表示新注入了任务。
+    """
+    if not search_domain_prefix:
+        return False
+
+    tasks: list[dict] = plan.get("tasks", [])
+    if any(isinstance(t, dict) and t.get("type") == "search" for t in tasks):
+        return False  # 已有搜索任务，不重复注入
+
+    title = plan.get("title", "") or "数据分析"
+    query = f"{search_domain_prefix} {title}"
+    if len(query) > 200:
+        query = query[:200]
+
+    search_task = {
+        "task_id": "G_SEARCH",
+        "type": "search",
+        "name": f"搜索：{title[:40]}",
+        "description": "互联网检索分析主题相关外部信息，为分析提供宏观背景和行业参考",
+        "depends_on": [],
+        "tool": "tool_web_search",
+        "params": {
+            "query": query,
+            "__search_domain_prefix__": search_domain_prefix,
+        },
+        "intent": (
+            f"了解{title[:50]}的行业背景、政策环境和市场趋势，"
+            f"补充外部信息以增强分析的全面性"
+        ),
+        "estimated_seconds": 10,
+    }
+
+    # 插入到最后一个 data_fetch 任务之后
+    insert_at = 0
+    for i, t in enumerate(tasks):
+        if isinstance(t, dict) and t.get("type") == "data_fetch":
+            insert_at = i + 1
+    tasks.insert(insert_at, search_task)
+
+    if "estimated_duration" in plan:
+        plan["estimated_duration"] = plan.get("estimated_duration", 0) + 10
+
+    return True
+
+
 def build_employee_graph(profile: EmployeeProfile) -> Any:
     """为指定员工构建参数化的 LangGraph，返回 CompiledGraph。"""
     from backend.agent.graph import AgentState, route_after_perception, route_after_planning, route_after_execution
@@ -40,6 +88,17 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
         # Auto-confirm existing plan from previous turn (loaded from DB)
         if state.get("analysis_plan"):
             state["plan_confirmed"] = True
+            # ── 搜索任务兜底注入：已复用旧 plan，若开启了搜索则补上 ──
+            if state.get("web_search_enabled") and profile.planning.search_domain_prefix:
+                injected = _ensure_search_task_in_plan(
+                    state["analysis_plan"],
+                    profile.planning.search_domain_prefix,
+                )
+                if injected:
+                    logger.info(
+                        "[%s] planning auto-confirm injected G_SEARCH (plan reused from previous turn)",
+                        profile.employee_id,
+                    )
             return state
 
         intent = state.get("structured_intent")
@@ -115,10 +174,22 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
         if not state.get("web_search_enabled", False):
             effective_tools = allowed_tools - {"tool_web_search"}
 
-        # 注入搜索领域前缀到搜索任务 params 中
+        # ── 搜索任务兜底注入 + 领域前缀注入 ──
+        # 执行节点是唯一必定执行的节点——无论计划是新生成、被复用（多轮
+        # 状态恢复）、还是"确认执行"快速路径跳过 planning，都会经过这里。
+        # 因此在此做兜底确保：只要搜索开关打开，plan 中必有搜索任务。
         search_prefix = profile.planning.search_domain_prefix or ""
-        if search_prefix and state.get("analysis_plan"):
-            for t in state["analysis_plan"].get("tasks", []):
+        if search_prefix and state.get("web_search_enabled") and state.get("analysis_plan"):
+            injected = _ensure_search_task_in_plan(state["analysis_plan"], search_prefix)
+            if injected:
+                logger.info(
+                    "[%s] execution node injected G_SEARCH (plan reused without regeneration)",
+                    profile.employee_id,
+                )
+
+            # 注入 domain prefix 到所有搜索任务 params 中
+            tasks: list[dict] = state["analysis_plan"].get("tasks", [])
+            for t in tasks:
                 if isinstance(t, dict) and t.get("type") == "search":
                     t.setdefault("params", {})
                     t["params"]["__search_domain_prefix__"] = search_prefix

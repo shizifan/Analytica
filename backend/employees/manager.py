@@ -99,6 +99,10 @@ class EmployeeManager:
         self._graphs[employee_id] = compiled
         return compiled
 
+    def get_profile(self, employee_id: str) -> EmployeeProfile | None:
+        """获取员工 profile（只读），不触发图构建。"""
+        return self._profiles.get(employee_id)
+
     async def run_employee_stream(
         self,
         employee_id: str,

@@ -519,6 +519,60 @@ async def run_stream(
         state["error"] = None
         state["web_search_enabled"] = web_search_enabled
 
+        # ── 搜索任务兜底注入 ──
+        # "确认执行"快速路径跳过 planning 节点直接进入 execution，
+        # 复用上一轮的 plan。如果用户在此之间开启了联网搜索，
+        # plan 中可能缺少搜索任务，在此补上。
+        if web_search_enabled and employee_id:
+            try:
+                from backend.employees.manager import EmployeeManager
+                profile = EmployeeManager.get_instance().get_profile(employee_id)
+                if profile:
+                    prefix = profile.planning.search_domain_prefix or ""
+                    if prefix:
+                        plan = state.get("analysis_plan") or {}
+                        tasks: list[dict] = plan.get("tasks", [])
+                        has_search = any(
+                            isinstance(t, dict) and t.get("type") == "search"
+                            for t in tasks
+                        )
+                        if not has_search:
+                            title = plan.get("title", "") or "数据分析"
+                            query_str = f"{prefix} {title}"
+                            if len(query_str) > 200:
+                                query_str = query_str[:200]
+                            search_task = {
+                                "task_id": "G_SEARCH",
+                                "type": "search",
+                                "name": f"搜索：{title[:40]}",
+                                "description": "互联网检索分析主题相关外部信息，为分析提供宏观背景和行业参考",
+                                "depends_on": [],
+                                "tool": "tool_web_search",
+                                "params": {
+                                    "query": query_str,
+                                    "__search_domain_prefix__": prefix,
+                                },
+                                "intent": (
+                                    f"了解{title[:50]}的行业背景、政策环境和市场趋势，"
+                                    f"补充外部信息以增强分析的全面性"
+                                ),
+                                "estimated_seconds": 10,
+                            }
+                            insert_at = 0
+                            for i, t in enumerate(tasks):
+                                if isinstance(t, dict) and t.get("type") == "data_fetch":
+                                    insert_at = i + 1
+                            tasks.insert(insert_at, search_task)
+                            if "estimated_duration" in plan:
+                                plan["estimated_duration"] = (
+                                    plan.get("estimated_duration", 0) + 10
+                                )
+                            logger.info(
+                                "[run_stream] confirm-execute fast path injected G_SEARCH"
+                            )
+            except Exception:
+                logger.exception("Failed to inject search task in confirm-execute fast path")
+
         yield {"__meta__": {"initial_msg_count": len(state.get("messages", []))}}
 
         from backend.agent import ws_ctx
