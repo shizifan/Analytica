@@ -179,12 +179,41 @@ async def planning_node(state: AgentState) -> AgentState:
             is_simple_plan,
         )
 
+        # ── 加载员工 profile 以获取白名单和搜索领域前缀 ──
+        employee_id = state.get("employee_id")
+        allowed_endpoints: frozenset[str] | None = None
+        allowed_tools: frozenset[str] | None = None
+        search_domain_prefix = ""
+        prompt_suffix = ""
+        rule_hints: dict[str, str] | None = None
+
+        if employee_id:
+            try:
+                from backend.employees.manager import EmployeeManager
+                profile = EmployeeManager.get_instance().get_profile(employee_id)
+                if profile:
+                    allowed_endpoints = profile.get_endpoint_names()
+                    allowed_tools = profile.get_tool_ids()
+                    search_domain_prefix = profile.planning.search_domain_prefix or ""
+                    prompt_suffix = profile.planning.prompt_suffix or ""
+                    rule_hints = profile.planning.rule_hints or {}
+            except Exception:
+                logger.warning(
+                    "[planning_node] Failed to load profile for %s, using defaults",
+                    employee_id,
+                )
+
         llm = build_llm("qwen3-235b", request_timeout=200)
         engine = PlanningEngine(llm=llm, llm_timeout=120.0, max_retries=3)
         plan = await engine.generate_plan(
             intent,
-            employee_id=state.get("employee_id"),
+            allowed_endpoints=allowed_endpoints,
+            allowed_tools=allowed_tools,
+            prompt_suffix=prompt_suffix,
+            rule_hints=rule_hints,
+            employee_id=employee_id,
             web_search_enabled=state.get("web_search_enabled", False),
+            search_domain_prefix=search_domain_prefix,
         )
 
         plan_dict = plan.model_dump()
