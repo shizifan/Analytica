@@ -148,7 +148,7 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
                         affected={"dropped": entry["dropped"]},
                     ))
 
-            md = format_plan_as_markdown(plan)
+            md = format_plan_as_markdown(plan, web_search_enabled=state.get("web_search_enabled", False))
             degradation_summary = summarize(state)
             if degradation_summary:
                 md = f"{md}\n\n---\n{degradation_summary}"

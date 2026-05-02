@@ -289,7 +289,8 @@ async def planning_node(state: AgentState) -> AgentState:
             # can review and confirm/modify before execution.
             state["messages"].append({
                 "role": "assistant",
-                "content": format_plan_as_markdown(plan, auto_confirmed=False),
+                "content": format_plan_as_markdown(plan, auto_confirmed=False,
+                                                    web_search_enabled=state.get("web_search_enabled", False)),
             })
 
     except Exception as e:

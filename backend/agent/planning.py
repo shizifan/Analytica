@@ -1999,7 +1999,7 @@ def _summarize_deliverables(grouped: dict[str, list[TaskItem]]) -> str:
     return "；".join(parts) if parts else "分析结果"
 
 
-def format_plan_as_markdown(plan: AnalysisPlan, auto_confirmed: bool = False) -> str:
+def format_plan_as_markdown(plan: AnalysisPlan, auto_confirmed: bool = False, web_search_enabled: bool = False) -> str:
     """Format an AnalysisPlan as a user-facing **summary** in Markdown.
 
     The chat bubble is intentionally summary-only — the full interactive
@@ -2008,6 +2008,7 @@ def format_plan_as_markdown(plan: AnalysisPlan, auto_confirmed: bool = False) ->
     1. Deliverables (what will I actually get)
     2. Execution scope by layer (counts + subtotal time)
     3. Total time and action line
+    4. Web search toggle status (always visible for diagnostics)
 
     When `auto_confirmed` is True (simple plans that skip the confirmation
     prompt), the trailing action line is omitted so the frontend renders
@@ -2019,17 +2020,29 @@ def format_plan_as_markdown(plan: AnalysisPlan, auto_confirmed: bool = False) ->
     for task in plan.tasks:
         grouped.setdefault(task.type, []).append(task)
 
+    # ── 联网搜索状态（始终显示，用于诊断）──
+    search_tasks = [t for t in plan.tasks if t.type == "search"]
+
     lines: list[str] = [
         f"**分析方案 · v{plan.version}**（预计完成时间：{_fmt_duration(total_seconds)}）",
         "",
         f"**分析目标：** {plan.analysis_goal or plan.title}",
-        "",
+    ]
+    if web_search_enabled:
+        if search_tasks:
+            lines.append(f"  **联网搜索:** 已开启，计划中包含 {len(search_tasks)} 个搜索任务")
+        else:
+            lines.append("  **联网搜索:** [已开启] 但计划中未包含搜索任务（异常，请检查服务端日志）")
+    else:
+        lines.append("  **联网搜索:** 未开启")
+    lines.append("")
+
+    lines.extend([
         "**交付产出**",
         f"- {_summarize_deliverables(grouped)}",
-    ]
+    ])
 
-    # 新增：搜索任务详情
-    search_tasks = [t for t in plan.tasks if t.type == "search"]
+    # 搜索任务详情（仅当存在搜索任务时展开 query 信息）
     if search_tasks:
         lines.append("")
         lines.append("**联网检索**")
