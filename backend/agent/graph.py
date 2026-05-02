@@ -277,11 +277,13 @@ async def planning_node(state: AgentState) -> AgentState:
             duration_str = (
                 f"约 {est // 60} 分钟" if est >= 60 else f"约 {est} 秒"
             )
+            search_status = " 联网搜索未开启。" if not state.get("web_search_enabled") else " 联网搜索已开启。"
             state["messages"].append({
                 "role": "assistant",
                 "content": (
                     f"已生成 **{len(plan.tasks)} 个任务** 的分析方案"
                     f"（预计 {duration_str}），自动开始执行。"
+                    f"{search_status}"
                 ),
             })
         else:
