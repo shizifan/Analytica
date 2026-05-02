@@ -1427,6 +1427,16 @@ async def websocket_chat(ws: WebSocket, session_id: str):
             user_message = data.get("message", data.get("content", ""))
             user_id = data.get("user_id", "anonymous")
             web_search_enabled = data.get("web_search_enabled", False) if isinstance(data, dict) else False
+            msg_employee_id = data.get("employee_id") if isinstance(data, dict) else None
+            # 兜底：若 session 中无 employee_id 但 WebSocket 消息中有，则使用消息中的值
+            if not employee_id and msg_employee_id:
+                employee_id = msg_employee_id
+                logger.info("Using employee_id '%s' from WebSocket message (session had none)", employee_id)
+            elif employee_id and msg_employee_id and employee_id != msg_employee_id:
+                logger.warning(
+                    "employee_id mismatch: session=%s message=%s, using session value",
+                    employee_id, msg_employee_id,
+                )
 
             if not user_message:
                 await ws.send_json({"type": "error", "message": "Empty message"})

@@ -172,13 +172,13 @@ export function ChatPageV2() {
 
   const handleSend = useCallback(
     (content: string) => {
-      sendMessage(content, userId, webSearchEnabled);
+      sendMessage(content, userId, webSearchEnabled, selectedId);
       if (agentCollapsed) setAgentCollapsed(false);
       // Refresh the history rail once the backend has a title; fire-and-
       // forget with a short delay so the INSERT lands first.
       setTimeout(refreshHistory, 1200);
     },
-    [sendMessage, userId, webSearchEnabled, agentCollapsed, refreshHistory],
+    [sendMessage, userId, webSearchEnabled, selectedId, agentCollapsed, refreshHistory],
   );
 
   const handlePlanAction = useCallback(

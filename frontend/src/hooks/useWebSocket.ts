@@ -243,7 +243,7 @@ export function useWebSocket(sessionId: string | null) {
   }, [connect]);
 
   const sendMessage = useCallback(
-    (content: string, userId = 'anonymous', webSearchEnabled = false) => {
+    (content: string, userId = 'anonymous', webSearchEnabled = false, employeeId: string | null = null) => {
       const ws = wsRef.current;
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
       setSending(true);
@@ -258,6 +258,7 @@ export function useWebSocket(sessionId: string | null) {
         message: content,
         user_id: userId,
         web_search_enabled: webSearchEnabled,
+        employee_id: employeeId,
       }));
     },
     [addMessage, setSending],
