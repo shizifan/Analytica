@@ -14,8 +14,21 @@ from backend.employees.profile import EmployeeProfile
 
 logger = logging.getLogger("analytica.employees.graph_factory")
 
+# ── 控制词列表（不应当作搜索 query）──
+_CONTROL_PHRASES = frozenset(["确认执行", "修改方案", "重新规划"])
 
-def _ensure_search_task_in_plan(plan: dict[str, Any], search_domain_prefix: str) -> bool:
+
+def _extract_user_query(state: dict[str, Any]) -> str:
+    """从 state 的 messages 列表中取出最近一条非控制词的用户消息。"""
+    for m in reversed(state.get("messages", [])):
+        if isinstance(m, dict) and m.get("role") == "user":
+            content = str(m.get("content", "")).strip()
+            if content and content not in _CONTROL_PHRASES:
+                return content
+    return ""
+
+
+def _ensure_search_task_in_plan(plan: dict[str, Any], search_domain_prefix: str, user_query: str = "") -> bool:
     """兜底注入搜索任务到 plan dict 中（幂等：已有则跳过）。
 
     返回 True 表示新注入了任务。
@@ -27,15 +40,20 @@ def _ensure_search_task_in_plan(plan: dict[str, Any], search_domain_prefix: str)
     if any(isinstance(t, dict) and t.get("type") == "search" for t in tasks):
         return False  # 已有搜索任务，不重复注入
 
-    title = plan.get("title", "") or "数据分析"
-    query = f"{search_domain_prefix} {title}"
+    # ── 只用第一个领域关键词（公司名）+ 用户原始问题构建搜索 query ──
+    # 完整 prefix（如"辽港集团 港口设备 资产管理 投资分析"）关键词过多，
+    # 搜索引擎 AND 全部关键词后无法匹配到任何结果。
+    # 只保留公司名作为 scope，用用户的自然语言问题作为主搜索词。
+    scope = search_domain_prefix.split()[0]
+    search_text = user_query or plan.get("title", "") or "数据分析"
+    query = f"{scope} {search_text}"
     if len(query) > 200:
         query = query[:200]
 
     search_task = {
         "task_id": "G_SEARCH",
         "type": "search",
-        "name": f"搜索：{title[:40]}",
+        "name": f"搜索：{search_text[:40]}",
         "description": "互联网检索分析主题相关外部信息，为分析提供宏观背景和行业参考",
         "depends_on": [],
         "tool": "tool_web_search",
@@ -44,7 +62,7 @@ def _ensure_search_task_in_plan(plan: dict[str, Any], search_domain_prefix: str)
             "__search_domain_prefix__": search_domain_prefix,
         },
         "intent": (
-            f"了解{title[:50]}的行业背景、政策环境和市场趋势，"
+            f"了解{search_text[:50]}的行业背景、政策环境和市场趋势，"
             f"补充外部信息以增强分析的全面性"
         ),
         "estimated_seconds": 10,
@@ -93,6 +111,7 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
                 injected = _ensure_search_task_in_plan(
                     state["analysis_plan"],
                     profile.planning.search_domain_prefix,
+                    user_query=_extract_user_query(state),
                 )
                 if injected:
                     logger.info(
@@ -182,7 +201,10 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
         # 因此在此做兜底确保：只要搜索开关打开，plan 中必有搜索任务。
         search_prefix = profile.planning.search_domain_prefix or ""
         if search_prefix and state.get("web_search_enabled") and state.get("analysis_plan"):
-            injected = _ensure_search_task_in_plan(state["analysis_plan"], search_prefix)
+            injected = _ensure_search_task_in_plan(
+                state["analysis_plan"], search_prefix,
+                user_query=_extract_user_query(state),
+            )
             if injected:
                 logger.info(
                     "[%s] execution node injected G_SEARCH (plan reused without regeneration)",

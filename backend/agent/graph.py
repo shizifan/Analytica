@@ -575,14 +575,15 @@ async def run_stream(
                             for t in tasks
                         )
                         if not has_search:
-                            title = plan.get("title", "") or "数据分析"
-                            query_str = f"{prefix} {title}"
+                            # 只用第一个领域关键词（公司名）+ 用户原始问题构建搜索 query
+                            scope = prefix.split()[0]
+                            query_str = f"{scope} {user_message}"
                             if len(query_str) > 200:
                                 query_str = query_str[:200]
                             search_task = {
                                 "task_id": "G_SEARCH",
                                 "type": "search",
-                                "name": f"搜索：{title[:40]}",
+                                "name": f"搜索：{user_message[:40]}",
                                 "description": "互联网检索分析主题相关外部信息，为分析提供宏观背景和行业参考",
                                 "depends_on": [],
                                 "tool": "tool_web_search",
@@ -591,7 +592,7 @@ async def run_stream(
                                     "__search_domain_prefix__": prefix,
                                 },
                                 "intent": (
-                                    f"了解{title[:50]}的行业背景、政策环境和市场趋势，"
+                                    f"了解{user_message[:50]}的行业背景、政策环境和市场趋势，"
                                     f"补充外部信息以增强分析的全面性"
                                 ),
                                 "estimated_seconds": 10,

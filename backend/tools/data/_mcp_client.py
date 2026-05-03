@@ -14,12 +14,12 @@ import httpx
 logger = logging.getLogger("analytica.tools.mcp_client")
 
 
-async def call_mcp_search(query: str, *, timeout: float = 30.0) -> dict[str, Any]:
+async def call_mcp_search(query: str, *, timeout: float = 60.0) -> dict[str, Any]:
     """通过 MCP 协议调用 Web Search Agent，返回结构化搜索结果。
 
     Args:
         query: 搜索关键词
-        timeout: 请求超时秒数
+        timeout: 请求总超时秒数（默认 60s，SSE 逐字符流式响应较慢）
 
     Returns:
         成功: {"query": "...", "search_time": "...", "total_results": N, "results": [...]}
@@ -41,8 +41,16 @@ async def call_mcp_search(query: str, *, timeout: float = 30.0) -> dict[str, Any
         },
     }
 
+    # ── 分层超时：连接短、读取长（SSE 逐字符流式响应可能很慢）──
+    _mcp_timeout = httpx.Timeout(
+        connect=15.0,
+        read=timeout,
+        write=15.0,
+        pool=10.0,
+    )
+
     try:
-        async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
+        async with httpx.AsyncClient(timeout=_mcp_timeout, trust_env=False) as client:
             async with client.stream(
                 "POST", url,
                 json=rpc_body,
@@ -67,14 +75,15 @@ async def call_mcp_search(query: str, *, timeout: float = 30.0) -> dict[str, Any
 
                             # 最终响应：result.content[0].text 包含完整 JSON
                             if "result" in event_data:
-                                result = event_data["result"]
-                                if "content" in result:
-                                    for c in result["content"]:
+                                event_result = event_data["result"]
+                                if "content" in event_result:
+                                    for c in event_result["content"]:
                                         if isinstance(c, dict) and c.get("type") == "text":
+                                            text = c["text"]
                                             try:
-                                                accumulated = json.loads(c["text"])
+                                                accumulated = json.loads(text)
                                             except json.JSONDecodeError:
-                                                full_content += c["text"]
+                                                full_content += text
                                                 try:
                                                     accumulated = json.loads(full_content)
                                                 except json.JSONDecodeError:
@@ -83,6 +92,14 @@ async def call_mcp_search(query: str, *, timeout: float = 30.0) -> dict[str, Any
                                     # 有结果就跳出
                                     if accumulated:
                                         break
+                                # result 中可能直接有 error 字段
+                                if "error" in event_result:
+                                    return {"error": f"MCP 返回错误: {event_result['error']}"}
+                                # 如果有 stopReason 表明被截断或出错
+                                stop_reason = event_result.get("stopReason", "")
+                                if stop_reason:
+                                    logger.warning("MCP stopReason=%r, content_count=%d",
+                                                   stop_reason, len(accumulated or {}))
 
                             # 流式进度事件：逐字符推送
                             elif event_data.get("method") == "notifications/progress":
@@ -108,9 +125,17 @@ async def call_mcp_search(query: str, *, timeout: float = 30.0) -> dict[str, Any
                     try:
                         accumulated = json.loads(full_content)
                     except json.JSONDecodeError:
+                        logger.warning(
+                            "MCP fallback parse failed for query=%r, content[:300]=%r",
+                            query, full_content[:300],
+                        )
                         return {"error": "无法解析 MCP 返回的搜索结果 JSON"}
 
                 if accumulated is None:
+                    logger.warning(
+                        "MCP returned no result for query=%r, full_content[:200]=%r",
+                        query, full_content[:200],
+                    )
                     return {"error": "MCP 未返回搜索结果"}
 
                 return accumulated
