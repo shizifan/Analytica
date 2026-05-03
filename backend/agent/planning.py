@@ -1423,7 +1423,7 @@ class PlanningEngine:
                 layer5_spec = (
                     f"  Layer5 报告层（1，必须最后）: {tool}\n"
                     f"    → depends_on 所有可视化层 + 汇总层任务\n"
-                    f"    → estimated_seconds: 30\n"
+                    f"    → estimated_seconds: 60\n"
                     f"    → params 包含 intent（报告意图）+ report_metadata: {{title, author, date}}"
                 )
                 format_display = fmt
@@ -1691,8 +1691,11 @@ class PlanningEngine:
         plan.tasks = [t for t in plan.tasks if t.type != "search"]
 
         # ── Derive search query ──
-        title = plan.title or intent.get("raw_query", "") or "数据分析"
-        query = f"{search_domain_prefix} {title}"
+        # 优先用用户原始问题（raw_query）作为搜索词，plan title 偏技术化不适合搜索
+        # 只用第一个领域关键词（公司名）作为 scope，避免关键词过多导致无结果
+        scope = search_domain_prefix.split()[0]
+        search_text = intent.get("raw_query", "") or plan.title or "数据分析"
+        query = f"{scope} {search_text}"
         # Truncate to a reasonable keyword length (avoid overly long queries)
         if len(query) > 200:
             query = query[:200]
@@ -1701,7 +1704,7 @@ class PlanningEngine:
         search_task = TaskItem(
             task_id="G_SEARCH",
             type="search",
-            name=f"搜索：{title[:40]}",
+            name=f"搜索：{search_text[:40]}",
             description="互联网检索分析主题相关外部信息，为分析提供宏观背景和行业参考",
             depends_on=[],
             tool="tool_web_search",
@@ -1710,7 +1713,7 @@ class PlanningEngine:
                 "__search_domain_prefix__": search_domain_prefix,
             },
             intent=(
-                f"了解{title[:50]}的行业背景、政策环境和市场趋势，"
+                f"了解{search_text[:50]}的行业背景、政策环境和市场趋势，"
                 f"补充外部信息以增强分析的全面性"
             ),
             estimated_seconds=10,

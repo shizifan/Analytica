@@ -444,7 +444,7 @@
           "date": "2026-04-20"
         }
       },
-      "estimated_seconds": 30,
+      "estimated_seconds": 60,
       "status": "pending",
       "output_ref": ""
     }

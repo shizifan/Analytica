@@ -1,9 +1,8 @@
-"""DOCX Report Generation Skill — outline pipeline + LLM agent loop.
+"""DOCX Report Generation Tool — outline pipeline + deterministic rendering.
 
-The agent walks the outline by calling the renderer's emit tools one
-block at a time. There is no deterministic fallback: agent failures
-propagate so the caller sees the actual cause instead of a silently
-re-rendered output that hides whatever went wrong.
+The outline planner (LLM) decides what blocks go where; a deterministic
+``render_outline`` loop walks the result and calls the renderer's emit
+methods. No LLM agent loop — the walk is purely mechanical.
 """
 from __future__ import annotations
 
@@ -12,6 +11,7 @@ from typing import Any
 
 from backend.tools.base import BaseTool, ToolCategory, ToolInput, ToolOutput
 from backend.tools.registry import register_tool
+from backend.tools.report._block_renderer import render_outline
 from backend.tools.report._outline_planner import plan_outline
 from backend.tools.report._renderers.docx import DocxBlockRenderer
 from backend.tools.report._theme import get_theme
@@ -38,14 +38,13 @@ class DocxReportTool(BaseTool):
                 (inp.params.get("report_metadata") or {}).get("theme"),
             )
             renderer = DocxBlockRenderer(theme=theme)
-            await _run_docx_agent(renderer, outline)
-            docx_bytes = renderer.end_document()
+            docx_bytes = render_outline(outline, renderer)
 
             meta: dict[str, Any] = {
                 "format": "docx",
                 "title": outline.metadata.get("title", ""),
                 "file_size_bytes": len(docx_bytes),
-                "mode": "llm_agent",
+                "mode": "deterministic",
             }
             if outline.degradations:
                 meta["degradations"] = outline.degradations
@@ -60,41 +59,3 @@ class DocxReportTool(BaseTool):
         except Exception as e:
             logger.exception("DOCX generation failed: %s", e)
             return self._fail(str(e))
-
-
-async def _run_docx_agent(renderer: DocxBlockRenderer, outline) -> None:
-    """Drive the DOCX renderer through the LLM agent loop.
-
-    Raises ``RuntimeError`` if the agent did not finalise — the caller
-    surfaces this as a tool failure rather than retry with a degraded
-    output silently.
-    """
-    from langchain_openai import ChatOpenAI
-
-    from backend.config import get_settings
-    from backend.tools.report._agent_loop import (
-        run_report_agent,
-        serialize_outline,
-    )
-    from backend.tools.report._docx_tools import (
-        DOCX_OUTLINE_SYSTEM_PROMPT,
-        make_docx_outline_tools,
-    )
-
-    settings = get_settings()
-    llm = ChatOpenAI(
-        base_url=settings.QWEN_API_BASE,
-        api_key=settings.QWEN_API_KEY,
-        model=settings.QWEN_MODEL,
-        temperature=settings.LLM_TEMPERATURE_BALANCED,
-        request_timeout=90,
-        extra_body={"enable_thinking": False},
-    )
-
-    tools = make_docx_outline_tools(renderer, outline)
-    user_message = serialize_outline(outline)
-    success = await run_report_agent(
-        llm, tools, DOCX_OUTLINE_SYSTEM_PROMPT, user_message,
-    )
-    if not success:
-        raise RuntimeError("DOCX agent did not finalise")

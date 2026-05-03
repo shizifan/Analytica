@@ -87,7 +87,7 @@ _TIMEOUT_PROFILE: dict[str, tuple[int, int, float]] = {
     "data_fetch":    (15, 90,  3.0),
     "analysis":      (60, 150, 2.5),   # LLM 调用通常 30-90s, 留足余量
     "visualization": (5,  20,  2.0),
-    "report_gen":    (30, 120, 2.0),
+    "report_gen":    (60, 180, 2.5),
     "_default":      (15, 90,  3.0),
 }
 
