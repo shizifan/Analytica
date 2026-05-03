@@ -1,19 +1,9 @@
-"""PPTX Report Generation Skill — Step 0 (Sprint 2 closure).
+"""PPTX Report Generation Tool — outline pipeline + PptxGenJS native charts.
 
-Single-pipeline architecture: ``plan_outline`` produces a ``ReportOutline``,
-then a renderer is selected based on Node bridge availability:
-
-  1. **PptxGenJSBlockRenderer** (Node + pptxgenjs) — produces native,
-     editable PowerPoint charts. The Node side runs ``pptxgen_executor.js``
-     and is fed a ``SlideCommand`` JSON stream.
-  2. **PptxBlockRenderer** (python-pptx) — pure-Python fallback when
-     Node / pptxgenjs is unavailable, or when the bridge raises. Charts
-     degrade to data tables.
-
-Either renderer consumes the same outline. The dual-path fork that lived
-here through Sprint 1-2 (PptxGenJS taking ReportContent + python-pptx
-taking outline) is gone — the chart-quality fallback now lives entirely
-inside the renderer-selection step.
+Single pipeline: ``plan_outline`` (LLM) → ``render_outline`` (deterministic)
+via ``PptxGenJSBlockRenderer``. Native editable PowerPoint charts via the
+Node.js + pptxgenjs bridge are a **quality red line** — the python-pptx
+fallback is removed. The bridge MUST be available; if not, the tool fails.
 
 No LLM agent loop on this backend by design.
 """
@@ -30,9 +20,8 @@ from backend.tools.registry import register_tool
 from backend.tools.report._block_renderer import render_outline
 from backend.tools.report._outline_planner import plan_outline
 from backend.tools.report._pptxgen_builder import check_pptxgen_available
-from backend.tools.report._renderers.pptx import PptxBlockRenderer
 from backend.tools.report._renderers.pptxgen import PptxGenJSBlockRenderer
-from backend.tools.report._theme import Theme, get_theme
+from backend.tools.report._theme import get_theme
 
 logger = logging.getLogger("analytica.tools.report_pptx")
 
@@ -52,10 +41,19 @@ class PptxReportTool(BaseTool):
                 span_emit=inp.span_emit,
             )
 
+            if not check_pptxgen_available():
+                raise RuntimeError(
+                    "PptxGenJS Node bridge is unavailable — "
+                    "PPTX native charts are a quality red line. "
+                    "Ensure Node.js and pptxgenjs are installed."
+                )
+
             theme = get_theme(
                 (inp.params.get("report_metadata") or {}).get("theme"),
             )
-            pptx_bytes, mode = _render_pptx(outline, theme)
+            renderer = PptxGenJSBlockRenderer(theme=theme)
+            render_outline(outline, renderer)
+            pptx_bytes = renderer.end_document()
 
             try:
                 slide_count = len(Presentation(io.BytesIO(pptx_bytes)).slides)
@@ -66,7 +64,7 @@ class PptxReportTool(BaseTool):
                 "format": "pptx",
                 "title": outline.metadata.get("title", ""),
                 "file_size_bytes": len(pptx_bytes),
-                "mode": mode,
+                "mode": f"pptxgenjs_{outline.planner_mode}",
                 "slide_count": slide_count,
                 "sections": len(outline.sections),
             }
@@ -83,32 +81,3 @@ class PptxReportTool(BaseTool):
         except Exception as e:
             logger.exception("PPTX generation failed: %s", e)
             return self._fail(str(e))
-
-
-def _render_pptx(outline, theme: Theme) -> tuple[bytes, str]:
-    """Render *outline* through the best available pipeline.
-
-    Returns ``(pptx_bytes, mode_label)``. ``mode_label`` is surfaced in
-    ToolOutput.metadata so downstream observability can distinguish
-    native-chart runs from fallback runs.
-    """
-    if check_pptxgen_available():
-        renderer = PptxGenJSBlockRenderer(theme=theme)
-        try:
-            render_outline(outline, renderer)
-            pptx_bytes = renderer.end_document()
-            logger.info(
-                "PPTX generated via PptxGenJS bridge: %d bytes, %d sections",
-                len(pptx_bytes), len(outline.sections),
-            )
-            return pptx_bytes, f"pptxgenjs_{outline.planner_mode}"
-        except Exception as bridge_err:
-            logger.warning(
-                "PptxGenJS bridge failed (%s); falling back to python-pptx",
-                bridge_err,
-            )
-
-    renderer = PptxBlockRenderer(theme=theme)
-    render_outline(outline, renderer)
-    pptx_bytes = renderer.end_document()
-    return pptx_bytes, f"python_pptx_{outline.planner_mode}"

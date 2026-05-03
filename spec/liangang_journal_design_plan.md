@@ -23,6 +23,8 @@
 | 6 | DOCX 折叠层 | 章末附录（每章末尾追加"完整数据"小节） | 本轮确认 |
 | 7 | PPTX 附录 deck | 默认开启，无前端开关 | 本轮确认 |
 | 8 | PR 拆分 | 四段（基础 → HTML → DOCX → PPTX） | 本轮确认 |
+| 9 | PPTX 矢量图 | 质量红线，pptxgenjs 不可用时阻断生成，不降级 | 本轮确认 |
+| 10 | 质量保障 | 三层防线：预生成测试 → 生成期重试 → 生成后 LLM Review | 本轮确认 |
 
 ### 0.2 默认值（未显式确认，沿用上轮提案）
 
@@ -129,6 +131,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         fonts-jetbrains-mono \
     && fc-cache -fv \
     && rm -rf /var/lib/apt/lists/*
+
+# Node.js + pptxgenjs bridge 环境（PPTX 矢量图为品质红线，不可省略）
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && node -v && npm -v
+COPY backend/tools/report/_pptxgen_bridge/package.json /app/bridge/
+RUN cd /app/bridge && npm ci --production
 ```
 
 > Debian/Ubuntu 包名以上为准；其它发行版需对应映射。
@@ -142,6 +151,10 @@ def check_fonts() -> list[str]:
     """返回缺失的关键字体名，写入启动日志；缺失不阻断启动。"""
     required = ["Noto Serif SC", "Noto Sans SC", "JetBrains Mono"]
     # subprocess fc-list 检测；缺失 -> WARNING
+
+async def probe_pptxgenjs_bridge() -> bool:
+    """检测 pptxgenjs Node bridge 是否可用。不可用 -> CRITICAL（PPTX 生成将阻断）。"""
+    # ping Node process / health endpoint
 ```
 
 ### 2.3 多级降级（Theme 层）
@@ -189,7 +202,7 @@ HTML 通过 CSS `font-family` 多级 fallback。
 | 正文段落 | serif 1.85x 行高 + 2em 缩进 | "Narrative" style 11pt 1.5x | textbox 13pt 1.4x |
 | Hairline | `border-top: 1px solid rule_soft` | 段落上边框 1pt | line shape 0.75pt |
 | Pull-quote | 左 4px 古铜竖条 + 大斜体 | 段落左缩 + 左 4pt 古铜边框 + italic | 独立 slide |
-| Chart | ECharts + theme | matplotlib PNG + mpl theme | pptxgenjs native + theme（fallback：matplotlib PNG） |
+| Chart | ECharts + theme | matplotlib PNG + mpl theme | pptxgenjs native + theme（矢量图为品质红线，不可降级） |
 | KPI strip | 4 列 grid + tabular mono | 1×4 无边框 table + 上下 hairline | 一张专用 KPI slide 或 chart slide 底部 |
 | Agate 表（≤5 行） | `table.agate` | "Hairline Table" style | pptxgenjs `addTable` + 仅 3 hairline |
 | 完整数据折叠 | `<details>` 默认收起 | 章末"完整数据"小节 + 书签锚点 | 末尾"附录 · 完整数据" slide pack |
@@ -835,6 +848,12 @@ async def check_fonts_on_startup():
     if missing:
         logger.warning("Missing fonts: %s. Reports will fall back to system defaults.",
                        ", ".join(missing))
+
+@app.on_event("startup")
+async def check_pptxgenjs_bridge():
+    healthy = await probe_pptxgenjs_bridge()
+    if not healthy:
+        logger.critical("pptxgenjs bridge unavailable - PPTX generation will be blocked")
 ```
 
 ---
@@ -893,15 +912,17 @@ async def check_fonts_on_startup():
 - §7.4 `_outline_planner.py`：新增 `_trend_to_kpi_strip` / `_trim_table_for_inline`，但门控在新 flag 后（`USE_KPI_STRIP=False` 默认）
 - §7.5 `_planner_prompts.py`：新增 prompt 片段（不切默认 prompt）
 - §7.6 `_chart_renderer_mpl_theme.py`：新文件
-- §7.7 Dockerfile：装字体（部署侧改动）
-- §7.8 字体自检
-- 测试：theme 注册测试、KpiStripBlock dataclass 测试、降级测试
+- §7.7 Dockerfile：装字体 + Node.js + pptxgenjs bridge 环境
+- §7.8 字体自检 + pptxgenjs bridge 启动期检测
+- §7.9 `_retry_config.py`：重试策略配置（共享层骨架，renderer 尚未接入）
+- §7.10 `_quality_reviewer.py`：LLM 后置审查模块骨架 + `ReviewResult` 数据结构
+- 测试：theme 注册测试、KpiStripBlock dataclass 测试、降级测试、bridge 可用性测试
 
 **验收标准**：
 - 现有 baseline 测试全绿
 - 新 theme 可被 `get_theme("liangang-journal")` 取出但未被任何 renderer 默认使用
-- Dockerfile 构建后 `fc-list | grep -i noto` 有输出
-- PR 大小：~600 行新增 + ~50 行修改
+- Dockerfile 构建后 `fc-list | grep -i noto` 有输出，`node -v` 和 pptxgenjs bridge health check 通过
+- PR 大小：~800 行新增 + ~60 行修改
 
 ### PR-2 HTML 重设计（用户首先看到的视觉变化）
 
@@ -913,6 +934,8 @@ async def check_fonts_on_startup():
 - §7.4 `_outline_planner.py`：把 `USE_KPI_STRIP` flag 切到 `True`（影响所有 renderer，但 DOCX/PPTX 暂时把 KpiStripBlock fallback 成简易 KPI row 显示）
 - DOCX/PPTX 的 `emit_kpi_strip` 暂时实现为 minimal（沿用现有 KPI row 渲染样式但用新色板）
 - 修复 chart-table 重叠 bug（§4.3 RAF 包裹）
+- HTML renderer 接入重试装饰器（规划层 JSON/标题重试）
+- HTML renderer 接入 LLM 后置审查（数据准确性 + 标题质量 + 结构完整性）
 - 测试：HTML baseline 全量回写 + sample 渲染人工 review
 
 **验收标准**：
@@ -933,6 +956,8 @@ async def check_fonts_on_startup():
 - §5.5 章末附录实现（含 buffering 模型 + 跳转锚点）
 - §5.6 Cover / Section divider 重做
 - §5.7 emit_chart 调整 + mpl theme 接入
+- DOCX renderer 接入重试装饰器（matplotlib OOM 重试）
+- DOCX renderer 接入 LLM 后置审查
 - 测试：DOCX baseline 全量回写
 
 **验收标准**：
@@ -953,13 +978,17 @@ async def check_fonts_on_startup():
 - §6.5 pptxgenjs 主题注入
 - §6.6 emit_chart_table_pair 改造
 - §6.7 附录 deck 自动生成
-- python-pptx fallback 路径同步适配
+- `emit_chart` 移除 PNG fallback 分支：pptxgenjs 不可用时直接 raise，不降级
+- PPTX renderer 接入重试装饰器（bridge timeout 指数退避重试）
+- PPTX renderer 接入 LLM 后置审查（全维度覆盖）
 - 测试：PPTX baseline 全量回写 + 投影/PPT/WPS 三处人工 review
+- 环境验收：pptxgenjs bridge health check 通过（阻断性）
 
 **验收标准**：
 - PowerPoint / Keynote / WPS 打开样例无错乱
 - 16:9 投影显示正确
 - 附录 slide pack 按预期附在末尾
+- pptxgenjs bridge health check 通过，bridge 不可用时 PPTX 生成直接报错而非降级
 - PR 大小：~1000 行 Python + ~100 行 JS（pptxgenjs 路径）
 
 ### PR 之间的依赖
@@ -1030,7 +1059,7 @@ planner 检测到通用标题最多重试 1 次；仍失败则降级到外层 H 
 |---|---|---|---|---|
 | R1 | 服务端缺字体 → 中文乱码 | 高 | Dockerfile 装字体 + 启动期自检 + Theme fallback | PR-1 |
 | R2 | DOCX dropCap 在 LibreOffice 异常 | 中 | 提供 `enable_dropcap` 配置；默认开 | PR-3 |
-| R3 | pptxgenjs Node bridge 不可用 | 中 | python-pptx fallback 全主题适配 | PR-4 |
+| R3 | pptxgenjs Node bridge 不可用 → PPTX 无法生成矢量图表 | 高 | Dockerfile 预装 Node.js 环境 + 启动期强制检测 + 不可用时直接阻断（不降级） | PR-1, PR-4 |
 | R4 | LLM 写不出陈述式图表标题 | 中 | prompt few-shot + validator 重试 | PR-1 |
 | R5 | 附录 slide 过长（>30 张） | 低 | 配置项 `appendix_max_slides=20`，超出折叠为指引 slide | PR-4 |
 | R6 | 三格式 baseline 全量回写 | 中 | 一次性回写 + 强制人工 review + 截图存档 | 各 PR |
@@ -1040,14 +1069,187 @@ planner 检测到通用标题最多重试 1 次；仍失败则降级到外层 H 
 | R10 | 思源/Noto 字体加载导致 HTML 首屏慢 | 低 | `font-display: swap` + preconnect | PR-2 |
 | R11 | DOCX 章末附录链接在 WPS 跳转异常 | 低 | 接受降级为锚点滚动；不阻断阅读 | PR-3 |
 | R12 | 16:9 切换破坏现有用户的 4:3 模板预期 | 低 | 在 release notes 公示；PPTX 不向后兼容 | PR-4 |
+| R13 | Review LLM 自身误判（将正确内容标为 FAIL） | 中 | BLOCKING 维度尽量用规则检查而非 LLM；叙述连贯性仅 WARNING | PR-1 |
+| R14 | 重试导致单次生成耗时过长 | 中 | 单 block 累计 ≤3 次 + 整文档累计 ≤12 次 + 全流程硬超时 5min（含 Review） | PR-1 |
 
 ---
 
-## 12. 实施前置任务
+## 12. 生成质量保障
+
+### 12.1 问题背景
+
+当前方案仅在 §10.5 存在单一重试点（LLM 图表标题检测到通用词后重试 1 次），报告生成流水线整体缺乏系统化的运行时质量控制。具体缺失：
+
+- **规划阶段**：JSON 格式畸形、缺少必要 block、数据引用列名错误——均无重试，直接失败
+- **渲染阶段**：pptxgenjs bridge 超时、图表渲染 OOM——无重试，直接降级或失败
+- **生成后**：报告输出无独立的自动化质量审查，质量完全依赖生成阶段的一次性正确
+
+参考业界深度分析产品（如 Perplexity、ChatGPT Deep Research），重试 + 后置审查是确保报告质量的标准手段。
+
+### 12.2 生成重试策略
+
+#### 12.2.1 重试粒度
+
+以 **block 为最小重试单元，以 chapter 为兜底**：
+
+| 粒度 | 适用场景 | 不适用场景 |
+|------|----------|------------|
+| 单 block 重试 | 图表标题写砸、JSON 字段缺失 | narrative 整体跑偏 |
+| 单 chapter 重试 | 数据引用列名全章错误、narrative 语义断裂 | — |
+| 整文档重试 | — | 代价过高，不在自动流程中触发 |
+
+#### 12.2.2 可重试错误分类
+
+| 阶段 | 错误类型 | 重试次数 | 重试策略 |
+|------|----------|----------|----------|
+| 规划 | JSON 格式畸形 | 2 | prompt 追加 JSON 格式纠正提示 |
+| 规划 | 缺失必要 block（如 trend 数据无 chart） | 1 | prompt 明确要求 block 类型列表 |
+| 规划 | 数据引用列名错误（LLM 编造了不存在的字段名） | 1 | prompt 回注实际可用数据列名 |
+| 规划 | 图表标题为通用词（"数据对比""趋势图"等） | 1 | prompt 追加陈述式标题样例（已有，§10.5） |
+| 渲染 | pptxgenjs bridge timeout | 2 | 指数退避（1s → 4s） |
+| 渲染 | matplotlib 图表渲染 OOM | 1 | 降分辨率重试 |
+| 渲染 | 中文字体乱码 | 0 | 走字体 fallback 链，不重试 |
+
+#### 12.2.3 约束
+
+以下约束覆盖整个生成周期（含 Review 重试），所有重试共享同一计数器，避免绕过。
+
+| 约束项 | 值 | 说明 |
+|--------|----|------|
+| 单 block 累计重试上限 | 3 次 | 覆盖生成期 + Review 触发的全部重试；达到后该 block 永久放弃，返回部分成功 |
+| 整文档累计重试上限 | 12 次 | 覆盖所有 block 的全部重试次数之和；达到后剩余重试请求全部拒绝 |
+| Review 最大轮次 | 2 轮 | Review → 重试 → 再 Review 为一轮；2 轮后仍有 BLOCKING 失败则返回部分成功 |
+| 全流程超时 | 5 分钟 | 从生成开始到最终 Review 完成（含 Review 和 Review 触发的重试）；超时返回部分成功 |
+| 部分成功保留 | 是 | 已成功渲染的 block 不因其他 block 的重试而丢弃 |
+| prompt 渐进增强 | 是 | 每次重试在 prompt 中注入更详细的错误上下文；Review 后的重试额外注入上一轮 Review 的具体问题描述 |
+
+#### 12.2.4 实现位置
+
+| 模块 | 职责 |
+|------|------|
+| `backend/tools/report/_retry_config.py` | 重试策略配置（次数、超时、退避策略） |
+| `backend/tools/report/_outline_planner.py` | 规划层重试循环（JSON 校验 → 重试 → 失败则抛错） |
+| `backend/tools/report/_block_renderer.py` | 渲染层重试装饰器（各 renderer 共用） |
+
+### 12.3 LLM 后置审查
+
+#### 12.3.1 审查时机与流程
+
+```
+报告生成完成 → LLM Review → PASS → 交付用户
+                    │
+                    │ FAIL
+                    ▼
+           标记问题 block
+                    │
+                    ▼
+           单 block 重试 → 再次 Review
+                              │
+                        PASS  │ FAIL（最多 2 轮 total review）
+                        交付   └→ 返回部分成功 + 错误标注
+```
+
+审查在所有 renderer 输出完成后、交付用户前触发。若 FAIL，重试后再次审查，最多 2 轮 total review。
+
+#### 12.3.2 审查模型
+
+使用**独立的 review prompt** 以避免 self-review 效应。若部署环境支持多个 LLM 后端，推荐用与生成阶段不同的模型做交叉检查。
+
+#### 12.3.3 审查维度
+
+| 维度 | 检查方式 | 级别 | 不通过时的动作 |
+|------|----------|------|---------------|
+| 数据准确性 | 从报告随机抽样 3-5 个数值断言，与原始 DataFrame 交叉验证 | **BLOCKING** | 标记对应 block，触发重试 |
+| 标题质量 | §10.5 validator 词表 + LLM 语义判断是否为陈述句 | **BLOCKING** | 标记对应 chart block，触发重试 |
+| 结构完整性 | 规则检查：每个 chapter 是否含 chart → KPI strip → 完整数据折叠 | **BLOCKING** | 标记缺失 block 的 chapter，触发重试 |
+| 叙述连贯性 | LLM 通读全章后打分 (1-5) | **WARNING** | <3 分打 warn log + 标注在交付物 metadata |
+| 视觉一致性 | 检测 CSS 变量/字体/字号是否偏离 Token 规范 | **WARNING** | 打 warn log + 标注在交付物 metadata |
+
+- **BLOCKING**：不通过则必须重试对应 block/chapter
+- **WARNING**：低于阈值记录日志并标注在交付物 metadata 中，不阻断交付
+
+#### 12.3.4 实现位置
+
+新增 `backend/tools/report/_quality_reviewer.py`：
+
+```python
+from dataclasses import dataclass, field
+
+@dataclass
+class ReviewFinding:
+    dimension: str        # "data_accuracy" | "title_quality" | ...
+    passed: bool
+    severity: str         # "BLOCKING" | "WARNING"
+    detail: str           # 人类可读的问题描述
+    block_ids: list[str]  # 涉及的问题 block ID
+
+@dataclass
+class ReviewResult:
+    passed: bool                             # 所有 BLOCKING 均通过
+    findings: list[ReviewFinding]
+    retry_targets: list[str]                 # 需要重试的 block/chapter ID
+
+class ReportQualityReviewer:
+    def review(self, report: Report, source_data: dict) -> ReviewResult:
+        findings = [
+            self._check_data_accuracy(report, source_data),
+            self._check_title_quality(report),
+            self._check_structure_completeness(report),
+            self._check_narrative_coherence(report),
+            self._check_visual_consistency(report),
+        ]
+        blocking = [f for f in findings if f.severity == "BLOCKING" and not f.passed]
+        retry_targets = list(set(bid for f in blocking for bid in f.block_ids))
+        return ReviewResult(
+            passed=len(blocking) == 0,
+            findings=findings,
+            retry_targets=retry_targets,
+        )
+```
+
+### 12.4 三层质量防线总览
+
+```
+┌──────────────────────────────────────────────────────┐
+│                    第 1 层：预生成测试                  │
+│  §10 测试策略：baseline 回写、单测、跨格式对照          │
+│  时机：开发期 / CI                                     │
+│  目的：确保代码变更不破坏已有渲染结果                    │
+└──────────────────────────┬───────────────────────────┘
+                           ▼
+┌──────────────────────────────────────────────────────┐
+│                    第 2 层：生成期重试                  │
+│  §12.2：规划层 JSON/标题重试 + 渲染层 bridge/OOM 重试   │
+│  时机：每次用户请求报告生成时                            │
+│  目的：自动修复生成过程中可恢复的瞬时错误                │
+└──────────────────────────┬───────────────────────────┘
+                           ▼
+┌──────────────────────────────────────────────────────┐
+│                    第 3 层：生成后审查                  │
+│  §12.3：LLM Review 五维度交叉检查 + 必要时触发重试       │
+│  时机：所有 renderer 输出完成后、交付用户前              │
+│  目的：确保交付物达到数据期刊品质标准                    │
+└──────────────────────┬───────────────────────────────┘
+                       ▼
+                   交付用户
+```
+
+### 12.5 对 PR 拆分的影响
+
+| PR | 质量保障相关改动 |
+|----|-----------------|
+| **PR-1** | 新增 `_retry_config.py`（共享层骨架）+ `_quality_reviewer.py`（`ReviewResult` 数据结构 + 规则检查维度）+ `_outline_planner.py` 规划层重试循环 |
+| **PR-2** | HTML renderer 接入重试装饰器 + 接入 LLM 后置审查（数据准确性 + 标题质量 + 结构完整性） |
+| **PR-3** | DOCX renderer 接入重试装饰器 + 接入 LLM 后置审查 |
+| **PR-4** | PPTX renderer 接入重试装饰器（bridge timeout 指数退避）+ 接入 LLM 后置审查（全维度覆盖） |
+
+---
+
+## 13. 实施前置任务
 
 按此顺序执行：
 
-### 12.1 决策签字
+### 13.1 决策签字
 
 - [ ] 上轮 5 个默认值（D1-D5）由 PM/Tech Lead 签字确认 / 调整
 - [ ] PR 评审委员（至少 2 人，含 1 名熟悉 OOXML 的）
@@ -1064,14 +1266,14 @@ planner 检测到通用标题最多重试 1 次；仍失败则降级到外层 H 
 - [ ] 本地开发文档说明字体安装方式
 - [ ] PowerPoint / Keynote / WPS 测试环境就绪
 
-### 12.4 Baseline 回写流程
+### 13.4 Baseline 回写流程
 
 - [ ] 定义 baseline 回写 review checklist（截图、字体、色板、layout 四项）
 - [ ] 设置 `update_baseline=True` 的 PR 标记规则
 
 ---
 
-## 13. 附录 A：完整设计 token 清单
+## 14. 附录 A：完整设计 token 清单
 
 详见 §1。本节为 Theme dataclass 完整赋值，可直接 copy 到 `_theme.py`：
 
@@ -1115,7 +1317,7 @@ LIANGANG_JOURNAL = Theme(
 
 ---
 
-## 14. 附录 B：参考文献
+## 15. 附录 B：参考文献
 
 - [The Economist visual style guide - Fountn](https://fountn.design/resource/the-economist-visual-style-guide/)
 - [What Makes The Economist's Charts So Good? - Tim van Schaick](https://medium.com/@timvanschaick/what-makes-the-economists-charts-so-good-0234e4271da3)

@@ -28,7 +28,6 @@ from backend.tools.report.markdown_gen import MarkdownReportTool
 from backend.tools.report.pptx_gen import PptxReportTool
 
 from tests.contract._report_baseline import (
-    disable_pptxgen_bridge,
     golden_path,
     make_normal_fixture,
     markdown_normalize,
@@ -43,7 +42,6 @@ pytestmark = pytest.mark.contract
 @pytest.fixture(autouse=True)
 def _baseline_env(monkeypatch):
     stub_planner_llm(monkeypatch)
-    disable_pptxgen_bridge(monkeypatch)
 
 
 async def _run_tool(tool_cls, params: dict, context: dict):
