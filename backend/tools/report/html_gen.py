@@ -23,6 +23,7 @@ logger = logging.getLogger("analytica.tools.report_html")
                 input_spec="report_metadata + report_structure + 上游数据/图表引用",
                 output_spec="HTML 文件路径")
 class HtmlReportTool(BaseTool):
+    internal_llm_timeout = 60  # plan_outline → invoke_llm(timeout=60)
 
     async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         try:

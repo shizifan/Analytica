@@ -131,6 +131,7 @@ class BaseTool(ABC):
     input_spec: str = ""    # 供规划层 prompt 使用，如 "endpoint_id + 查询参数"
     output_spec: str = ""   # 供规划层 prompt 使用，如 "DataFrame (JSON 数据)"
     planner_visible: bool = True  # 是否出现在规划层 prompt 中
+    internal_llm_timeout: int = 0  # 工具内部最长 LLM 调用超时(秒)；0=未声明，_resolve_timeout 忽略
 
     @abstractmethod
     async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:

@@ -116,6 +116,54 @@ class Settings(BaseSettings):
         description="联网搜索功能总开关（False=全局禁用，前端开关无效）",
     )
 
+    # ── 超时 / 并发控制（per-type） ─────────────────────────
+    # 覆盖 execution.py 中的 _CONCURRENCY_LIMITS / _TIMEOUT_PROFILE / _RETRY_POLICY
+    # 格式: "type:lo,hi,mult" 如 "report_gen:120,240,2.5"
+    # env 示例: ANALYTICA_TIMEOUT_REPORT_GEN=120,240,2.5
+    ANALYTICA_TIMEOUT_REPORT_GEN: str = Field(
+        default="120,240,2.5",
+        description="report_gen 超时: lower,upper,multiplier",
+    )
+    ANALYTICA_TIMEOUT_ANALYSIS: str = Field(
+        default="60,150,2.5",
+        description="analysis 超时: lower,upper,multiplier",
+    )
+    ANALYTICA_TIMEOUT_DATA_FETCH: str = Field(
+        default="15,90,3.0",
+        description="data_fetch 超时: lower,upper,multiplier",
+    )
+    ANALYTICA_TIMEOUT_VISUALIZATION: str = Field(
+        default="5,20,2.0",
+        description="visualization 超时: lower,upper,multiplier",
+    )
+    ANALYTICA_TIMEOUT_SEARCH: str = Field(
+        default="30,100,2.5",
+        description="search 超时: lower,upper,multiplier",
+    )
+
+    # Per-type concurrency limits
+    ANALYTICA_CONCURRENCY_REPORT_GEN: int = Field(default=1)
+    ANALYTICA_CONCURRENCY_ANALYSIS: int = Field(default=2)
+    ANALYTICA_CONCURRENCY_DATA_FETCH: int = Field(default=8)
+    ANALYTICA_CONCURRENCY_VISUALIZATION: int = Field(default=4)
+    ANALYTICA_CONCURRENCY_SEARCH: int = Field(default=1)
+
+    # Global LLM concurrency
+    ANALYTICA_LLM_CONCURRENCY: int = Field(
+        default=3,
+        description="进程级全局 LLM 并发上限",
+    )
+
+    # Retry: report_gen (disabled), analysis (rate-limit only to skip useless retries)
+    ANALYTICA_RETRY_REPORT_GEN_ENABLED: bool = Field(
+        default=False,
+        description="report_gen 是否启用重试",
+    )
+    ANALYTICA_RETRY_ANALYSIS_RETRY_TIMEOUT: bool = Field(
+        default=False,
+        description="analysis 是否对 TIMEOUT 错误重试",
+    )
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 

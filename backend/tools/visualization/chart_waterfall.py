@@ -1,6 +1,7 @@
 """Waterfall Chart Skill — generates ECharts waterfall chart for attribution visualization."""
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import pandas as pd
@@ -14,6 +15,8 @@ from backend.tools.visualization._config_parser import (
     parse_chart_params,
 )
 from backend.tools.visualization._llm_mapper import decide_chart_mapping
+
+logger = logging.getLogger("analytica.tools.visualization.waterfall")
 
 COLOR_BASE = "#1E3A5F"      # deep blue for base/total
 COLOR_POSITIVE = "#F0A500"  # amber for positive
@@ -68,15 +71,26 @@ def _extract_waterfall_from_context(
     refs: list[str],
 ) -> list[dict[str, Any]]:
     """Look for upstream attribution output carrying ``waterfall_data``."""
+    logger.debug("waterfall: searching %d context refs for waterfall_data", len(refs))
     for ref in refs:
         if ref not in context:
+            logger.debug("waterfall: ref %s not in context", ref)
             continue
         ctx_out = context[ref]
         data = ctx_out.data if hasattr(ctx_out, "data") else ctx_out
         if isinstance(data, dict):
             wf = data.get("waterfall_data")
             if isinstance(wf, list) and wf:
+                logger.info("waterfall: found waterfall_data[%d] from ref %s", len(wf), ref)
                 return wf
+            if wf is not None:
+                logger.debug("waterfall: ref %s has waterfall_data but not a non-empty list: %s",
+                             ref, type(wf).__name__)
+        else:
+            logger.debug("waterfall: ref %s data is %s (not dict), keys=%s",
+                         ref, type(data).__name__,
+                         list(data.keys()) if isinstance(data, dict) else "N/A")
+    logger.warning("waterfall: no waterfall_data found in any of %d refs", len(refs))
     return []
 
 

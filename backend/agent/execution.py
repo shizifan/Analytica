@@ -66,17 +66,19 @@ def _summarize_tool_output(output: ToolOutput) -> dict[str, Any]:
 # 不同类型任务的特性差异显著：data_fetch 是 IO 密集，可高并发；analysis 调用
 # LLM，必须压低并发以防限流；visualization 轻量；report_gen 汇总，不并发。
 # 旧的 MAX_CONCURRENT=3 一刀切导致 LLM 任务 429/超时频发，data_fetch 又跑不快。
+#
+# 所有值均从 backend.timeout_config 读取（→ Settings → .env），
+# 可在不修改代码的情况下通过环境变量调整。
+
+from backend.timeout_config import (
+    get_concurrency_limits,
+    get_retry_policies,
+    get_timeout_profiles,
+)
 
 # Per-type concurrency limits (Semaphore 在 execute_plan 第一次调用时惰性初始化，
 # 避免模块 import 时绑定到错误的事件循环)。
-_CONCURRENCY_LIMITS: dict[str, int] = {
-    "data_fetch":    8,
-    "analysis":      2,
-    "visualization": 4,
-    "report_gen":    1,
-    "search":        1,  # 每个 plan 一个 G_SEARCH task
-    "_default":      3,
-}
+_CONCURRENCY_LIMITS: dict[str, int] = get_concurrency_limits()
 _SEMAPHORES: dict[str, asyncio.Semaphore] = {}
 
 # 兼容旧引用；语义已被 _CONCURRENCY_LIMITS 取代
@@ -84,24 +86,10 @@ MAX_CONCURRENT = 3
 
 # Per-type timeout profile: (lower_bound, upper_bound, multiplier_on_estimated)
 # resolved_timeout = clip(estimated_seconds * multiplier, lower, upper)
-_TIMEOUT_PROFILE: dict[str, tuple[int, int, float]] = {
-    "data_fetch":    (15, 90,  3.0),
-    "analysis":      (60, 150, 2.5),   # LLM 调用通常 30-90s, 留足余量
-    "visualization": (5,  20,  2.0),
-    "report_gen":    (60, 180, 2.5),
-    "search":        (30, 100, 2.5),  # 外网搜索：planner LLM + MCP 并发，需较长超时
-    "_default":      (15, 90,  3.0),
-}
+_TIMEOUT_PROFILE: dict[str, tuple[int, int, float]] = get_timeout_profiles()
 
 # Retry policy: (max_attempts, retriable_error_categories)
-_RETRY_POLICY: dict[str, tuple[int, frozenset[str]]] = {
-    "data_fetch":    (3, frozenset({"TIMEOUT", "SERVER_ERROR", "RATE_LIMIT"})),
-    "analysis":      (2, frozenset({"RATE_LIMIT", "TIMEOUT"})),
-    "visualization": (1, frozenset()),
-    "report_gen":    (2, frozenset({"TIMEOUT", "RATE_LIMIT"})),
-    "search":        (2, frozenset({"TIMEOUT", "SERVER_ERROR", "RATE_LIMIT"})),
-    "_default":      (1, frozenset()),
-}
+_RETRY_POLICY: dict[str, tuple[int, frozenset[str]]] = get_retry_policies()
 
 # Dependency satisfaction policy by task type.
 # "all"        — 所有依赖都必须 done（data_fetch/默认）
@@ -134,12 +122,17 @@ def _reset_semaphores() -> None:
     _SEMAPHORES.clear()
 
 
-def _resolve_timeout(task: TaskItem) -> float:
+def _resolve_timeout(task: TaskItem, internal_llm_timeout: int = 0) -> float:
     """Resolve per-task timeout. Prefers task.estimated_seconds when set,
-    but clamps to per-type bounds."""
+    but clamps to per-type bounds. When *internal_llm_timeout* is declared
+    by the tool, the lower bound is raised to internal + 30s safety margin
+    so the outer ``asyncio.wait_for`` never cuts into the inner LLM call."""
     profile = _TIMEOUT_PROFILE.get(task.type, _TIMEOUT_PROFILE["_default"])
     lo, hi, mult = profile
     est = task.estimated_seconds or lo
+    # Ensure outer timeout >= inner LLM timeout + 30s (排队 + 后处理)
+    if internal_llm_timeout > 0:
+        lo = max(lo, internal_llm_timeout + 30)
     return float(max(lo, min(est * mult, hi)))
 
 
@@ -476,7 +469,7 @@ async def _execute_single_task(
             pass
 
     # ── Semaphore-bounded execution with retry ────────────
-    timeout = _resolve_timeout(task)
+    timeout = _resolve_timeout(task, internal_llm_timeout=getattr(tool, "internal_llm_timeout", 0))
     max_attempts, retriable = _RETRY_POLICY.get(
         task.type, _RETRY_POLICY["_default"],
     )
@@ -515,10 +508,17 @@ async def _execute_single_task(
             except Exception:
                 pass
 
+        sem_wait_start = time.monotonic()
         async with sem:
+            sem_wait_elapsed = time.monotonic() - sem_wait_start
             output = await tool_executor(tool, inp, context, timeout_seconds=timeout)
 
         output.attempt_count = attempt
+
+        # Record semaphore wait time for diagnosis of transparent queue erosion
+        if output.metadata is None:
+            output.metadata = {}
+        output.metadata["sem_wait_s"] = round(sem_wait_elapsed, 3)
 
         # ── tool_call_end (Phase 2 + 3.5 preview) ──────────
         if ws_callback:

@@ -47,6 +47,7 @@ def _is_failed_narrative(text: str) -> bool:
                 input_spec="intent + 上游数据/分析引用",
                 output_spec="中文摘要文本")
 class SummaryGenTool(BaseTool):
+    internal_llm_timeout = 90  # invoke_llm(timeout=90)
 
     async def execute(self, inp: ToolInput, context: dict[str, Any]) -> ToolOutput:
         params = inp.params

@@ -36,8 +36,11 @@ logger = logging.getLogger("analytica.tools.llm")
 # all concurrent LLM activity in the process.
 #
 # Initialized lazily on first use to bind to the active event loop.
+# Value is sourced from timeout_config (→ Settings → .env).
+from backend.timeout_config import get_global_llm_limit
+
 _GLOBAL_LLM_SEMAPHORE: asyncio.Semaphore | None = None
-_GLOBAL_LLM_LIMIT = 2
+_GLOBAL_LLM_LIMIT = get_global_llm_limit()
 
 
 def _get_semaphore() -> asyncio.Semaphore:
@@ -139,6 +142,7 @@ async def invoke_llm(
 
     prompt_chars = len(truncated_user) + (len(truncated_system) if truncated_system else 0)
     start = time.monotonic()
+    sem_wait_elapsed = 0.0
 
     if span_emit:
         await span_emit(make_span("llm_call", task_id, status="start", input={
@@ -173,7 +177,9 @@ async def invoke_llm(
         )
 
         sem = _semaphore if _semaphore is not None else _get_semaphore()
+        sem_wait_start = time.monotonic()
         async with sem:
+            sem_wait_elapsed = time.monotonic() - sem_wait_start
             try:
                 if truncated_system:
                     messages = [
@@ -200,6 +206,7 @@ async def invoke_llm(
             "text": text,
             "tokens": tokens,
             "elapsed": elapsed,
+            "sem_wait_s": round(sem_wait_elapsed, 3),
             "error_category": None,
             "error": None,
             "prompt_chars": prompt_chars,
@@ -222,6 +229,7 @@ async def invoke_llm(
             "text": "",
             "tokens": {},
             "elapsed": elapsed,
+            "sem_wait_s": round(sem_wait_elapsed, 3),
             "error_category": category.value,
             "error": str(e),
             "prompt_chars": prompt_chars,
