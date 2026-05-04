@@ -51,6 +51,10 @@ export const api = {
       'POST', `/api/sessions/${sessionId}/cancel`,
     ),
 
+  /** 查询联网搜索功能是否可用（由后端 ENABLE_WEB_SEARCH 控制） */
+  getSearchConfig: () =>
+    request<{ enabled: boolean }>('GET', '/api/search-config'),
+
   saveReflection: (
     sessionId: string,
     opts: { save_preferences?: boolean; save_template?: boolean; save_tool_notes?: boolean } = {},

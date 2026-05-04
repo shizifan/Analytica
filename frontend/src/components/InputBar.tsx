@@ -10,9 +10,11 @@ interface Props {
   webSearchEnabled: boolean;
   /** 切换联网搜索状态 */
   onToggleWebSearch: (v: boolean) => void;
+  /** 后端搜索功能总开关是否启用（false 时隐藏按钮） */
+  searchFeatureAvailable?: boolean;
 }
 
-export function InputBar({ onSend, onCancel, disabled = false, isRunning = false, webSearchEnabled, onToggleWebSearch }: Props) {
+export function InputBar({ onSend, onCancel, disabled = false, isRunning = false, webSearchEnabled, onToggleWebSearch, searchFeatureAvailable = true }: Props) {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -63,6 +65,7 @@ export function InputBar({ onSend, onCancel, disabled = false, isRunning = false
         className="an-input max-h-40 min-h-[36px] flex-1 resize-none rounded-lg px-3 py-2 text-sm"
       />
       {/* 联网搜索开关 */}
+      {searchFeatureAvailable && (
       <button
         type="button"
         data-testid="web-search-toggle"
@@ -77,6 +80,7 @@ export function InputBar({ onSend, onCancel, disabled = false, isRunning = false
       >
         联网搜索
       </button>
+      )}
       {isRunning ? (
         <button
           data-testid="cancel-button"

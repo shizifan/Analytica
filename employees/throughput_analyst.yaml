@@ -54,6 +54,7 @@ perception:
 
 planning:
   search_domain_prefix: "辽港集团 港航物流 大连港 营口港"
+  search_public_hint: "港口吞吐量、生产运营、作业效率"
   prompt_suffix: |
     ## 分析策略 Cookbook
 

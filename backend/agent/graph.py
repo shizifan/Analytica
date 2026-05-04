@@ -184,6 +184,7 @@ async def planning_node(state: AgentState) -> AgentState:
         allowed_endpoints: frozenset[str] | None = None
         allowed_tools: frozenset[str] | None = None
         search_domain_prefix = ""
+        search_public_hint = ""
         prompt_suffix = ""
         rule_hints: dict[str, str] | None = None
 
@@ -195,6 +196,7 @@ async def planning_node(state: AgentState) -> AgentState:
                     allowed_endpoints = profile.get_endpoint_names()
                     allowed_tools = profile.get_tool_ids()
                     search_domain_prefix = profile.planning.search_domain_prefix or ""
+                    search_public_hint = profile.planning.search_public_hint or ""
                     prompt_suffix = profile.planning.prompt_suffix or ""
                     rule_hints = profile.planning.rule_hints or {}
             except Exception:
@@ -214,6 +216,7 @@ async def planning_node(state: AgentState) -> AgentState:
             employee_id=employee_id,
             web_search_enabled=state.get("web_search_enabled", False),
             search_domain_prefix=search_domain_prefix,
+            search_public_hint=search_public_hint,
         )
 
         plan_dict = plan.model_dump()
@@ -525,6 +528,11 @@ async def run_stream(
     `ws_callback` (Phase 2) — 若提供，execution.py 的任务更新 / 技能调用
     事件会直接推送到该回调，而非仅通过状态 yield 传出。不序列化到 DB。
     """
+    # ── 搜索功能总开关归一化 ──
+    from backend.config import get_settings
+    if not get_settings().ENABLE_WEB_SEARCH:
+        web_search_enabled = False
+
     from backend.database import get_session_factory
     from backend.memory.store import MemoryStore
 
@@ -580,6 +588,7 @@ async def run_stream(
                             query_str = f"{scope} {user_message}"
                             if len(query_str) > 200:
                                 query_str = query_str[:200]
+                            search_hint = profile.planning.search_public_hint or ""
                             search_task = {
                                 "task_id": "G_SEARCH",
                                 "type": "search",
@@ -590,6 +599,8 @@ async def run_stream(
                                 "params": {
                                     "query": query_str,
                                     "__search_domain_prefix__": prefix,
+                                    "__search_public_hint__": search_hint,
+                                    "__raw_query__": user_message,
                                 },
                                 "intent": (
                                     f"了解{user_message[:50]}的行业背景、政策环境和市场趋势，"

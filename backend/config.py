@@ -96,6 +96,26 @@ class Settings(BaseSettings):
         description="MCP 搜索服务 API Key（作为 query 参数附加）",
     )
 
+    # ── 搜索配置 ───────────────────────────────────────────
+    SEARCH_TOP_K: int = Field(
+        default=5,
+        description="搜索返回的最大结果数",
+    )
+    SEARCH_LANG: str = Field(
+        default="zh-CN",
+        description="搜索语言偏好（如 zh-CN / en）",
+    )
+    SEARCH_PROVIDER_TIMEOUT: float = Field(
+        default=60.0,
+        description="单个 MCP 搜索请求的超时秒数",
+    )
+
+    # ── 搜索功能总开关 ──────────────────────────────────────
+    ENABLE_WEB_SEARCH: bool = Field(
+        default=False,
+        description="联网搜索功能总开关（False=全局禁用，前端开关无效）",
+    )
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 

@@ -28,7 +28,13 @@ def _extract_user_query(state: dict[str, Any]) -> str:
     return ""
 
 
-def _ensure_search_task_in_plan(plan: dict[str, Any], search_domain_prefix: str, user_query: str = "") -> bool:
+def _ensure_search_task_in_plan(
+    plan: dict[str, Any],
+    search_domain_prefix: str,
+    user_query: str = "",
+    search_public_hint: str = "",
+    task_intent: str = "",
+) -> bool:
     """兜底注入搜索任务到 plan dict 中（幂等：已有则跳过）。
 
     返回 True 表示新注入了任务。
@@ -60,6 +66,9 @@ def _ensure_search_task_in_plan(plan: dict[str, Any], search_domain_prefix: str,
         "params": {
             "query": query,
             "__search_domain_prefix__": search_domain_prefix,
+            "__search_public_hint__": search_public_hint,
+            "__raw_query__": search_text,
+            "__task_intent__": task_intent,
         },
         "intent": (
             f"了解{search_text[:50]}的行业背景、政策环境和市场趋势，"
@@ -112,6 +121,7 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
                     state["analysis_plan"],
                     profile.planning.search_domain_prefix,
                     user_query=_extract_user_query(state),
+                    search_public_hint=profile.planning.search_public_hint or "",
                 )
                 if injected:
                     logger.info(
@@ -144,6 +154,7 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
                 employee_id=profile.employee_id,
                 web_search_enabled=state.get("web_search_enabled", False),
                 search_domain_prefix=profile.planning.search_domain_prefix or "",
+                search_public_hint=profile.planning.search_public_hint or "",
             )
 
             plan_dict = plan.model_dump()
@@ -204,6 +215,7 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
             injected = _ensure_search_task_in_plan(
                 state["analysis_plan"], search_prefix,
                 user_query=_extract_user_query(state),
+                search_public_hint=profile.planning.search_public_hint or "",
             )
             if injected:
                 logger.info(
@@ -211,12 +223,14 @@ def build_employee_graph(profile: EmployeeProfile) -> Any:
                     profile.employee_id,
                 )
 
-            # 注入 domain prefix 到所有搜索任务 params 中
+            # 注入 domain prefix + public hint 到所有搜索任务 params 中
             tasks: list[dict] = state["analysis_plan"].get("tasks", [])
+            search_hint = profile.planning.search_public_hint or ""
             for t in tasks:
                 if isinstance(t, dict) and t.get("type") == "search":
                     t.setdefault("params", {})
                     t["params"]["__search_domain_prefix__"] = search_prefix
+                    t["params"]["__search_public_hint__"] = search_hint
 
         return await _exec_node(state, allowed_tools=effective_tools)
 

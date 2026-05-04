@@ -299,14 +299,14 @@ describe('TC-UI13: ChatMessage Markdown rendering', () => {
 describe('TC-UI14: InputBar send button states', () => {
   it('disables send button when input is empty', () => {
     const onSend = vi.fn();
-    render(<InputBar onSend={onSend} />);
+    render(<InputBar onSend={onSend} webSearchEnabled={false} onToggleWebSearch={vi.fn()} />);
     const btn = screen.getByTestId('send-button');
     expect(btn).toBeDisabled();
   });
 
   it('disables send button for whitespace-only input', async () => {
     const onSend = vi.fn();
-    render(<InputBar onSend={onSend} />);
+    render(<InputBar onSend={onSend} webSearchEnabled={false} onToggleWebSearch={vi.fn()} />);
     const textarea = screen.getByTestId('input-textarea');
     await userEvent.type(textarea, '   ');
     expect(screen.getByTestId('send-button')).toBeDisabled();
@@ -314,7 +314,7 @@ describe('TC-UI14: InputBar send button states', () => {
 
   it('enables send button when content is entered', async () => {
     const onSend = vi.fn();
-    render(<InputBar onSend={onSend} />);
+    render(<InputBar onSend={onSend} webSearchEnabled={false} onToggleWebSearch={vi.fn()} />);
     const textarea = screen.getByTestId('input-textarea');
     await userEvent.type(textarea, '查一下港口数据');
     expect(screen.getByTestId('send-button')).not.toBeDisabled();
@@ -322,7 +322,7 @@ describe('TC-UI14: InputBar send button states', () => {
 
   it('disables send button when disabled prop is true', async () => {
     const onSend = vi.fn();
-    render(<InputBar onSend={onSend} disabled={true} />);
+    render(<InputBar onSend={onSend} webSearchEnabled={false} onToggleWebSearch={vi.fn()} disabled={true} />);
     const textarea = screen.getByTestId('input-textarea');
     expect(textarea).toBeDisabled();
     expect(screen.getByTestId('send-button')).toBeDisabled();
@@ -333,7 +333,7 @@ describe('TC-UI14: InputBar send button states', () => {
 describe('TC-UI15: InputBar Enter key behavior', () => {
   it('sends on Enter and clears input', async () => {
     const onSend = vi.fn();
-    render(<InputBar onSend={onSend} />);
+    render(<InputBar onSend={onSend} webSearchEnabled={false} onToggleWebSearch={vi.fn()} />);
     const textarea = screen.getByTestId('input-textarea');
 
     await userEvent.type(textarea, '上个月各业务线吞吐量');
@@ -345,7 +345,7 @@ describe('TC-UI15: InputBar Enter key behavior', () => {
 
   it('does not send on Shift+Enter (newline)', async () => {
     const onSend = vi.fn();
-    render(<InputBar onSend={onSend} />);
+    render(<InputBar onSend={onSend} webSearchEnabled={false} onToggleWebSearch={vi.fn()} />);
     const textarea = screen.getByTestId('input-textarea');
 
     await userEvent.type(textarea, 'line1');
@@ -356,7 +356,7 @@ describe('TC-UI15: InputBar Enter key behavior', () => {
 
   it('sends on button click', async () => {
     const onSend = vi.fn();
-    render(<InputBar onSend={onSend} />);
+    render(<InputBar onSend={onSend} webSearchEnabled={false} onToggleWebSearch={vi.fn()} />);
     const textarea = screen.getByTestId('input-textarea');
 
     await userEvent.type(textarea, '分析数据');

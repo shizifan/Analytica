@@ -67,6 +67,7 @@ export function ChatPageV2() {
   const [employeesDrawerOpen, setEmployeesDrawerOpen] = useState(false);
   const [reflectionSummary, setReflectionSummary] = useState<ReflectionSummary | null>(null);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [searchFeatureAvailable, setSearchFeatureAvailable] = useState(true);  // optimistic
 
   const [history, setHistory] = useState<ConversationItem[]>([]);
   const resetThinking = useThinkingStore((s) => s.reset);
@@ -112,6 +113,11 @@ export function ChatPageV2() {
   useEffect(() => {
     onReflectionRef.current = (s: ReflectionSummary) => setReflectionSummary(s);
   }, [onReflectionRef]);
+
+  // 查询后端搜索功能总开关，控制前端按钮显隐
+  useEffect(() => {
+    api.getSearchConfig().then((cfg) => setSearchFeatureAvailable(cfg.enabled)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -453,6 +459,7 @@ export function ChatPageV2() {
             isRunning={isRunning}
             webSearchEnabled={webSearchEnabled}
             onToggleWebSearch={setWebSearchEnabled}
+            searchFeatureAvailable={searchFeatureAvailable}
           />
         </main>
 

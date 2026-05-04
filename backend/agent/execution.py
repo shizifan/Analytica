@@ -74,6 +74,7 @@ _CONCURRENCY_LIMITS: dict[str, int] = {
     "analysis":      2,
     "visualization": 4,
     "report_gen":    1,
+    "search":        1,  # 每个 plan 一个 G_SEARCH task
     "_default":      3,
 }
 _SEMAPHORES: dict[str, asyncio.Semaphore] = {}
@@ -88,6 +89,7 @@ _TIMEOUT_PROFILE: dict[str, tuple[int, int, float]] = {
     "analysis":      (60, 150, 2.5),   # LLM 调用通常 30-90s, 留足余量
     "visualization": (5,  20,  2.0),
     "report_gen":    (60, 180, 2.5),
+    "search":        (30, 100, 2.5),  # 外网搜索：planner LLM + MCP 并发，需较长超时
     "_default":      (15, 90,  3.0),
 }
 
@@ -97,6 +99,7 @@ _RETRY_POLICY: dict[str, tuple[int, frozenset[str]]] = {
     "analysis":      (2, frozenset({"RATE_LIMIT", "TIMEOUT"})),
     "visualization": (1, frozenset()),
     "report_gen":    (2, frozenset({"TIMEOUT", "RATE_LIMIT"})),
+    "search":        (2, frozenset({"TIMEOUT", "SERVER_ERROR", "RATE_LIMIT"})),
     "_default":      (1, frozenset()),
 }
 
@@ -110,6 +113,7 @@ _DEP_POLICY: dict[str, str] = {
     "analysis":      "majority",
     "visualization": "any",
     "report_gen":    "any_global",
+    "search":        "all",
     "_default":      "all",
 }
 

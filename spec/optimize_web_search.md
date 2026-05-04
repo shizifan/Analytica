@@ -2,21 +2,27 @@
 
 > 修订自 2026-05-03 的设计讨论。聚焦三个原始问题：硬编码、Query 质量（LLM 规划）、稳定性。
 > 对比初版的关键修订：**单段规划**（不拆"意图规划 / 搜索规划"两段 LLM）+ **分层上下文** + **脱敏 gate** + **用户确认 gate**。
+>
+> **进度同步（2026-05-03）**：部分基础能力已落地（MCP 真实搜索、LLM Query 优化、搜索任务确定性注入、status 语义修正），§一已更新反映当前真实状态。`✅` = 已实现，`—` = 待实现。
 
 ---
 
-## 一、现状诊断（基于代码确认）
+## 一、现状诊断（基于代码确认，含实现进度）
 
-| 维度 | 当前实现 | 问题 |
-|---|---|---|
-| 工具实现 | `backend/tools/data/web_search.py:18-33` 全部是 stub —— 状态恒为 `"partial"`、`results=[]`、固定文案 `"[Web search stub] 搜索关键词: {query}。Tavily API 未配置"`、`metadata.stub=True` | 真实 API 未接入；流程上"已连通"但产出无价值 |
-| Query 来源 | `backend/agent/planning.py:181,193` 仅在 prompt 写"需补充外部信息时"，由 planning LLM 直接产出一个 `query` 字段 | 没有针对搜索任务的二次规划；查询往往是冗长自然语言而非高召回关键词；员工域内部术语会直接灌入 query |
-| 多轮检索 | 无 | 单次 query 失败/无结果即终止 |
-| 重试策略 | `execution.py:95-100` 走 `_default = (1, frozenset())` | **0 次重试**，远低于 data_fetch 的 3 次 |
-| 超时 | `execution.py:86-92` 走 `_default = (15, 90, 3.0)` | 与数据库抓取共用，未为外网做差异化 |
-| 结果处理 | 无解析、无去重、无重排、无摘要 | 结构化字段全空 |
-| 配置 | `backend/config.py` 无任何搜索相关 key | 没有 provider 配置位 |
-| 员工耦合 | `planning.py:374,1030,1467` 把 `{employee_cookbook}`、`prompt_suffix`、`rule_hints` 注入规划 prompt；`planning.py:646-653` 走 employee 模板 bypass | 规划 LLM 产出的 query 天然带员工内部术语 / 内部 API 字段名，互联网搜不到 |
+| 维度 | 当前实现 | 状态 | 问题 |
+|---|---|---|---|
+| 工具实现 | `backend/tools/data/web_search.py` 已接入 MCP（HiAgent Web Search Agent），通过 `_mcp_client.py` 走 JSON-RPC 2.0 over SSE；支持 connect/read/write 分层超时（15/60/15s）。返回结构化 `ToolOutput`（status 按 success/partial/failed 区分）。 | ✅ | 仅单一 provider（MCP），无主备 failover；无去重/缓存 |
+| Query 来源 | **确定式注入**：planning.py `_inject_search_tasks()` 不在 planning LLM prompt 中产出 query，而是用 `raw_query` + `search_domain_prefix` 的 scope（第一个词即公司名）构建 `G_SEARCH` 任务。graph_factory.py `_ensure_search_task_in_plan()` 兜底保证复用旧 plan 时不丢搜索任务。 | ✅ | query 仍是用户原始自然语言（未做关键词精简），可被 LLM 优化器改善（见下条） |
+| Query 优化 | `web_search.py:_optimize_search_query()` 用 LLM（qwen3-235b, 10s timeout）将分析需求浓缩为 2-4 个搜索关键词，规则：去分析词/图表词、去冗余限定、只保留年份。降级策略：LLM 失败时回退原始 query。 | ✅ | 优化器仅基于关键词规则，缺乏分层上下文（§3.1 的"必备背景/可选背景"结构）；无脱敏步骤 |
+| 领域注入 | 执行时自动补充公司名 scope：从 `__search_domain_prefix__` 取第一个词补到 query 前（若缺失）。 | ✅ | scope 注入逻辑简单，不支持多公司/多领域 |
+| 多轮检索 | 无 | — | 单次 query 失败/无结果即终止 |
+| 重试策略 | `execution.py` 走 `_default = (1, frozenset())` | — | **0 次有效重试**（1 次 attempt 无 retriable category），远低于 data_fetch 的 3 次 |
+| 超时 | `execution.py` 走 `_default = (15, 90, 3.0)` | — | 与数据库抓取共用，未为外网做差异化；建议搜索专属档位 `(10, 45, 2.0)` |
+| 结果处理 | 返回 `(query, search_time, total_results, results[])` 结构化数据，含 span tracing 用于监控耗时 | ✅ | 无去重、无重排、无 LLM 合成摘要、无引用编号 |
+| 配置 | `backend/config.py` 已有 `MCP_SEARCH_URL` / `MCP_SEARCH_API_KEY` | 部分 | 缺乏 `SEARCH_TOP_K` / `SEARCH_LANG` / `SEARCH_TIMEOUT` / provider 切换等配置位 |
+| 员工耦合 | 确定式注入逻辑使用 `search_domain_prefix` 的 scope 而非完整内部术语；planning LLM **不产出**搜索 query（已从 prompt 中移除该职责） | ✅ | 剩余风险：raw_query 可能含内网术语，需 §4 脱敏 gate 兜底 |
+| 前端集成 | `InputBar.tsx` "联网搜索" 开关通过 WS 传递 `web_search_enabled` 标志 | ✅ | 无可视化确认/编辑 query 的 UI（§5 用户确认 gate） |
+| Span 追踪 | 工具执行前后 emit `api_call` span（start/ok/error），记录 query、latency_ms | ✅ | — |
 
 ---
 
@@ -246,27 +252,38 @@ Provider 层另设细粒度重试（指数退避 0.5s / 1s / 2s），与 task-le
 
 ---
 
-## 十、PR 拆分
+## 十、PR 拆分与当前进度
 
-| PR | 范围 | 行为变化 | 依赖 |
-|---|---|---|---|
-| **PR-1** | 基础重构：provider 抽象、search 专属 retry/timeout 档位、stub 移到 `_mock.py`、新增 config 项位 | 无（生产仍走 mock） | — |
-| **PR-2** | 接入 Tavily + 备份 provider + 缓存 + dedupe；status 语义修正 | 真实搜索可用 | PR-1 |
-| **PR-3** | 单段 LLM Query 规划 + Gate 1 脱敏 | query 质量提升 | PR-1（独立于 PR-2） |
-| **PR-4** | Gate 2 用户确认（WS 事件 + 前端确认 UI + 开关） | 加入人工介入 | PR-3 |
-| **PR-5** | 多轮检索 + 合成 summary + citations | 召回与摘要质量提升 | PR-2 + PR-3 |
-| **PR-6** | 离线评测：`tests/integration/test_web_search_quality.py` 用 10 条典型分析问题离线跑通过率（hits ≥ 3 且 summary 命中关键实体） | 加测试 | PR-5 |
+| PR | 范围 | 状态 | 已完成 | 待实现 |
+|---|---|---|---|---|
+| **PR-1** | 基础重构：provider 抽象、search 专属 retry/timeout 档位、stub 移到 `_mock.py`、新增 config 项位 | 部分完成 | MCP 真实搜索已接入（替代 stub）；status 语义已修正（success/partial/failed）；`MCP_SEARCH_URL` / `MCP_SEARCH_API_KEY` config 已存在 | provider 抽象层（`_search_providers/`）未建；search 专属 retry/timeout 档位未加；`SEARCH_TOP_K` 等 config 位未加；stub 未迁出到 `_mock.py`（MCP 已是真实调用，stub 代码已物理删除） |
+| **PR-2** | 接入 Tavily + 备份 provider + 缓存 + dedupe；status 语义修正 | 未开始 | — | Tavily/Bing 等备份 provider；provider failover；LRU 缓存；URL 去重 |
+| **PR-3** | 单段 LLM Query 规划 + Gate 1 脱敏 | 部分完成 | LLM Query 优化器 (`_optimize_search_query`) 已实现，用 qwen3-235b 将需求浓缩为 2-4 个关键词；降级策略已就位 | 分层上下文 prompt（§3.1 的"必备背景 / 可选背景"）未实现；`_search_query_planner.py` 文件未创建（当前优化器直接写在 `web_search.py` 中）；`_search_sanitizer.py` 脱敏 gate 未实现；`search_public_hint` 字段未加入 employee profile |
+| **PR-4** | Gate 2 用户确认（WS 事件 + 前端确认 UI + 开关） | 未开始 | — | `web_search_confirm` WS 事件；前端确认/编辑 query UI；`SEARCH_REQUIRE_USER_CONFIRM` / `SEARCH_CONFIRM_TIMEOUT_SECONDS` 配置 |
+| **PR-5** | 多轮检索 + 合成 summary + citations | 未开始 | — | 多轮自适应检索（max 3 轮，MIN_HITS 早停）；LLM 结果合成 summary 带引用编号；补缺 query 的 LLM 回喂 |
+| **PR-6** | 离线评测：`tests/integration/test_web_search_quality.py` 用 10 条典型分析问题离线跑通过率 | 未开始 | — | 10 条典型 analysis 问题的测试集；hits ≥ 3 + summary 命中关键实体的通过率统计 |
+
+### 当前最小可用闭环已实现
+
+PR-1 的核心目标（真实 API 代替 stub）和 PR-3 的核心目标（LLM Query 优化）已经落地：
+
+- **工具层**：MCP HiAgent 搜索 + LLM Query 优化 + domain scope 注入
+- **规划层**：确定式搜索任务注入（`_inject_search_tasks` / `_ensure_search_task_in_plan`，不依赖 LLM 自由发挥）
+- **执行层**：status 语义正确（success/partial/failed）+ span 追踪
+- **前端层**：联网搜索开关 + WS 标志传递
+
+**下一步优先级建议**：PR-3 剩余项（分层上下文 prompt + 脱敏 gate）可使 query 质量再上一个台阶；PR-1 剩余项（search 专属 retry/timeout）直接提升稳定性。
 
 ---
 
 ## 十一、与三个原始问题的对应
 
-| 原始问题 | 解决方式 |
-|---|---|
-| **整体链路硬编码** | §8 全面配置化；stub 迁出到 `_mock.py`；status 语义修正 |
-| **Query 不好** | §3 单段 LLM 规划 + 分层上下文；§9 结果合成；§6 多轮自适应 |
-| **稳定性差** | §7 provider 主备 + search 专属 retry/timeout + 缓存 + dedupe；§4 脱敏 + §5 用户确认 把"低质 query"卡在调用前 |
-| **员工信息耦合（追加）** | §3.1 分层上下文（员工 profile 仅作可选层，缺失不阻断）；§3.2 Cookbook 仅暴露 `search_public_hint`；§4 脱敏兜底；§5 用户最终把关 |
+| 原始问题 | 解决方式 | 进度 |
+|---|---|---|
+| **整体链路硬编码** | §8 全面配置化；stub 迁出到 `_mock.py`；status 语义修正 | 部分解决：真实 MCP 搜索已替代 stub；status 语义已修正（success/partial/failed）；`MCP_SEARCH_URL/KEY` 已配置。待完成：search 专属 retry/timeout 档位、`SEARCH_TOP_K` 等配置位 |
+| **Query 不好** | §3 单段 LLM 规划 + 分层上下文；§9 结果合成；§6 多轮自适应 | 部分解决：LLM Query 优化器已落地（关键词浓缩 + 降级策略）；确定式搜索任务注入不依赖 LLM 自由发挥。待完成：分层上下文 prompt、脱敏 gate、多轮检索、结果合成 |
+| **稳定性差** | §7 provider 主备 + search 专属 retry/timeout + 缓存 + dedupe；§4 脱敏 + §5 用户确认 把"低质 query"卡在调用前 | 部分解决：span 追踪 + TimeoutError 捕获 + 降级策略。待完成：provider 主备、search 专属 retry/timeout、缓存、dedupe |
+| **员工信息耦合（追加）** | §3.1 分层上下文（员工 profile 仅作可选层，缺失不阻断）；§3.2 Cookbook 仅暴露 `search_public_hint`；§4 脱敏兜底；§5 用户最终把关 | 部分解决：确定式注入只用 scope（公司名第一个词），不把完整内部术语灌入 query；planning LLM 已不负责产出 search query。待完成：脱敏 gate、用户确认 gate
 
 ---
 
@@ -284,4 +301,10 @@ Provider 层另设细粒度重试（指数退避 0.5s / 1s / 2s），与 task-le
 
 ## 十三、落地建议
 
-按 PR 顺序推进，**PR-1 + PR-3 是最小可用闭环**（mock provider + 单段 LLM 规划 + 脱敏），可以独立合入并立刻看到 query 质量提升。PR-2 接入真实 provider 后整条链路即可端到端可用。PR-4 / PR-5 / PR-6 按业务优先级排期。
+### 当前进度
+
+基础搜索链路已通：MCP HiAgent 真实搜索 + LLM Query 优化 + domain 注入 + status 语义正确。可以从前端"联网搜索"开关 → WS 标志 → 确定式注入 `G_SEARCH` → 工具执行 MCP 搜索 → 返回结构结果，实现端到端可用。
+
+### 推进路线
+
+按 PR 顺序推进。**PR-1 剩余项 + PR-3 剩余项 是最小可用增强**（search 专属 retry/timeout + 分层上下文 prompt + 脱敏 gate），可以独立合入并立刻看到 query 质量和稳定性的提升。PR-2 接入备份 provider + 缓存后实现生产级可靠性。PR-4 / PR-5 / PR-6 按业务优先级排期。

@@ -81,6 +81,13 @@ async def health():
     return {"status": "ok", "service": "analytica"}
 
 
+@app.get("/api/search-config")
+async def search_config():
+    """返回联网搜索功能是否可用，供前端控制按钮显隐。"""
+    from backend.config import get_settings
+    return {"enabled": get_settings().ENABLE_WEB_SEARCH}
+
+
 # ── Employee APIs ────────────────────────────────────────────
 
 class FAQItemPayload(BaseModel):

@@ -55,6 +55,7 @@ class PlanningConfig(BaseModel):
     # Unknown keys are ignored — they don't crash the prompt builder.
     rule_hints: dict[str, str] = Field(default_factory=dict)
     search_domain_prefix: str = ""  # 搜索 query 自动追加的领域前缀（如"辽港集团 港航物流"）
+    search_public_hint: str = ""  # 可选员工公开领域关键词提示，用于优化搜索 query
 
 
 # ── EmployeeProfile ────────────────────────────────────────
