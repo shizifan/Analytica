@@ -79,6 +79,12 @@ class AgentState(TypedDict, total=False):
     error: str | None
     web_search_enabled: bool  # 联网搜索开关
 
+    # Multi-turn conversation (PR-1: Layer 1 + Layer 2)
+    turn_index: int                          # 0-based turn counter
+    turn_type: str                           # "new" | "continue" | "amend"
+    analysis_history: list[dict[str, Any]]   # 每轮分析摘要（纯可序列化结构）
+    plan_history: list[dict[str, Any]]       # 历史 plan（旧 analysis_plan 归档）
+
 
 def make_initial_state(
     session_id: str,
@@ -110,7 +116,289 @@ def make_initial_state(
         current_phase="perception",
         error=None,
         web_search_enabled=web_search_enabled,
+        turn_index=0,
+        turn_type="new",
+        analysis_history=[],
+        plan_history=[],
     )
+
+
+# ── Multi-turn Helpers (PR-1: Layer 1 + Layer 2) ────────────────
+
+def _classify_turn(user_message: str, prev_state: dict) -> str:
+    """Classify the follow-up intent into: new / continue / amend."""
+    if not prev_state.get("slots"):
+        return "new"
+
+    msg = user_message.strip()
+
+    # 显式新话题检测
+    new_topic_keywords = ["新分析", "换个话题", "重新分析", "不相关", "完全不同的"]
+    if any(kw in msg for kw in new_topic_keywords):
+        return "new"
+
+    # Amend 检测（仅追加/替换报告格式，不涉及数据变化）
+    amend_keywords = ["再加", "补充报告", "加一个", "也要生成", "也生成一份",
+                      "换个格式", "换成", "转成", "导出为"]
+    if any(kw in msg for kw in amend_keywords):
+        return "amend"
+
+    # 默认归为 continue
+    return "continue"
+
+
+def _extract_last_user_message(state: dict) -> str:
+    """Extract the most recent user message from state messages."""
+    for msg in reversed(state.get("messages", [])):
+        if isinstance(msg, dict) and msg.get("role") == "user":
+            return (msg.get("content") or "")[:200]
+    return ""
+
+
+def _extract_slot_snapshot(slots: dict) -> dict:
+    """Extract a lightweight snapshot of slot values (no source/provenance)."""
+    snapshot = {}
+    for name, slot in slots.items():
+        if isinstance(slot, dict) and slot.get("value") not in (None, ""):
+            snapshot[name] = {"value": slot["value"]}
+    return snapshot
+
+
+def _collect_artifacts_from_context(
+    execution_context: dict, tasks: list[dict]
+) -> list[dict]:
+    """Collect report artifacts from execution context."""
+    artifacts = []
+    for task in tasks:
+        tid = task.get("task_id", "")
+        if task.get("type") not in ("report_gen", "report"):
+            continue
+        result = execution_context.get(tid)
+        if result is None:
+            continue
+        data = None
+        if hasattr(result, "data"):
+            data = result.data
+        elif isinstance(result, dict):
+            data = result.get("data")
+        if isinstance(data, str):
+            try:
+                data = json.loads(data)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        if isinstance(data, dict):
+            for fmt in ("HTML", "PPTX", "DOCX", "PDF"):
+                if fmt.lower() in str(data).lower():
+                    artifacts.append({
+                        "format": fmt,
+                        "artifact_id": data.get("artifact_id", ""),
+                    })
+            if not artifacts and data.get("artifact_id"):
+                artifacts.append({
+                    "format": "unknown",
+                    "artifact_id": data["artifact_id"],
+                })
+    return artifacts
+
+
+def _build_turn_summary(state: dict) -> dict:
+    """Build a serializable analysis_history entry from execution results."""
+    plan = state.get("analysis_plan") or {}
+    tasks = plan.get("tasks", [])
+    context = state.get("execution_context") or {}
+
+    data_snapshots = []
+    key_findings = []
+
+    for task in tasks:
+        tid = task.get("task_id", "")
+        result = context.get(tid)
+        if result is None:
+            continue
+
+        data = None
+        if hasattr(result, "data"):
+            data = result.data
+        elif isinstance(result, dict):
+            data = result.get("data")
+
+        if data is None:
+            continue
+
+        if task.get("type") == "data_fetch":
+            import pandas as pd
+            if isinstance(data, pd.DataFrame):
+                df = data
+                data_snapshots.append({
+                    "task_id": tid,
+                    "endpoint": task.get("params", {}).get("endpoint_id"),
+                    "rows": len(df),
+                    "columns": [str(c) for c in df.columns[:10]],
+                    "sample": df.head(3).to_dict(orient="records"),
+                    "params": task.get("params", {}),
+                })
+        elif task.get("type") in ("summary", "analysis"):
+            text = data if isinstance(data, str) else str(data)[:300]
+            if text.strip():
+                key_findings.append(text[:200])
+
+    artifacts = _collect_artifacts_from_context(context, tasks)
+
+    completed_count = sum(
+        1 for t in tasks
+        if state.get("task_statuses", {}).get(t.get("task_id")) in ("done", "skipped")
+    )
+    failed_count = sum(
+        1 for t in tasks
+        if state.get("task_statuses", {}).get(t.get("task_id")) in ("failed", "error")
+    )
+
+    return {
+        "turn": state.get("turn_index", 0),
+        "turn_type": state.get("turn_type", "new"),
+        "query": _extract_last_user_message(state),
+        "plan_title": plan.get("title", ""),
+        "data_snapshots": data_snapshots,
+        "key_findings": key_findings[:5],
+        "artifacts": artifacts,
+        "slots_snapshot": _extract_slot_snapshot(state.get("slots", {})),
+        "task_count": len(tasks),
+        "completed_count": completed_count,
+        "failed_count": failed_count,
+    }
+
+
+# ── History truncation ───────────────────────────────────────
+
+MAX_HISTORY_TURNS = 5
+MAX_SAMPLE_PER_TASK = 3
+MAX_FINDINGS_PER_TURN = 5
+MAX_FINDING_LENGTH = 200
+MAX_SLOT_SNAPSHOT_ITEMS = 5
+
+IMPORTANT_SLOTS = frozenset({
+    "analysis_subject", "time_range", "domain",
+    "output_format", "data_granularity",
+})
+
+
+def trim_analysis_history(history: list[dict]) -> list[dict]:
+    """Trim analysis_history to fit within reasonable state_json size."""
+    if len(history) > MAX_HISTORY_TURNS:
+        history = history[-MAX_HISTORY_TURNS:]
+
+    for turn in history:
+        for snap in turn.get("data_snapshots", []):
+            snap["sample"] = snap.get("sample", [])[:MAX_SAMPLE_PER_TASK]
+            snap["columns"] = snap.get("columns", [])[:10]
+
+        findings = turn.get("key_findings", [])
+        turn["key_findings"] = [
+            f[:MAX_FINDING_LENGTH] for f in findings[:MAX_FINDINGS_PER_TURN]
+        ]
+
+        slots = turn.get("slots_snapshot", {})
+        if len(slots) > MAX_SLOT_SNAPSHOT_ITEMS:
+            turn["slots_snapshot"] = {
+                k: v for k, v in slots.items()
+                if k in IMPORTANT_SLOTS
+            }
+
+    return history
+
+
+def _build_multiturn_context_injection(state: dict) -> dict:
+    """Build context dict for injection into perception/planning prompts."""
+    history = state.get("analysis_history", [])
+    if not history:
+        return {}
+
+    latest = history[-1]
+    prev_snapshots = []
+    for h in history:
+        prev_snapshots.extend(h.get("data_snapshots", []))
+
+    return {
+        "turn_index": state.get("turn_index", 0),
+        "turn_type": state.get("turn_type", "continue"),
+        "latest_summary": latest,
+        "all_key_findings": [
+            f for h in history
+            for f in h.get("key_findings", [])
+        ],
+        "prev_data_endpoints": list(set(
+            s.get("endpoint") for s in prev_snapshots if s.get("endpoint")
+        )),
+        "prev_artifacts": latest.get("artifacts", []),
+        "current_slots": _extract_slot_snapshot(state.get("slots", {})),
+    }
+
+
+def _build_amend_plan(prev_state: dict, user_message: str) -> dict:
+    """Build a minimal execution plan for amend turn (format add/replace).
+
+    PR-1 skeleton: generates a single report_gen task referencing previous
+    artifacts. Full implementation (with is_replace distinction and format
+    detection) comes in PR-2.
+    """
+    history = prev_state.get("analysis_history", [])
+    prev_artifacts = []
+    if history:
+        prev_artifacts = history[-1].get("artifacts", [])
+
+    # Detect target format from user message
+    msg = user_message.lower()
+    target_format = "HTML"
+    for fmt in ("PPTX", "PPT", "pptx"):
+        if fmt.lower() in msg:
+            target_format = "PPTX"
+            break
+    for fmt in ("DOCX", "Word", "docx", "word"):
+        if fmt.lower() in msg:
+            target_format = "DOCX"
+            break
+
+    # Determine if this is a "replace" (换个格式/换成) or "add" (再加)
+    is_replace = any(kw in msg for kw in ["换个格式", "换成", "转成", "导出为"])
+
+    # Detect format keyword for task_id
+    format_key = target_format.lower()
+
+    amend_task = {
+        "task_id": f"G_AMEND_{format_key}",
+        "type": "report_gen",
+        "name": f"生成 {target_format} 报告",
+        "description": f"基于前轮分析结果生成 {target_format} 格式报告",
+        "depends_on": [],  # V3: 不使用前轮 task_id，通过 _previous_artifacts 注入
+        "tool": f"tool_report_{format_key}",
+        "params": {
+            "_previous_artifacts": prev_artifacts,
+            "is_replace": is_replace,
+        },
+        "intent": f"在已有分析结果基础上生成 {target_format} 报告",
+        "estimated_seconds": 30,
+    }
+
+    return {
+        "title": f"生成 {target_format} 报告（续）",
+        "tasks": [amend_task],
+        "version": prev_state.get("plan_version", 0) + 1,
+        "turn_index": prev_state.get("turn_index", 0) + 1,
+        "complexity": "simple_table",
+        "estimated_duration": 30,
+    }
+
+
+def _append_turn_summary(state: dict) -> None:
+    """Build turn summary and append to analysis_history in-place."""
+    if state.get("analysis_plan") and state.get("execution_context"):
+        try:
+            summary = _build_turn_summary(state)
+            history = list(state.get("analysis_history", []))
+            history.append(summary)
+            state["analysis_history"] = trim_analysis_history(history)
+        except Exception:
+            logger.exception("Failed to build turn summary")
 
 
 # ── Node Implementations ─────────────────────────────────────
@@ -162,10 +450,23 @@ async def planning_node(state: AgentState) -> AgentState:
     if state.get("plan_confirmed"):
         return state
 
-    # Auto-confirm existing plan from previous turn (loaded from DB)
-    if state.get("analysis_plan"):
-        state["plan_confirmed"] = True
-        return state
+    # Auto-confirm existing plan: only when tasks are NOT all done.
+    # In multi-turn scenarios (turn_type=continue/amend), skip auto-confirm
+    # so the graph can generate a new plan based on the follow-up intent.
+    if state.get("analysis_plan") and state.get("turn_type") not in ("continue", "amend"):
+        tasks = state["analysis_plan"].get("tasks", [])
+        all_done = all(
+            state.get("task_statuses", {}).get(t.get("task_id")) in ("done", "skipped")
+            for t in tasks
+        ) if tasks else True
+        if not all_done:
+            # 有未完成任务 → auto-confirm 继续执行
+            state["plan_confirmed"] = True
+            return state
+        # 全部已完成 → 归档旧 plan，继续生成新 plan
+        state.setdefault("plan_history", []).append(state["analysis_plan"])
+        state["analysis_plan"] = None
+        state["plan_confirmed"] = False
 
     intent = state.get("structured_intent")
     if intent is None:
@@ -217,6 +518,7 @@ async def planning_node(state: AgentState) -> AgentState:
             web_search_enabled=state.get("web_search_enabled", False),
             search_domain_prefix=search_domain_prefix,
             search_public_hint=search_public_hint,
+            _multiturn_context=state.get("_multiturn_context"),
         )
 
         plan_dict = plan.model_dump()
@@ -656,6 +958,7 @@ async def run_stream(
         finally:
             ws_ctx.reset_ws_callback(token)
 
+        _append_turn_summary(state)
         try:
             safe_state = json.loads(
                 json.dumps(state, ensure_ascii=False, default=str)
@@ -667,23 +970,102 @@ async def run_stream(
             logger.exception("Failed to save session state for %s", session_id)
         return
 
-    # 2. 构建本轮状态：有历史槽位则续接，否则全新开始
-    if prev_state.get("slots"):
-        state: dict[str, Any] = dict(prev_state)
+    # 2. 判断 turn_type 并构建本轮状态
+    turn_index = prev_state.get("turn_index", 0)
+    turn_type = _classify_turn(user_message, prev_state) if prev_state.get("slots") else "new"
+    logger.info("[run_stream] turn_index=%s turn_type=%s session=%s", turn_index, turn_type, session_id)
+
+    if turn_type == "new":
+        # 全新分析 — 丢弃旧 state，保留 messages 用于对话历史展示
+        old_messages = prev_state.get("messages", [])
+        state = dict(make_initial_state(
+            session_id, user_id, user_message,
+            employee_id=employee_id,
+            web_search_enabled=web_search_enabled,
+        ))
+        state["messages"] = old_messages + [{"role": "user", "content": user_message}]
+        state["turn_index"] = 0
+        state["turn_type"] = "new"
+        state["plan_history"] = prev_state.get("plan_history", [])
+
+    elif turn_type == "amend":
+        # 快速路径：规则引擎直接构建 amend plan → execution
+        state = dict(prev_state)
         state.setdefault("messages", [])
         state["messages"].append({"role": "user", "content": user_message})
-        # 重置每轮控制字段，让 perception 重新评估
+        state["turn_type"] = "amend"
+        state["turn_index"] = turn_index + 1
+        state["current_phase"] = "execution"
+        state["error"] = None
+        state["web_search_enabled"] = web_search_enabled
+
+        amend_plan = _build_amend_plan(prev_state, user_message)
+        state["analysis_plan"] = amend_plan
+        state["plan_confirmed"] = True
+        state.setdefault("plan_history", []).append(prev_state.get("analysis_plan", {}))
+
+        # 直接走 execution（跳过 perception + planning）
+        yield {"__meta__": {"initial_msg_count": len(state.get("messages", []))}}
+
+        from backend.agent import ws_ctx
+        from backend.agent.execution import execution_node as _exec_node
+        token = ws_ctx.set_ws_callback(ws_callback)
+        try:
+            yield {
+                "__thinking__": {
+                    "kind": "phase",
+                    "phase": "execution",
+                    "payload": {"event": "phase_enter", "node": "execution"},
+                },
+            }
+            state = await _exec_node(state)
+            exit_payload = _summarize_node_exit("execution", state)
+            if exit_payload:
+                yield {
+                    "__thinking__": {
+                        "kind": "phase",
+                        "phase": "execution",
+                        "payload": {
+                            "event": "phase_exit",
+                            "node": "execution",
+                            **exit_payload,
+                        },
+                    },
+                }
+            yield {"execution": state}
+        finally:
+            ws_ctx.reset_ws_callback(token)
+
+        # Build turn summary and persist
+        _append_turn_summary(state)
+        try:
+            safe_state = json.loads(
+                json.dumps(state, ensure_ascii=False, default=str)
+            )
+            async with factory() as db_session:
+                store = MemoryStore(db_session)
+                await store.save_session_state(session_id, safe_state)
+        except Exception:
+            logger.exception("Failed to save session state for %s", session_id)
+        return
+
+    else:  # turn_type == "continue"
+        # 延续分析 — 保留 slots + 注入多轮上下文
+        state = dict(prev_state)
+        state.setdefault("messages", [])
+        state["messages"].append({"role": "user", "content": user_message})
+        state["turn_type"] = "continue"
+        state["turn_index"] = turn_index + 1
         state["structured_intent"] = None
         state["current_target_slot"] = None
         state["current_phase"] = "perception"
         state["error"] = None
         state["web_search_enabled"] = web_search_enabled
-    else:
-        state = dict(
-            make_initial_state(session_id, user_id, user_message,
-                              employee_id=employee_id,
-                              web_search_enabled=web_search_enabled)
-        )
+        # 清理前轮 task_statuses（避免旧状态混入）
+        state["task_statuses"] = {}
+        # 注入多轮上下文供 perception/planning 使用
+        if state.get("analysis_history"):
+            state["_multiturn_context"] = _build_multiturn_context_injection(state)
 
     # 3. 获取对应的编译图
     if employee_id:
@@ -800,7 +1182,8 @@ async def run_stream(
                 pass
         return
 
-    # 6. 最终状态 → DB；剥离非序列化字段
+    # 6. Build turn summary, then persist final state to DB
+    _append_turn_summary(final_state)
     try:
         safe_state = json.loads(
             json.dumps(final_state, ensure_ascii=False, default=str)

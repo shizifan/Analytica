@@ -49,6 +49,7 @@ _PLANNING_SKELETON_TIMEOUT     = float(os.getenv("PLANNING_SKELETON_TIMEOUT", "6
 _PLANNING_SECTION_TIMEOUT      = float(os.getenv("PLANNING_SECTION_TIMEOUT",  "60"))
 _PLANNING_SECTION_PARALLELISM  = int(os.getenv("PLANNING_SECTION_PARALLELISM", "5"))
 _PLANNING_SECTION_FAILURE_RATIO = float(os.getenv("PLANNING_SECTION_FAILURE_RATIO", "0.4"))
+_MAX_FINDING_LEN               = 200  # max chars per finding in multi-turn context
 
 # ── 业务规则常量（可单独维护）────────────────────────────────
 
@@ -139,6 +140,8 @@ def _extract_time_hints(intent: dict[str, Any]) -> dict[str, str] | None:
 # ── Planning LLM Prompt ──────────────────────────────────────
 
 PLANNING_PROMPT = """你是一个数据分析规划专家。根据用户的分析意图，制定一份分析执行方案。
+
+{multiturn_context}
 
 【分析意图】
 {intent_json}
@@ -635,6 +638,7 @@ class PlanningEngine:
         web_search_enabled: bool = False,
         search_domain_prefix: str = "",
         search_public_hint: str = "",
+        _multiturn_context: dict | None = None,
     ) -> AnalysisPlan:
         """Generate an analysis plan from a structured intent.
 
@@ -747,6 +751,7 @@ class PlanningEngine:
                 rule_hints=rule_hints,
                 template_hint=template_hint,
                 agent_skills_hint=agent_skills_hint,
+                multiturn_context=_multiturn_context,
             )
 
             # Use per-complexity timeout; fall back to constructor default only when
@@ -1293,6 +1298,7 @@ class PlanningEngine:
         rule_hints: dict[str, str] | None = None,
         template_hint: str = "",
         agent_skills_hint: str = "",
+        multiturn_context: dict | None = None,  # PR-1: multi-turn context
     ) -> str:
         """Build the planning LLM prompt."""
         # Extract domain hint from intent
@@ -1503,7 +1509,25 @@ class PlanningEngine:
 
         structured_hints = ("【意图结构化提示】\n" + "\n".join(hint_lines)) if hint_lines else ""
 
+        # Multi-turn context block (PR-1: Layer 2)
+        multi_turn_text = ""
+        if multiturn_context:
+            latest = multiturn_context.get("latest_summary", {})
+            findings = multiturn_context.get("all_key_findings", [])[:5]
+            prev_endpoints = multiturn_context.get("prev_data_endpoints", [])
+            turn_idx = multiturn_context.get("turn_index", 0)
+            multi_turn_text = (
+                f"【多轮分析上下文 — 必读】\n"
+                f"当前是第 {turn_idx} 轮分析（延续上轮）。前轮分析已完成：\n"
+                f"- 主题：{latest.get('plan_title', '')[:150]}\n"
+                f"- 已完成 {latest.get('completed_count', 0)}/{latest.get('task_count', 0)} 个任务\n"
+                f"- 关键发现：{'；'.join(f[:_MAX_FINDING_LEN] for f in findings) if findings else '无'}\n"
+                f"- 已调用的数据端点：{', '.join(prev_endpoints) if prev_endpoints else '无'}\n"
+                f"\n【重要提醒】已有数据端点的数据请勿重复获取。请仅生成增量任务以回答本轮新问题。\n"
+            )
+
         result = PLANNING_PROMPT.format(
+            multiturn_context=multi_turn_text,
             intent_json=intent_json,
             tools_description=tools_desc,
             endpoints_description=endpoints_desc,

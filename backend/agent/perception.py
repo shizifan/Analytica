@@ -851,8 +851,22 @@ async def run_perception(state: dict, profile: Any = None) -> dict:
             return state
 
         # Extract slots from text
+        # -- Multi-turn: inject previous turn summary into conversation history --
+        conv_history = messages[:-1] if len(messages) > 1 else []
+        multiturn = state.get("_multiturn_context")
+        if multiturn and state.get("turn_type") == "continue":
+            latest = multiturn.get("latest_summary", {})
+            findings = multiturn.get("all_key_findings", [])[:3]
+            summary_line = (
+                f"[已完成的前轮分析] "
+                f"计划：{latest.get('plan_title', '')[:100]}。"
+                f"关键发现：{'; '.join(findings[:3]) if findings else '无'}。"
+                f"可用数据端点：{', '.join(multiturn.get('prev_data_endpoints', []))}。"
+            )
+            conv_history = [{"role": "assistant", "content": summary_line}] + conv_history
+
         slot_values = await engine.extract_slots_from_text(
-            user_message, slot_values, messages[:-1] if len(messages) > 1 else []
+            user_message, slot_values, conv_history
         )
 
         # ── 默认值回填（对 inferable 且仍为空的槽位） ──
@@ -875,7 +889,10 @@ async def run_perception(state: dict, profile: Any = None) -> dict:
             complexity = comp_slot.value
 
         # Check empty required slots
+        # 多轮延续模式下跳过追问：槽位已继承自上一轮
         empty_required = engine.get_empty_required_slots(slot_values, complexity)
+        if multiturn and state.get("turn_type") == "continue":
+            empty_required = []
 
         # Record slots to history
         session_id = state.get("session_id", "")
