@@ -436,6 +436,31 @@ def _validate_outline_response(
                         )
 
 
+def _deduplicate_chart_blocks(outline: ReportOutline) -> None:
+    """Replace duplicate ChartBlocks (same asset_id across sections) with
+    a light text reference so the same chart does not render on multiple
+    pages.  The first occurrence of each asset_id is kept; subsequent
+    occurrences become a ParagraphBlock citing the original section.
+    """
+    seen: dict[str, str] = {}  # asset_id → first_section_name
+    for sec in outline.sections:
+        new_blocks: list = []
+        for blk in sec.blocks:
+            if blk.kind == "chart" and hasattr(blk, "asset_id"):
+                aid = blk.asset_id
+                if aid in seen:
+                    new_blocks.append(ParagraphBlock(
+                        block_id=new_block_id(),
+                        text=f"图表“{getattr(blk, 'caption', '数据图')}”详见"
+                             f"「{seen[aid]}」部分，此处不再重复展示。",
+                        style="body",
+                    ))
+                    continue
+                seen[aid] = sec.name
+            new_blocks.append(blk)
+        sec.blocks = new_blocks
+
+
 # ---------------------------------------------------------------------------
 # Build outline from validated response
 # ---------------------------------------------------------------------------
@@ -500,6 +525,8 @@ def _build_outline_from_response(
             if block is not None:
                 new_sec.blocks.append(block)
         outline.sections.append(new_sec)
+
+    _deduplicate_chart_blocks(outline)
 
     return outline
 

@@ -14,6 +14,7 @@ from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 
+from backend.tools._field_labels import col_label
 from backend.tools.report import _theme as T
 
 # ---------------------------------------------------------------------------
@@ -186,7 +187,7 @@ def build_kpi_cards_slide(prs: Presentation, title: str,
 
         # Label
         _add_textbox(slide, Inches(x + 0.3), Inches(1.8), Inches(card_w - 0.6), Inches(0.6),
-                     col, font_size=T.SIZE_KPI_LABEL, bold=True,
+                     col_label(col), font_size=T.SIZE_KPI_LABEL, bold=True,
                      color=T.RGB_NEUTRAL, alignment=PP_ALIGN.CENTER)
 
         # YoY

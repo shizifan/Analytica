@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.tools._field_labels import metric_label
+from backend.tools._field_labels import col_label, metric_label
 from backend.tools.report import _theme as T
 from backend.tools.report._block_renderer import BlockRendererBase
 from backend.tools.report._outline import (
@@ -124,6 +124,7 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
         # Appendix buffer — populated by emit_chart_table_pair,
         # flushed in end_document (PR-4: §6.7)
         self._appendix_buffer: list = []
+        self._seen_appendix_assets: set[str] = set()
 
         # Per-section buffers — flushed in end_section
         self._narratives: list[str] = []
@@ -301,8 +302,11 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
             shape="rect", fill=self._C["accent"],
         ))
 
-        # Push table to appendix buffer
-        self._appendix_buffer.append((block, table_asset))
+        # Push table to appendix buffer (dedup by asset_id)
+        aid = getattr(table_asset, "asset_id", id(table_asset))
+        if aid not in self._seen_appendix_assets:
+            self._seen_appendix_assets.add(aid)
+            self._appendix_buffer.append((block, table_asset))
 
     # ---- KPI strip (PR-4: §6.4) ------------------------------------
 
@@ -691,6 +695,44 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
             options={"fontSize": 11, "fontFace": T.FONT_NUM},
         ))
 
+    def _add_chart_narrative_slide(
+        self, chart_option: dict[str, Any], narrative: str = "",
+    ) -> None:
+        """Compact slide: chart (upper 55%) + narrative text (lower region).
+        Avoids fragmenting one section’s analysis across three separate slides.
+        """
+        spec = echarts_to_pptxgen(chart_option, theme=self._theme)
+        if spec is None:
+            title = chart_option.get("title", {}).get("text") or "数据图表"
+            self._commands.append(NewSlide(background=self._C["bg_light"]))
+            self._commands.append(AddText(
+                x=0.6, y=2.0, w=12.133, h=1.5, text=title,
+                font_size=14, bold=True,
+                color=self._C["primary"], font_name=T.FONT_CN,
+            ))
+            return
+
+        self._commands.append(NewSlide(background=self._C["bg_light"]))
+        title = spec.get("title") or "数据图表"
+        self._commands.append(AddText(
+            x=0.6, y=0.3, w=12.133, h=0.35, text=title,
+            font_size=13, bold=True,
+            color=self._C["primary"], font_name=T.FONT_CN,
+        ))
+        # Chart — upper 55%
+        self._commands.append(AddChart(
+            x=0.6, y=0.75, w=12.133, h=3.6,
+            chart_type=spec["type"],
+            data=spec["data"],
+            options=spec["options"],
+        ))
+        # Narrative text below chart
+        if narrative:
+            self._commands.append(AddText(
+                x=0.6, y=4.5, w=12.133, h=2.8, text=narrative,
+                font_size=12, color=self._C["text_dark"], font_name=T.FONT_CN,
+            ))
+
     def _add_chart_table_slide(self, chart_option: dict[str, Any]) -> None:
         """PR-4: 辽港图表页——图题 + chart 70% + endmark。
         不支持的类型改为文本占位符，不降级为 PNG fallback。
@@ -764,7 +806,7 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
                 shape="rect", fill=self._C["bg_light"],
             ))
             self._commands.append(AddText(
-                x=x + 0.3, y=1.8, w=card_w - 0.6, h=0.6, text=col,
+                x=x + 0.3, y=1.8, w=card_w - 0.6, h=0.6, text=col_label(col),
                 font_size=T.SIZE_KPI_LABEL, bold=True,
                 color=self._C["neutral"], font_name=T.FONT_CN,
                 alignment="center",
@@ -924,32 +966,30 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
     # ---- Section composition (mirrors PptxBlockRenderer) ------------
 
     def _render_section_combo(self) -> None:
+        """Emit a compact layout: chart(s) + leading narrative on one
+        slide, growth cards on a compact slide, stats to appendix."""
+        nar_text = "\n\n".join(self._narratives) if self._narratives else ""
+
+        # Chart + short narrative on one slide
+        if self._charts:
+            short_nar = nar_text[:180] + "…" if len(nar_text) > 180 else nar_text
+            self._add_chart_narrative_slide(
+                chart_option=self._charts[0], narrative=short_nar,
+            )
+            for ci in self._charts[1:]:
+                self._add_chart_table_slide(ci)
+        elif nar_text:
+            self._add_narrative_slide(self._current_section_name, nar_text)
+
+        # Growth cards — compact standalone
         for gr in self._growth:
             self._add_kpi_cards_slide(self._current_section_name, gr)
 
-        if self._narratives and self._stats:
-            nar_text = "\n\n".join(self._narratives)
-            stats_text = _stats_to_text(self._stats[0])
-            self._add_two_column_slide(
-                self._current_section_name, nar_text, stats_text,
+        # Stats → appendix
+        for st in self._stats:
+            self._add_stats_table_slide(
+                f"{self._current_section_name} - 统计数据", st,
             )
-            for st in self._stats:
-                self._add_stats_table_slide(
-                    f"{self._current_section_name} - 统计数据", st,
-                )
-        elif self._narratives:
-            self._add_narrative_slide(
-                self._current_section_name,
-                "\n\n".join(self._narratives),
-            )
-        elif self._stats:
-            for st in self._stats:
-                self._add_stats_table_slide(
-                    f"{self._current_section_name} - 统计数据", st,
-                )
-
-        for ci in self._charts:
-            self._add_chart_table_slide(ci)
 
     def _render_summary_and_thanks(self) -> None:
         """PR-4: summary/closing are now handled by _flush_appendix_deck."""

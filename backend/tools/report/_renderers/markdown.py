@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from backend.tools._field_labels import col_label
 from backend.tools.report._block_renderer import BlockRendererBase
 from backend.tools.report._outline import KPIItem
 from backend.tools.report._outline import (
@@ -101,7 +102,7 @@ def _render_growth_kpi(growth_rates: dict[str, dict[str, float | None]]) -> str:
             arrow = "↑" if mom >= 0 else "↓"
             parts.append(f"环比: {arrow}{abs(mom)*100:.1f}%")
         if parts:
-            lines.append(f"- **{col}**: {', '.join(parts)}")
+            lines.append(f"- **{col_label(col)}**: {', '.join(parts)}")
     return "\n".join(lines) if lines else ""
 
 

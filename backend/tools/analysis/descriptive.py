@@ -158,7 +158,23 @@ def _compute_growth_rates_single(
             if pd.notna(base) and base != 0:
                 yoy = round(float((latest_val - base) / base), 4)
 
-        growth[col] = {"yoy": yoy, "mom": mom}
+        # Sanity clamp: growth rates exceeding 100% (|rate| > 1.0) are
+        # almost certainly the result of a data-scale mismatch (e.g. raw
+        # values are already percentages rather than fractions).  Log a
+        # warning and suppress the anomaly rather than displaying "↑160%".
+        growth_entry: dict[str, float | None] = {}
+        for label, val in (("yoy", yoy), ("mom", mom)):
+            if val is not None and abs(val) > 1.0:
+                logger.warning(
+                    "Growth rate clamped: col=%r %s=%.4f (|rate| > 1.0) — "
+                    "likely data-scale mismatch, suppressing.  "
+                    "latest=%.4f",
+                    col, label, val, latest_val,
+                )
+                growth_entry[label] = None
+            else:
+                growth_entry[label] = val
+        growth[col] = growth_entry
     return growth
 
 

@@ -17,7 +17,7 @@ from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.ns import qn, nsdecls
 from docx.oxml import parse_xml, OxmlElement
 
-from backend.tools._field_labels import metric_label
+from backend.tools._field_labels import col_label, metric_label
 from backend.tools.report import _theme as T
 from backend.tools.report._theme import Theme, get_theme
 
@@ -798,7 +798,7 @@ def build_growth_indicators(doc: Document, growth_rates: dict[str, dict[str, flo
             continue
 
         p = doc.add_paragraph()
-        run_label = p.add_run(f"{col}\uFF1A")  # ：
+        run_label = p.add_run(f"{col_label(col)}：")
         run_label.font.bold = True
         run_label.font.size = Pt(th.size_body)
 

@@ -11,7 +11,7 @@ from typing import Any
 
 import pandas as pd
 
-from backend.tools._field_labels import metric_label
+from backend.tools._field_labels import col_label, metric_label
 from backend.tools.report._block_renderer import BlockRendererBase
 from backend.tools.report._echarts_theme import liangang_journal_echarts_theme_js
 from backend.tools.report._outline import (
@@ -403,7 +403,7 @@ def _render_growth_cards(growth_rates: dict[str, dict[str, float | None]]) -> st
         if parts:
             cards.append(
                 f'<div class="kpi-card">'
-                f'<div class="label">{col}</div>'
+                f'<div class="label">{col_label(col)}</div>'
                 f'{"".join(parts)}'
                 f'</div>'
             )
