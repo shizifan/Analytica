@@ -5,10 +5,24 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install curl for health check
+# Install curl, CJK fonts, and Node.js (pptxgenjs bridge) for health check
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        fonts-noto-cjk \
+        fonts-noto-cjk-extra \
+        fonts-jetbrains-mono \
+        fc-cache -fv \
     && rm -rf /var/lib/apt/lists/*
+
+# Node.js 20.x for pptxgenjs bridge (PPTX 矢量图表质量红线)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && node -v && npm -v
+
+# Install pptxgenjs bridge dependencies
+COPY backend/tools/report/_pptxgen_bridge/package.json /app/bridge/package.json
+RUN cd /app/bridge && npm ci --production && cd /app
 
 # Install Python dependencies
 COPY requirements.txt ./

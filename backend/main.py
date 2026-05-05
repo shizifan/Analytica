@@ -65,6 +65,25 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("All employee profiles validated successfully")
 
+    # ── 辽港数据期刊 PR-1：字体自检 ──
+    from backend.tools.report._health import check_fonts, probe_pptxgenjs_bridge
+    missing_fonts = check_fonts()
+    if missing_fonts:
+        logger.warning(
+            "Missing fonts: %s. Reports will fall back to system defaults.",
+            ", ".join(missing_fonts),
+        )
+
+    # ── pptxgenjs bridge 可用性检测 ──
+    try:
+        healthy = await probe_pptxgenjs_bridge()
+        if not healthy:
+            logger.critical(
+                "pptxgenjs bridge unavailable — PPTX generation will be blocked"
+            )
+    except Exception:
+        logger.exception("pptxgenjs bridge health check failed")
+
     yield
     engine = get_engine()
     await engine.dispose()

@@ -171,6 +171,10 @@ def _strip_html_colours(html: str) -> str:
 
 
 def test_html_cross_theme_structure_identical_colours_differ():
+    """The new static HTML template uses CSS custom properties instead of
+    theme-injected colours. Therefore HTML output is byte-equivalent
+    regardless of theme — the structure remains identical, but colours
+    are controlled by the static CSS, not the theme object."""
     reset_id_counters()
     html_default = render_outline(
         _full_outline(), HtmlBlockRenderer(theme=CORPORATE_BLUE),
@@ -180,32 +184,28 @@ def test_html_cross_theme_structure_identical_colours_differ():
         _full_outline(), HtmlBlockRenderer(theme=_alt_theme()),
     )
 
-    assert html_default != html_alt, (
-        "HTML output must change when theme changes — colours feed CSS."
+    # With the static template, HTML output is byte-equivalent across themes.
+    assert html_default == html_alt, (
+        "HTML output must be identical when template is static "
+        "(CSS custom properties, not theme-injected colours)."
     )
 
-    # Strip colours and compare — should match.
+    # Strip colours and compare — should also match.
     assert _strip_html_colours(html_default) == _strip_html_colours(html_alt)
 
-    # Sanity: alt theme's primary colour appears in alt output but not in default
-    alt_primary_css = _alt_theme().css_primary
-    default_primary_css = CORPORATE_BLUE.css_primary
-    assert alt_primary_css in html_alt
-    assert default_primary_css in html_default
 
-
-def test_html_alt_theme_palette_present_in_output():
-    """All eight core theme colours from the alt preset surface in HTML."""
+def test_html_static_template_css_properties_present():
+    """The static HTML template uses CSS custom properties (--primary,
+    --accent, --paper, etc.). Verify the key design tokens are present
+    in every output regardless of which theme is passed."""
     alt = _alt_theme()
     reset_id_counters()
     html = render_outline(_full_outline(), HtmlBlockRenderer(theme=alt))
-    for css_attr in (
-        "css_primary", "css_secondary", "css_accent",
-        "css_positive", "css_negative", "css_neutral",
-        "css_bg_light", "css_text_dark",
+    for css_prop in (
+        "--primary", "--accent", "--paper", "--ink-1", "--alert",
+        "--font-display", "--font-mono", "--font-ui",
     ):
-        css = getattr(alt, css_attr)
-        assert css in html, f"Theme.{css_attr}={css} missing from HTML output"
+        assert css_prop in html, f"CSS property {css_prop} missing from HTML output"
 
 
 def test_markdown_cross_theme_byte_equivalent():

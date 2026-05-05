@@ -164,3 +164,48 @@ def build_planner_user_prompt(
 
 {_OUTPUT_SCHEMA_DOC}
 """
+
+
+# ============================================================================
+# 辽港数据期刊 PR-1 — 编辑型标题约束 (PR-2 切为默认)
+# ============================================================================
+
+# 通用图表标题词表 — planner 输出含这些词时触发 validator 重试
+GENERIC_CHART_TITLES: frozenset[str] = frozenset({
+    "数据对比", "趋势图", "分布图", "对比图", "图表",
+    "数据分析", "统计图", "汇总表",
+})
+
+
+def validate_chart_title(title: str) -> bool:
+    """图表标题必须为陈述句，长度至少 6 字且不在通用词表中。
+
+    返回 False 表示标题不合格，planner 应重试。
+    """
+    if not title or not isinstance(title, str):
+        return False
+    if title in GENERIC_CHART_TITLES:
+        return False
+    return len(title) >= 6
+
+
+# 编辑型标题写作约束 — PR-2 时追加到 _OUTPUT_SCHEMA_DOC 之后
+EDITORIAL_TITLE_CONSTRAINTS = """\
+## 编辑型图表标题规范（辽港数据期刊）
+
+图表标题（chart/table caption）**必须为陈述句**。严禁使用以下通用词：
+"数据对比" "趋势图" "分布图" "对比图" "图表"
+
+### 正确示例
+- "二月设备利用率跌至五月最低"
+- "吞吐量连续三个月环比增长"
+- "散货占比创三年新高"
+
+### 错误示例
+- "吞吐量趋势图"
+- "数据对比"
+- "设备利用率"
+
+每个 chart/table block 的 ``caption`` 字段即为图表标题。
+"""
+

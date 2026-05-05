@@ -1245,34 +1245,6 @@ class ReportQualityReviewer:
 
 ---
 
-## 13. 实施前置任务
-
-按此顺序执行：
-
-### 13.1 决策签字
-
-- [ ] 上轮 5 个默认值（D1-D5）由 PM/Tech Lead 签字确认 / 调整
-- [ ] PR 评审委员（至少 2 人，含 1 名熟悉 OOXML 的）
-
-### 12.2 设计资产
-
-- [ ] 准备 3 份样本 outline（短/中/长，覆盖各类 block 类型）
-- [ ] 准备 sample 数据（趋势、类别、stats）
-- [ ] 准备 PPTX 模板预览（投影实测）
-
-### 12.3 环境准备
-
-- [ ] CI 镜像加字体
-- [ ] 本地开发文档说明字体安装方式
-- [ ] PowerPoint / Keynote / WPS 测试环境就绪
-
-### 13.4 Baseline 回写流程
-
-- [ ] 定义 baseline 回写 review checklist（截图、字体、色板、layout 四项）
-- [ ] 设置 `update_baseline=True` 的 PR 标记规则
-
----
-
 ## 14. 附录 A：完整设计 token 清单
 
 详见 §1。本节为 Theme dataclass 完整赋值，可直接 copy 到 `_theme.py`：

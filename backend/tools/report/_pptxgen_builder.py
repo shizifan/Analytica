@@ -65,6 +65,13 @@ def _find_pptxgenjs_root() -> str | None:
         if os.path.exists(os.path.join(candidate, "pptxgenjs", "package.json")):
             return candidate
 
+    # 4) Project-local bridge node_modules (Dockerfile npm ci)
+    from pathlib import Path
+    _here = Path(__file__).resolve().parent
+    bridge_nm = _here / "_pptxgen_bridge" / "node_modules"
+    if (bridge_nm / "pptxgenjs" / "package.json").exists():
+        return str(bridge_nm)
+
     return None
 
 
@@ -130,7 +137,8 @@ def _echarts_series_values(raw: list) -> list[float]:
     return out
 
 
-_DEFAULT_CHART_PALETTE = (
+# Fallback palette used only when no theme is available (backward compat).
+_FALLBACK_CHART_PALETTE = (
     "1E3A5F", "F0A500", "E85454", "4CAF50", "9C27B0", "FF5722",
 )
 
@@ -144,9 +152,33 @@ def _extract_title(option: dict[str, Any]) -> str:
     return ""
 
 
-def _base_options(n_series: int) -> dict[str, Any]:
+def _base_options(n_series: int, theme=None) -> dict[str, Any]:
+    """Build pptxgenjs chart options, theme-driven when ``theme`` is
+    provided (PR-4: liangang-journal theme injection).
+
+    When ``theme`` is None, falls back to the legacy corporate palette.
+    """
+    if theme is not None:
+        palette = list(theme.chart_colors[:n_series])
+        return {
+            "chartColors": palette,
+            "chartArea": {"fill": {"color": theme.hex_bg_light}, "roundedCorners": False},
+            "plotArea": {"fill": {"color": theme.hex_bg_light}},
+            "valGridLine": {"color": "1F1A1219", "size": 0.5},
+            "catGridLine": {"style": "none"},
+            "showLegend": False,
+            "showTitle": False,
+            "catAxisLineShow": False,
+            "valAxisLineShow": False,
+            "valAxisOrientation": "right",
+            "fontFace": theme.font_ui,
+            "fontSize": 9,
+            "color": theme.hex_text_dark,
+        }
+
+    # Legacy fallback
     return {
-        "chartColors": list(_DEFAULT_CHART_PALETTE[:n_series]),
+        "chartColors": list(_FALLBACK_CHART_PALETTE[:n_series]),
         "chartArea": {"fill": {"color": "FFFFFF"}, "roundedCorners": False},
         "catAxisLabelColor": "64748B",
         "valAxisLabelColor": "64748B",
@@ -154,7 +186,7 @@ def _base_options(n_series: int) -> dict[str, Any]:
         "catGridLine": {"style": "none"},
         "showLegend": n_series > 1,
         "legendPos": "b",
-        "showTitle": False,    # title rendered as slide text instead
+        "showTitle": False,
     }
 
 
@@ -162,6 +194,7 @@ def _convert_pie_like(
     option: dict[str, Any],
     series_list: list[dict],
     pptx_type: str,
+    theme=None,
 ) -> dict[str, Any] | None:
     """Convert a single-series PIE / DOUGHNUT option.
 
@@ -188,10 +221,11 @@ def _convert_pie_like(
         "labels": labels,
         "values": values,
     }]
-    opts = _base_options(len(labels))
+    opts = _base_options(len(labels), theme=theme)
     # Per-slice palette via chartColors length matching slice count
+    palette = list(theme.chart_colors) if theme is not None else list(_FALLBACK_CHART_PALETTE)
     opts["chartColors"] = [
-        _DEFAULT_CHART_PALETTE[i % len(_DEFAULT_CHART_PALETTE)]
+        palette[i % len(palette)]
         for i in range(len(labels))
     ]
     opts["showLegend"] = True
@@ -213,6 +247,7 @@ def _convert_combo(
     option: dict[str, Any],
     series_list: list[dict],
     categories: list[str],
+    theme=None,
 ) -> dict[str, Any] | None:
     """BAR + LINE on shared category axis. Each series carries its own
     ``type`` so pptxgenjs renders a multi-type chart."""
@@ -238,12 +273,12 @@ def _convert_combo(
     if not bar_data or not line_data:
         return None
 
-    bar_opts = _base_options(len(bar_data))
+    bar_opts = _base_options(len(bar_data), theme=theme)
     bar_opts["barDir"] = "col"
     bar_opts["barGrouping"] = "clustered" if len(bar_data) > 1 else "standard"
     bar_opts["showLegend"] = True
 
-    line_opts = _base_options(len(line_data))
+    line_opts = _base_options(len(line_data), theme=theme)
     line_opts["lineSmooth"] = True
     line_opts["lineSize"] = 2
     line_opts["secondaryValAxis"] = True
@@ -262,13 +297,16 @@ def _convert_combo(
     }
 
 
-def echarts_to_pptxgen(option: dict[str, Any]) -> dict[str, Any] | None:
+def echarts_to_pptxgen(option: dict[str, Any], theme=None) -> dict[str, Any] | None:
     """Convert an ECharts option to a PptxGenJS chart spec.
 
     Returns a dict with keys ``type``, ``data``, ``options``, ``title``,
     ``horizontal`` — or ``None`` when the chart cannot be natively
-    represented (e.g. waterfall, scatter, radar). Caller falls back to a
-    data table.
+    represented (e.g. waterfall, scatter, radar).
+
+    PR-4: ``theme`` drives chartColors, Y-axis right, paper background,
+    and font styling. When ``theme`` is None, falls back to legacy
+    corporate palette.
 
     Supported types (Phase 2.3):
       - BAR (vertical / horizontal)
@@ -288,7 +326,7 @@ def echarts_to_pptxgen(option: dict[str, Any]) -> dict[str, Any] | None:
     first_type = series_types[0]
     if first_type in ("pie", "doughnut"):
         pptx_pie_type = "DOUGHNUT" if first_type == "doughnut" else "PIE"
-        return _convert_pie_like(option, series_list, pptx_pie_type)
+        return _convert_pie_like(option, series_list, pptx_pie_type, theme=theme)
 
     # ── Cartesian: extract category axis ──
     x_axis = option.get("xAxis", {})
@@ -310,7 +348,7 @@ def echarts_to_pptxgen(option: dict[str, Any]) -> dict[str, Any] | None:
 
     # ── COMBO (mixed BAR + LINE) ──
     if {"bar", "line"}.issubset(set(series_types)):
-        return _convert_combo(option, series_list, categories)
+        return _convert_combo(option, series_list, categories, theme=theme)
 
     # ── Pure BAR / LINE ──
     type_map = {"bar": "BAR", "line": "LINE"}
@@ -326,7 +364,7 @@ def echarts_to_pptxgen(option: dict[str, Any]) -> dict[str, Any] | None:
             "values": _echarts_series_values(s.get("data") or []),
         })
 
-    opts = _base_options(len(chart_data))
+    opts = _base_options(len(chart_data), theme=theme)
     if pptx_type == "BAR":
         opts["barDir"] = "bar" if horizontal else "col"
         opts["barGrouping"] = "clustered" if len(chart_data) > 1 else "standard"

@@ -1,16 +1,8 @@
-"""PptxGenJSBlockRenderer — Step 0.2 of Sprint 2 closure.
+"""PptxGenJSBlockRenderer — 辽港数据期刊 PR-4 PPTX 重设计。
 
-Implements the BlockRenderer protocol on top of the SlideCommand DSL.
-Each ``emit_*`` method appends to ``self._commands``; ``end_document``
-serialises the list and hands it to the Node executor (Step 0.3) which
-returns the .pptx bytes.
-
-Layout parity:
-- Slide canvas matches ``_theme`` (10 × 7.5 inches, same as ``_pptx_slides``).
-- Slide composition follows the same section-buffer logic as
-  ``_renderers/pptx.py:PptxBlockRenderer`` so output structure aligns —
-  the difference is downstream: PptxGenJS produces native, editable
-  PowerPoint charts; python-pptx produces table fallbacks.
+SlideCommand DSL 驱动的 PPTX 渲染器。所有 slide builder 已重写为
+辽港数据期刊视觉：纸色背景、16:9（13.333"×7.5"）画布、古铜强调色、
+KPI strip、附录 deck、主题驱动图表颜色。
 
 Failure handling:
 - ``end_document`` may raise ``RuntimeError`` if the Node executor fails
@@ -24,19 +16,22 @@ from typing import Any
 from backend.tools._field_labels import metric_label
 from backend.tools.report import _theme as T
 from backend.tools.report._block_renderer import BlockRendererBase
-from backend.tools.report._outline import KPIItem
 from backend.tools.report._outline import (
     Asset,
     ChartBlock,
     ChartTablePairBlock,
     ComparisonGridBlock,
     GrowthIndicatorsBlock,
+    KPIItem,
     KpiRowBlock,
+    KpiStripBlock,
+    KpiStripItem,
     OutlineSection,
     ParagraphBlock,
     ReportOutline,
     SectionCoverBlock,
     StatsAsset,
+    TableAsset,
     TableBlock,
 )
 from backend.tools.report._pptxgen_builder import echarts_to_pptxgen
@@ -53,23 +48,19 @@ from backend.tools.report._pptxgen_runtime import run_pptxgen_executor
 
 
 # ---------------------------------------------------------------------------
-# Color helpers
+# Color helpers — per-instance (theme-driven in PR-4)
 # ---------------------------------------------------------------------------
 
 def _hex(rgb: tuple[int, int, int]) -> str:
     return f"{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}"
 
 
-_C = {
-    "primary": _hex(T.RGB_PRIMARY),
-    "secondary": _hex(T.RGB_SECONDARY),
-    "accent": _hex(T.RGB_ACCENT),
-    "positive": _hex(T.RGB_POSITIVE),
-    "negative": _hex(T.RGB_NEGATIVE),
-    "neutral": _hex(T.RGB_NEUTRAL),
-    "bg_light": _hex(T.RGB_BG_LIGHT),
-    "white": _hex(T.RGB_WHITE),
-    "text_dark": _hex(T.RGB_TEXT_DARK),
+# Roman numeral lookup — used by TOC and section divider (PR-4)
+_ROMAN: dict[int, str] = {
+    1: "Ⅰ", 2: "Ⅱ", 3: "Ⅲ", 4: "Ⅳ", 5: "Ⅴ",
+    6: "Ⅵ", 7: "Ⅶ", 8: "Ⅷ", 9: "Ⅸ", 10: "Ⅹ",
+    11: "Ⅺ", 12: "Ⅻ", 13: "ⅩⅢ", 14: "ⅩⅣ", 15: "ⅩⅤ",
+    16: "ⅩⅥ", 17: "ⅩⅦ", 18: "ⅩⅧ", 19: "ⅩⅨ", 20: "ⅩⅩ",
 }
 
 
@@ -113,6 +104,27 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
         self._is_appendix: bool = False
         self._current_section_name: str = ""
 
+        # Per-instance colour lookup (theme-driven, replaces module _C)
+        self._C = {
+            "primary": self._theme.hex_primary,
+            "secondary": self._theme.hex_secondary,
+            "accent": self._theme.hex_accent,
+            "positive": self._theme.hex_positive,
+            "negative": self._theme.hex_negative,
+            "neutral": self._theme.hex_neutral,
+            "bg_light": self._theme.hex_bg_light,
+            "white": self._theme.hex_white,
+            "text_dark": self._theme.hex_text_dark,
+        }
+
+        # Slide canvas — used by slide builders for coordinate math
+        self._slide_w = self._theme.slide_width
+        self._slide_h = self._theme.slide_height
+
+        # Appendix buffer — populated by emit_chart_table_pair,
+        # flushed in end_document (PR-4: §6.7)
+        self._appendix_buffer: list = []
+
         # Per-section buffers — flushed in end_section
         self._narratives: list[str] = []
         self._stats: list[dict[str, Any]] = []
@@ -147,13 +159,19 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
             self._add_kpi_overview_slide(outline.kpi_summary)
 
     def end_document(self) -> bytes:
-        """Serialise commands and invoke the Node bridge for .pptx bytes.
+        """Flush appendix deck, serialise commands and invoke Node bridge.
 
+        PR-4: slide dimensions flow from theme to the Node executor.
         Raises ``RuntimeError`` on any executor failure — pptx_gen.py
         catches and falls back to PptxBlockRenderer.
         """
+        self._flush_appendix_deck()
         payload = serialize_commands(self._commands)
-        return run_pptxgen_executor(payload)
+        return run_pptxgen_executor(
+            payload,
+            slide_width=self._slide_w,
+            slide_height=self._slide_h,
+        )
 
     def begin_section(self, section: OutlineSection, index: int) -> None:
         if section.role == "appendix":
@@ -214,103 +232,138 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
         chart_asset: Asset,
         table_asset: Asset,
     ) -> None:
-        """Phase 3.3 — dedicated side-by-side slide.
+        """PR-4: 辽港 chart+KPI 页——纵向 chart 60% + KPI strip + 附录缓冲。
 
-        Layout=h: chart left ~60% / table right ~40%
-        Layout=v: chart top / table bottom (50/50)
-
-        Skips the per-section narrative buffer entirely so the pair is
-        rendered immediately, regardless of section composition.
+        图表占上方 60%，KPI strip 居中，表格推入附录缓冲。
         """
         chart_option = getattr(chart_asset, "option", None)
         if not isinstance(chart_option, dict):
             return
-        spec = echarts_to_pptxgen(chart_option)
+        spec = echarts_to_pptxgen(chart_option, theme=self._theme)
         if spec is None:
-            return  # chart type not natively representable; pair degraded
+            # Unsupported chart type — emit a text placeholder slide
+            title = block.title or self._current_section_name or "数据图表"
+            self._commands.append(NewSlide(background=self._C["bg_light"]))
+            self._commands.append(AddText(
+                x=0.6, y=2.0, w=12.133, h=1.5, text=title,
+                font_size=14, bold=True,
+                color=self._C["primary"], font_name=T.FONT_CN,
+            ))
+            self._commands.append(AddText(
+                x=0.6, y=3.5, w=12.133, h=1.0,
+                text="此图表类型暂不支持原生渲染，详情请参见附录数据",
+                font_size=11, color=self._C["neutral"], font_name=T.FONT_CN,
+            ))
+            return
 
-        title = spec.get("title") or self._current_section_name or "对比分析"
-        layout = block.layout if block.layout in ("h", "v") else "h"
+        title = block.title or spec.get("title") or self._current_section_name or "趋势分析"
+        subtitle = getattr(block, "subtitle", None) or ""
 
-        self._commands.append(NewSlide())
+        self._commands.append(NewSlide(background=self._C["bg_light"]))
+        # Figure title — 14pt navy
         self._commands.append(AddText(
-            x=0.5, y=0.3, w=9, h=0.7, text=title,
-            font_size=T.SIZE_H2, bold=True,
-            color=_C["primary"], font_name=T.FONT_CN,
+            x=0.6, y=0.5, w=12.133, h=0.4, text=title,
+            font_size=14, bold=True,
+            color=self._C["primary"], font_name=T.FONT_CN,
         ))
+        # Subtitle — 10pt ink_2
+        if subtitle:
+            self._commands.append(AddText(
+                x=0.6, y=0.85, w=12.133, h=0.25, text=subtitle,
+                font_size=10,
+                color=self._C["neutral"], font_name=T.FONT_UI,
+            ))
+        chart_y = 0.9 if subtitle else 1.0
 
-        if layout == "h":
-            chart_x, chart_y, chart_w, chart_h = 0.5, 1.2, 5.6, 5.5
-            tbl_x, tbl_y, tbl_w, tbl_h = 6.3, 1.2, 3.2, 5.5
-        else:  # vertical
-            chart_x, chart_y, chart_w, chart_h = 0.5, 1.2, 9.0, 3.0
-            tbl_x, tbl_y, tbl_w, tbl_h = 0.5, 4.4, 9.0, 2.5
-
-        # Chart half
+        # Chart — upper 60%
         self._commands.append(AddChart(
-            x=chart_x, y=chart_y, w=chart_w, h=chart_h,
+            x=0.6, y=chart_y, w=12.133, h=3.9,
             chart_type=spec["type"], data=spec["data"],
             options=spec["options"],
         ))
 
-        # Table half — only StatsAsset can be rendered as a table here;
-        # TableAsset (DataFrame) skipped to match legacy behaviour.
-        from backend.tools.report._outline import StatsAsset as _StatsAsset
-        if isinstance(table_asset, _StatsAsset):
-            self._add_chart_table_pair_stats(
-                tbl_x, tbl_y, tbl_w, tbl_h, table_asset.summary_stats,
-            )
+        # KPI strip below chart
+        if block.kpi_strip:
+            self._add_kpi_strip_commands(block.kpi_strip.items, y_offset=5.2)
 
-    def _add_chart_table_pair_stats(
-        self, x: float, y: float, w: float, h: float,
-        summary_stats: dict[str, Any],
+        # Source — 9pt ink_3
+        source = getattr(block, "source", None) or ""
+        if source:
+            self._commands.append(AddText(
+                x=0.6, y=6.8, w=11.733, h=0.25,
+                text=source, font_size=9,
+                color=self._C["neutral"], font_name=T.FONT_UI,
+            ))
+
+        # Endmark
+        self._commands.append(AddShape(
+            x=12.7, y=7.0, w=0.13, h=0.13,
+            shape="rect", fill=self._C["accent"],
+        ))
+
+        # Push table to appendix buffer
+        self._appendix_buffer.append((block, table_asset))
+
+    # ---- KPI strip (PR-4: §6.4) ------------------------------------
+
+    def emit_kpi_strip(self, block: KpiStripBlock) -> None:
+        """PR-4: render 4-column KPI strip on the current slide."""
+        self._add_kpi_strip_commands(block.items, y_offset=0)
+
+    def _add_kpi_strip_commands(
+        self, items: tuple[KpiStripItem, ...], y_offset: float,
     ) -> None:
-        """Helper — flatten summary_stats into an AddTable for the
-        right-hand column of a chart_table_pair slide."""
-        if not summary_stats:
-            return
-        # Same flattening logic as _add_stats_table_slide
-        first_val = next(iter(summary_stats.values()))
-        if isinstance(first_val, dict) and not any(
-            k in first_val for k in ("mean", "median", "std", "min", "max")
-        ):
-            flat: dict[str, dict] = {}
-            for gk, cols in summary_stats.items():
-                if isinstance(cols, dict):
-                    for cn, metrics in cols.items():
-                        flat[f"{gk}/{cn}"] = (
-                            metrics if isinstance(metrics, dict) else {}
-                        )
-            summary_stats = flat if flat else summary_stats
+        """Emit KPI strip commands — 2 AddShapes (hairlines) + 12 AddTexts.
 
-        metrics = ["mean", "median", "std", "min", "max"]
-        col_names = [c for c, v in summary_stats.items() if isinstance(v, dict)]
-        if not col_names:
+        The strip spans the full content width (12.133"), divided into 4
+        equal columns. Each column renders label / value / sub vertically.
+        """
+        if len(items) != 4:
             return
 
-        header_row = [
-            {"text": "指标", "bold": True,
-             "fill": _C["primary"], "color": _C["white"]},
-        ] + [
-            {"text": metric_label(m), "bold": True,
-             "fill": _C["primary"], "color": _C["white"]}
-            for m in metrics
-        ]
-        rows: list[list[dict[str, Any]]] = [header_row]
-        for col in col_names:
-            vals = summary_stats[col]
-            row = [{"text": col, "bold": True}]
-            for m in metrics:
-                v = vals.get(m)
-                row.append({"text": (
-                    f"{v:,.2f}" if isinstance(v, (int, float)) else "-"
-                )})
-            rows.append(row)
+        col_w = 12.133 / 4  # ~3.033"
 
-        self._commands.append(AddTable(
-            x=x, y=y, w=w, h=h,
-            rows=rows,
-            options={"fontSize": 9, "fontFace": T.FONT_NUM},
+        # Top hairline — navy 1pt
+        self._commands.append(AddShape(
+            x=0.6, y=y_offset, w=12.133, h=0.012,
+            shape="rect", fill=self._C["primary"],
+        ))
+
+        for i, kpi in enumerate(items):
+            cx = 0.6 + i * col_w
+
+            # Label — ui 9pt bronze (simulates smcp)
+            self._commands.append(AddText(
+                x=cx + 0.1, y=y_offset + 0.02, w=col_w - 0.2, h=0.25,
+                text=kpi.label, font_size=9, bold=False,
+                color=self._C["accent"], font_name=T.FONT_UI,
+            ))
+
+            # Value — mono 28pt, trend-driven colour
+            if kpi.trend == "gain":
+                vcolor = self._C["positive"]
+            elif kpi.trend == "loss":
+                vcolor = self._C["negative"]
+            else:
+                vcolor = self._C["primary"]
+            self._commands.append(AddText(
+                x=cx + 0.1, y=y_offset + 0.3, w=col_w - 0.2, h=0.6,
+                text=kpi.value, font_size=28, bold=True,
+                color=vcolor, font_name=T.FONT_NUM,
+            ))
+
+            # Sub — ui 9pt neutral
+            if kpi.sub:
+                self._commands.append(AddText(
+                    x=cx + 0.1, y=y_offset + 1.0, w=col_w - 0.2, h=0.25,
+                    text=kpi.sub, font_size=9,
+                    color=self._C["neutral"], font_name=T.FONT_UI,
+                ))
+
+        # Bottom hairline — navy 1pt
+        self._commands.append(AddShape(
+            x=0.6, y=y_offset + 1.35, w=12.133, h=0.012,
+            shape="rect", fill=self._C["primary"],
         ))
 
     def emit_comparison_grid(self, block: ComparisonGridBlock) -> None:
@@ -324,21 +377,21 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
             return
 
         # Anchor a fresh slide so the grid stands alone visually.
-        self._commands.append(NewSlide(background=_C["bg_light"]))
+        self._commands.append(NewSlide(background=self._C["bg_light"]))
 
         # Slide title (use section name if mid-section context exists,
         # else a generic header)
         slide_title = self._current_section_name or "对比分析"
         self._commands.append(AddText(
-            x=0.5, y=0.3, w=9, h=0.7, text=slide_title,
+            x=0.6, y=0.3, w=12.133, h=0.7, text=slide_title,
             font_size=T.SIZE_H2, bold=True,
-            color=_C["primary"], font_name=T.FONT_CN, alignment="left",
+            color=self._C["primary"], font_name=T.FONT_CN, alignment="left",
         ))
 
         n = min(len(block.columns), 4)  # cap visual at 4 columns
         margin = 0.6
         gap = 0.2
-        usable = 10 - 2 * margin - gap * (n - 1)
+        usable = self._slide_w - 2 * margin - gap * (n - 1)
         col_w = max(usable / n, 1.5)
         col_x_start = margin
         col_y = 1.3
@@ -350,19 +403,19 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
             # Card background — rounded with shadow (Phase 3.5 capability)
             self._commands.append(AddShape(
                 x=cx, y=col_y, w=col_w, h=col_h,
-                shape="rounded_rect", fill=_C["white"],
+                shape="rounded_rect", fill=self._C["white"],
                 rect_radius=0.04, shadow=True,
             ))
             # Title bar — primary-coloured strip across the top
             self._commands.append(AddShape(
                 x=cx, y=col_y, w=col_w, h=title_bar_h,
-                shape="rect", fill=_C["primary"],
+                shape="rect", fill=self._C["primary"],
             ))
             # Title text
             self._commands.append(AddText(
                 x=cx + 0.1, y=col_y + 0.1, w=col_w - 0.2, h=title_bar_h - 0.2,
                 text=col.title, font_size=14, bold=True,
-                color=_C["white"], font_name=T.FONT_CN, alignment="center",
+                color=self._C["white"], font_name=T.FONT_CN, alignment="center",
             ))
             # Items — bulleted list under the title bar
             items_text = "\n".join(f"• {it}" for it in col.items[:6])
@@ -371,7 +424,7 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
                     x=cx + 0.2, y=col_y + title_bar_h + 0.15,
                     w=col_w - 0.4, h=col_h - title_bar_h - 0.3,
                     text=items_text, font_size=11,
-                    color=_C["text_dark"], font_name=T.FONT_CN,
+                    color=self._C["text_dark"], font_name=T.FONT_CN,
                 ))
 
     def emit_growth_indicators(self, block: GrowthIndicatorsBlock) -> None:
@@ -386,44 +439,49 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
     # ---- Slide-level command builders -------------------------------
 
     def _add_cover_slide(self, title: str, author: str, date: str) -> None:
-        self._commands.append(NewSlide(background=_C["primary"]))
+        """PR-4: 辽港数据期刊封面——纸色背景 + 古铜横条 + navy 标题。"""
+        self._commands.append(NewSlide(background=self._C["bg_light"]))
+        # Top bronze brand bar (4" × 4pt)
+        self._commands.append(AddShape(
+            x=0.6, y=0.5, w=4.0, h=0.055,
+            shape="rect", fill=self._C["accent"],
+        ))
+        # Title — display 32pt navy, left-aligned
         self._commands.append(AddText(
-            x=1, y=2, w=8, h=1.5, text=title,
+            x=1.5, y=2.0, w=10.333, h=1.5, text=title,
             font_size=T.SIZE_TITLE, bold=True,
-            color=_C["white"], font_name=T.FONT_CN,
-            alignment="center",
+            color=self._C["primary"], font_name=T.FONT_DISPLAY,
+            alignment="left",
         ))
+        # Deck / subtitle — 18pt ink_2
         self._commands.append(AddText(
-            x=1, y=3.5, w=8, h=0.8, text=f"编制：{author}",
+            x=1.5, y=3.5, w=10.333, h=0.8, text=f"编制：{author}",
             font_size=18,
-            color=_C["accent"], font_name=T.FONT_CN,
-            alignment="center",
+            color=self._C["neutral"], font_name=T.FONT_CN,
+            alignment="left",
         ))
+        # Metadata — 9pt bronze
         self._commands.append(AddText(
-            x=1, y=4.5, w=8, h=0.5, text=date,
-            font_size=14,
-            color=_C["white"], font_name=T.FONT_CN,
-            alignment="center",
+            x=1.5, y=5.5, w=10.333, h=0.5, text=date,
+            font_size=9,
+            color=self._C["accent"], font_name=T.FONT_UI,
+            alignment="left",
         ))
 
     def _add_toc_slide(self, sections: list[str]) -> None:
-        self._commands.append(NewSlide())
+        """PR-4: 辽港目录页——纸色 + "目  录" display 24pt navy。"""
+        self._commands.append(NewSlide(background=self._C["bg_light"]))
         self._commands.append(AddText(
-            x=0.5, y=0.3, w=9, h=0.8, text="目  录",
+            x=0.6, y=0.5, w=12.133, h=0.8, text="目  录",
             font_size=24, bold=True,
-            color=_C["primary"], font_name=T.FONT_CN,
-            alignment="center",
-        ))
-        bar_h = min(len(sections) * 0.6, 5.5)
-        self._commands.append(AddShape(
-            x=1.2, y=1.3, w=0.08, h=bar_h,
-            shape="rect", fill=_C["accent"],
+            color=self._C["primary"], font_name=T.FONT_DISPLAY,
+            alignment="left",
         ))
         for i, name in enumerate(sections[:10]):
             self._commands.append(AddText(
-                x=1.5, y=1.3 + i * 0.55, w=7, h=0.5,
-                text=f"{i + 1}.  {name}",
-                font_size=16, color=_C["primary"], font_name=T.FONT_CN,
+                x=1.5, y=1.5 + i * 0.5, w=10.633, h=0.45,
+                text=f"{_ROMAN.get(i + 1, str(i + 1))}.  {name}",
+                font_size=14, color=self._C["primary"], font_name=T.FONT_CN,
             ))
 
     def _add_kpi_overview_slide(self, kpis: list[KPIItem]) -> None:
@@ -431,39 +489,41 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
         shadow + theme-aligned accent stripe. Pre-Phase-3.5 code used
         flat ``rect`` cards on a uniform light background; new layout
         uses white cards with shadow against a slightly darker page."""
-        self._commands.append(NewSlide(background=_C["bg_light"]))
+        self._commands.append(NewSlide(background=self._C["bg_light"]))
         self._commands.append(AddText(
-            x=0.5, y=0.3, w=9, h=0.7, text="核心经营指标",
+            x=0.6, y=0.3, w=12.133, h=0.7, text="核心经营指标",
             font_size=22, bold=True,
-            color=_C["primary"], font_name=T.FONT_CN, alignment="left",
+            color=self._C["primary"], font_name=T.FONT_CN, alignment="left",
         ))
         n = min(len(kpis), 4)
         if n == 0:
             return
 
-        # Card dimensions tuned for 1-4 KPIs filling the visible canvas.
-        card_w = 8.0 / n
-        card_radius = 0.06  # ~6% of card width — subtle rounded corners
-        accent_stripe_h = 0.12  # bottom accent bar tinted by trend
+        # Card dimensions tuned for 1-4 KPIs filling the 13.333" canvas.
+        margin = 0.6
+        gap = 0.2
+        usable = self._slide_w - 2 * margin - gap * (n - 1)
+        card_w = usable / n
+        card_radius = 0.06
+        accent_stripe_h = 0.12
 
         for i, kpi in enumerate(kpis[:n]):
-            cx = 1.0 + i * card_w
+            cx = margin + i * (card_w + gap)
 
-            # Trend colour drives both value text and accent stripe
             if kpi.trend == "positive":
-                trend_color = _C["positive"]
+                trend_color = self._C["positive"]
             elif kpi.trend == "negative":
-                trend_color = _C["negative"]
+                trend_color = self._C["negative"]
             else:
-                trend_color = _C["accent"]
+                trend_color = self._C["accent"]
 
             # Card body — white rounded card with shadow
             self._commands.append(AddShape(
                 x=cx, y=1.3, w=card_w - 0.2, h=4.5,
-                shape="rounded_rect", fill=_C["white"],
+                shape="rounded_rect", fill=self._C["white"],
                 rect_radius=card_radius, shadow=True,
             ))
-            # Bottom accent stripe — visual hierarchy cue per trend
+            # Bottom accent stripe
             self._commands.append(AddShape(
                 x=cx, y=1.3 + 4.5 - accent_stripe_h,
                 w=card_w - 0.2, h=accent_stripe_h,
@@ -473,7 +533,7 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
             self._commands.append(AddText(
                 x=cx + 0.1, y=1.5, w=card_w - 0.4, h=0.4,
                 text=kpi.label,
-                font_size=11, bold=True, color=_C["neutral"],
+                font_size=11, bold=True, color=self._C["neutral"],
                 font_name=T.FONT_CN, alignment="center",
             ))
             # Value (trend-coloured)
@@ -486,70 +546,94 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
                 self._commands.append(AddText(
                     x=cx + 0.1, y=3.6, w=card_w - 0.4, h=0.4,
                     text=kpi.sub, font_size=9,
-                    color=_C["neutral"], font_name=T.FONT_CN,
+                    color=self._C["neutral"], font_name=T.FONT_CN,
                     alignment="center",
                 ))
 
     def _add_section_divider_slide(self, number: int, title: str) -> None:
-        self._commands.append(NewSlide(background=_C["primary"]))
-        self._commands.append(AddText(
-            x=1, y=1.5, w=3, h=2, text=f"{number:02d}",
-            font_size=72, bold=True,
-            color=_C["accent"], font_name=T.FONT_NUM,
-        ))
-        self._commands.append(AddText(
-            x=1, y=3.8, w=8, h=1, text=title,
-            font_size=T.SIZE_H1, bold=True,
-            color=_C["white"], font_name=T.FONT_CN,
-        ))
+        """PR-4: 辽港章节分隔页——纸色 + 罗马数字 + navy hairline。"""
+        self._commands.append(NewSlide(background=self._C["bg_light"]))
+        # Top navy hairline
         self._commands.append(AddShape(
-            x=1, y=4.8, w=2, h=0.06,
-            shape="rect", fill=_C["accent"],
+            x=0.6, y=0.6, w=12.133, h=0.012,
+            shape="rect", fill=self._C["primary"],
+        ))
+        # Large Roman numeral — display 120pt bronze
+        roman = _ROMAN.get(number, str(number))
+        self._commands.append(AddText(
+            x=0.6, y=2.0, w=4.0, h=3.5, text=roman,
+            font_size=120, bold=False,
+            color=self._C["accent"], font_name=T.FONT_DISPLAY,
+        ))
+        # Section title — 28pt navy
+        self._commands.append(AddText(
+            x=5.5, y=3.0, w=7.0, h=2.0, text=title,
+            font_size=T.SIZE_H1, bold=True,
+            color=self._C["primary"], font_name=T.FONT_DISPLAY,
+        ))
+        # Endmark — bronze square, bottom-right
+        self._commands.append(AddShape(
+            x=12.7, y=7.0, w=0.13, h=0.13,
+            shape="rect", fill=self._C["accent"],
         ))
 
     def _add_narrative_slide(self, title: str, text: str) -> None:
+        """PR-4: 辽港叙述页——kicker + 左侧古铜竖条 + lede + body。"""
         lines = [l.strip() for l in text.split("\n") if l.strip()]
         chunk_size = 12
         chunks = [lines[i:i + chunk_size] for i in range(0, len(lines), chunk_size)]
         if not chunks:
             chunks = [["（暂无详细内容）"]]
         for ci, chunk in enumerate(chunks):
-            self._commands.append(NewSlide())
+            self._commands.append(NewSlide(background=self._C["bg_light"]))
+            # Kicker — section name, ui 8pt bronze
+            self._commands.append(AddText(
+                x=0.6, y=0.5, w=12.133, h=0.3,
+                text=title,
+                font_size=8, bold=False,
+                color=self._C["accent"], font_name=T.FONT_UI,
+            ))
+            # Left bronze brand bar — 4×80pt
             self._commands.append(AddShape(
-                x=0.3, y=0.3, w=0.08, h=6.9,
-                shape="rect", fill=_C["accent"],
+                x=0.6, y=1.0, w=0.055, h=1.11,
+                shape="rect", fill=self._C["accent"],
             ))
-            suffix = f" ({ci+1}/{len(chunks)})" if len(chunks) > 1 else ""
+            # Lede — first line, display 18pt ink_2
+            lede_text = chunk[0] if chunk else "（暂无详细内容）"
             self._commands.append(AddText(
-                x=0.6, y=0.3, w=9, h=0.8,
-                text=f"{title}{suffix}",
-                font_size=T.SIZE_H2, bold=True,
-                color=_C["primary"], font_name=T.FONT_CN,
+                x=0.9, y=1.0, w=11.4, h=0.8,
+                text=lede_text[:120],
+                font_size=18, bold=False,
+                color=self._C["neutral"], font_name=T.FONT_DISPLAY,
             ))
-            joined = "\n".join(chunk)
-            self._commands.append(AddText(
-                x=0.8, y=1.3, w=8.6, h=5.8, text=joined,
-                font_size=14, color=_C["text_dark"], font_name=T.FONT_CN,
-            ))
+            # Body — rest, 11pt ink_1
+            body_text = "\n".join(chunk[1:]) if len(chunk) > 1 else ""
+            if body_text:
+                self._commands.append(AddText(
+                    x=0.9, y=2.0, w=11.4, h=4.8,
+                    text=body_text,
+                    font_size=11, bold=False,
+                    color=self._C["text_dark"], font_name=T.FONT_CN,
+                ))
 
     def _add_two_column_slide(
         self, title: str, left_text: str, right_text: str,
     ) -> None:
-        self._commands.append(NewSlide())
+        self._commands.append(NewSlide(background=self._C["bg_light"]))
         self._commands.append(AddText(
-            x=0.5, y=0.3, w=9, h=0.8, text=title,
+            x=0.6, y=0.3, w=12.133, h=0.8, text=title,
             font_size=T.SIZE_H2, bold=True,
-            color=_C["primary"], font_name=T.FONT_CN,
+            color=self._C["primary"], font_name=T.FONT_CN,
         ))
         # Left column
         self._commands.append(AddText(
-            x=0.5, y=1.3, w=4.5, h=5.8, text=left_text,
-            font_size=12, color=_C["text_dark"], font_name=T.FONT_CN,
+            x=0.6, y=1.3, w=6.0, h=5.8, text=left_text,
+            font_size=12, color=self._C["text_dark"], font_name=T.FONT_CN,
         ))
         # Right column
         self._commands.append(AddText(
-            x=5.2, y=1.3, w=4.3, h=5.8, text=right_text,
-            font_size=12, color=_C["text_dark"], font_name=T.FONT_NUM,
+            x=6.9, y=1.3, w=5.8, h=5.8, text=right_text,
+            font_size=12, color=self._C["text_dark"], font_name=T.FONT_NUM,
         ))
 
     def _add_stats_table_slide(
@@ -576,18 +660,18 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
         if not col_names:
             return
 
-        self._commands.append(NewSlide())
+        self._commands.append(NewSlide(background=self._C["bg_light"]))
         self._commands.append(AddText(
-            x=0.5, y=0.3, w=9, h=0.8, text=title,
+            x=0.6, y=0.3, w=12.133, h=0.8, text=title,
             font_size=T.SIZE_H2, bold=True,
-            color=_C["primary"], font_name=T.FONT_CN,
+            color=self._C["primary"], font_name=T.FONT_CN,
         ))
         # Build rows
         header_row = [
-            {"text": "指标", "bold": True, "fill": _C["primary"], "color": _C["white"]},
+            {"text": "指标", "bold": True, "fill": self._C["primary"], "color": self._C["white"]},
         ] + [
             {"text": metric_label(m), "bold": True,
-             "fill": _C["primary"], "color": _C["white"]}
+             "fill": self._C["primary"], "color": self._C["white"]}
             for m in metrics
         ]
         rows: list[list[dict[str, Any]]] = [header_row]
@@ -602,30 +686,51 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
             rows.append(row)
 
         self._commands.append(AddTable(
-            x=0.5, y=1.4, w=9, h=5.5,
+            x=0.6, y=1.4, w=12.133, h=5.5,
             rows=rows,
             options={"fontSize": 11, "fontFace": T.FONT_NUM},
         ))
 
     def _add_chart_table_slide(self, chart_option: dict[str, Any]) -> None:
-        spec = echarts_to_pptxgen(chart_option)
+        """PR-4: 辽港图表页——图题 + chart 70% + endmark。
+        不支持的类型改为文本占位符，不降级为 PNG fallback。
+        """
+        spec = echarts_to_pptxgen(chart_option, theme=self._theme)
         if spec is None:
-            # Native chart not supported (waterfall etc.) — skip;
-            # downstream Sprint 3 may render as table image.
+            # Unsupported chart type — emit a text placeholder slide
+            title = chart_option.get("title", {}).get("text") or "数据图表"
+            self._commands.append(NewSlide(background=self._C["bg_light"]))
+            self._commands.append(AddText(
+                x=0.6, y=2.0, w=12.133, h=1.5, text=title,
+                font_size=14, bold=True,
+                color=self._C["primary"], font_name=T.FONT_CN,
+            ))
+            self._commands.append(AddText(
+                x=0.6, y=3.5, w=12.133, h=1.0,
+                text="此图表类型暂不支持原生渲染，详情请参见附录数据",
+                font_size=11, color=self._C["neutral"], font_name=T.FONT_CN,
+            ))
             return
 
-        self._commands.append(NewSlide())
+        self._commands.append(NewSlide(background=self._C["bg_light"]))
+        # Figure title — 14pt navy
         title = spec.get("title") or "数据图表"
         self._commands.append(AddText(
-            x=0.5, y=0.3, w=9, h=0.7, text=title,
-            font_size=T.SIZE_H2, bold=True,
-            color=_C["primary"], font_name=T.FONT_CN,
+            x=0.6, y=0.5, w=12.133, h=0.4, text=title,
+            font_size=14, bold=True,
+            color=self._C["primary"], font_name=T.FONT_CN,
         ))
+        # Chart — 70% of content height
         self._commands.append(AddChart(
-            x=0.5, y=1.2, w=9, h=5.8,
+            x=0.6, y=1.0, w=12.133, h=4.8,
             chart_type=spec["type"],
             data=spec["data"],
             options=spec["options"],
+        ))
+        # Endmark — bronze square, bottom-right
+        self._commands.append(AddShape(
+            x=12.7, y=7.0, w=0.13, h=0.13,
+            shape="rect", fill=self._C["accent"],
         ))
 
     def _add_kpi_cards_slide(
@@ -640,31 +745,34 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
             return
         items = items[:4]
         n = len(items)
-        card_w = 8.0 / n
-        start_x = (10 - card_w * n) / 2
+        margin = 0.6
+        gap = 0.2
+        usable = self._slide_w - 2 * margin - gap * (n - 1)
+        card_w = usable / n
+        start_x = margin
 
-        self._commands.append(NewSlide())
+        self._commands.append(NewSlide(background=self._C["bg_light"]))
         self._commands.append(AddText(
-            x=0.5, y=0.3, w=9, h=0.8, text=title,
+            x=0.6, y=0.3, w=12.133, h=0.8, text=title,
             font_size=T.SIZE_H2, bold=True,
-            color=_C["primary"], font_name=T.FONT_CN, alignment="center",
+            color=self._C["primary"], font_name=T.FONT_CN, alignment="center",
         ))
         for i, (col, rates) in enumerate(items):
-            x = start_x + i * card_w
+            x = start_x + i * (card_w + gap)
             self._commands.append(AddShape(
                 x=x + 0.15, y=1.6, w=card_w - 0.3, h=4.5,
-                shape="rect", fill=_C["bg_light"],
+                shape="rect", fill=self._C["bg_light"],
             ))
             self._commands.append(AddText(
                 x=x + 0.3, y=1.8, w=card_w - 0.6, h=0.6, text=col,
                 font_size=T.SIZE_KPI_LABEL, bold=True,
-                color=_C["neutral"], font_name=T.FONT_CN,
+                color=self._C["neutral"], font_name=T.FONT_CN,
                 alignment="center",
             ))
             yoy = rates.get("yoy")
             if yoy is not None:
                 arrow = "↑" if yoy >= 0 else "↓"
-                color = _C["positive"] if yoy >= 0 else _C["negative"]
+                color = self._C["positive"] if yoy >= 0 else self._C["negative"]
                 self._commands.append(AddText(
                     x=x + 0.3, y=2.6, w=card_w - 0.6, h=1.2,
                     text=f"{arrow}{abs(yoy)*100:.1f}%",
@@ -674,13 +782,13 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
                 self._commands.append(AddText(
                     x=x + 0.3, y=3.8, w=card_w - 0.6, h=0.5, text="同比",
                     font_size=T.SIZE_KPI_LABEL,
-                    color=_C["neutral"], font_name=T.FONT_CN,
+                    color=self._C["neutral"], font_name=T.FONT_CN,
                     alignment="center",
                 ))
             mom = rates.get("mom")
             if mom is not None:
                 arrow = "↑" if mom >= 0 else "↓"
-                color = _C["positive"] if mom >= 0 else _C["negative"]
+                color = self._C["positive"] if mom >= 0 else self._C["negative"]
                 self._commands.append(AddText(
                     x=x + 0.3, y=4.4, w=card_w - 0.6, h=1.0,
                     text=f"{arrow}{abs(mom)*100:.1f}%",
@@ -690,31 +798,128 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
                 self._commands.append(AddText(
                     x=x + 0.3, y=5.4, w=card_w - 0.6, h=0.5, text="环比",
                     font_size=T.SIZE_KPI_LABEL,
-                    color=_C["neutral"], font_name=T.FONT_CN,
+                    color=self._C["neutral"], font_name=T.FONT_CN,
                     alignment="center",
                 ))
 
     def _add_summary_slide(self, conclusions: list[str]) -> None:
-        self._commands.append(NewSlide(background=_C["primary"]))
+        """PR-4: 辽港总结页——纸色背景。"""
+        self._commands.append(NewSlide(background=self._C["bg_light"]))
         self._commands.append(AddText(
-            x=1, y=0.5, w=8, h=0.8, text="总结与建议",
+            x=1.5, y=1.0, w=10.333, h=0.8, text="总结",
             font_size=T.SIZE_H1, bold=True,
-            color=_C["accent"], font_name=T.FONT_CN, alignment="center",
+            color=self._C["primary"], font_name=T.FONT_DISPLAY, alignment="left",
         ))
         for i, c in enumerate(conclusions[:5]):
             self._commands.append(AddText(
-                x=1, y=1.6 + i * 1.0, w=8, h=0.9,
+                x=1.5, y=2.0 + i * 0.9, w=10.333, h=0.8,
                 text=f"• {c}",
-                font_size=14, color=_C["white"], font_name=T.FONT_CN,
+                font_size=14, color=self._C["text_dark"], font_name=T.FONT_CN,
             ))
 
-    def _add_thank_you_slide(self) -> None:
-        self._commands.append(NewSlide(background=_C["primary"]))
+    def _add_closing_slide(self) -> None:
+        """PR-4: 辽港结语页——纸色 + 居中结语 + 古铜 endmark。"""
+        self._commands.append(NewSlide(background=self._C["bg_light"]))
         self._commands.append(AddText(
-            x=1, y=3, w=8, h=1.5, text="谢谢观看",
-            font_size=44, bold=True,
-            color=_C["white"], font_name=T.FONT_CN, alignment="center",
+            x=3.0, y=2.5, w=7.333, h=1.5, text="结语",
+            font_size=32, bold=True,
+            color=self._C["primary"], font_name=T.FONT_DISPLAY, alignment="center",
         ))
+        # Centered bronze endmark square
+        self._commands.append(AddShape(
+            x=6.5, y=4.5, w=0.333, h=0.333,
+            shape="rect", fill=self._C["accent"],
+        ))
+
+    # ---- Appendix deck (PR-4: §6.7) -------------------------------
+
+    def _flush_appendix_deck(self) -> None:
+        """Flush the appendix buffer at end of document.
+
+        Emits appendix cover slide + paginated detail slides for each
+        buffered table asset.
+        """
+        if not self._appendix_buffer:
+            self._add_closing_slide()
+            return
+
+        self._add_appendix_cover_slide()
+        for block, asset in self._appendix_buffer:
+            self._add_appendix_detail_slides(block, asset)
+        self._add_closing_slide()
+
+    def _add_appendix_cover_slide(self) -> None:
+        """PR-4: 附录封面——古铜背景 + 纸色大字。"""
+        self._commands.append(NewSlide(background=self._C["accent"]))
+        self._commands.append(AddText(
+            x=0.6, y=2.0, w=12.133, h=2.0, text="附录",
+            font_size=72, bold=True,
+            color=self._C["bg_light"], font_name=T.FONT_DISPLAY,
+        ))
+        self._commands.append(AddText(
+            x=0.6, y=4.5, w=12.133, h=1.0, text="完整数据明细",
+            font_size=24,
+            color=self._C["bg_light"], font_name=T.FONT_CN,
+        ))
+
+    def _add_appendix_detail_slides(
+        self, block, asset: Asset,
+    ) -> None:
+        """PR-4: 附录数据表——纸色背景 + agate 表格，每页 ≤15 行。"""
+        if not isinstance(asset, TableAsset):
+            return
+
+        import pandas as pd
+        df = (
+            pd.DataFrame.from_records(asset.df_records)
+            if asset.df_records
+            else pd.DataFrame()
+        )
+        if df.empty:
+            return
+
+        caption = getattr(block, "title", None) or "完整数据"
+        max_rows = 15
+        total_pages = (len(df) + max_rows - 1) // max_rows
+
+        for page in range(total_pages):
+            start = page * max_rows
+            end = min(start + max_rows, len(df))
+            chunk = df.iloc[start:end]
+
+            self._commands.append(NewSlide(background=self._C["bg_light"]))
+            page_suffix = f" ({page + 1}/{total_pages})" if total_pages > 1 else ""
+            self._commands.append(AddText(
+                x=0.6, y=0.5, w=12.133, h=0.4,
+                text=f"{caption}{page_suffix}",
+                font_size=12, bold=True,
+                color=self._C["primary"], font_name=T.FONT_CN,
+            ))
+
+            # Build table rows
+            cols = [str(c) for c in df.columns]
+            header_row = [
+                {"text": c, "bold": True,
+                 "fill": self._C["primary"], "color": self._C["bg_light"]}
+                for c in cols
+            ]
+            rows: list[list[dict[str, Any]]] = [header_row]
+            for _, row_data in chunk.iterrows():
+                row = []
+                for i, col in enumerate(cols):
+                    val = row_data[col]
+                    if isinstance(val, float):
+                        text = f"{val:,.2f}"
+                    else:
+                        text = str(val)
+                    row.append({"text": text})
+                rows.append(row)
+
+            self._commands.append(AddTable(
+                x=0.6, y=1.0, w=12.133, h=5.5,
+                rows=rows,
+                options={"fontSize": 9, "fontFace": T.FONT_UI},
+            ))
 
     # ---- Section composition (mirrors PptxBlockRenderer) ------------
 
@@ -747,17 +952,5 @@ class PptxGenJSBlockRenderer(BlockRendererBase):
             self._add_chart_table_slide(ci)
 
     def _render_summary_and_thanks(self) -> None:
-        conclusions: list[str] = [
-            (t[:120] + "...") if len(t) > 120 else t
-            for t in self._appendix_paragraphs
-        ]
-        if not conclusions:
-            for nar in self._all_narratives:
-                if len(nar) > 20:
-                    conclusions.append(nar[:100] + "...")
-                    break
-        if not conclusions:
-            conclusions = ["数据分析完成，详见各章节内容"]
-
-        self._add_summary_slide(conclusions)
-        self._add_thank_you_slide()
+        """PR-4: summary/closing are now handled by _flush_appendix_deck."""
+        pass

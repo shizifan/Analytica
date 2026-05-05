@@ -2,7 +2,7 @@
 
 Covers:
 - Theme dataclass field defaults (Phase 4-5 forward-compat)
-- ``get_theme`` returns corporate-blue by default + on unknown name
+- ``get_theme`` returns liangang-journal by default + on unknown name
 - Module-level legacy constants stay aligned with the default preset
 - Hex / CSS string accessors round-trip with RGB tuples
 - Frozen instance: mutation raises FrozenInstanceError
@@ -16,6 +16,7 @@ import pytest
 from backend.tools.report import _theme as T
 from backend.tools.report._theme import (
     CORPORATE_BLUE,
+    LIANGANG_JOURNAL,
     THEMES,
     Theme,
     _hex_to_rgb,
@@ -30,13 +31,13 @@ pytestmark = pytest.mark.contract
 # Default selection
 # ---------------------------------------------------------------------------
 
-def test_get_theme_with_no_arg_returns_corporate_blue():
-    assert get_theme() is CORPORATE_BLUE
-    assert get_theme().name == "corporate-blue"
+def test_get_theme_with_no_arg_returns_liangang_journal():
+    assert get_theme() is LIANGANG_JOURNAL
+    assert get_theme().name == "liangang-journal"
 
 
-def test_get_theme_with_none_returns_corporate_blue():
-    assert get_theme(None) is CORPORATE_BLUE
+def test_get_theme_with_none_returns_liangang_journal():
+    assert get_theme(None) is LIANGANG_JOURNAL
 
 
 def test_get_theme_with_known_name_returns_preset():
@@ -45,8 +46,8 @@ def test_get_theme_with_known_name_returns_preset():
 
 def test_get_theme_with_unknown_name_falls_back_silently():
     """Misconfigured theme names must not break rendering."""
-    assert get_theme("tech-gray-not-yet-implemented") is CORPORATE_BLUE
-    assert get_theme("") is CORPORATE_BLUE
+    assert get_theme("tech-gray-not-yet-implemented") is LIANGANG_JOURNAL
+    assert get_theme("") is LIANGANG_JOURNAL
 
 
 def test_themes_dict_contains_corporate_blue():
@@ -114,7 +115,7 @@ def test_hex_helpers_round_trip():
 
 
 def test_cover_bg_defaults_to_primary_when_unset():
-    # corporate-blue leaves cover_bg=None → falls back to primary
+    # corporate-blue leaves cover_bg=None => falls back to primary
     assert CORPORATE_BLUE.cover_bg is None
     assert CORPORATE_BLUE.hex_cover_bg == CORPORATE_BLUE.hex_primary
     assert CORPORATE_BLUE.cover_text is None
@@ -151,41 +152,43 @@ def test_cover_bg_uses_explicit_value_when_set():
 
 def test_module_constants_match_default_preset():
     """Existing renderer code uses ``T.PRIMARY`` / ``T.RGB_PRIMARY`` /
-    ``T.FONT_CN`` etc. — those names must still equal the corporate-blue
-    preset values so baseline output is byte-equivalent post-refactor."""
-    assert T.PRIMARY == CORPORATE_BLUE.css_primary
-    assert T.SECONDARY == CORPORATE_BLUE.css_secondary
-    assert T.ACCENT == CORPORATE_BLUE.css_accent
-    assert T.POSITIVE == CORPORATE_BLUE.css_positive
-    assert T.NEGATIVE == CORPORATE_BLUE.css_negative
+    ``T.FONT_CN`` etc. — those names must equal the liangang-journal
+    preset values (the new default)."""
+    assert T.PRIMARY == LIANGANG_JOURNAL.css_primary
+    assert T.SECONDARY == LIANGANG_JOURNAL.css_secondary
+    assert T.ACCENT == LIANGANG_JOURNAL.css_accent
+    assert T.POSITIVE == LIANGANG_JOURNAL.css_positive
+    assert T.NEGATIVE == LIANGANG_JOURNAL.css_negative
 
-    assert T.RGB_PRIMARY == CORPORATE_BLUE.primary
-    assert T.RGB_ACCENT == CORPORATE_BLUE.accent
-    assert T.RGB_BG_LIGHT == CORPORATE_BLUE.bg_light
+    assert T.RGB_PRIMARY == LIANGANG_JOURNAL.primary
+    assert T.RGB_ACCENT == LIANGANG_JOURNAL.accent
+    assert T.RGB_BG_LIGHT == LIANGANG_JOURNAL.bg_light
 
-    assert T.FONT_CN == CORPORATE_BLUE.font_cn
-    assert T.FONT_NUM == CORPORATE_BLUE.font_num
+    assert T.FONT_CN == LIANGANG_JOURNAL.font_cn
+    assert T.FONT_NUM == LIANGANG_JOURNAL.font_num
+    assert T.FONT_DISPLAY == LIANGANG_JOURNAL.font_display
+    assert T.FONT_UI == LIANGANG_JOURNAL.font_ui
 
-    assert T.SIZE_TITLE == CORPORATE_BLUE.size_title
-    assert T.SIZE_BODY == CORPORATE_BLUE.size_body
-    assert T.SIZE_KPI_LARGE == CORPORATE_BLUE.size_kpi_large
+    assert T.SIZE_TITLE == LIANGANG_JOURNAL.size_title
+    assert T.SIZE_BODY == LIANGANG_JOURNAL.size_body
+    assert T.SIZE_KPI_LARGE == LIANGANG_JOURNAL.size_kpi_large
 
-    assert T.SLIDE_WIDTH == CORPORATE_BLUE.slide_width
-    assert T.SLIDE_HEIGHT == CORPORATE_BLUE.slide_height
+    assert T.SLIDE_WIDTH == LIANGANG_JOURNAL.slide_width
+    assert T.SLIDE_HEIGHT == LIANGANG_JOURNAL.slide_height
 
 
 # ---------------------------------------------------------------------------
 # Renderer integration
 # ---------------------------------------------------------------------------
 
-def test_block_renderer_base_defaults_to_corporate_blue():
+def test_block_renderer_base_defaults_to_liangang_journal():
     from backend.tools.report._block_renderer import BlockRendererBase
 
     class _Subclass(BlockRendererBase):
         pass
 
     r = _Subclass()
-    assert r._theme is CORPORATE_BLUE
+    assert r._theme is LIANGANG_JOURNAL
 
 
 def test_block_renderer_base_accepts_explicit_theme():
@@ -218,11 +221,11 @@ def test_concrete_renderers_accept_theme_kwarg(renderer_cls_path):
 
 
 def test_concrete_renderers_default_theme_when_omitted():
-    """Constructing without ``theme=`` falls back to corporate-blue —
-    keeps existing test fixtures and direct callers working."""
+    """Constructing without ``theme=`` falls back to liangang-journal —
+    the new default preset."""
     from backend.tools.report._renderers.markdown import MarkdownBlockRenderer
     r = MarkdownBlockRenderer()
-    assert r._theme is CORPORATE_BLUE
+    assert r._theme is LIANGANG_JOURNAL
 
 
 # ---------------------------------------------------------------------------
@@ -232,9 +235,9 @@ def test_concrete_renderers_default_theme_when_omitted():
 def test_trend_arrow_returns_glyph_for_known_tokens():
     from backend.tools.report._theme import trend_arrow
 
-    assert trend_arrow("positive") == "↑"
-    assert trend_arrow("negative") == "↓"
-    assert trend_arrow("flat") == "→"
+    assert trend_arrow("positive") == "\u2191"
+    assert trend_arrow("negative") == "\u2193"
+    assert trend_arrow("flat") == "\u2192"
 
 
 def test_trend_arrow_returns_empty_for_unknown():
@@ -245,15 +248,24 @@ def test_trend_arrow_returns_empty_for_unknown():
     assert trend_arrow("rising") == ""
 
 
-def test_trend_rgb_resolves_against_theme():
+def test_trend_rgb_resolves_against_default_theme():
     from backend.tools.report._theme import trend_rgb
 
-    assert trend_rgb("positive") == CORPORATE_BLUE.positive
-    assert trend_rgb("negative") == CORPORATE_BLUE.negative
-    assert trend_rgb("flat") == CORPORATE_BLUE.neutral
-    # Unknown / None → neutral fallback
-    assert trend_rgb(None) == CORPORATE_BLUE.neutral
-    assert trend_rgb("rising") == CORPORATE_BLUE.neutral
+    assert trend_rgb("positive") == LIANGANG_JOURNAL.positive
+    assert trend_rgb("negative") == LIANGANG_JOURNAL.negative
+    assert trend_rgb("flat") == LIANGANG_JOURNAL.neutral
+    # Unknown / None => neutral fallback
+    assert trend_rgb(None) == LIANGANG_JOURNAL.neutral
+    assert trend_rgb("rising") == LIANGANG_JOURNAL.neutral
+
+
+def test_trend_rgb_resolves_against_explicit_theme():
+    """Pass an explicit theme to ``trend_rgb`` to test corporate-blue."""
+    from backend.tools.report._theme import trend_rgb
+
+    assert trend_rgb("positive", CORPORATE_BLUE) == CORPORATE_BLUE.positive
+    assert trend_rgb("negative", CORPORATE_BLUE) == CORPORATE_BLUE.negative
+    assert trend_rgb("flat", CORPORATE_BLUE) == CORPORATE_BLUE.neutral
 
 
 def test_trend_for_value_classifies_signs():

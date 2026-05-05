@@ -1,0 +1,9 @@
+{
+  "name": "analytica-pptxgen-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node.js bridge for pptxgenjs native chart rendering",
+  "dependencies": {
+    "pptxgenjs": "^3.12.0"
+  }
+}

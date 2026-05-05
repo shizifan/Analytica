@@ -20,6 +20,7 @@ from backend.tools.registry import register_tool
 from backend.tools.report._block_renderer import render_outline
 from backend.tools.report._outline_planner import plan_outline
 from backend.tools.report._pptxgen_builder import check_pptxgen_available
+from backend.tools.report._quality_reviewer import BLOCKING, review_pptx_output
 from backend.tools.report._renderers.pptxgen import PptxGenJSBlockRenderer
 from backend.tools.report._theme import get_theme
 
@@ -55,6 +56,11 @@ class PptxReportTool(BaseTool):
             render_outline(outline, renderer)
             pptx_bytes = renderer.end_document()
 
+            # PR-4: PPTX 后置质量审查
+            review_result = review_pptx_output(
+                pptx_bytes, outline=outline,
+            )
+
             try:
                 slide_count = len(Presentation(io.BytesIO(pptx_bytes)).slides)
             except Exception:
@@ -67,6 +73,16 @@ class PptxReportTool(BaseTool):
                 "mode": f"pptxgenjs_{outline.planner_mode}",
                 "slide_count": slide_count,
                 "sections": len(outline.sections),
+                "review_passed": review_result.passed,
+                "review_findings": [
+                    {
+                        "dimension": f.dimension,
+                        "passed": f.passed,
+                        "severity": f.severity,
+                        "detail": f.detail,
+                    }
+                    for f in review_result.findings
+                ],
             }
             if outline.degradations:
                 meta["degradations"] = outline.degradations

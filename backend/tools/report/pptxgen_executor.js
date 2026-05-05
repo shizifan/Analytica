@@ -18,11 +18,12 @@
 const pptxgen = require("pptxgenjs");
 
 // ---------------------------------------------------------------------------
-// Slide layout — keep in sync with backend/tools/report/_theme.py
+// Slide layout — read from CLI args; falls back to 10×7.5 for backward
+// compatibility (PR-4: liangang-journal theme passes 13.333×7.5).
 // ---------------------------------------------------------------------------
 
-const SLIDE_WIDTH = 10;
-const SLIDE_HEIGHT = 7.5;
+const SLIDE_WIDTH = parseFloat(process.argv[2]) || 10;
+const SLIDE_HEIGHT = parseFloat(process.argv[3]) || 7.5;
 
 // ---------------------------------------------------------------------------
 // Read full stdin

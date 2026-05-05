@@ -236,7 +236,7 @@ async def test_html_renders_callout_classes_and_grid(monkeypatch):
     html = render_outline(outline, HtmlBlockRenderer())
 
     assert '<div class="callout warn">锦州港 yoy -3%' in html
-    assert '<div class="callout info">装卸效率' in html
+    assert '<div class="callout">装卸效率' in html
     # Comparison grid column titles surface in HTML
     assert "短期 (Q2)" in html
     assert "中期 (H2)" in html

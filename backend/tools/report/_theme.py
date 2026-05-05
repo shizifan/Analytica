@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 
-ThemeName = Literal["corporate-blue"]
+ThemeName = Literal["corporate-blue", "liangang-journal"]
 
 
 # ---------------------------------------------------------------------------
@@ -136,6 +136,12 @@ class Theme:
     font_cn: str
     font_num: str
 
+    def __post_init__(self):
+        if not self.font_display:
+            object.__setattr__(self, "font_display", self.font_cn)
+        if not self.font_ui:
+            object.__setattr__(self, "font_ui", self.font_cn)
+
     # ── Font sizes (points) ───────────────────────────────────────────────
     size_title: int
     size_h1: int
@@ -176,6 +182,12 @@ class Theme:
     spacing_section: int = 32       # vertical gap between sections (px)
     # Phase 5.4 — dark-mode opt-in flag for HTML; other backends ignore.
     dark_mode: bool = False
+    # 辽港数据期刊 PR-1 — 扩展字体 token（默认空串由 __post_init__ fallback）
+    font_display: str = ""
+    font_ui: str = ""
+    font_cn_fallbacks: tuple[str, ...] = ()
+    font_ui_fallbacks: tuple[str, ...] = ()
+    font_mono_fallbacks: tuple[str, ...] = ()
 
     # ── Hex string accessors (HTML/CSS, pptxgenjs) ────────────────────────
 
@@ -294,21 +306,74 @@ CORPORATE_BLUE = Theme(
 )
 
 
+# ── 辽港数据期刊 (Liangang Data Journal) — PR-1 注册，PR-2 切为默认 ──
+
+LIANGANG_JOURNAL = Theme(
+    name="liangang-journal",
+    # 品牌基色：辽港集团 VI 手册 (PANTONE 293 C + 872 U)
+    primary=(0x00, 0x48, 0x89),          # 辽港深蓝 #004889
+    secondary=(0x33, 0x6E, 0xA4),       # navy 70% tint #336EA4
+    accent=(0xAC, 0x91, 0x6B),          # 辽港古铜 #AC916B
+    positive=(0x00, 0x48, 0x89),        # 上涨语义 = 主色
+    negative=(0x8B, 0x4A, 0x2B),        # 下跌语义 = 古铜加深 #8B4A2B
+    neutral=(0x9A, 0x8E, 0x78),         # ink_3 #9A8E78
+    bg_light=(0xFB, 0xF6, 0xEE),        # paper 纸色 #FBF6EE
+    white=(0xFF, 0xFE, 0xFB),
+    text_dark=(0x1F, 0x1A, 0x12),       # ink_1 暖黑 #1F1A12
+    # 字体
+    font_cn="Noto Serif SC",
+    font_num="JetBrains Mono",
+    font_display="Noto Serif SC",
+    font_ui="Noto Sans SC",
+    font_cn_fallbacks=(
+        "Source Han Serif SC", "Songti SC", "STSong", "SimSun",
+    ),
+    font_ui_fallbacks=(
+        "PingFang SC", "Microsoft YaHei", "SimHei",
+    ),
+    font_mono_fallbacks=(
+        "IBM Plex Mono", "Consolas", "Menlo", "Courier New",
+    ),
+    # 字号（pt）
+    size_title=32,
+    size_h1=22,
+    size_h2=16,
+    size_h3=14,
+    size_body=11,
+    size_small=9,
+    size_kpi_large=28,
+    size_kpi_label=8,
+    size_table_header=9,
+    size_table_body=10,
+    # 16:9 slide（PPTX）
+    slide_width=13.333,
+    slide_height=7.5,
+    # 图表色板
+    chart_colors=(
+        "004889", "AC916B", "80A4C2", "CFAB79", "336EA4", "8B4A2B",
+    ),
+    # 封面使用纸色背景 + navy 标题
+    cover_bg=(0xFB, 0xF6, 0xEE),
+    cover_text=(0x00, 0x48, 0x89),
+)
+
+
 THEMES: dict[str, Theme] = {
     "corporate-blue": CORPORATE_BLUE,
+    "liangang-journal": LIANGANG_JOURNAL,
 }
 
 
 def get_theme(name: str | None = None) -> Theme:
-    """Return a Theme by name, defaulting to ``corporate-blue``.
+    """Return a Theme by name, defaulting to ``liangang-journal``.
 
     Unknown names degrade silently to the default — matches the
     LLM-failure-fallback ethos in ``_outline_planner``: never break
     rendering for a misconfigured theme.
     """
     if name is None:
-        return CORPORATE_BLUE
-    return THEMES.get(name, CORPORATE_BLUE)
+        return LIANGANG_JOURNAL
+    return THEMES.get(name, LIANGANG_JOURNAL)
 
 
 # ---------------------------------------------------------------------------
@@ -317,48 +382,50 @@ def get_theme(name: str | None = None) -> Theme:
 # Existing renderer code uses ``from backend.tools.report import _theme as T``
 # and reads ``T.PRIMARY`` (CSS hex string with #), ``T.RGB_PRIMARY`` (tuple),
 # ``T.FONT_CN`` (string), ``T.SIZE_BODY`` (int) — keep these names alive,
-# pointing at the corporate-blue preset.
+# pointing at the liangang-journal preset (the new default).
 #
 # New code should prefer ``self._theme.*`` so theme switching propagates.
 
 # CSS hex strings (with leading #)
-PRIMARY = CORPORATE_BLUE.css_primary
-SECONDARY = CORPORATE_BLUE.css_secondary
-ACCENT = CORPORATE_BLUE.css_accent
-POSITIVE = CORPORATE_BLUE.css_positive
-NEGATIVE = CORPORATE_BLUE.css_negative
-NEUTRAL = CORPORATE_BLUE.css_neutral
-BG_LIGHT = CORPORATE_BLUE.css_bg_light
-WHITE = CORPORATE_BLUE.css_white
-TEXT_DARK = CORPORATE_BLUE.css_text_dark
+PRIMARY = LIANGANG_JOURNAL.css_primary
+SECONDARY = LIANGANG_JOURNAL.css_secondary
+ACCENT = LIANGANG_JOURNAL.css_accent
+POSITIVE = LIANGANG_JOURNAL.css_positive
+NEGATIVE = LIANGANG_JOURNAL.css_negative
+NEUTRAL = LIANGANG_JOURNAL.css_neutral
+BG_LIGHT = LIANGANG_JOURNAL.css_bg_light
+WHITE = LIANGANG_JOURNAL.css_white
+TEXT_DARK = LIANGANG_JOURNAL.css_text_dark
 
 # RGB tuples
-RGB_PRIMARY = CORPORATE_BLUE.primary
-RGB_SECONDARY = CORPORATE_BLUE.secondary
-RGB_ACCENT = CORPORATE_BLUE.accent
-RGB_POSITIVE = CORPORATE_BLUE.positive
-RGB_NEGATIVE = CORPORATE_BLUE.negative
-RGB_NEUTRAL = CORPORATE_BLUE.neutral
-RGB_BG_LIGHT = CORPORATE_BLUE.bg_light
-RGB_WHITE = CORPORATE_BLUE.white
-RGB_TEXT_DARK = CORPORATE_BLUE.text_dark
+RGB_PRIMARY = LIANGANG_JOURNAL.primary
+RGB_SECONDARY = LIANGANG_JOURNAL.secondary
+RGB_ACCENT = LIANGANG_JOURNAL.accent
+RGB_POSITIVE = LIANGANG_JOURNAL.positive
+RGB_NEGATIVE = LIANGANG_JOURNAL.negative
+RGB_NEUTRAL = LIANGANG_JOURNAL.neutral
+RGB_BG_LIGHT = LIANGANG_JOURNAL.bg_light
+RGB_WHITE = LIANGANG_JOURNAL.white
+RGB_TEXT_DARK = LIANGANG_JOURNAL.text_dark
 
 # Fonts
-FONT_CN = CORPORATE_BLUE.font_cn
-FONT_NUM = CORPORATE_BLUE.font_num
+FONT_CN = LIANGANG_JOURNAL.font_cn
+FONT_NUM = LIANGANG_JOURNAL.font_num
+FONT_DISPLAY = LIANGANG_JOURNAL.font_display
+FONT_UI = LIANGANG_JOURNAL.font_ui
 
 # Font sizes
-SIZE_TITLE = CORPORATE_BLUE.size_title
-SIZE_H1 = CORPORATE_BLUE.size_h1
-SIZE_H2 = CORPORATE_BLUE.size_h2
-SIZE_H3 = CORPORATE_BLUE.size_h3
-SIZE_BODY = CORPORATE_BLUE.size_body
-SIZE_SMALL = CORPORATE_BLUE.size_small
-SIZE_KPI_LARGE = CORPORATE_BLUE.size_kpi_large
-SIZE_KPI_LABEL = CORPORATE_BLUE.size_kpi_label
-SIZE_TABLE_HEADER = CORPORATE_BLUE.size_table_header
-SIZE_TABLE_BODY = CORPORATE_BLUE.size_table_body
+SIZE_TITLE = LIANGANG_JOURNAL.size_title
+SIZE_H1 = LIANGANG_JOURNAL.size_h1
+SIZE_H2 = LIANGANG_JOURNAL.size_h2
+SIZE_H3 = LIANGANG_JOURNAL.size_h3
+SIZE_BODY = LIANGANG_JOURNAL.size_body
+SIZE_SMALL = LIANGANG_JOURNAL.size_small
+SIZE_KPI_LARGE = LIANGANG_JOURNAL.size_kpi_large
+SIZE_KPI_LABEL = LIANGANG_JOURNAL.size_kpi_label
+SIZE_TABLE_HEADER = LIANGANG_JOURNAL.size_table_header
+SIZE_TABLE_BODY = LIANGANG_JOURNAL.size_table_body
 
 # Slide dimensions
-SLIDE_WIDTH = CORPORATE_BLUE.slide_width
-SLIDE_HEIGHT = CORPORATE_BLUE.slide_height
+SLIDE_WIDTH = LIANGANG_JOURNAL.slide_width
+SLIDE_HEIGHT = LIANGANG_JOURNAL.slide_height

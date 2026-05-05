@@ -165,12 +165,12 @@ def test_toc_slide_lists_non_appendix_section_names():
     text_strings = [
         c.text for c in cmds if isinstance(c, AddText)
     ]
-    # TOC items are formatted "1.  一、xxx"
-    assert any("1.  一、港区吞吐量现状" in t for t in text_strings)
-    assert any("2.  二、关键指标分析" in t for t in text_strings)
-    assert any("3.  三、综合结论" in t for t in text_strings)
+    # TOC items use Roman numerals: "Ⅰ.  一、xxx" (PR-4)
+    assert any("Ⅰ.  一、港区吞吐量现状" in t for t in text_strings)
+    assert any("Ⅱ.  二、关键指标分析" in t for t in text_strings)
+    assert any("Ⅲ.  三、综合结论" in t for t in text_strings)
     # Appendix must NOT appear in TOC
-    assert not any("总结与建议" in t for t in text_strings if t.startswith(("1", "2", "3", "4")))
+    assert not any("总结与建议" in t for t in text_strings if t.startswith(("Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ")))
 
 
 def test_kpi_overview_slide_renders_each_kpi():
@@ -187,11 +187,11 @@ def test_kpi_overview_slide_renders_each_kpi():
 
 def test_section_divider_emitted_for_each_non_appendix_section():
     cmds = _render_to_commands(_normal_outline())
-    # divider has section number text "01", "02", "03"
+    # divider uses Roman numerals (PR-4): "Ⅰ", "Ⅱ", "Ⅲ"
     text_strings = [c.text for c in cmds if isinstance(c, AddText)]
-    assert "01" in text_strings
-    assert "02" in text_strings
-    assert "03" in text_strings
+    assert "Ⅰ" in text_strings
+    assert "Ⅱ" in text_strings
+    assert "Ⅲ" in text_strings
 
 
 def test_chart_block_emits_native_addchart_command():
@@ -222,15 +222,46 @@ def test_growth_emits_kpi_cards_slide():
     assert "环比" in text_strings
 
 
-def test_appendix_emits_summary_and_thank_you_slides():
+def test_appendix_flush_emits_closing_slide_in_end_document(monkeypatch):
+    """PR-4: appendix deck (summary + closing) is now emitted by
+    _flush_appendix_deck during end_document, not during end_section."""
+    def _stub_executor(commands_json, slide_width=10.0, slide_height=7.5,
+                       timeout=90):
+        import json
+        data = json.loads(commands_json)
+        assert isinstance(data, list)
+        return b"FAKE"
+
+    monkeypatch.setattr(
+        "backend.tools.report._renderers.pptxgen.run_pptxgen_executor",
+        _stub_executor,
+    )
+    renderer = PptxGenJSBlockRenderer()
+    outline = _normal_outline()
+    renderer.begin_document(outline)
+    for idx, sec in enumerate(outline.sections):
+        renderer.begin_section(sec, idx)
+        for blk in sec.blocks:
+            from backend.tools.report._block_renderer import _dispatch
+            _dispatch(blk, outline, renderer)
+        renderer.end_section(sec, idx)
+    renderer.end_document()
+    text_strings = [c.text for c in renderer.commands if isinstance(c, AddText)]
+    # PR-4: closing slide says "结语" instead of "谢谢观看"
+    assert "结语" in text_strings
+
+
+def test_appendix_paragraphs_are_not_emitted_in_section_composition():
+    """PR-4: appendix paragraphs are stored in _appendix_paragraphs
+    but not emitted as slides until end_document — _render_summary_and_thanks
+    is now pass."""
     cmds = _render_to_commands(_normal_outline())
     text_strings = [c.text for c in cmds if isinstance(c, AddText)]
-    # Summary slide title
-    assert "总结与建议" in text_strings
-    # Conclusion bullet
-    assert any("三港区集装箱" in t for t in text_strings)
-    # Thank-you slide
-    assert "谢谢观看" in text_strings
+    # Appendix section ("总结与建议") no longer emits summary/thanks slides
+    # during end_section; "结语" is only in end_document
+    assert "结语" not in text_strings, (
+        "Closing slide should NOT appear before end_document"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -262,7 +293,8 @@ def test_all_emitted_colors_are_6_hex_no_hash():
 def test_end_document_raises_runtime_error_when_node_unavailable(monkeypatch):
     """Caller (pptx_gen.py) catches and falls back. We assert the
     failure surface is RuntimeError, not generic Exception."""
-    def _stub_executor(commands_json: str, timeout: int = 90) -> bytes:
+    def _stub_executor(commands_json: str, slide_width: float = 10.0,
+                       slide_height: float = 7.5, timeout: int = 90) -> bytes:
         raise RuntimeError("node not found")
 
     monkeypatch.setattr(
@@ -276,7 +308,8 @@ def test_end_document_raises_runtime_error_when_node_unavailable(monkeypatch):
 
 
 def test_end_document_returns_executor_bytes_on_success(monkeypatch):
-    def _stub_executor(commands_json: str, timeout: int = 90) -> bytes:
+    def _stub_executor(commands_json: str, slide_width: float = 10.0,
+                       slide_height: float = 7.5, timeout: int = 90) -> bytes:
         # Sanity check: payload must be valid JSON array
         import json
         data = json.loads(commands_json)

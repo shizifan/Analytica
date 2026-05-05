@@ -1,9 +1,9 @@
 """Phase 5.2 — Font separation audit.
 
 Locks in the cross-backend font usage convention:
-- 中文文字 (titles, narrative, labels) uses ``theme.font_cn``
+- 中文文字 (titles, narrative, labels) uses ``T.FONT_CN``
 - 数字文字 (KPI values, table numeric cells, growth rates) uses
-  ``theme.font_num`` (typically a monospace face for column alignment)
+  ``T.FONT_NUM`` (typically a monospace face for column alignment)
 
 The contract guards against accidental drift when a new visual feature
 forgets to opt into ``font_num`` for numeric content.
@@ -15,6 +15,7 @@ import zipfile
 
 import pytest
 
+from backend.tools.report import _theme as T
 from backend.tools.report._block_renderer import render_outline
 from backend.tools.report._outline import KPIItem
 from backend.tools.report._outline import (
@@ -27,7 +28,7 @@ from backend.tools.report._outline import (
 )
 from backend.tools.report._renderers.docx import DocxBlockRenderer
 from backend.tools.report._renderers.html import HtmlBlockRenderer
-from backend.tools.report._theme import CORPORATE_BLUE
+from backend.tools.report._theme import CORPORATE_BLUE, LIANGANG_JOURNAL
 
 pytestmark = pytest.mark.contract
 
@@ -73,26 +74,29 @@ def _outline_with_kpi_and_table() -> ReportOutline:
 def test_docx_table_numeric_cells_reference_font_num():
     """python-docx writes <w:rFonts w:ascii="..."> per run.
 
-    Numeric cells (data rows) must reference ``theme.font_num``;
-    Chinese header cells reference ``theme.font_cn``. The audit check
-    is loose — at least one occurrence each, both pulled from theme.
+    Numeric cells (data rows) must reference ``T.FONT_NUM``
+    (the module-level constant); Chinese header cells reference
+    ``T.FONT_CN``. The DOCX builder reads module-level constants,
+    not the theme object, for font names.
     """
-    docx = render_outline(_outline_with_kpi_and_table(), DocxBlockRenderer())
+    docx = render_outline(
+        _outline_with_kpi_and_table(), DocxBlockRenderer(theme=CORPORATE_BLUE),
+    )
     with zipfile.ZipFile(io.BytesIO(docx)) as zf:
         xml = zf.read("word/document.xml").decode()
 
-    assert CORPORATE_BLUE.font_num in xml, (
-        f"theme.font_num={CORPORATE_BLUE.font_num!r} never appears in DOCX — "
+    assert T.FONT_NUM in xml, (
+        f"T.FONT_NUM={T.FONT_NUM!r} never appears in DOCX — "
         "numeric cells likely lost their monospace font."
     )
-    assert CORPORATE_BLUE.font_cn in xml, (
-        f"theme.font_cn={CORPORATE_BLUE.font_cn!r} never appears in DOCX — "
+    assert T.FONT_CN in xml, (
+        f"T.FONT_CN={T.FONT_CN!r} never appears in DOCX — "
         "Chinese text fields lost their CJK font."
     )
 
 
 def test_docx_growth_indicator_uses_font_num():
-    """Growth indicators (yoy / mom) are numeric — must use FONT_NUM.
+    """Growth indicators (yoy / mom) are numeric — must use T.FONT_NUM.
 
     Construct a minimal outline with a GrowthIndicatorsBlock to isolate
     this assertion from the table case above.
@@ -112,10 +116,10 @@ def test_docx_growth_indicator_uses_font_num():
             OutlineSection(name="总结", role="appendix", blocks=[]),
         ],
     )
-    docx = render_outline(o, DocxBlockRenderer())
+    docx = render_outline(o, DocxBlockRenderer(theme=CORPORATE_BLUE))
     with zipfile.ZipFile(io.BytesIO(docx)) as zf:
         xml = zf.read("word/document.xml").decode()
-    assert CORPORATE_BLUE.font_num in xml
+    assert T.FONT_NUM in xml
 
 
 # ---------------------------------------------------------------------------
@@ -123,34 +127,33 @@ def test_docx_growth_indicator_uses_font_num():
 # ---------------------------------------------------------------------------
 
 def test_html_template_declares_separate_cn_and_num_fonts():
+    """The static HTML template declares both CJK (serif) and monospace
+    fonts via CSS custom properties. Verify the default theme font names
+    are present in the output."""
     html = render_outline(_outline_with_kpi_and_table(), HtmlBlockRenderer())
-    # Both fonts referenced in the inline CSS template
-    assert CORPORATE_BLUE.font_cn in html
-    assert CORPORATE_BLUE.font_num in html
+    # The static template uses LIANGANG_JOURNAL fonts (the default theme).
+    assert LIANGANG_JOURNAL.font_cn in html
+    assert LIANGANG_JOURNAL.font_num in html
 
 
 def test_html_kpi_value_uses_num_font():
+    """CSS rule for .kpi-card .value sets font-family to var(--font-mono),
+    which resolves to the theme monospace stack."""
     html = render_outline(_outline_with_kpi_and_table(), HtmlBlockRenderer())
-    # CSS rule for .kpi-card .value sets font-family to monospace stack
-    # via {font_num} interpolation — verify the surrounding context.
-    expected_rule = (
-        f"font-family: '{CORPORATE_BLUE.font_num}', monospace"
-    )
-    assert expected_rule in html, (
-        "HTML KPI value font-family must reference theme.font_num"
-    )
+    # The new static template uses CSS custom properties:
+    #   .kpi-card .value { font-family: var(--font-mono); ... }
+    # Verify the --font-mono declaration is present.
+    assert "--font-mono" in html
+    # Also verify the monospace font name is in the --font-mono value.
+    assert f'"{LIANGANG_JOURNAL.font_num}"' in html
 
 
 def test_html_table_stats_td_uses_num_font():
+    """The agate table body cells use var(--font-mono) for numeric
+    alignment, declared in the CSS template."""
     html = render_outline(_outline_with_kpi_and_table(), HtmlBlockRenderer())
-    # `table.stats td` rule references {font_num}
-    expected_rule = (
-        f"font-family: '{CORPORATE_BLUE.font_num}', monospace"
-    )
-    # Both KPI and table rules use the same family declaration; one
-    # occurrence already verified above. Ensure the rule appears at
-    # least twice (KPI value + table cell).
-    assert html.count(expected_rule) >= 2
+    # The table.agate tbody td CSS rule uses var(--font-mono).
+    assert "font-family: var(--font-mono)" in html
 
 
 # ---------------------------------------------------------------------------

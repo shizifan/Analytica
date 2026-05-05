@@ -86,24 +86,27 @@ def test_html_callout_warn_uses_warn_class():
     assert '<div class="callout warn">设备完好率下降至 82%</div>' in html
 
 
-def test_html_callout_info_uses_info_class():
+def test_html_callout_info_renders_as_plain_callout():
     html = render_outline(_outline_with_callouts(), HtmlBlockRenderer())
-    assert '<div class="callout info">建议关注 Q2</div>' in html
+    assert '<div class="callout">建议关注 Q2</div>' in html
 
 
 def test_html_includes_callout_css_with_theme_colors():
     html = render_outline(_outline_with_callouts(), HtmlBlockRenderer())
-    # Border colour must come from theme negative for warn callouts
-    assert CORPORATE_BLUE.css_negative in html
-    # Info border uses secondary
-    assert CORPORATE_BLUE.css_secondary in html
+    # The new static HTML template uses CSS custom properties for callout colours:
+    #   --alert: #A8341E (warn callout border)
+    #   --accent: #AC916B (info callout border)
+    assert "#A8341E" in html  # alert colour for warn callout border
+    assert "#AC916B" in html  # accent colour for info callout border
 
 
 def test_docx_callout_warn_emits_left_border_and_shading():
     import io
     import zipfile
 
-    docx = render_outline(_outline_with_callouts(), DocxBlockRenderer())
+    docx = render_outline(
+        _outline_with_callouts(), DocxBlockRenderer(theme=CORPORATE_BLUE),
+    )
     with zipfile.ZipFile(io.BytesIO(docx)) as zf:
         xml = zf.read("word/document.xml").decode()
     # Border XML and theme negative colour both present
@@ -159,7 +162,7 @@ def test_whole_column_rule_paints_all_body_cells():
         rules=[{"col": "原因", "color": "negative"}],
         theme=CORPORATE_BLUE,
     )
-    # 3 body rows × col_idx=1 (原因)
+    # 3 body rows x col_idx=1 (原因)
     assert {(0, 1), (1, 1), (2, 1)} == set(cells.keys())
     assert cells[(0, 1)] == CORPORATE_BLUE.negative
 
@@ -230,7 +233,9 @@ def _outline_with_highlight_table() -> ReportOutline:
 
 
 def test_html_table_renders_cell_highlight_inline_styles():
-    html = render_outline(_outline_with_highlight_table(), HtmlBlockRenderer())
+    html = render_outline(
+        _outline_with_highlight_table(), HtmlBlockRenderer(theme=CORPORATE_BLUE),
+    )
     # negative red rgb
     assert "background:rgb(198,40,40)" in html
     # gold
@@ -241,7 +246,9 @@ def test_docx_table_applies_cell_shading():
     import io
     import zipfile
 
-    docx = render_outline(_outline_with_highlight_table(), DocxBlockRenderer())
+    docx = render_outline(
+        _outline_with_highlight_table(), DocxBlockRenderer(theme=CORPORATE_BLUE),
+    )
     with zipfile.ZipFile(io.BytesIO(docx)) as zf:
         xml = zf.read("word/document.xml").decode()
     assert 'w:fill="C62828"' in xml  # negative

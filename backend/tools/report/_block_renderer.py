@@ -24,6 +24,7 @@ from backend.tools.report._outline import (
     ComparisonGridBlock,
     GrowthIndicatorsBlock,
     KpiRowBlock,
+    KpiStripBlock,
     OutlineSection,
     ParagraphBlock,
     ReportOutline,
@@ -65,6 +66,7 @@ class BlockRenderer(Protocol):
         chart_asset: Asset,
         table_asset: Asset,
     ) -> None: ...
+    def emit_kpi_strip(self, block: KpiStripBlock) -> None: ...
     def emit_comparison_grid(self, block: ComparisonGridBlock) -> None: ...
     def emit_growth_indicators(self, block: GrowthIndicatorsBlock) -> None: ...
     def emit_section_cover(self, block: SectionCoverBlock) -> None: ...
@@ -132,6 +134,10 @@ class BlockRendererBase:
         table_asset: Asset,
     ) -> None:
         self._todo("emit_chart_table_pair")
+
+    # ── 辽港数据期刊 PR-1：no-op，向后兼容 ──
+    def emit_kpi_strip(self, block: KpiStripBlock) -> None:
+        pass
 
     def emit_comparison_grid(self, block: ComparisonGridBlock) -> None:
         self._todo("emit_comparison_grid")

@@ -104,6 +104,9 @@ class _RecordingRenderer:
             (block.block_id, chart_asset.asset_id, table_asset.asset_id),
         ))
 
+    def emit_kpi_strip(self, block):
+        self.calls.append(_Call("emit_kpi_strip", (len(block.items),)))
+
     def emit_comparison_grid(self, block):
         self.calls.append(_Call("emit_comparison_grid", (block.block_id,)))
 

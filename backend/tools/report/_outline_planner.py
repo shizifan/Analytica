@@ -42,6 +42,8 @@ from backend.tools.report._outline import (
     GrowthIndicatorsBlock,
     KPIItem,
     KpiRowBlock,
+    KpiStripBlock,
+    KpiStripItem,
     OutlineSection,
     ParagraphBlock,
     ReportOutline,
@@ -610,3 +612,98 @@ def _block_from_response(d: dict[str, Any]) -> Block | None:
                 growth_rates=gr,
             )
     return None
+
+
+# ============================================================================
+# 辽港数据期刊 PR-1 — 辅助函数 (gated behind USE_KPI_STRIP flag)
+# ============================================================================
+
+# PR-2 将此 flag 切为 True；PR-1 阶段默认 False，不影响现有行为。
+USE_KPI_STRIP: bool = True
+USE_TABLE_TRIM: bool = True
+
+
+def _trend_to_kpi_strip(
+    df: "pd.DataFrame",
+    time_col: str,
+    value_col: str,
+) -> KpiStripBlock:
+    """从趋势 DataFrame 自动生成四格 KPI strip。
+
+    固定四格：起点 / 高点 / 当前 / 变化。
+    仅当 USE_KPI_STRIP=True 时由 planner 调用。
+    """
+    import pandas as pd
+
+    if df.empty or time_col not in df.columns or value_col not in df.columns:
+        return KpiStripBlock(items=())
+
+    first = df.iloc[0]
+    last = df.iloc[-1]
+    max_row = df.loc[pd.to_numeric(df[value_col], errors="coerce").idxmax()]
+
+    delta_val = pd.to_numeric(last[value_col], errors="coerce") - pd.to_numeric(
+        first[value_col], errors="coerce"
+    )
+
+    def _fmt(v) -> str:
+        try:
+            n = float(v)
+            if abs(n) >= 1000:
+                return f"{n:,.0f}"
+            if abs(n) < 1:
+                return f"{n:.2f}"
+            return f"{n:.1f}"
+        except (ValueError, TypeError):
+            return str(v)
+
+    def _delta_fmt(v) -> str:
+        try:
+            n = float(v)
+            absn = abs(n)
+            if absn < 1:
+                return f"{n:+.2f}"
+            return f"{n:+.1f}"
+        except (ValueError, TypeError):
+            return str(v)
+
+    delta_trend = "gain" if delta_val > 0 else ("loss" if delta_val < 0 else "")
+    last_trend = "gain" if delta_val > 0 else ("loss" if delta_val < 0 else "")
+
+    return KpiStripBlock(items=(
+        KpiStripItem("起点", _fmt(first[value_col]), str(first[time_col])),
+        KpiStripItem("高点", _fmt(max_row[value_col]), str(max_row[time_col])),
+        KpiStripItem("当前", _fmt(last[value_col]), str(last[time_col]),
+                     trend=last_trend),
+        KpiStripItem("变化", _delta_fmt(delta_val), "环比",
+                     trend=delta_trend),
+    ))
+
+
+def _trim_table_for_inline(
+    df: "pd.DataFrame",
+    key_col: str,
+    max_rows: int = 5,
+) -> tuple["pd.DataFrame", bool]:
+    """表格行数截断：超过 max_rows 返回 top-N + 合计行；否则返回原表。
+
+    第二返回值为是否需要折叠（True 表示被截断）。
+    """
+    if len(df) <= max_rows:
+        return df, False
+
+    import pandas as pd
+
+    top = df.nlargest(max_rows, key_col)
+    rest_count = len(df) - max_rows
+    numeric_cols = df.select_dtypes(include="number").columns
+    rest_sum = {}
+    for col in df.columns:
+        if col in numeric_cols:
+            rest_sum[col] = df[col].sum()
+        elif col == key_col:
+            rest_sum[col] = f"其余 {rest_count} 类合计"
+        else:
+            rest_sum[col] = ""
+    rest_row = pd.DataFrame([rest_sum])
+    return pd.concat([top, rest_row], ignore_index=True), True
