@@ -6,9 +6,8 @@ end-to-end through ``plan_outline`` and renders correctly in all four
 backends.
 
 Companion to ``test_outline_planner_llm.py`` (which checks outline
-**construction**) and ``test_enhanced_baseline.py`` (which checks
-**rendering** of a hand-built outline). This module locks down the
-seam between them — ensuring the LLM planner's parsed outline drives
+**construction**). This module locks down the seam between outline
+planning and rendering — ensuring the LLM planner's parsed outline drives
 the same visual contracts.
 
 Note: ``section_cover`` and ``TableBlock.highlight_rules`` are NOT
@@ -39,7 +38,7 @@ from backend.tools.report._renderers import (
     PptxBlockRenderer,
 )
 
-from tests.contract._report_baseline import make_normal_fixture
+from tests.contract._test_fixtures import make_normal_fixture
 
 pytestmark = pytest.mark.contract
 
@@ -246,7 +245,7 @@ async def test_docx_renders_visual_blocks(monkeypatch):
     """DOCX is binary — verify it builds without error and the
     structural skeleton contains the callout & grid text. Text
     extraction is via the existing baseline normaliser."""
-    from tests.contract._report_baseline import docx_to_text_tree
+    from tests.contract._test_fixtures import docx_to_text_tree
 
     outline = await _planned_outline(monkeypatch)
     blob = render_outline(outline, DocxBlockRenderer())
@@ -259,7 +258,7 @@ async def test_docx_renders_visual_blocks(monkeypatch):
 
 
 async def test_pptx_renders_visual_blocks(monkeypatch):
-    from tests.contract._report_baseline import pptx_to_text_tree
+    from tests.contract._test_fixtures import pptx_to_text_tree
 
     outline = await _planned_outline(monkeypatch)
     blob = render_outline(outline, PptxBlockRenderer())

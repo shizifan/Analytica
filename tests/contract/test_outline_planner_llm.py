@@ -20,7 +20,7 @@ from backend.tools.report._outline import (
 )
 from backend.tools.report._outline_planner import _LLMPlannerFailure, plan_outline
 
-from tests.contract._report_baseline import make_normal_fixture
+from tests.contract._test_fixtures import make_normal_fixture
 
 pytestmark = pytest.mark.contract
 

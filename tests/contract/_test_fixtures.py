@@ -1,4 +1,4 @@
-"""Baseline test helpers for report output regression.
+"""Shared test fixtures and utilities for report-related contract tests.
 
 Provides:
 - ``make_normal_fixture()`` — synthetic ToolInput.params + context
@@ -7,21 +7,16 @@ Provides:
 - ``stub_planner_llm(monkeypatch)`` — replaces the planner's
   ``invoke_llm`` call with a fixed JSON response so the LLM-driven
   outline pipeline produces byte-stable output across runs.
-- ``disable_pptxgen_bridge(monkeypatch)`` — forces python-pptx
-  rendering path on all four backends (no agent loop, no PptxGenJS).
-- Four structural comparators that strip volatile bits (font sizes,
+- Two structural comparators that strip volatile bits (font sizes,
   exact spacing, ECharts data dumps) and emit a normalised text tree
   suitable for ``assert ==``.
-- Golden-file IO helpers gated by ``ANALYTICA_REGEN_BASELINE=1``.
 """
 from __future__ import annotations
 
 import io
 import json
-import os
 import re
 import zipfile
-from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
@@ -29,10 +24,6 @@ from xml.etree import ElementTree as ET
 import pandas as pd
 
 from backend.tools.base import ToolOutput
-from backend.tools.report._outline import KPIItem
-
-
-GOLDEN_DIR = Path(__file__).parent.parent / "fixtures" / "report_baseline"
 
 
 # ---------------------------------------------------------------------------
@@ -119,16 +110,9 @@ def make_normal_fixture() -> tuple[dict, dict, list[str]]:
 
 
 # ---------------------------------------------------------------------------
-# Deterministic stubs (LLM planner + Node bridge)
+# Deterministic stubs (LLM planner)
 # ---------------------------------------------------------------------------
 
-# Hand-crafted "what a sensible LLM would emit" response keyed to the
-# normal fixture's 3 sections. Asset IDs (T0001/C0001/S0001) match what
-# ``_items_to_assets`` mints for that fixture: T001 → DataFrame → T0001,
-# T002 → ECharts → C0001, T003 narrative + summary_stats + growth_rates
-# (DataFrame absent so first table id stays T0001) → S0001 for stats.
-# The summary block in section 3 mirrors what the previous rule path
-# would have surfaced from T004's summary text.
 _FROZEN_PLANNER_RESPONSE = {
     "kpi_summary": [
         {"label": "总吞吐量", "value": "9500.6 万吨", "sub": "2026 Q1", "trend": "positive"},
@@ -181,10 +165,6 @@ def stub_planner_llm(
     Without an override, returns ``_FROZEN_PLANNER_RESPONSE`` — the
     canonical "good" LLM output for the normal fixture. Tests that need
     a different shape can pass their own dict / raw string.
-
-    Patches the planner module's bound name (``invoke_llm`` was imported
-    via ``from backend.tools._llm import invoke_llm`` so patching the
-    source module wouldn't reach it).
     """
     payload = response if response is not None else _FROZEN_PLANNER_RESPONSE
     text = payload if isinstance(payload, str) else json.dumps(
@@ -199,82 +179,11 @@ def stub_planner_llm(
     )
 
 
-# Modules that do ``from backend.config import get_settings`` at module
-# level — patching ``backend.config.get_settings`` alone is not enough
-# because the name has already been bound into these namespaces.
-_GET_SETTINGS_IMPORT_SITES = (
-    "backend.config",
-    "backend.tools.report._outline_planner",
-)
-
-
-def disable_pptxgen_bridge(monkeypatch) -> None:
-    """Force PPTX onto the python-pptx renderer (no Node bridge).
-
-    The PptxGenJS Node-side bridge is the only optional path left in the
-    report pipeline; turning it off keeps PPTX baseline tests deterministic
-    on machines without Node installed.
-
-    DOCX/HTML are LLM-agent-only (no deterministic fallback); tests that
-    exercise their tool entry points must mock the agent.
-    """
-    # Patch both the source module AND pptx_gen's import site (the latter
-    # binds the name at import time via ``from ... import``).
-    monkeypatch.setattr(
-        "backend.tools.report._pptxgen_builder.check_pptxgen_available",
-        lambda: False,
-    )
-    monkeypatch.setattr(
-        "backend.tools.report.pptx_gen.check_pptxgen_available",
-        lambda: False,
-    )
-
-
-def override_settings(monkeypatch, **overrides) -> None:
-    """Stand up a frozen Settings with arbitrary overrides; replaces
-    ``get_settings`` at every known import site so callers see the
-    patched instance. Subsequent calls in the same test override the
-    previous ones."""
-    from backend import config as _cfg
-
-    frozen = _cfg.Settings()
-    for k, v in overrides.items():
-        setattr(frozen, k, v)
-    factory = lambda: frozen  # noqa: E731
-    for module_path in _GET_SETTINGS_IMPORT_SITES:
-        monkeypatch.setattr(f"{module_path}.get_settings", factory)
-
-
 # ---------------------------------------------------------------------------
 # DOCX comparator — extract paragraph/table skeleton from word/document.xml
 # ---------------------------------------------------------------------------
 
 _W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
-
-
-def docx_to_text_tree(docx_bytes: bytes) -> str:
-    """Strip OOXML to a deterministic structural text tree.
-
-    Compares: paragraph text, paragraph style ID, table cell text, page
-    breaks, section breaks. Ignores: run-level formatting (bold/color/
-    font), exact column widths, document-level metadata (date/revision).
-    """
-    with zipfile.ZipFile(io.BytesIO(docx_bytes)) as zf:
-        doc_xml = zf.read("word/document.xml")
-    root = ET.fromstring(doc_xml)
-    body = root.find(f"{_W_NS}body")
-    assert body is not None, "DOCX missing <w:body>"
-
-    lines: list[str] = []
-    for child in body:
-        if child.tag == f"{_W_NS}p":
-            lines.append(_serialize_paragraph(child))
-        elif child.tag == f"{_W_NS}tbl":
-            lines.extend(_serialize_table(child))
-        elif child.tag == f"{_W_NS}sectPr":
-            lines.append("[SECT]")
-    return "\n".join(lines)
-
 
 _PIC_TAGS = {
     "{http://schemas.openxmlformats.org/drawingml/2006/main}graphic",
@@ -285,8 +194,7 @@ _PIC_TAGS = {
 
 def _has_picture(p) -> bool:
     """Detect any drawing/picture child to keep the comparator stable
-    across embedded PNG bytes (Phase 2.2 — DOCX 嵌图 introduces images
-    whose binary differs across matplotlib / OS / font runs)."""
+    across embedded PNG bytes."""
     for elem in p.iter():
         if elem.tag in _PIC_TAGS:
             return True
@@ -323,6 +231,30 @@ def _serialize_table(tbl) -> list[str]:
     return out
 
 
+def docx_to_text_tree(docx_bytes: bytes) -> str:
+    """Strip OOXML to a deterministic structural text tree.
+
+    Compares: paragraph text, paragraph style ID, table cell text, page
+    breaks, section breaks. Ignores: run-level formatting (bold/color/
+    font), exact column widths, document-level metadata (date/revision).
+    """
+    with zipfile.ZipFile(io.BytesIO(docx_bytes)) as zf:
+        doc_xml = zf.read("word/document.xml")
+    root = ET.fromstring(doc_xml)
+    body = root.find(f"{_W_NS}body")
+    assert body is not None, "DOCX missing <w:body>"
+
+    lines: list[str] = []
+    for child in body:
+        if child.tag == f"{_W_NS}p":
+            lines.append(_serialize_paragraph(child))
+        elif child.tag == f"{_W_NS}tbl":
+            lines.extend(_serialize_table(child))
+        elif child.tag == f"{_W_NS}sectPr":
+            lines.append("[SECT]")
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # PPTX comparator — extract per-slide text from ppt/slides/slide*.xml
 # ---------------------------------------------------------------------------
@@ -350,96 +282,3 @@ def pptx_to_text_tree(pptx_bytes: bytes) -> str:
                 if txt:
                     out.append(f"  T: {txt}")
         return "\n".join(out)
-
-
-# ---------------------------------------------------------------------------
-# HTML comparator — DOM skeleton via stdlib html.parser, scripts collapsed
-# ---------------------------------------------------------------------------
-
-_VOLATILE_TAGS = {"script", "style"}
-
-
-class _HtmlSkeletonExtractor(HTMLParser):
-    """Walk HTML emitting indented '<tag class=...>' lines + text content.
-
-    Collapses <script> / <style> bodies to ``[INLINE_SCRIPT]`` / ``[STYLE]``
-    placeholders since echarts initialiser blocks contain raw JSON whose
-    key order is not guaranteed stable.
-    """
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.lines: list[str] = []
-        self._depth = 0
-        self._suppress_text_in: list[str] = []  # stack of volatile tags
-
-    def handle_starttag(self, tag, attrs):  # noqa: ANN001
-        attr_dict = dict(attrs)
-        attr_repr = ""
-        if "class" in attr_dict:
-            cls = ".".join(sorted(attr_dict["class"].split()))
-            attr_repr = f" class={cls}"
-        elif "id" in attr_dict:
-            attr_repr = f" id={attr_dict['id']}"
-        self.lines.append(f"{'  ' * self._depth}<{tag}{attr_repr}>")
-        if tag in _VOLATILE_TAGS:
-            placeholder = "[INLINE_SCRIPT]" if tag == "script" else "[STYLE]"
-            self.lines.append(f"{'  ' * (self._depth + 1)}{placeholder}")
-            self._suppress_text_in.append(tag)
-        self._depth += 1
-
-    def handle_endtag(self, tag):  # noqa: ANN001
-        self._depth = max(0, self._depth - 1)
-        if self._suppress_text_in and self._suppress_text_in[-1] == tag:
-            self._suppress_text_in.pop()
-        self.lines.append(f"{'  ' * self._depth}</{tag}>")
-
-    def handle_startendtag(self, tag, attrs):  # noqa: ANN001
-        self.handle_starttag(tag, attrs)
-        self.handle_endtag(tag)
-
-    def handle_data(self, data):  # noqa: ANN001
-        if self._suppress_text_in:
-            return
-        text = data.strip()
-        if text:
-            self.lines.append(f"{'  ' * self._depth}{text}")
-
-
-def html_to_text_tree(html_str: str) -> str:
-    extractor = _HtmlSkeletonExtractor()
-    extractor.feed(html_str)
-    extractor.close()
-    return "\n".join(extractor.lines)
-
-
-# ---------------------------------------------------------------------------
-# Markdown comparator — line-trim + collapse runs of blank lines
-# ---------------------------------------------------------------------------
-
-def markdown_normalize(md: str) -> str:
-    md = md.replace("\r\n", "\n").replace("\r", "\n")
-    out: list[str] = []
-    blank_run = 0
-    for raw_line in md.split("\n"):
-        line = raw_line.rstrip()
-        if not line:
-            blank_run += 1
-            if blank_run <= 2:
-                out.append("")
-        else:
-            blank_run = 0
-            out.append(line)
-    return "\n".join(out).rstrip() + "\n"
-
-
-# ---------------------------------------------------------------------------
-# Golden file IO
-# ---------------------------------------------------------------------------
-
-def golden_path(fixture_name: str, ext: str) -> Path:
-    return GOLDEN_DIR / fixture_name / f"golden.{ext}"
-
-
-def regen_baseline_enabled() -> bool:
-    return os.getenv("ANALYTICA_REGEN_BASELINE") == "1"

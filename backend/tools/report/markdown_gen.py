@@ -1,9 +1,8 @@
 """Markdown Report Generation Skill — Step 3 (outline pipeline).
 
-Output is byte-for-byte equivalent to the previous deterministic builder
-(guarded by ``tests/contract/test_report_outputs_baseline.py``). All
-rendering helpers now live in
-``backend.tools.report._renderers.markdown``.
+Output is deterministic when the LLM planner is stubbed (guarded by
+``tests/contract/`` outline planner tests). All rendering helpers now
+live in ``backend.tools.report._renderers.markdown``.
 """
 from __future__ import annotations
 

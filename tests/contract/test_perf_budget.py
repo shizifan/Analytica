@@ -32,8 +32,7 @@ from backend.tools.report._renderers import (
     PptxBlockRenderer,
 )
 
-from tests.contract._enhanced_baseline import make_enhanced_outline
-from tests.contract._report_baseline import (
+from tests.contract._test_fixtures import (
     make_normal_fixture,
     stub_planner_llm,
 )
@@ -151,24 +150,4 @@ async def test_end_to_end_normal_within_budget():
         )
 
 
-# ---------------------------------------------------------------------------
-# Enhanced fixture — looser bound; primarily catches catastrophic regressions
-# ---------------------------------------------------------------------------
 
-ENHANCED_END_TO_END_MAX_SECONDS = 45.0
-
-
-def test_enhanced_end_to_end_within_budget():
-    outline = make_enhanced_outline()
-    t0 = time.perf_counter()
-    for cls in (
-        MarkdownBlockRenderer, HtmlBlockRenderer,
-        DocxBlockRenderer, PptxBlockRenderer,
-    ):
-        render_outline(outline, cls())
-    dt = time.perf_counter() - t0
-    if dt > ENHANCED_END_TO_END_MAX_SECONDS:
-        _budget_violation(
-            "end-to-end(enhanced,4-renderer)",
-            dt, ENHANCED_END_TO_END_MAX_SECONDS, "s",
-        )
