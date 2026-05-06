@@ -435,3 +435,296 @@ def recorded_llm(monkeypatch, llm_mode, llm_cache_dir, request):
         "invoke_llm_recorder": recorder,
         "mode": mode,
     }
+
+
+# ── Multi-turn conversation test fixtures ─────────────────────
+
+
+@pytest.fixture
+def multiturn_state():
+    """Pure-data fixture: a completed R0 turn suitable as prev_state.
+
+    Usable by both unit and integration tests that need a realistic
+    previous-turn state dict to pass to ``_classify_turn()``,
+    ``_build_turn_summary()``, ``_build_amend_plan()``,
+    ``_build_multiturn_context_injection()``, etc.
+
+    No DB, no LLM, no network — purely a Python dict.
+    """
+    return {
+        "turn_index": 0,
+        "turn_type": "new",
+        "slots": {
+            "analysis_subject": {
+                "value": "大连港吞吐量趋势",
+                "source": "user_input",
+                "confirmed": True,
+            },
+            "time_range": {
+                "value": {"start": "2025-01-01", "end": "2025-03-31"},
+                "source": "user_input",
+                "confirmed": True,
+            },
+            "output_complexity": {
+                "value": "full_report",
+                "source": "inferred",
+            },
+            "output_format": {
+                "value": ["HTML"],
+                "source": "user_input",
+            },
+            "domain": {
+                "value": "D2",
+                "source": "inferred",
+            },
+        },
+        "analysis_plan": {
+            "plan_id": "plan-r0-001",
+            "version": 1,
+            "turn_index": 0,
+            "title": "大连港2026年Q1吞吐量趋势分析",
+            "analysis_goal": "分析Q1吞吐量趋势",
+            "estimated_duration": 120,
+            "tasks": [
+                {
+                    "task_id": "T001",
+                    "type": "data_fetch",
+                    "status": "done",
+                    "tool": "tool_api_fetch",
+                    "params": {
+                        "endpoint_id": "getThroughputAnalysisByYear",
+                        "dateYear": "2026",
+                    },
+                    "name": "获取吞吐量趋势",
+                    "estimated_seconds": 10,
+                },
+                {
+                    "task_id": "T002",
+                    "type": "analysis",
+                    "status": "done",
+                    "tool": "tool_desc_analysis",
+                    "depends_on": ["T001"],
+                    "params": {"data_ref": "T001"},
+                    "name": "描述性分析",
+                    "estimated_seconds": 30,
+                },
+                {
+                    "task_id": "T003",
+                    "type": "visualization",
+                    "status": "done",
+                    "tool": "tool_chart_line",
+                    "depends_on": ["T001"],
+                    "params": {"chart_type": "line"},
+                    "name": "趋势折线图",
+                    "estimated_seconds": 5,
+                },
+                {
+                    "task_id": "G_ATTR",
+                    "type": "analysis",
+                    "status": "done",
+                    "tool": "tool_attribution",
+                    "depends_on": ["T001"],
+                    "params": {},
+                    "name": "归因分析",
+                    "estimated_seconds": 45,
+                },
+                {
+                    "task_id": "G_SUM",
+                    "type": "summary",
+                    "status": "done",
+                    "tool": "tool_summary_gen",
+                    "depends_on": ["T002", "G_ATTR"],
+                    "params": {"intent": "Q1吞吐量趋势总结"},
+                    "name": "综合分析汇总",
+                    "estimated_seconds": 20,
+                },
+                {
+                    "task_id": "G_REPORT_HTML",
+                    "type": "report_gen",
+                    "status": "done",
+                    "tool": "tool_report_html",
+                    "depends_on": ["T003", "G_SUM"],
+                    "params": {"intent": "吞吐量分析报告"},
+                    "name": "生成HTML报告",
+                    "estimated_seconds": 30,
+                },
+            ],
+            "report_structure": {
+                "sections": [{"name": "概览"}, {"name": "趋势分析"}],
+            },
+        },
+        "task_statuses": {
+            "T001": "done",
+            "T002": "done",
+            "T003": "done",
+            "G_ATTR": "done",
+            "G_SUM": "done",
+            "G_REPORT_HTML": "done",
+        },
+        "analysis_history": [
+            {
+                "turn": 0,
+                "turn_type": "new",
+                "query": "分析2026年Q1大连港吞吐量趋势",
+                "plan_title": "大连港2026年Q1吞吐量趋势分析",
+                "data_snapshots": [
+                    {
+                        "task_id": "T001",
+                        "endpoint": "getThroughputAnalysisByYear",
+                        "rows": 3,
+                        "columns": ["month", "throughput_ton", "yoy_growth"],
+                        "sample": [
+                            {
+                                "month": "2026-01",
+                                "throughput_ton": 1234567,
+                                "yoy_growth": 0.05,
+                            },
+                            {
+                                "month": "2026-02",
+                                "throughput_ton": 987654,
+                                "yoy_growth": -0.03,
+                            },
+                        ],
+                        "params": {
+                            "endpoint_id": "getThroughputAnalysisByYear",
+                            "dateYear": "2026",
+                        },
+                    }
+                ],
+                "key_findings": [
+                    "Q1总吞吐量同比增长2.3%",
+                    "3月受季节性因素影响，环比下降5.1%",
+                ],
+                "artifacts": [
+                    {"format": "HTML", "artifact_id": "artifact-r0-html"}
+                ],
+                "slots_snapshot": {
+                    "analysis_subject": {"value": "大连港吞吐量趋势"},
+                    "time_range": {
+                        "value": {"start": "2026-01-01", "end": "2026-03-31"}
+                    },
+                },
+                "task_count": 6,
+                "completed_count": 6,
+                "failed_count": 0,
+            }
+        ],
+        "messages": [
+            {"role": "user", "content": "分析2026年Q1大连港吞吐量趋势"},
+            {"role": "assistant", "content": "已生成 6 个任务的分析方案..."},
+        ],
+        "plan_history": [],
+    }
+
+
+@pytest_asyncio.fixture
+async def multiturn_db_state(
+    test_db_session,
+):
+    """Seed a session into DB with a completed R0 state, return session_id.
+
+    Integration-test analogue of ``multiturn_state``.  Round-trips through
+    ``MemoryStore`` so state persistence is verified.
+
+    Dependencies: ``test_db_session`` (already exists in conftest).
+    """
+    from uuid import uuid4
+    from backend.memory.store import MemoryStore
+
+    session_id = str(uuid4())
+    store = MemoryStore(test_db_session)
+
+    r0_state = {
+        "turn_index": 0,
+        "turn_type": "new",
+        "slots": {
+            "analysis_subject": {
+                "value": "大连港吞吐量趋势",
+                "confirmed": True,
+            },
+            "time_range": {
+                "value": {"start": "2026-01-01", "end": "2026-03-31"},
+                "confirmed": True,
+            },
+            "output_complexity": {"value": "full_report"},
+            "output_format": {"value": ["HTML"]},
+            "domain": {"value": "D2"},
+        },
+        "analysis_plan": {
+            "plan_id": "plan-r0-int",
+            "turn_index": 0,
+            "title": "Q1吞吐量趋势分析",
+            "tasks": [
+                {
+                    "task_id": "T001",
+                    "type": "data_fetch",
+                    "status": "done",
+                    "tool": "tool_api_fetch",
+                    "params": {
+                        "endpoint_id": "getThroughputAnalysisByYear",
+                        "dateYear": "2026",
+                    },
+                },
+                {
+                    "task_id": "T002",
+                    "type": "analysis",
+                    "status": "done",
+                    "tool": "tool_desc_analysis",
+                    "depends_on": ["T001"],
+                    "params": {"data_ref": "T001"},
+                },
+                {
+                    "task_id": "G_REPORT_HTML",
+                    "type": "report_gen",
+                    "status": "done",
+                    "tool": "tool_report_html",
+                    "depends_on": ["T002"],
+                    "params": {"intent": "吞吐量分析"},
+                },
+            ],
+        },
+        "task_statuses": {
+            "T001": "done",
+            "T002": "done",
+            "G_REPORT_HTML": "done",
+        },
+        "analysis_history": [
+            {
+                "turn": 0,
+                "turn_type": "new",
+                "data_snapshots": [
+                    {
+                        "task_id": "T001",
+                        "endpoint": "getThroughputAnalysisByYear",
+                        "params": {
+                            "endpoint_id": "getThroughputAnalysisByYear",
+                            "dateYear": "2026",
+                        },
+                        "rows": 3,
+                        "columns": ["month", "throughput_ton"],
+                        "sample": [
+                            {"month": "2026-01", "throughput_ton": 1234567}
+                        ],
+                    },
+                ],
+                "key_findings": ["Q1吞吐量同比增长2.3%"],
+                "artifacts": [
+                    {"format": "HTML", "artifact_id": "artifact-int-001"}
+                ],
+                "task_count": 3,
+                "completed_count": 3,
+                "failed_count": 0,
+            }
+        ],
+        "messages": [
+            {"role": "user", "content": "分析2026年Q1大连港吞吐量趋势"},
+        ],
+        "plan_history": [],
+    }
+
+    await store.create_session(
+        session_id, "test_user", employee_id="throughput_analyst"
+    )
+    await store.save_session_state(session_id, r0_state)
+
+    return session_id
