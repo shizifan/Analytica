@@ -1023,19 +1023,29 @@ class PlanningEngine:
                         "[planning-multiround] section %s first attempt failed: %s",
                         sec.section_id, e,
                     )
-                    # 系统级盲重试（保留现有行为）
+                    # 系统级重试（经 _try_section 走完整 LLM + 验证路径，
+                    # 避免盲重试跳过验证导致带问题的 tasks 流入 stitch）
                     try:
-                        return await self._call_section_llm(
-                            intent, sec, valid_tools, valid_endpoints,
-                            rule_hints=rule_hints,
-                            prompt_suffix=prompt_suffix,
-                        )
-                    except Exception as e2:
+                        tasks, feedback = await _try_section(sec, None)
+                    except (asyncio.TimeoutError, PlanningError) as e2:
                         logger.warning(
                             "[planning-multiround] section %s retry failed: %s",
                             sec.section_id, e2,
                         )
                         return e2
+                    # 重试成功后如有验证问题，走反馈重试
+                    if feedback:
+                        logger.info(
+                            "[planning-multiround] section %s retry has validation "
+                            "issues, feedback retry",
+                            sec.section_id,
+                        )
+                        try:
+                            tasks2, _ = await _try_section(sec, feedback)
+                            return tasks2
+                        except (asyncio.TimeoutError, PlanningError):
+                            return tasks  # 反馈重试失败，回退到重试结果
+                    return tasks
 
                 # ── 验证级重试（带错误上下文） ──
                 if feedback:
