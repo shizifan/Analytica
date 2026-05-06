@@ -1582,7 +1582,7 @@ class PlanningEngine:
                 for fmt, tool in report_tools:
                     lines.append(
                         f"    • {tool}（{fmt}）→ depends_on 所有可视化层 + 汇总层任务；"
-                        f"estimated_seconds: 30；params 包含 intent + report_metadata: {{title, author, date}}"
+                        f"estimated_seconds: 90；params 包含 intent + report_metadata: {{title, author, date}}"
                     )
                 layer5_spec = "\n".join(lines)
 

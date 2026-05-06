@@ -118,10 +118,10 @@ class Settings(BaseSettings):
 
     # ── 超时 / 并发控制（per-type） ─────────────────────────
     # 覆盖 execution.py 中的 _CONCURRENCY_LIMITS / _TIMEOUT_PROFILE / _RETRY_POLICY
-    # 格式: "type:lo,hi,mult" 如 "report_gen:120,240,2.5"
-    # env 示例: ANALYTICA_TIMEOUT_REPORT_GEN=120,240,2.5
+    # 格式: "type:lo,hi,mult" 如 "report_gen:120,300,2.5"
+    # env 示例: ANALYTICA_TIMEOUT_REPORT_GEN=120,300,2.5
     ANALYTICA_TIMEOUT_REPORT_GEN: str = Field(
-        default="120,240,2.5",
+        default="120,300,2.5",
         description="report_gen 超时: lower,upper,multiplier",
     )
     ANALYTICA_TIMEOUT_ANALYSIS: str = Field(
