@@ -118,6 +118,9 @@ class AnalysisPlan(BaseModel):
     tasks: list[TaskItem] = Field(default_factory=list)
     report_structure: Optional[dict[str, Any]] = None
     revision_log: list[dict[str, Any]] = Field(default_factory=list)
+    # Multi-turn fields (PR-2)
+    turn_index: int = 0
+    parent_plan_id: Optional[str] = None
 
 
 # ── Multi-round Planning (full_report) ───────────────────────

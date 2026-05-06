@@ -1592,6 +1592,18 @@ async def websocket_chat(ws: WebSocket, session_id: str):
                             })
                             continue
 
+                        # Turn boundary event — emitted after each turn's execution
+                        # completes, before state persistence. Layer 5 (frontend).
+                        if event.get("event") == "turn_boundary":
+                            registry.broadcast(session_id, {
+                                "event": "turn_boundary",
+                                "turn_index": event["turn_index"],
+                                "turn_type": event.get("turn_type", "new"),
+                                "plan_title": event.get("plan_title", ""),
+                                "key_findings": event.get("key_findings", []),
+                            })
+                            continue
+
                         for node_name, node_state in event.items():
                             # Push slot updates
                             if "slots" in node_state:

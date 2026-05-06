@@ -610,6 +610,136 @@ _PLANNING_TIMEOUT_BY_COMPLEXITY: dict[str, float] = {
 }
 
 
+def _add_task_id_prefix(tasks: list[TaskItem], turn_index: int) -> list[TaskItem]:
+    """Prefix task_ids with R{turn_index}_ for multi-turn isolation.
+
+    Round 0 tasks keep their original IDs. Round 1+ get R1_, R2_ prefixes.
+    Also prefixes depends_on references to match.
+    """
+    if turn_index <= 0:
+        return tasks
+
+    prefix = f"R{turn_index}_"
+    for t in tasks:
+        if not t.task_id.startswith(prefix):
+            old_id = t.task_id
+            t.task_id = f"{prefix}{old_id}"
+            t.depends_on = [
+                f"{prefix}{d}" if not d.startswith(prefix) else d
+                for d in t.depends_on
+            ]
+    return tasks
+
+
+def _build_completed_plan_summary(plan_history: list[dict]) -> str:
+    """Build a summary of completed tasks from archived plans."""
+    if not plan_history:
+        return "（无历史计划）"
+
+    lines = []
+    for p in plan_history:
+        title = p.get("title", "")[:100]
+        tasks = p.get("tasks", [])
+        task_lines = []
+        for t in tasks:
+            tid = t.get("task_id", "?")
+            ttype = t.get("type", "?")
+            name = t.get("name", tid)
+            ep = t.get("params", {}).get("endpoint_id", "")
+            short = f"  - {tid} [{ttype}] {name[:60]}"
+            if ep:
+                short += f" (ep={ep})"
+            task_lines.append(short)
+        turn_label = p.get("turn_index", "?")
+        lines.append(f"第 {turn_label} 轮: {title}\n" + "\n".join(task_lines[:10]))
+
+    return "\n".join(lines)
+
+
+def build_amend_plan(prev_state: dict, user_message: str) -> AnalysisPlan | None:
+    """Build a minimal execution plan for amend turn (format add/replace).
+
+    Key fix: does NOT depends_on previous turn's task_ids. Instead passes
+    _previous_artifacts via params so the report tool can load them from DB.
+
+    Returns AnalysisPlan, or None when format cannot be detected
+    (caller should route to LLM planning).
+    """
+    from uuid import uuid4
+
+    msg = user_message.lower().strip()
+    turn_index = prev_state.get("turn_index", 0) + 1
+
+    is_replace = any(kw in msg for kw in ["换成", "转成", "导出为", "改为"])
+
+    fmt_map = {
+        "pptx": "tool_report_pptx",
+        "docx": "tool_report_docx",
+        "word": "tool_report_docx",
+        "html": "tool_report_html",
+        "ppt": "tool_report_pptx",
+        "markdown": "tool_report_markdown",
+        "md": "tool_report_markdown",
+    }
+
+    # Short keywords ("word", "ppt", "md") use word-boundary matching
+    # to avoid false positives (e.g. "word" in "keyword", "md" in "cmd").
+    _word_boundary_keys = {"word", "ppt", "md"}
+
+    detected_fmts: list[tuple[str, str]] = []
+    for keyword, tool_id in fmt_map.items():
+        if keyword in _word_boundary_keys:
+            matched = bool(re.search(r'\b' + re.escape(keyword) + r'\b', msg))
+        else:
+            matched = keyword in msg
+        if matched and tool_id not in [f for _, f in detected_fmts]:
+            detected_fmts.append((keyword.upper(), tool_id))
+
+    if not detected_fmts:
+        logger.warning(
+            "Amend fast path could not detect format from: %s", user_message[:80]
+        )
+        return None
+
+    prev_turn = (prev_state.get("analysis_history") or [{}])[-1]
+    prev_artifacts = prev_turn.get("artifacts", [])
+    prev_findings = prev_turn.get("key_findings", [])
+    prev_plan = prev_state.get("analysis_plan") or {}
+
+    tasks: list[TaskItem] = []
+    for fmt_label, tool_id in detected_fmts:
+        tasks.append(TaskItem(
+            task_id=f"R{turn_index}_REPORT_{fmt_label}",
+            type="report_gen",
+            name=f"生成{fmt_label}报告",
+            description=f"{'追加' if not is_replace else ''}生成 {fmt_label} 格式报告",
+            depends_on=[],
+            tool=tool_id,
+            params={
+                "intent": prev_plan.get("analysis_goal", "数据分析报告"),
+                "report_structure": prev_plan.get("report_structure"),
+                "_previous_artifacts": prev_artifacts,
+                "_previous_findings": prev_findings,
+                "is_replace": is_replace,
+            },
+            intent=prev_plan.get("analysis_goal", ""),
+            estimated_seconds=30,
+        ))
+
+    return AnalysisPlan(
+        plan_id=str(uuid4()),
+        version=1,
+        turn_index=turn_index,
+        parent_plan_id=prev_plan.get("plan_id"),
+        title=f"[{'追加' if not is_replace else '格式转换'}] {prev_plan.get('title', '')}",
+        analysis_goal=prev_plan.get("analysis_goal", ""),
+        estimated_duration=sum(t.estimated_seconds for t in tasks),
+        tasks=tasks,
+        report_structure=prev_plan.get("report_structure"),
+        revision_log=[],
+    )
+
+
 class PlanningEngine:
     """Core planning engine for the planning layer."""
 
@@ -716,6 +846,7 @@ class PlanningEngine:
                         intent, valid_tools, valid_endpoints, complexity,
                         rule_hints=rule_hints,
                         prompt_suffix=prompt_suffix,
+                        _multiturn_context=_multiturn_context,
                     )
                     if web_search_enabled and search_domain_prefix:
                         plan = self._inject_search_tasks(plan, intent, search_domain_prefix, search_public_hint)
@@ -787,7 +918,8 @@ class PlanningEngine:
                             timeout=effective_timeout,
                         )
                         plan_dict = parse_planning_llm_output(raw_output)
-                        plan = self._build_plan(plan_dict, complexity, intent)
+                        mt_turn = (_multiturn_context or {}).get("turn_index", 0)
+                        plan = self._build_plan(plan_dict, complexity, intent, turn_index=mt_turn)
                         plan = self._validate_tasks(plan, valid_tools, valid_endpoints, complexity)
                         if multi_round_fallback_error is not None:
                             plan.revision_log.append({
@@ -838,6 +970,7 @@ class PlanningEngine:
         complexity: str,
         rule_hints: dict[str, str] | None = None,
         prompt_suffix: str = "",
+        _multiturn_context: dict | None = None,
     ) -> AnalysisPlan:
         """Two-round planner: skeleton → parallel section fill → stitch."""
         t0 = time.monotonic()
@@ -938,7 +1071,8 @@ class PlanningEngine:
                 "output_formats": list(skeleton.output_formats),
             },
         ) as stitch_out:
-            plan = self._stitch_plan(intent, skeleton, results)
+            mt_turn = (_multiturn_context or {}).get("turn_index", 0)
+            plan = self._stitch_plan(intent, skeleton, results, turn_index=mt_turn)
             plan = self._validate_tasks(plan, valid_tools, valid_endpoints, complexity)
 
             # Surface stitch result for the trace pane: kept vs failed
@@ -1163,6 +1297,7 @@ class PlanningEngine:
         intent: dict[str, Any],
         skeleton: "PlanSkeleton",
         section_results: list,
+        turn_index: int = 0,
     ) -> AnalysisPlan:
         """Deterministically merge per-section tasks and append global tasks.
 
@@ -1251,6 +1386,9 @@ class PlanningEngine:
                 estimated_seconds=30,
             ))
 
+        # Multi-turn: prefix task_ids with R{turn_index}_
+        _add_task_id_prefix(tasks, turn_index)
+
         plan = AnalysisPlan(
             plan_id=str(uuid4()),
             version=1,
@@ -1261,6 +1399,7 @@ class PlanningEngine:
             report_structure={
                 "sections": [{"name": s.name} for s in kept_sections],
             },
+            turn_index=turn_index,
             revision_log=[{
                 "phase": "multi_round_stitch",
                 "ts": int(time.time()),
@@ -1509,13 +1648,16 @@ class PlanningEngine:
 
         structured_hints = ("【意图结构化提示】\n" + "\n".join(hint_lines)) if hint_lines else ""
 
-        # Multi-turn context block (PR-1: Layer 2)
+        # Multi-turn context block (PR-2: Layer 3 — enhanced)
         multi_turn_text = ""
         if multiturn_context:
             latest = multiturn_context.get("latest_summary", {})
             findings = multiturn_context.get("all_key_findings", [])[:5]
             prev_endpoints = multiturn_context.get("prev_data_endpoints", [])
             turn_idx = multiturn_context.get("turn_index", 0)
+            plan_history = multiturn_context.get("plan_history", [])
+            completed_summary = _build_completed_plan_summary(plan_history)
+
             multi_turn_text = (
                 f"【多轮分析上下文 — 必读】\n"
                 f"当前是第 {turn_idx} 轮分析（延续上轮）。前轮分析已完成：\n"
@@ -1523,7 +1665,11 @@ class PlanningEngine:
                 f"- 已完成 {latest.get('completed_count', 0)}/{latest.get('task_count', 0)} 个任务\n"
                 f"- 关键发现：{'；'.join(f[:_MAX_FINDING_LEN] for f in findings) if findings else '无'}\n"
                 f"- 已调用的数据端点：{', '.join(prev_endpoints) if prev_endpoints else '无'}\n"
-                f"\n【重要提醒】已有数据端点的数据请勿重复获取。请仅生成增量任务以回答本轮新问题。\n"
+                f"\n【前轮已完成任务列表 — 绝对不要重复规划】\n{completed_summary}\n"
+                f"\n【本轮规划约束】\n"
+                f"- 以下端点数据已经获取，可直接复用（不需要重复 data_fetch）：{', '.join(prev_endpoints)}\n"
+                f"- task_id 请以 R{turn_idx}_ 为前缀\n"
+                f"- 仅规划本轮新增任务，不要重复已有任务\n"
             )
 
         result = PLANNING_PROMPT.format(
@@ -1604,7 +1750,8 @@ class PlanningEngine:
             return ""
 
     def _build_plan(
-        self, plan_dict: dict, complexity: str, intent: dict
+        self, plan_dict: dict, complexity: str, intent: dict,
+        turn_index: int = 0,
     ) -> AnalysisPlan:
         """Build AnalysisPlan from parsed LLM output."""
         tasks = []
@@ -1621,6 +1768,9 @@ class PlanningEngine:
                 intent=t_dict.get("intent", ""),
             ))
 
+        # Multi-turn: prefix task_ids with R{turn_index}_
+        _add_task_id_prefix(tasks, turn_index)
+
         report_structure = _sanitize_report_structure(plan_dict.get("report_structure"))
 
         return AnalysisPlan(
@@ -1632,6 +1782,7 @@ class PlanningEngine:
             tasks=tasks,
             report_structure=report_structure,
             revision_log=[],
+            turn_index=turn_index,
         )
 
     def _validate_section_tasks(

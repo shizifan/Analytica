@@ -331,62 +331,18 @@ def _build_multiturn_context_injection(state: dict) -> dict:
         )),
         "prev_artifacts": latest.get("artifacts", []),
         "current_slots": _extract_slot_snapshot(state.get("slots", {})),
+        "plan_history": state.get("plan_history", []),
     }
 
 
-def _build_amend_plan(prev_state: dict, user_message: str) -> dict:
-    """Build a minimal execution plan for amend turn (format add/replace).
+def _build_amend_plan(prev_state: dict, user_message: str):
+    """Delegate to planning.build_amend_plan() for format add/replace.
 
-    PR-1 skeleton: generates a single report_gen task referencing previous
-    artifacts. Full implementation (with is_replace distinction and format
-    detection) comes in PR-2.
+    Returns AnalysisPlan, or None when format cannot be detected
+    (caller should fall through to LLM planning).
     """
-    history = prev_state.get("analysis_history", [])
-    prev_artifacts = []
-    if history:
-        prev_artifacts = history[-1].get("artifacts", [])
-
-    # Detect target format from user message
-    msg = user_message.lower()
-    target_format = "HTML"
-    for fmt in ("PPTX", "PPT", "pptx"):
-        if fmt.lower() in msg:
-            target_format = "PPTX"
-            break
-    for fmt in ("DOCX", "Word", "docx", "word"):
-        if fmt.lower() in msg:
-            target_format = "DOCX"
-            break
-
-    # Determine if this is a "replace" (换个格式/换成) or "add" (再加)
-    is_replace = any(kw in msg for kw in ["换个格式", "换成", "转成", "导出为"])
-
-    # Detect format keyword for task_id
-    format_key = target_format.lower()
-
-    amend_task = {
-        "task_id": f"G_AMEND_{format_key}",
-        "type": "report_gen",
-        "name": f"生成 {target_format} 报告",
-        "description": f"基于前轮分析结果生成 {target_format} 格式报告",
-        "depends_on": [],  # V3: 不使用前轮 task_id，通过 _previous_artifacts 注入
-        "tool": f"tool_report_{format_key}",
-        "params": {
-            "_previous_artifacts": prev_artifacts,
-            "is_replace": is_replace,
-        },
-        "intent": f"在已有分析结果基础上生成 {target_format} 报告",
-        "estimated_seconds": 30,
-    }
-
-    return {
-        "title": f"生成 {target_format} 报告（续）",
-        "tasks": [amend_task],
-        "version": prev_state.get("plan_version", 0) + 1,
-        "turn_index": prev_state.get("turn_index", 0) + 1,
-        "complexity": "simple_table",
-        "estimated_duration": 30,
-    }
+    from backend.agent.planning import build_amend_plan
+    return build_amend_plan(prev_state, user_message)
 
 
 def _append_turn_summary(state: dict) -> None:
@@ -399,6 +355,22 @@ def _append_turn_summary(state: dict) -> None:
             state["analysis_history"] = trim_analysis_history(history)
         except Exception:
             logger.exception("Failed to build turn summary")
+
+
+def _build_turn_boundary_event(state: dict) -> dict:
+    """Build a turn_boundary event dict for the frontend.
+
+    Emitted after each turn's execution completes, before state persistence.
+    """
+    analysis_history = state.get("analysis_history", [])
+    last_turn = analysis_history[-1] if analysis_history else {}
+    return {
+        "event": "turn_boundary",
+        "turn_index": state.get("turn_index", 0),
+        "turn_type": state.get("turn_type", "new"),
+        "plan_title": (state.get("analysis_plan") or {}).get("title", ""),
+        "key_findings": last_turn.get("key_findings", [])[:3],
+    }
 
 
 # ── Node Implementations ─────────────────────────────────────
@@ -959,6 +931,7 @@ async def run_stream(
             ws_ctx.reset_ws_callback(token)
 
         _append_turn_summary(state)
+        yield _build_turn_boundary_event(state)
         try:
             safe_state = json.loads(
                 json.dumps(state, ensure_ascii=False, default=str)
@@ -990,64 +963,76 @@ async def run_stream(
 
     elif turn_type == "amend":
         # 快速路径：规则引擎直接构建 amend plan → execution
-        state = dict(prev_state)
-        state.setdefault("messages", [])
-        state["messages"].append({"role": "user", "content": user_message})
-        state["turn_type"] = "amend"
-        state["turn_index"] = turn_index + 1
-        state["current_phase"] = "execution"
-        state["error"] = None
-        state["web_search_enabled"] = web_search_enabled
-
+        # 若格式无法识别（返回 None），回退到 full pipeline（走 continue 路径）
         amend_plan = _build_amend_plan(prev_state, user_message)
-        state["analysis_plan"] = amend_plan
-        state["plan_confirmed"] = True
-        state.setdefault("plan_history", []).append(prev_state.get("analysis_plan", {}))
+        if amend_plan is None:
+            logger.info(
+                "Amend fast path could not detect format, "
+                "falling back to LLM planning for: %s",
+                user_message[:80],
+            )
+            turn_type = "continue"  # 降级走下方 continue 分支
+        else:
+            state = dict(prev_state)
+            state.setdefault("messages", [])
+            state["messages"].append({"role": "user", "content": user_message})
+            state["turn_type"] = "amend"
+            state["turn_index"] = turn_index + 1
+            state["current_phase"] = "execution"
+            state["error"] = None
+            state["web_search_enabled"] = web_search_enabled
 
-        # 直接走 execution（跳过 perception + planning）
-        yield {"__meta__": {"initial_msg_count": len(state.get("messages", []))}}
+            state["analysis_plan"] = amend_plan.model_dump()
+            state["plan_confirmed"] = True
+            state.setdefault("plan_history", []).append(
+                prev_state.get("analysis_plan", {})
+            )
 
-        from backend.agent import ws_ctx
-        from backend.agent.execution import execution_node as _exec_node
-        token = ws_ctx.set_ws_callback(ws_callback)
-        try:
-            yield {
-                "__thinking__": {
-                    "kind": "phase",
-                    "phase": "execution",
-                    "payload": {"event": "phase_enter", "node": "execution"},
-                },
-            }
-            state = await _exec_node(state)
-            exit_payload = _summarize_node_exit("execution", state)
-            if exit_payload:
+            # 直接走 execution（跳过 perception + planning）
+            yield {"__meta__": {"initial_msg_count": len(state.get("messages", []))}}
+
+            from backend.agent import ws_ctx
+            from backend.agent.execution import execution_node as _exec_node
+            token = ws_ctx.set_ws_callback(ws_callback)
+            try:
                 yield {
                     "__thinking__": {
                         "kind": "phase",
                         "phase": "execution",
-                        "payload": {
-                            "event": "phase_exit",
-                            "node": "execution",
-                            **exit_payload,
-                        },
+                        "payload": {"event": "phase_enter", "node": "execution"},
                     },
                 }
-            yield {"execution": state}
-        finally:
-            ws_ctx.reset_ws_callback(token)
+                state = await _exec_node(state)
+                exit_payload = _summarize_node_exit("execution", state)
+                if exit_payload:
+                    yield {
+                        "__thinking__": {
+                            "kind": "phase",
+                            "phase": "execution",
+                            "payload": {
+                                "event": "phase_exit",
+                                "node": "execution",
+                                **exit_payload,
+                            },
+                        },
+                    }
+                yield {"execution": state}
+            finally:
+                ws_ctx.reset_ws_callback(token)
 
-        # Build turn summary and persist
-        _append_turn_summary(state)
-        try:
-            safe_state = json.loads(
-                json.dumps(state, ensure_ascii=False, default=str)
-            )
-            async with factory() as db_session:
-                store = MemoryStore(db_session)
-                await store.save_session_state(session_id, safe_state)
-        except Exception:
-            logger.exception("Failed to save session state for %s", session_id)
-        return
+            # Build turn summary and persist
+            _append_turn_summary(state)
+            yield _build_turn_boundary_event(state)
+            try:
+                safe_state = json.loads(
+                    json.dumps(state, ensure_ascii=False, default=str)
+                )
+                async with factory() as db_session:
+                    store = MemoryStore(db_session)
+                    await store.save_session_state(session_id, safe_state)
+            except Exception:
+                logger.exception("Failed to save session state for %s", session_id)
+            return
 
     else:  # turn_type == "continue"
         # 延续分析 — 保留 slots + 注入多轮上下文
@@ -1184,6 +1169,7 @@ async def run_stream(
 
     # 6. Build turn summary, then persist final state to DB
     _append_turn_summary(final_state)
+    yield _build_turn_boundary_event(final_state)
     try:
         safe_state = json.loads(
             json.dumps(final_state, ensure_ascii=False, default=str)
