@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import type { AgentPhase, ChatMessage } from '../types';
 
+/** Per-turn metadata populated by turn_boundary events. */
+export interface TurnMeta {
+  turnType: 'new' | 'continue' | 'amend';
+  planTitle: string;
+  keyFindings: string[];
+}
+
 interface SessionState {
   sessionId: string | null;
   userId: string;
@@ -14,6 +21,11 @@ interface SessionState {
    * and as the dedup threshold for incoming live WS 'message' events.
    */
   maxMessageId: number;
+
+  /** Multi-turn: current turn index (0-based). */
+  turnIndex: number;
+  /** Multi-turn: metadata per turn index, populated by turn_boundary events. */
+  turnMeta: Record<number, TurnMeta>;
 
   setSession: (sessionId: string, userId: string, employeeId?: string | null) => void;
   setPhase: (phase: AgentPhase) => void;
@@ -30,6 +42,11 @@ interface SessionState {
   setSending: (v: boolean) => void;
   clearConversation: () => void;
   reset: () => void;
+
+  /** Multi-turn: set current turn index. */
+  setTurnIndex: (idx: number) => void;
+  /** Multi-turn: store metadata for a specific turn. */
+  setTurnMeta: (turnIndex: number, meta: TurnMeta) => void;
 }
 
 let _msgCounter = 0;
@@ -45,6 +62,8 @@ export const useSessionStore = create<SessionState>((set) => ({
   messages: [],
   sending: false,
   maxMessageId: 0,
+  turnIndex: 0,
+  turnMeta: {},
 
   setSession: (sessionId, userId, employeeId = null) =>
     set({ sessionId, userId, employeeId }),
@@ -76,6 +95,8 @@ export const useSessionStore = create<SessionState>((set) => ({
       messages: [],
       sending: false,
       maxMessageId: 0,
+      turnIndex: 0,
+      turnMeta: {},
     }),
 
   reset: () =>
@@ -87,5 +108,14 @@ export const useSessionStore = create<SessionState>((set) => ({
       messages: [],
       sending: false,
       maxMessageId: 0,
+      turnIndex: 0,
+      turnMeta: {},
     }),
+
+  setTurnIndex: (idx) => set({ turnIndex: idx }),
+
+  setTurnMeta: (turnIndex, meta) =>
+    set((s) => ({
+      turnMeta: { ...s.turnMeta, [turnIndex]: meta },
+    })),
 }));

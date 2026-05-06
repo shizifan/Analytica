@@ -109,6 +109,7 @@ export function useWebSocket(sessionId: string | null) {
               type: data.type as never,
               payload: (data.payload as Record<string, unknown> | undefined) ?? null,
               timestamp: Date.now(),
+              turn_index: useSessionStore.getState().turnIndex,
             },
             dbId,
           );
@@ -154,6 +155,17 @@ export function useWebSocket(sessionId: string | null) {
           setSending(false);
           setPhase('idle');
           break;
+
+        case 'turn_boundary': {
+          const ti = data.turn_index as number;
+          useSessionStore.getState().setTurnIndex(ti);
+          useSessionStore.getState().setTurnMeta(ti, {
+            turnType: (data.turn_type as 'new' | 'continue' | 'amend') ?? 'new',
+            planTitle: (data.plan_title as string) ?? '',
+            keyFindings: (data.key_findings as string[]) ?? [],
+          });
+          break;
+        }
 
         case 'already_running':
           // T1: another window is running for this session.
@@ -252,6 +264,7 @@ export function useWebSocket(sessionId: string | null) {
         role: 'user',
         content,
         timestamp: Date.now(),
+        turn_index: useSessionStore.getState().turnIndex,
       });
       ws.send(JSON.stringify({
         type: 'message',

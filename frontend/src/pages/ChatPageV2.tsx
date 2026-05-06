@@ -1,5 +1,6 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useSessionStore } from '../stores/sessionStore';
+import type { TurnMeta } from '../stores/sessionStore';
 import { useWsStore } from '../stores/wsStore';
 import { usePlanStore } from '../stores/planStore';
 import { useSlotStore } from '../stores/slotStore';
@@ -21,6 +22,8 @@ import { AgentPane } from '../components/ui/AgentPane';
 import { EmptyHero } from '../components/ui/EmptyHero';
 import { TweaksPanel } from '../components/ui/TweaksPanel';
 import { EmployeesDrawer } from '../components/ui/EmployeesDrawer';
+import TurnDivider from '../components/ui/TurnDivider';
+import ContextSummaryCard from '../components/ui/ContextSummaryCard';
 import { useTweakStore, applyTweaksToDocument } from '../lib/tweaks';
 import { hydrateSession } from '../lib/hydrate';
 import { useThinkingStore } from '../stores/thinkingStore';
@@ -47,6 +50,8 @@ export function ChatPageV2() {
   const phase = useSessionStore((s) => s.phase);
   const sending = useSessionStore((s) => s.sending);
   const clearConversation = useSessionStore((s) => s.clearConversation);
+  const turnIndex = useSessionStore((s) => s.turnIndex);
+  const turnMeta = useSessionStore((s) => s.turnMeta);
 
   const wsStatus = useWsStore((s) => s.status);
 
@@ -225,6 +230,11 @@ export function ChatPageV2() {
     refreshHistory,
   ]);
 
+  /** Multi-turn: 「新分析」starts a fresh conversation. */
+  const handleNewAnalysis = useCallback(() => {
+    handleNewConversation();
+  }, [handleNewConversation]);
+
   const handleDeleteHistory = useCallback(
     async (id: string) => {
       try {
@@ -330,6 +340,50 @@ export function ChatPageV2() {
     }
   }, [sessionId]);
 
+  // Multi-turn: group messages by turn_index and insert TurnDivider /
+  // ContextSummaryCard at turn boundaries.
+  const renderItems = useMemo(() => {
+    type RenderItem =
+      | { type: 'turn_divider'; key: string; turnIndex: number; meta: TurnMeta; isLatest: boolean }
+      | { type: 'context_summary'; key: string; previousTurnIndex: number; keyFindings: string[] }
+      | { type: 'message'; msg: typeof messages[number] };
+
+    const items: RenderItem[] = [];
+    let lastTurnIndex = -1;
+    const metaKeys = Object.keys(turnMeta).map(Number);
+    const maxTurn = metaKeys.length > 0 ? Math.max(...metaKeys) : 0;
+
+    for (const msg of messages) {
+      const ti = msg.turn_index ?? 0;
+      if (ti !== lastTurnIndex) {
+        if (ti > 0) {
+          const meta = turnMeta[ti];
+          items.push({
+            type: 'turn_divider',
+            key: `turn_${ti}`,
+            turnIndex: ti,
+            meta: meta ?? { turnType: 'new', planTitle: '', keyFindings: [] },
+            isLatest: ti === maxTurn || ti === turnIndex,
+          });
+          if (meta && meta.turnType === 'continue') {
+            const prevMeta = turnMeta[ti - 1];
+            if (prevMeta && prevMeta.keyFindings.length > 0) {
+              items.push({
+                type: 'context_summary',
+                key: `ctx_${ti}`,
+                previousTurnIndex: ti - 1,
+                keyFindings: prevMeta.keyFindings,
+              });
+            }
+          }
+        }
+        lastTurnIndex = ti;
+      }
+      items.push({ type: 'message', msg });
+    }
+    return items;
+  }, [messages, turnMeta, turnIndex]);
+
   return (
     <div className="an-app">
       <Topbar onTweaks={() => setTweaksOpen((v) => !v)} />
@@ -385,7 +439,27 @@ export function ChatPageV2() {
                   disabled={inputDisabled}
                 />
               ) : (
-                messages.map((msg) => {
+                renderItems.map((item) => {
+                  if (item.type === 'turn_divider') {
+                    return (
+                      <TurnDivider
+                        key={item.key}
+                        turnIndex={item.turnIndex}
+                        meta={item.meta}
+                        isLatest={item.isLatest}
+                      />
+                    );
+                  }
+                  if (item.type === 'context_summary') {
+                    return (
+                      <ContextSummaryCard
+                        key={item.key}
+                        previousTurnIndex={item.previousTurnIndex}
+                        keyFindings={item.keyFindings}
+                      />
+                    );
+                  }
+                  const msg = item.msg;
                   if (msg.type === 'reflection_card') {
                     return (
                       <ReflectionCard
@@ -460,6 +534,8 @@ export function ChatPageV2() {
             webSearchEnabled={webSearchEnabled}
             onToggleWebSearch={setWebSearchEnabled}
             searchFeatureAvailable={searchFeatureAvailable}
+            turnIndex={turnIndex}
+            onNewAnalysis={handleNewAnalysis}
           />
         </main>
 

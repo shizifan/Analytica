@@ -12,9 +12,13 @@ interface Props {
   onToggleWebSearch: (v: boolean) => void;
   /** 后端搜索功能总开关是否启用（false 时隐藏按钮） */
   searchFeatureAvailable?: boolean;
+  /** Multi-turn: current turn index */
+  turnIndex?: number;
+  /** Multi-turn: callback when「新分析」is clicked */
+  onNewAnalysis?: () => void;
 }
 
-export function InputBar({ onSend, onCancel, disabled = false, isRunning = false, webSearchEnabled, onToggleWebSearch, searchFeatureAvailable = true }: Props) {
+export function InputBar({ onSend, onCancel, disabled = false, isRunning = false, webSearchEnabled, onToggleWebSearch, searchFeatureAvailable = true, turnIndex = 0, onNewAnalysis }: Props) {
   const [text, setText] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -60,7 +64,7 @@ export function InputBar({ onSend, onCancel, disabled = false, isRunning = false
         onChange={(e) => { setText(e.target.value); handleInput(); }}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        placeholder="输入分析需求，按 Enter 发送，Shift+Enter 换行"
+        placeholder={turnIndex > 0 ? "输入新的分析需求，开始新一轮分析…" : "输入分析需求，按 Enter 发送，Shift+Enter 换行"}
         rows={1}
         className="an-input max-h-40 min-h-[36px] flex-1 resize-none rounded-lg px-3 py-2 text-sm"
       />
@@ -79,6 +83,23 @@ export function InputBar({ onSend, onCancel, disabled = false, isRunning = false
         }}
       >
         联网搜索
+      </button>
+      )}
+      {/* 新分析按钮：multi-turn 中开启全新一轮 */}
+      {!isRunning && turnIndex > 0 && onNewAnalysis && (
+      <button
+        type="button"
+        data-testid="new-analysis-button"
+        onClick={onNewAnalysis}
+        title="开始全新分析"
+        className="shrink-0 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+        style={{
+          background: 'transparent',
+          color: 'var(--an-accent-ink)',
+          border: '1px solid var(--an-accent-border)',
+        }}
+      >
+        新分析
       </button>
       )}
       {isRunning ? (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { usePlanStore } from '../../../stores/planStore';
 
 const MARK: Record<string, string> = {
@@ -20,14 +20,47 @@ function statusClass(s: string): string {
 
 /**
  * Phase 3.5 — plan + live execution redrawn with new design tokens.
+ * Multi-turn: supports switching between current and archived plans.
  */
 export function PlanTab() {
   const plan = usePlanStore((s) => s.plan);
   const status = usePlanStore((s) => s.status);
   const taskStatuses = usePlanStore((s) => s.taskStatuses);
+  const planHistory = usePlanStore((s) => s.planHistory);
+  const selectedTurnIndex = usePlanStore((s) => s.selectedTurnIndex);
+  const setSelectedTurnIndex = usePlanStore((s) => s.setSelectedTurnIndex);
   const [collapsed, setCollapsed] = useState(false);
 
-  if (!plan) {
+  // Merge current plan with history for chip selection
+  const allPlans = useMemo(() => {
+    const items: { turnIndex: number; plan: typeof plan }[] = [];
+    if (planHistory.length > 0) {
+      for (const hp of planHistory) {
+        const ti = (hp as any).turn_index ?? 0;
+        items.push({ turnIndex: ti, plan: hp });
+      }
+    }
+    // Current plan is the latest
+    if (plan) {
+      const curTi = (plan as any).turn_index ?? (items.length > 0 ? items[items.length - 1].turnIndex + 1 : 0);
+      items.push({ turnIndex: curTi, plan });
+    } else if (items.length > 0) {
+      // No current plan but we have history
+      const last = items[items.length - 1];
+      items.push({ turnIndex: last.turnIndex + 1, plan: last.plan });
+    }
+    return items;
+  }, [plan, planHistory]);
+
+  const displayPlan = useMemo(() => {
+    if (selectedTurnIndex === 0 || allPlans.length <= 1) return plan;
+    const match = allPlans.find((p) => p.turnIndex === selectedTurnIndex);
+    return match?.plan ?? plan;
+  }, [plan, selectedTurnIndex, allPlans]);
+
+  const hasHistory = allPlans.length > 1;
+
+  if (!displayPlan && !hasHistory) {
     return (
       <div className="an-thinking-empty">
         尚未生成分析方案
@@ -39,15 +72,57 @@ export function PlanTab() {
     );
   }
 
-  const total = plan.tasks.length;
-  const doneCount = plan.tasks.filter(
+  // If no current plan but we have history, show a placeholder
+  if (!displayPlan) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {hasHistory && (
+          <div className="an-plan-turn-chips">
+            {allPlans.map((p) => (
+              <button
+                key={p.turnIndex}
+                type="button"
+                className={`an-turn-chip ${p.turnIndex === selectedTurnIndex ? 'active' : ''}`}
+                onClick={() => setSelectedTurnIndex(p.turnIndex)}
+              >
+                R{p.turnIndex}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="an-thinking-empty">
+          等待新方案生成…
+        </div>
+      </div>
+    );
+  }
+
+  const tasks = displayPlan.tasks;
+  const total = tasks.length;
+  const doneCount = tasks.filter(
     (t) => taskStatuses[t.task_id] === 'done',
   ).length;
   const pct = total ? Math.round((doneCount / total) * 100) : 0;
-  const isExecuting = status === 'executing' || status === 'done';
+  const isCurrent = displayPlan === plan;
+  const isExecuting = (isCurrent && status === 'executing') || status === 'done';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {hasHistory && (
+        <div className="an-plan-turn-chips">
+          {allPlans.map((p) => (
+            <button
+              key={p.turnIndex}
+              type="button"
+              className={`an-turn-chip ${p.turnIndex === selectedTurnIndex ? 'active' : ''}`}
+              onClick={() => setSelectedTurnIndex(p.turnIndex)}
+            >
+              R{p.turnIndex}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="an-plan-card" data-testid="plan-task-list">
         <button
           type="button"
@@ -57,9 +132,14 @@ export function PlanTab() {
         >
           <span className="an-plan-title">
             <span style={{ letterSpacing: '0.04em' }}>分析方案</span>
-            {plan.version && (
+            {displayPlan.version && (
               <span className="an-mono" style={{ color: 'var(--an-ink-4)' }}>
-                v{plan.version}
+                v{displayPlan.version}
+              </span>
+            )}
+            {!isCurrent && (
+              <span style={{ fontSize: 10, color: 'var(--an-ink-5)', marginLeft: 4 }}>
+                (R{(displayPlan as any).turn_index ?? '?'})
               </span>
             )}
           </span>
@@ -68,7 +148,7 @@ export function PlanTab() {
           </span>
         </button>
 
-        {isExecuting && (
+        {isExecuting && isCurrent && (
           <div
             className="an-plan-progress"
             role="progressbar"
@@ -81,7 +161,7 @@ export function PlanTab() {
           </div>
         )}
 
-        {!collapsed && plan.tasks.map((task, i) => {
+        {!collapsed && tasks.map((task, i) => {
           const s = taskStatuses[task.task_id] ?? 'pending';
           const mark = MARK[s] ?? '?';
           return (

@@ -82,6 +82,18 @@ export async function hydrateSession(sessionId: string): Promise<void> {
     // Bail out if the user switched sessions while we were awaiting.
     if (!isStillActive(sessionId)) return;
 
+    // ── extract turn_index for multi-turn hydration ────────────
+    let hydratedTurnIndex = 0;
+    if (sessionRes && typeof sessionRes === 'object') {
+      const stateJsonPre = (sessionRes as { state_json?: Record<string, unknown> }).state_json;
+      if (stateJsonPre && typeof stateJsonPre === 'object') {
+        const apPre = stateJsonPre.analysis_plan as AnalysisPlan | undefined;
+        if (apPre && apPre.turn_index !== undefined) {
+          hydratedTurnIndex = apPre.turn_index;
+        }
+      }
+    }
+
     // ── chat messages (delta) ──────────────────────────────────
     if (msgRes.items.length > 0) {
       const hydrated: ChatMessage[] = msgRes.items.map((m) => {
@@ -94,6 +106,7 @@ export async function hydrateSession(sessionId: string): Promise<void> {
           phase: m.phase ?? undefined,
           timestamp: m.created_at ? new Date(m.created_at).getTime() : Date.now(),
           payload: m.payload ?? null,
+          turn_index: hydratedTurnIndex,
         };
       });
       for (const msg of hydrated) {
@@ -142,6 +155,11 @@ export async function hydrateSession(sessionId: string): Promise<void> {
               derivePlanStatus(taskStatuses, analysisPlan.tasks.length),
             );
           }
+        }
+
+        // Multi-turn: restore turn_index from plan
+        if (analysisPlan && analysisPlan.turn_index !== undefined) {
+          useSessionStore.getState().setTurnIndex(analysisPlan.turn_index);
         }
 
         // Cross-cutting degradation channel — surface anything backend

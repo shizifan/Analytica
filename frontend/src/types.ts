@@ -33,6 +33,8 @@ export interface AnalysisPlan {
   tasks: TaskItem[];
   report_structure?: Record<string, unknown>;
   revision_log: Array<Record<string, unknown>>;
+  turn_index?: number;
+  parent_plan_id?: string | null;
 }
 
 export interface ReflectionSummary {
@@ -54,6 +56,17 @@ export interface ChatMessage {
   phase?: string;
   timestamp: number;
   payload?: Record<string, unknown> | null;
+  /** Multi-turn: which turn this message belongs to (0-based). */
+  turn_index?: number;
+}
+
+/** Multi-turn: emitted after each turn's execution completes. */
+export interface TurnBoundaryEvent {
+  event: 'turn_boundary';
+  turn_index: number;
+  turn_type: 'new' | 'continue' | 'amend';
+  plan_title: string;
+  key_findings?: string[];
 }
 
 export type AgentPhase = 'idle' | 'perception' | 'planning' | 'executing' | 'reflection' | 'done';
@@ -123,7 +136,8 @@ export type WsIncomingEvent =
   | WsPlanUpdateEvent
   | WsTaskUpdateEvent
   | WsReflectionEvent
-  | WsTurnCompleteEvent;
+  | WsTurnCompleteEvent
+  | TurnBoundaryEvent;
 
 // ── Digital Employee types ────────────────────────────────────
 
