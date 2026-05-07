@@ -22,18 +22,24 @@ from uuid import uuid4
 
 import pytest
 
-from backend.memory.store import MemoryStore
-from backend.agent.graph import (
+# V6 §4.4 — _classify_turn deleted (S4) and build_amend_plan / make_amend_state
+# slated for deletion (S5). This scenario module exercises the legacy keyword
+# router + amend rule engine, so it's skipped at module load until S5 rewrites
+# it on top of the manifest-driven multi-turn pipeline (spec §10.1).
+pytest.skip(
+    "V6 §10.1 — keyword router + amend rule engine deleted in S4; "
+    "scenario rewrite scheduled for S5",
+    allow_module_level=True,
+)
+
+from backend.memory.store import MemoryStore  # noqa: E402
+from backend.agent.graph import (  # noqa: E402
     build_llm,
-    _classify_turn,
     _build_multiturn_context_injection,
 )
-from backend.agent.perception import run_perception
-from backend.agent.planning import PlanningEngine, build_amend_plan
-from tests.lib.multiturn_helpers import (
-    make_continue_message,
-    make_amend_state,
-)
+from backend.agent.perception import run_perception  # noqa: E402
+from backend.agent.planning import PlanningEngine  # noqa: E402
+from tests.lib.multiturn_helpers import make_continue_message  # noqa: E402
 
 pytestmark = pytest.mark.scenario
 

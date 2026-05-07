@@ -125,28 +125,9 @@ def make_initial_state(
     )
 
 
-# ── Multi-turn Helpers (PR-1: Layer 1 + Layer 2) ────────────────
-
-def _classify_turn(user_message: str, prev_state: dict) -> str:
-    """Classify the follow-up intent into: new / continue / amend."""
-    if not prev_state.get("slots"):
-        return "new"
-
-    msg = user_message.strip()
-
-    # 显式新话题检测
-    new_topic_keywords = ["新分析", "换个话题", "重新分析", "不相关", "完全不同的"]
-    if any(kw in msg for kw in new_topic_keywords):
-        return "new"
-
-    # Amend 检测（仅追加/替换报告格式，不涉及数据变化）
-    amend_keywords = ["再加", "补充报告", "加一个", "也要生成", "也生成一份",
-                      "换个格式", "换成", "转成", "导出为"]
-    if any(kw in msg for kw in amend_keywords):
-        return "amend"
-
-    # 默认归为 continue
-    return "continue"
+# ── Multi-turn Helpers (V6: Layer 1 / Layer 2) ──────────────────
+# V6 §4.4 — _classify_turn (keyword router) deleted; turn_type now
+# comes from perception's MULTITURN_INTENT_PROMPT (LLM).
 
 
 def _extract_last_user_message(state: dict) -> str:
@@ -389,6 +370,48 @@ def _append_turn_summary(state: dict) -> None:
             logger.exception("Failed to build turn summary")
 
 
+def _should_append_turn_summary(state: dict) -> bool:
+    """V6 §7.2.3 — guard against appending half-turns.
+
+    A clarification round leaves perception incomplete (no
+    structured_intent, no plan_confirmed, empty task_statuses); the
+    same state would otherwise be appended to analysis_history both
+    when the user gets the clarification question AND again when they
+    finally answer it, polluting prompt context with duplicate
+    half-summaries. Returns True only when all three layers ran.
+    """
+    if not state.get("structured_intent"):
+        return False
+    if not state.get("plan_confirmed"):
+        return False
+    if not state.get("task_statuses"):
+        return False
+    return True
+
+
+def _open_session_workspace(state: dict):
+    """Build a SessionWorkspace from the current state's session_id, or
+    return None if we have no session (tests / probes). Failures are
+    swallowed — the workspace is best-effort persistence and a missing
+    one shouldn't block the chat path."""
+    session_id = state.get("session_id")
+    if not session_id:
+        return None
+    try:
+        from backend.config import get_settings
+        from backend.memory.session_workspace import SessionWorkspace
+
+        return SessionWorkspace(
+            session_id=session_id,
+            root=get_settings().WORKSPACE_ROOT,
+        )
+    except Exception:
+        logger.exception(
+            "[graph] failed to open SessionWorkspace for %s", session_id,
+        )
+        return None
+
+
 def _build_turn_boundary_event(state: dict) -> dict:
     """Build a turn_boundary event dict for the frontend.
 
@@ -444,9 +467,12 @@ async def perception_node(state: AgentState) -> AgentState:
 async def planning_node(state: AgentState) -> AgentState:
     """Planning node: generate analysis plan from structured intent.
 
-    If plan_confirmed is True (resuming after confirmation), skip generation.
-    If analysis_plan already exists from a previous turn (loaded from DB),
-    auto-confirm and proceed to execution without regenerating.
+    V6 §7.2.1 — plan_history archival is owned by run_stream's
+    continuation branch, not this node. Here we only:
+      * pass through if plan_confirmed (HitL resume)
+      * auto-confirm an in-flight plan with unfinished tasks (also HitL
+        resume)
+      * otherwise call the LLM to generate a new plan
     """
     state["current_phase"] = "planning"
 
@@ -454,21 +480,21 @@ async def planning_node(state: AgentState) -> AgentState:
     if state.get("plan_confirmed"):
         return state
 
-    # Auto-confirm existing plan: only when tasks are NOT all done.
-    # In multi-turn scenarios (turn_type=continue/amend), skip auto-confirm
-    # so the graph can generate a new plan based on the follow-up intent.
-    if state.get("analysis_plan") and state.get("turn_type") not in ("continue", "amend"):
+    # HitL resume: an in-flight plan with pending tasks → auto-confirm
+    # so execution picks up where it left off. New plans for new turns
+    # arrive here with analysis_plan=None (run_stream archived the
+    # previous one), so this branch only fires on the resume path.
+    if state.get("analysis_plan"):
         tasks = state["analysis_plan"].get("tasks", [])
         all_done = all(
             state.get("task_statuses", {}).get(t.get("task_id")) in ("done", "skipped")
             for t in tasks
         ) if tasks else True
         if not all_done:
-            # 有未完成任务 → auto-confirm 继续执行
             state["plan_confirmed"] = True
             return state
-        # 全部已完成 → 归档旧 plan，继续生成新 plan
-        state.setdefault("plan_history", []).append(state["analysis_plan"])
+        # All tasks done already — drop the stale plan; the LLM call
+        # below regenerates from the new intent.
         state["analysis_plan"] = None
         state["plan_confirmed"] = False
 
@@ -982,8 +1008,20 @@ async def run_stream(
         finally:
             ws_ctx.reset_ws_callback(token)
 
-        _append_turn_summary(state)
-        yield _build_turn_boundary_event(state)
+        # V6 §7.2.3 / §7.3 — only finalize + append when the turn
+        # actually completed (plan_confirmed + execution ran). The
+        # confirm-execute fast path always satisfies this, but we keep
+        # the guard for symmetry with the main graph path below.
+        if _should_append_turn_summary(state):
+            ws = _open_session_workspace(state)
+            if ws is not None:
+                try:
+                    from backend.agent.execution import _finalize_turn
+                    await _finalize_turn(ws, int(state.get("turn_index", 0)))
+                except Exception:
+                    logger.exception("[run_stream] finalize_turn failed")
+            _append_turn_summary(state)
+            yield _build_turn_boundary_event(state)
         try:
             safe_state = json.loads(
                 json.dumps(state, ensure_ascii=False, default=str)
@@ -995,13 +1033,18 @@ async def run_stream(
             logger.exception("Failed to save session state for %s", session_id)
         return
 
-    # 2. 判断 turn_type 并构建本轮状态
+    # 2. V6 §4.3 — first-turn vs continuation. turn_type now flows
+    # back from perception's MULTITURN_INTENT_PROMPT (LLM); the legacy
+    # _classify_turn router and amend fast-path are deleted.
     turn_index = prev_state.get("turn_index", 0)
-    turn_type = _classify_turn(user_message, prev_state) if prev_state.get("slots") else "new"
-    logger.info("[run_stream] turn_index=%s turn_type=%s session=%s", turn_index, turn_type, session_id)
+    is_continuation = bool(prev_state.get("slots"))
+    logger.info(
+        "[run_stream] turn_index=%s is_continuation=%s session=%s",
+        turn_index, is_continuation, session_id,
+    )
 
-    if turn_type == "new":
-        # 全新分析 — 丢弃旧 state，保留 messages 用于对话历史展示
+    if not is_continuation:
+        # 首轮 — discard prev state, keep messages for transcript display.
         old_messages = prev_state.get("messages", [])
         state = dict(make_initial_state(
             session_id, user_id, user_message,
@@ -1010,96 +1053,58 @@ async def run_stream(
         ))
         state["messages"] = old_messages + [{"role": "user", "content": user_message}]
         state["turn_index"] = 0
+        # First-turn type is always 'new' (perception's MULTITURN prompt
+        # only runs for continuations).
         state["turn_type"] = "new"
         state["plan_history"] = prev_state.get("plan_history", [])
-
-    elif turn_type == "amend":
-        # 快速路径：规则引擎直接构建 amend plan → execution
-        # 若格式无法识别（返回 None），回退到 full pipeline（走 continue 路径）
-        amend_plan = _build_amend_plan(prev_state, user_message)
-        if amend_plan is None:
-            logger.info(
-                "Amend fast path could not detect format, "
-                "falling back to LLM planning for: %s",
-                user_message[:80],
-            )
-            turn_type = "continue"  # 降级走下方 continue 分支
-        else:
-            state = dict(prev_state)
-            state.setdefault("messages", [])
-            state["messages"].append({"role": "user", "content": user_message})
-            state["turn_type"] = "amend"
-            state["turn_index"] = turn_index + 1
-            state["current_phase"] = "execution"
-            state["error"] = None
-            state["web_search_enabled"] = web_search_enabled
-
-            state["analysis_plan"] = amend_plan.model_dump()
-            state["plan_confirmed"] = True
-            state.setdefault("plan_history", []).append(
-                prev_state.get("analysis_plan", {})
-            )
-
-            # 直接走 execution（跳过 perception + planning）
-            yield {"__meta__": {"initial_msg_count": len(state.get("messages", []))}}
-
-            from backend.agent import ws_ctx
-            from backend.agent.execution import execution_node as _exec_node
-            token = ws_ctx.set_ws_callback(ws_callback)
-            try:
-                yield {
-                    "__thinking__": {
-                        "kind": "phase",
-                        "phase": "execution",
-                        "payload": {"event": "phase_enter", "node": "execution"},
-                    },
-                }
-                state = await _exec_node(state)
-                exit_payload = _summarize_node_exit("execution", state)
-                if exit_payload:
-                    yield {
-                        "__thinking__": {
-                            "kind": "phase",
-                            "phase": "execution",
-                            "payload": {
-                                "event": "phase_exit",
-                                "node": "execution",
-                                **exit_payload,
-                            },
-                        },
-                    }
-                yield {"execution": state}
-            finally:
-                ws_ctx.reset_ws_callback(token)
-
-            # Build turn summary and persist
-            _append_turn_summary(state)
-            yield _build_turn_boundary_event(state)
-            try:
-                safe_state = json.loads(
-                    json.dumps(state, ensure_ascii=False, default=str)
-                )
-                async with factory() as db_session:
-                    store = MemoryStore(db_session)
-                    await store.save_session_state(session_id, safe_state)
-            except Exception:
-                logger.exception("Failed to save session state for %s", session_id)
-            return
-
-    else:  # turn_type == "continue"
-        # 延续分析 — 保留 slots + 注入多轮上下文
+    else:
+        # 续接 — keep slots; perception writes turn_type back.
         state = dict(prev_state)
-        state.setdefault("messages", [])
-        state["messages"].append({"role": "user", "content": user_message})
-        state["turn_type"] = "continue"
-        state["turn_index"] = turn_index + 1
+        state.setdefault("messages", []).append({"role": "user", "content": user_message})
         state["structured_intent"] = None
         state["current_target_slot"] = None
         state["current_phase"] = "perception"
         state["error"] = None
         state["web_search_enabled"] = web_search_enabled
-        # 清理前轮 task_statuses（避免旧状态混入）
         state["task_statuses"] = {}
+        # turn_type stays None until perception classifies the turn.
+        state["turn_type"] = None
+
+        # V6 §7.2.1 — archive the previous plan exactly once on turn
+        # entry. planning_node no longer archives; this is the single
+        # source of truth for plan_history.
+        if state.get("analysis_plan"):
+            state.setdefault("plan_history", []).append(state["analysis_plan"])
+            state["analysis_plan"] = None
+            state["plan_confirmed"] = False
+
+        # V6 §7.2.2 — turn_index advances only when the previous turn
+        # truly completed (perception passed, plan confirmed, execution
+        # ran). Clarification rounds keep the same turn_index until the
+        # user finishes the missing slots.
+        prev_completed = bool(
+            prev_state.get("plan_confirmed")
+            and prev_state.get("structured_intent") is not None
+            and prev_state.get("task_statuses")
+        )
+        if prev_completed:
+            state["turn_index"] = turn_index + 1
+        else:
+            state["turn_index"] = turn_index
+
+        # V6 §7.3 — workspace turn_status hygiene. When a fresh turn
+        # begins (turn_index advanced), mark any lingering ongoing
+        # entries from the previous turn as abandoned. Mid-clarification
+        # ongoing entries (same turn_index) are preserved.
+        if prev_completed:
+            ws = _open_session_workspace(state)
+            if ws is not None:
+                try:
+                    from backend.agent.execution import _abandon_orphaned_turn
+                    await _abandon_orphaned_turn(ws, turn_index)
+                except Exception:
+                    logger.exception("[run_stream] abandon_orphaned_turn failed")
+
         # 注入多轮上下文供 perception/planning 使用
         if state.get("analysis_history"):
             state["_multiturn_context"] = _build_multiturn_context_injection(state)
@@ -1219,9 +1224,22 @@ async def run_stream(
                 pass
         return
 
-    # 6. Build turn summary, then persist final state to DB
-    _append_turn_summary(final_state)
-    yield _build_turn_boundary_event(final_state)
+    # 6. V6 §7.2.3 / §7.3 — only finalize the turn + append summary +
+    # emit turn_boundary when perception, planning AND execution all
+    # ran. Mid-clarification states still persist (so the next user
+    # message picks up context) but do NOT touch analysis_history /
+    # workspace turn_status — preventing duplicate half-summaries and
+    # turn-state pollution.
+    if _should_append_turn_summary(final_state):
+        ws = _open_session_workspace(final_state)
+        if ws is not None:
+            try:
+                from backend.agent.execution import _finalize_turn
+                await _finalize_turn(ws, int(final_state.get("turn_index", 0)))
+            except Exception:
+                logger.exception("[run_stream] finalize_turn failed")
+        _append_turn_summary(final_state)
+        yield _build_turn_boundary_event(final_state)
     try:
         safe_state = json.loads(
             json.dumps(final_state, ensure_ascii=False, default=str)

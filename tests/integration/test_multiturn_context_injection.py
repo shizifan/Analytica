@@ -1,15 +1,23 @@
 """Integration tests for multi-turn context injection into LLM prompts.
 
 Verifies that ``run_perception()`` and ``PlanningEngine.generate_plan()``
-receive context from ``analysis_history`` when ``turn_type="continue"``,
-so the LLM knows what was already done.
+receive context from ``analysis_history`` (and the V6 SessionWorkspace
+manifest) when continuing a session.
+
+V6 §4.2 — perception's continuation path runs MULTITURN_INTENT_PROMPT,
+a new prompt with no recorded cache. The first test below now drives
+``_call_multiturn_intent_llm`` with a scripted LLM so we don't have to
+re-record the cache while the prompt is still iterating.
 """
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from backend.memory.store import MemoryStore
+from backend.agent import perception as perception_mod
 from backend.agent.graph import (
     build_llm,
     _build_multiturn_context_injection,
@@ -35,9 +43,16 @@ class TestContextInjection:
         self,
         multiturn_db_state,
         test_db_session,
-        recorded_llm,
+        monkeypatch,
     ):
-        """R1 perception produces structured_intent with preserved slots."""
+        """R1 perception produces structured_intent with preserved slots.
+
+        V6: drives the new MULTITURN_INTENT_PROMPT through a scripted
+        LLM (cache for this prompt doesn't exist yet). The assertion
+        still cares only about the *integration* — that perception
+        sees the multi-turn context and emits a non-empty intent on
+        the continuation path.
+        """
         store = MemoryStore(test_db_session)
         session_data = await store.get_session(multiturn_db_state)
         r0_state = session_data["state_json"]
@@ -54,14 +69,47 @@ class TestContextInjection:
             r1_state
         )
 
-        # Run perception (uses recorded_llm behind the scenes)
+        scripted_calls: list[str] = []
+
+        async def _scripted_llm(prompt: str, *, timeout: float = 60.0) -> str:
+            scripted_calls.append(prompt)
+            return json.dumps({
+                "turn_type": "continue",
+                "reasoning": "drill down by zone",
+                "needs_clarification": False,
+                "ask_target_slots": [],
+                "structured_intent": {
+                    "analysis_goal": "按港区拆分吞吐量",
+                    "slots": {
+                        "data_granularity": {
+                            "value": "zone", "source": "user_input",
+                        },
+                    },
+                },
+                "slot_delta": {
+                    "data_granularity": {
+                        "value": "zone", "evidence": "按港区",
+                    },
+                },
+            }, ensure_ascii=False)
+
+        monkeypatch.setattr(
+            perception_mod, "_call_multiturn_intent_llm", _scripted_llm,
+        )
+
         result = await run_perception(r1_state)
         intent = result.get("structured_intent")
         assert intent is not None, "R1 perception should produce an intent"
-
-        # The intent should have slots (at minimum analysis_subject)
         slots = intent.get("slots", {})
         assert slots, "structured_intent should contain slots"
+
+        # The prompt must have included the multi-turn context block —
+        # turn_index, prev_summary, manifest snippet — so perception
+        # can route on real signal rather than message text alone.
+        assert scripted_calls, "multiturn LLM must be called on continuation"
+        prompt_text = scripted_calls[0]
+        assert "前轮分析摘要" in prompt_text
+        assert "本会话已有数据" in prompt_text
 
     async def test_planning_prompt_contains_completed_tasks(
         self,

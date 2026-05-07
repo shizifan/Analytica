@@ -96,6 +96,60 @@ CLARIFICATION_PROMPT = """你是一个友好的数据分析助手，正在帮助
 
 只输出追问文本，不要输出其他内容。"""
 
+
+# ── V6 §4.1 — multi-turn intent prompt ──────────────────────
+# Replaces the keyword-based ``_classify_turn`` router. The LLM sees
+# prev-turn summary + workspace manifest summary + slot state and emits
+# turn_type / structured_intent / clarification target in one shot.
+
+MULTITURN_INTENT_PROMPT = """你是一个数据分析多轮对话理解专家。当前是同一会话的第 {turn_index} 轮交互。
+
+【前轮分析摘要】
+{prev_summary}
+
+【本会话已有数据（前轮产物 manifest 摘要）】
+{manifest_summary_for_perception}
+
+【当前已填充的槽位】
+{current_slots_json}
+
+【完整对话消息】
+{messages_text}
+
+【本轮用户最新消息】
+{latest_user_message}
+
+【任务】
+基于历史对话与本轮消息，判断用户意图并输出结构化结果：
+
+1. turn_type — 三选一：
+   - "new"      用户开启全新分析话题（与前轮主题/分析对象不同）
+   - "continue" 用户在前轮基础上深化、扩展、对比、钻取、调整参数
+   - "amend"    用户对前轮已生成的报告/产出物提出格式或副本要求（如追加 PPT、换成 Word），不涉及新数据获取
+2. reasoning — 一句话说明判断依据
+3. needs_clarification — 是否还需要追问必填槽位（bool）
+4. ask_target_slots — 若需追问，列出仍为空且必填的槽位名称
+5. structured_intent — 本轮的 intent，含完整槽位（继承前轮 + 本轮 delta）
+6. slot_delta — 本轮明确变更或新增的槽位字典（供审计）
+
+【判断规则】
+- "amend" 仅在用户**明确**要新格式/新副本，且不涉及数据维度/时间范围变化时给出。模糊场景归 "continue"。
+- "new" 必须有强信号：分析对象切换、显式声明（"换个话题"/"新分析"），或与前轮无任何继承关系。模糊场景归 "continue"。
+- 当 prev_summary 为"（首轮）"时，turn_type 固定为 "new"。
+- 延续模式下若槽位已从前轮继承且无歧义，needs_clarification=false，不再追问。
+- manifest 中已有相关产物时，amend / continue 优先复用——具体规划由 planning prompt 处理，本步骤只判类型。
+
+【输出格式】（严格 JSON，无 markdown 包裹，无 <think>）
+{{
+  "turn_type": "new|continue|amend",
+  "reasoning": "...",
+  "needs_clarification": false,
+  "ask_target_slots": [],
+  "structured_intent": {{ "analysis_goal": "...", "slots": {{}} }},
+  "slot_delta": {{ "<slot_name>": {{"value": "...", "evidence": "..."}} }}
+}}
+"""
+
 MULTI_SLOT_CLARIFICATION_PROMPT = """你是一个友好的数据分析助手，正在帮助用户澄清分析需求。
 
 【当前已填充的槽位】
@@ -775,10 +829,31 @@ class SlotFillingEngine:
 
 
 async def run_perception(state: dict, profile: Any = None) -> dict:
-    """LangGraph perception node implementation.
+    """LangGraph perception node — V6 §4.2 entry point.
 
-    Orchestrates the SlotFillingEngine within the agent graph.
-    当 profile (EmployeeProfile) 提供时，注入员工域配置（extra_slots、slot_constraints、prompt_suffix）。
+    First-turn / clarification-resume path keeps the canonical
+    SlotFillingEngine flow. Continuation turns (state has filled slots
+    AND _multiturn_context is present) route through the new LLM-driven
+    multi-turn intent classifier — turn_type / clarification target /
+    structured_intent come from a single prompt.
+    """
+    multiturn = state.get("_multiturn_context")
+    slots = state.get("slots") or {}
+    has_filled_slots = isinstance(slots, dict) and any(
+        isinstance(v, dict) and v.get("value") is not None for v in slots.values()
+    )
+    is_first_turn = not has_filled_slots or multiturn is None
+    if is_first_turn:
+        return await _run_first_turn_perception(state, profile)
+    return await _run_multiturn_perception(state, multiturn, profile)
+
+
+async def _run_first_turn_perception(state: dict, profile: Any = None) -> dict:
+    """Original SlotFillingEngine flow for first turn / clarification rounds.
+
+    Continuation-mode shortcuts (continue → empty_required = [], summary
+    line injection into conv_history) have been removed in V6 — the
+    new multi-turn LLM router covers those scenarios end-to-end.
     """
     from backend.database import get_session_factory
     from backend.agent.graph import build_llm
@@ -851,20 +926,7 @@ async def run_perception(state: dict, profile: Any = None) -> dict:
             return state
 
         # Extract slots from text
-        # -- Multi-turn: inject previous turn summary into conversation history --
         conv_history = messages[:-1] if len(messages) > 1 else []
-        multiturn = state.get("_multiturn_context")
-        if multiturn and state.get("turn_type") == "continue":
-            latest = multiturn.get("latest_summary", {})
-            findings = multiturn.get("all_key_findings", [])[:3]
-            summary_line = (
-                f"[已完成的前轮分析] "
-                f"计划：{latest.get('plan_title', '')[:100]}。"
-                f"关键发现：{'; '.join(findings[:3]) if findings else '无'}。"
-                f"可用数据端点：{', '.join(multiturn.get('prev_data_endpoints', []))}。"
-            )
-            conv_history = [{"role": "assistant", "content": summary_line}] + conv_history
-
         slot_values = await engine.extract_slots_from_text(
             user_message, slot_values, conv_history
         )
@@ -888,11 +950,11 @@ async def run_perception(state: dict, profile: Any = None) -> dict:
         if comp_slot and comp_slot.value:
             complexity = comp_slot.value
 
-        # Check empty required slots
-        # 多轮延续模式下跳过追问：槽位已继承自上一轮
+        # Check empty required slots — clarification driven entirely by
+        # the slot schema; V6 removes the legacy "continue mode skips
+        # required-slot check" shortcut (multi-turn path handles its
+        # own clarification via _run_multiturn_perception).
         empty_required = engine.get_empty_required_slots(slot_values, complexity)
-        if multiturn and state.get("turn_type") == "continue":
-            empty_required = []
 
         # Record slots to history
         session_id = state.get("session_id", "")
@@ -950,3 +1012,208 @@ async def run_perception(state: dict, profile: Any = None) -> dict:
             })
 
         return state
+
+
+# ── V6 §4.2 / §4.3 — multi-turn LLM intent router ───────────
+
+_VALID_TURN_TYPES = {"new", "continue", "amend"}
+
+
+def _merge_slots_with_delta(
+    prev_slots: dict[str, Any],
+    slot_delta: dict[str, Any] | None,
+    structured_intent: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Apply LLM-emitted ``slot_delta`` on top of ``prev_slots`` and fill
+    any remaining holes from ``structured_intent.slots``.
+
+    Both inputs use the SlotValue dict shape (``{value, source,
+    confirmed}``). Delta entries carry ``user_input`` source so they
+    win against memory / inferred values inherited from prior turns.
+    """
+    out = {k: dict(v) if isinstance(v, dict) else v for k, v in (prev_slots or {}).items()}
+    delta = slot_delta or {}
+    for name, change in delta.items():
+        if not isinstance(change, dict):
+            continue
+        out[name] = {
+            "value": change.get("value"),
+            "source": "user_input",
+            "confirmed": False,
+        }
+    intent_slots = (structured_intent or {}).get("slots") or {}
+    for name, sv in intent_slots.items():
+        if name in out and isinstance(out[name], dict) and out[name].get("value") is not None:
+            continue
+        if isinstance(sv, dict):
+            out[name] = {
+                "value": sv.get("value"),
+                "source": sv.get("source") or "inferred",
+                "confirmed": bool(sv.get("confirmed")),
+            }
+    return out
+
+
+def _render_messages_for_prompt(messages: list[dict[str, Any]], limit: int = 12) -> str:
+    """Compact transcript for the multi-turn prompt — last `limit`
+    messages, role-tagged, content truncated to 200 chars each."""
+    tail = (messages or [])[-limit:]
+    lines: list[str] = []
+    for m in tail:
+        role = m.get("role") or "?"
+        content = (m.get("content") or "")[:200].replace("\n", " ")
+        lines.append(f"{role}: {content}")
+    return "\n".join(lines) if lines else "（无对话历史）"
+
+
+def _render_prev_summary(multiturn: dict[str, Any]) -> str:
+    latest = multiturn.get("latest_summary") or {}
+    if not latest:
+        return "（首轮）"
+    findings = (multiturn.get("all_key_findings") or [])[:3]
+    return (
+        f"主题：{(latest.get('plan_title') or '')[:120]}\n"
+        f"已完成：{latest.get('completed_count', 0)}/{latest.get('task_count', 0)} 个任务\n"
+        f"关键发现：{'；'.join(f[:120] for f in findings) if findings else '无'}"
+    )
+
+
+def _render_manifest_for_perception(multiturn: dict[str, Any]) -> str:
+    """Reuse planning's manifest table renderer so perception sees the
+    same view of the workspace the planner will."""
+    manifest = multiturn.get("workspace_manifest") or {}
+    items = (manifest or {}).get("items") or {}
+    if not items:
+        return "（暂无前轮产物）"
+    try:
+        from backend.agent.planning import _render_manifest_summary_table
+        return _render_manifest_summary_table(
+            manifest, current_turn_index=multiturn.get("turn_index"),
+        )
+    except Exception:
+        # Fallback so a stale planning helper signature can never
+        # crash the perception path.
+        kinds = ", ".join(
+            f"{tid}({(it.get('output_kind') or '?')})" for tid, it in list(items.items())[:8]
+        )
+        return f"（manifest 含 {len(items)} 项；前 8 项: {kinds}）"
+
+
+async def _call_multiturn_intent_llm(prompt: str, *, timeout: float = 60.0) -> str:
+    """Single-shot LLM call for the multi-turn intent prompt."""
+    from backend.agent.graph import build_llm
+    llm = build_llm("qwen3-235b", request_timeout=int(timeout))
+    response = await llm.ainvoke(prompt)
+    if hasattr(response, "content"):
+        return response.content
+    return str(response)
+
+
+def _parse_multiturn_intent_payload(raw: str) -> dict[str, Any]:
+    """Parse the LLM JSON output, defaulting unsafe fields rather than
+    raising — V6 routes every parsing oddity into ``turn_type='continue'``
+    so the worst case is a missed amend speed-up, not a crashed turn."""
+    text = _clean_llm_output(raw)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as e:
+        logger.warning("multiturn intent JSON parse failed: %s; raw=%r", e, text[:200])
+        return {
+            "turn_type": "continue",
+            "reasoning": f"parse_failed: {e}",
+            "needs_clarification": False,
+            "ask_target_slots": [],
+            "structured_intent": {},
+            "slot_delta": {},
+        }
+    turn_type = data.get("turn_type")
+    if turn_type not in _VALID_TURN_TYPES:
+        data["turn_type"] = "continue"
+    data.setdefault("needs_clarification", False)
+    data.setdefault("ask_target_slots", [])
+    data.setdefault("structured_intent", {})
+    data.setdefault("slot_delta", {})
+    if not isinstance(data.get("ask_target_slots"), list):
+        data["ask_target_slots"] = []
+    if not isinstance(data.get("structured_intent"), dict):
+        data["structured_intent"] = {}
+    if not isinstance(data.get("slot_delta"), dict):
+        data["slot_delta"] = {}
+    return data
+
+
+async def _run_multiturn_perception(
+    state: dict, multiturn: dict[str, Any], profile: Any = None,
+) -> dict:
+    """V6 §4.2 — single LLM call produces turn_type + structured_intent
+    + clarification target. State is mutated in place and returned."""
+    messages = state.get("messages") or []
+    user_message = ""
+    for m in reversed(messages):
+        if m.get("role") == "user":
+            user_message = m.get("content") or ""
+            break
+
+    current_slots = state.get("slots") or {}
+    prompt = MULTITURN_INTENT_PROMPT.format(
+        turn_index=multiturn.get("turn_index", state.get("turn_index", 0)),
+        prev_summary=_render_prev_summary(multiturn),
+        manifest_summary_for_perception=_render_manifest_for_perception(multiturn),
+        current_slots_json=json.dumps(current_slots, ensure_ascii=False, default=str),
+        messages_text=_render_messages_for_prompt(messages),
+        latest_user_message=user_message,
+    )
+
+    async with trace_span(
+        "multiturn_intent", "perception.multiturn_intent",
+        task_name="意图分类",
+        phase="perception",
+        input={"turn_index": multiturn.get("turn_index"), "user_message": user_message[:80]},
+    ) as span_out:
+        try:
+            raw = await _call_multiturn_intent_llm(prompt)
+        except Exception as e:
+            logger.exception("multiturn intent LLM call failed")
+            span_out["error"] = str(e)
+            # Hard fail-fast — perception failure means we have no
+            # idea what the user wants. The graph layer will surface
+            # this as an error message (V6 "失败显式化").
+            raise SlotFillingError(f"multiturn perception LLM call failed: {e}") from e
+        result = _parse_multiturn_intent_payload(raw)
+        span_out["turn_type"] = result["turn_type"]
+        span_out["needs_clarification"] = bool(result.get("needs_clarification"))
+
+    state["turn_type"] = result["turn_type"]
+    state["structured_intent"] = (
+        result["structured_intent"] if not result.get("needs_clarification") else None
+    )
+    state["slot_delta"] = result["slot_delta"]
+    state["empty_required_slots"] = (
+        list(result["ask_target_slots"])
+        if result.get("needs_clarification") else []
+    )
+    state["current_target_slot"] = (
+        result["ask_target_slots"][0]
+        if result.get("needs_clarification") and result["ask_target_slots"]
+        else None
+    )
+    state["slots"] = _merge_slots_with_delta(
+        current_slots, result["slot_delta"], result["structured_intent"],
+    )
+    state["current_phase"] = "perception"
+
+    # Surface a chat reply so the user sees something between turns.
+    if state.get("current_target_slot"):
+        target = state["current_target_slot"]
+        meaning = SLOT_MEANINGS.get(target, target)
+        state.setdefault("messages", []).append({
+            "role": "assistant",
+            "content": f"还需要确认一下：{meaning}（{target}），可以补充吗？",
+        })
+    elif state.get("structured_intent"):
+        goal = (result["structured_intent"].get("analysis_goal") or user_message)[:120]
+        state.setdefault("messages", []).append({
+            "role": "assistant",
+            "content": f"已理解本轮意图（{result['turn_type']}）：{goal}",
+        })
+    return state

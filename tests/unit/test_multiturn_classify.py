@@ -1,7 +1,16 @@
-"""Unit tests for _classify_turn multi-turn intent classification."""
+"""Unit tests for _classify_turn multi-turn intent classification.
+
+V6 §4.4 deletes the keyword router. This file is slated for full
+removal in S5 (spec §10.1); skipped at the module level during the
+S4 → S5 transition so the suite stays green.
+"""
 
 import pytest
-from backend.agent.graph import _classify_turn
+
+pytest.skip(
+    "V6 §9.1 — _classify_turn deleted in S4; tests pending removal in S5",
+    allow_module_level=True,
+)
 
 
 class TestClassifyTurn:
