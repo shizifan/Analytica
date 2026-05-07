@@ -86,6 +86,24 @@ class Settings(BaseSettings):
         description="API mode: 'mock' or 'prod'",
     )
 
+    # ── SessionWorkspace (V6 §5.2) ──────────────────────────────────
+    # Per-session workspace stores task outputs as durable artifacts so
+    # cross-turn data reuse goes through `data_ref` resolution instead of
+    # ad-hoc conversion_context.pkl. One directory per session under
+    # WORKSPACE_ROOT, with a manifest.json index.
+    WORKSPACE_ROOT: str = Field(
+        default="workspace",
+        description="Root directory for SessionWorkspace files. Each "
+        "session gets {root}/{session_id}/workspace/. Relative paths "
+        "resolve against CWD (analogous to REPORTS_DIR).",
+    )
+    WORKSPACE_MAX_ITEMS_PER_SESSION: int = Field(
+        default=100,
+        description="Soft cap on manifest items per session before "
+        "eviction kicks in (V6 §5.2.5). Files are removed but manifest "
+        "entries remain marked status=cleared for audit.",
+    )
+
     # ── MCP (Model Context Protocol) 搜索服务 ───────────────────────────
     MCP_SEARCH_URL: str = Field(
         default="https://aiagentplatform.cmft.com/api/proxy/mcp",
