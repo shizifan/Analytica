@@ -27,6 +27,10 @@ reports/e2e_artifacts/
 # Local generated reports
 reports/
 
+# SessionWorkspace per-session artifacts (V6 §5.2). On-disk manifest is
+# the runtime source of truth, but each session's data is local-only.
+workspace/
+
 # Mock/Prod data (local only, never commit)
 prod_data/
 

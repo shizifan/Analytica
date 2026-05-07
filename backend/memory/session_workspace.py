@@ -132,6 +132,10 @@ class SessionWorkspace:
 
     # ── persistence ────────────────────────────────────────────
 
+    _SUCCESS_STATUSES = frozenset({"success", "done", "partial"})
+    _FAILURE_STATUSES = frozenset({"failed", "error"})
+    _SKIPPED_STATUSES = frozenset({"skipped"})
+
     def persist(self, task: Any, output: Any, turn_index: int) -> None:
         """Persist a completed task to disk + manifest atomically.
 
@@ -140,14 +144,19 @@ class SessionWorkspace:
         ToolOutput (or any object exposing data / status / error_message
         attributes).
 
+        Status mapping (consistent with backend.tools.base.ToolOutput):
+          * ``success`` / ``done`` / ``partial`` → write file, manifest
+            ``status="done"``
+          * ``failed`` / ``error`` → record entry only, manifest
+            ``status="failed"``
+          * ``skipped`` → record entry only, manifest ``status="skipped"``
+          * unknown values are coerced to ``failed`` for safety
+
         Failure semantics (V6 §11 R8 / "失败显式化"):
-          * status ∈ {failed, error}: record as failed manifest entry,
-            no file written, no exception raised (the task already failed
-            upstream — we just preserve the audit trail).
-          * status ∈ {success, done, ...} but data unserializable: mark
-            entry status=unserializable AND raise
-            WorkspaceSerializationError so the executor can flip the
-            task itself to failed.
+          * a serialization-time failure marks the entry
+            ``unserializable`` AND raises
+            ``WorkspaceSerializationError`` so the executor can flip the
+            task itself to ``failed``.
         """
         task_id = self._task_attr(task, "task_id")
         if not task_id:
@@ -157,8 +166,19 @@ class SessionWorkspace:
             base_entry = self._build_base_entry(task, turn_index)
             status = (self._output_attr(output, "status") or "").lower()
 
-            if status in {"failed", "error"}:
-                self._record_failed(base_entry, output)
+            if status in self._FAILURE_STATUSES:
+                self._record_failed(base_entry, output, manifest_status="failed")
+                self.manifest["items"][task_id] = base_entry
+                return
+            if status in self._SKIPPED_STATUSES:
+                self._record_failed(base_entry, output, manifest_status="skipped")
+                self.manifest["items"][task_id] = base_entry
+                return
+            if status not in self._SUCCESS_STATUSES:
+                # Unknown status — surface as failed for audit, but do
+                # NOT raise (caller's status is canonical for run-time
+                # decisions; we just preserve the manifest trail).
+                self._record_failed(base_entry, output, manifest_status="failed")
                 self.manifest["items"][task_id] = base_entry
                 return
 
@@ -185,6 +205,13 @@ class SessionWorkspace:
                 **file_meta,
             )
             self.manifest["items"][task_id] = base_entry
+
+    def record_failure(self, task: Any, output: Any, turn_index: int = 0) -> None:
+        """Record a failure entry without writing artifacts. Equivalent
+        to ``persist(...)`` when output.status indicates failure — kept
+        as a named entry-point so hooks can be explicit about intent
+        (V6 §5.3.2)."""
+        self.persist(task, output, turn_index=turn_index)
 
     # ── failure / loading helpers ──────────────────────────────
 
@@ -236,14 +263,19 @@ class SessionWorkspace:
         }
 
     @staticmethod
-    def _record_failed(entry: dict[str, Any], output: Any) -> None:
+    def _record_failed(
+        entry: dict[str, Any],
+        output: Any,
+        *,
+        manifest_status: str = "failed",
+    ) -> None:
         err = (
             SessionWorkspace._output_attr(output, "error_message")
             or SessionWorkspace._output_attr(output, "error")
             or ""
         )
         entry.update(
-            status="failed",
+            status=manifest_status,
             path=None,
             output_kind=None,
             error=str(err),

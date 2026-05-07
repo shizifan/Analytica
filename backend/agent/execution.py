@@ -25,6 +25,8 @@ from typing import Any, Callable, Coroutine
 
 import pandas as pd
 
+from backend.exceptions import TaskError, WorkspaceSerializationError
+from backend.memory.session_workspace import SessionWorkspace
 from backend.models.schemas import TaskItem
 from backend.tools.base import ErrorCategory, ToolInput, ToolOutput, tool_executor
 from backend.tools.registry import ToolRegistry
@@ -60,6 +62,145 @@ def _summarize_tool_output(output: ToolOutput) -> dict[str, Any]:
     else:
         preview["kind"] = type(data).__name__
     return preview
+
+
+# ── V6 §5.3 — SessionWorkspace hooks ────────────────────────
+# Two hooks bracket every executed task:
+#   1. _resolve_data_refs runs before the tool, hydrating
+#      execution_context with cross-turn references the planner
+#      declared via task.params["data_ref" / "data_refs"].
+#   2. _persist_task_to_workspace runs after the tool, writing the
+#      ToolOutput to the workspace (or recording a failure entry).
+# A serialization failure during persistence is surfaced as a
+# TaskError so the executor can flip the task itself to failed
+# (V6 §11 R2 / "失败显式化").
+#
+# _finalize_turn / _abandon_orphaned_turn are graph-layer hooks
+# kept here for proximity; they delegate to SessionWorkspace's
+# turn_status state machine (V6 §7.3).
+
+
+async def _resolve_data_refs(
+    task: TaskItem,
+    execution_context: dict[str, ToolOutput],
+    workspace: SessionWorkspace,
+) -> None:
+    """Hydrate ``execution_context`` with every ``data_ref`` declared
+    in ``task.params``.
+
+    Lookup order (V6 §5.3.1):
+      1. Already in execution_context (same-turn upstream task)
+      2. ``workspace.manifest`` contains this task_id → load from disk
+      3. fail-fast — raise ``TaskError``
+    """
+    if not task.params:
+        return
+    refs: list[str] = []
+    for field_name in ("data_ref", "data_refs"):
+        v = task.params.get(field_name)
+        if isinstance(v, str) and v:
+            refs.append(v)
+        elif isinstance(v, list):
+            refs.extend(x for x in v if isinstance(x, str) and x)
+
+    items = workspace.manifest.get("items", {})
+    for ref in refs:
+        if ref in execution_context:
+            continue
+        if ref in items:
+            execution_context[ref] = workspace.load(ref)
+            continue
+        raise TaskError(
+            f"Task {task.task_id} references unknown data_ref={ref!r}; "
+            f"not in execution_context and not in workspace manifest"
+        )
+
+
+async def _persist_task_to_workspace(
+    task: TaskItem,
+    output: ToolOutput,
+    state: dict[str, Any],
+    workspace: SessionWorkspace,
+) -> None:
+    """Persist ``output`` to ``workspace`` and update the manifest.
+
+    Successful tasks land as data files; failed / skipped tasks are
+    recorded as failure entries (no file written). A
+    ``WorkspaceSerializationError`` is rewrapped as ``TaskError`` so the
+    executor flips the task itself to ``failed`` (V6 §11 R2).
+    """
+    turn_index = int(state.get("turn_index", 0))
+    try:
+        workspace.persist(task, output, turn_index=turn_index)
+    except WorkspaceSerializationError as e:
+        raise TaskError(
+            f"task {task.task_id} 产物无法序列化: {e}",
+        ) from e
+
+
+async def _finalize_turn(workspace: SessionWorkspace, turn_index: int) -> None:
+    """Promote every ``turn_status=ongoing`` entry on this turn to
+    ``finalized``. Called from the graph layer after a turn completes
+    cleanly (V6 §7.3)."""
+    workspace.finalize_turn(turn_index)
+
+
+async def _abandon_orphaned_turn(
+    workspace: SessionWorkspace, prev_turn_index: int,
+) -> None:
+    """Mark leftover ``ongoing`` entries from the previous turn as
+    ``abandoned`` when the user starts a new topic. Called from the
+    graph layer's continue branch (V6 §7.3)."""
+    workspace.abandon_orphaned_turn(prev_turn_index)
+
+
+async def _apply_workspace_persistence(
+    task: TaskItem,
+    output: ToolOutput,
+    turn_index: int,
+    workspace: SessionWorkspace | None,
+    ws_callback: Callable | None,
+) -> tuple[ToolOutput, bool]:
+    """Internal helper used by ``execute_plan`` at every point a
+    ToolOutput is produced (success / failure / skipped).
+
+    Returns ``(possibly_overridden_output, persist_failed)``:
+      * ``persist_failed=False`` → manifest write succeeded (or
+        workspace was None). Caller keeps the original output.
+      * ``persist_failed=True``  → serialization failed; caller must
+        flip the task itself to ``failed``. The returned output
+        carries the WorkspaceSerializationError surfaced as
+        ``error_category="WORKSPACE_PERSIST_FAILED"`` and a
+        ``task_error`` WS event has been emitted.
+    """
+    if workspace is None:
+        return output, False
+    try:
+        await _persist_task_to_workspace(
+            task, output, {"turn_index": turn_index}, workspace,
+        )
+        return output, False
+    except TaskError as e:
+        logger.warning(
+            "workspace persist failed for %s: %s", task.task_id, e,
+        )
+        if ws_callback:
+            try:
+                await ws_callback({
+                    "event": "task_error",
+                    "task_id": task.task_id,
+                    "message": str(e),
+                })
+            except Exception:
+                pass
+        return ToolOutput(
+            tool_id=task.tool,
+            status="failed",
+            output_type="json",
+            error_message=str(e),
+            metadata={"error_category": "WORKSPACE_PERSIST_FAILED"},
+        ), True
+
 
 # ── Multi-turn execution context ────────────────────────────
 
@@ -487,6 +628,7 @@ async def _execute_single_task(
     context: dict[str, ToolOutput],
     ws_callback: Callable | None = None,
     allowed_tools: frozenset[str] | None = None,
+    workspace: SessionWorkspace | None = None,
 ) -> tuple[str, ToolOutput]:
     """Execute a single task with concurrency limit, timeout, retry, and data gate.
 
@@ -497,6 +639,22 @@ async def _execute_single_task(
     """
     task_id = task.task_id
     tool_id = task.tool
+
+    # ── Pre-flight 0: V6 data_ref resolution ──────────────
+    # Hydrate cross-turn references the planner declared via
+    # task.params["data_ref" / "data_refs"] before the tool runs.
+    # Failure is surfaced as a failed task — no fallback, no retry,
+    # because the plan is already wrong (V6 §5.3.1).
+    if workspace is not None:
+        try:
+            await _resolve_data_refs(task, context, workspace)
+        except TaskError as e:
+            logger.warning("data_ref resolution failed for %s: %s", task_id, e)
+            return task_id, ToolOutput(
+                tool_id=tool_id, status="failed", output_type="json",
+                error_message=str(e),
+                metadata={"error_category": "WORKSPACE_REF_MISSING"},
+            )
 
     # ── Pre-flight 1: tool whitelist ─────────────────────
     if allowed_tools is not None and tool_id not in allowed_tools:
@@ -649,6 +807,8 @@ async def execute_plan(
     persist_snapshot: Callable[[dict[str, str]], Any] | None = None,
     cancel_event: asyncio.Event | None = None,
     _prev_data_snapshots: list[dict[str, Any]] | None = None,
+    workspace: SessionWorkspace | None = None,
+    turn_index: int = 0,
 ) -> tuple[dict[str, str], dict[str, ToolOutput], bool]:
     """Execute an analysis plan.
 
@@ -662,6 +822,13 @@ async def execute_plan(
             node to incrementally persist progress so a user who switches
             sessions mid-execution can hydrate real progress on return.
             Failures are logged and ignored — never block execution.
+        workspace: optional SessionWorkspace. When provided, every task
+            outputs are persisted to its manifest and ``data_ref``
+            params are hydrated from previously-stored entries before
+            the tool runs (V6 §5.3).
+        turn_index: which conversation turn this execution belongs to.
+            Stamped onto every workspace entry so the planner can fold
+            old turns into the manifest summary.
 
     Returns:
         task_statuses: dict mapping task_id → "done"/"failed"/"skipped"
@@ -693,10 +860,14 @@ async def execute_plan(
             for task in tasks:
                 if task.task_id not in task_statuses:
                     task_statuses[task.task_id] = "skipped"
-                    execution_context[task.task_id] = ToolOutput(
+                    cancelled_output = ToolOutput(
                         tool_id=task.tool, status="skipped", output_type="json",
                         error_message="用户终止执行",
                         metadata={"skip_reason": "CANCELLED"},
+                    )
+                    execution_context[task.task_id] = cancelled_output
+                    await _apply_workspace_persistence(
+                        task, cancelled_output, turn_index, workspace, ws_callback,
                     )
             break
 
@@ -711,9 +882,13 @@ async def execute_plan(
                 )
                 if not df_check.passed:
                     task_statuses[task.task_id] = "failed"
-                    execution_context[task.task_id] = ToolOutput(
+                    rg_output = ToolOutput(
                         tool_id=task.tool, status="failed", output_type="json",
                         error_message=format_data_fetch_error(df_check),
+                    )
+                    execution_context[task.task_id] = rg_output
+                    await _apply_workspace_persistence(
+                        task, rg_output, turn_index, workspace, ws_callback,
                     )
                     logger.warning(
                         "Skipping report_gen %s: data_fetch threshold not met "
@@ -733,8 +908,7 @@ async def execute_plan(
                     for snap in _prev_data_snapshots:
                         if (snap.get("endpoint") == task.params.get("endpoint_id", "")
                                 and snap.get("sample")):
-                            task_statuses[task.task_id] = "done"
-                            execution_context[task.task_id] = ToolOutput(
+                            skip_output = ToolOutput(
                                 tool_id=task.tool,
                                 status="success",
                                 output_type="dataframe",
@@ -746,13 +920,26 @@ async def execute_plan(
                                     "matched_turn": snap.get("turn", 0),
                                 },
                             )
+                            persisted, persist_failed = await _apply_workspace_persistence(
+                                task, skip_output, turn_index, workspace, ws_callback,
+                            )
+                            if persist_failed:
+                                task_statuses[task.task_id] = "failed"
+                                execution_context[task.task_id] = persisted
+                            else:
+                                task_statuses[task.task_id] = "done"
+                                execution_context[task.task_id] = skip_output
                             if ws_callback:
                                 try:
+                                    label = (
+                                        "跳过（复用前轮数据）"
+                                        if not persist_failed else "持久化失败"
+                                    )
                                     await ws_callback({
                                         "event": "task_update",
                                         "task_id": task.task_id,
-                                        "status": "done",
-                                        "message": f"跳过（复用前轮数据）: {task.name or task.tool}",
+                                        "status": task_statuses[task.task_id],
+                                        "message": f"{label}: {task.name or task.tool}",
                                     })
                                 except Exception:
                                     pass
@@ -769,10 +956,14 @@ async def execute_plan(
                 runnable.append(task)
             else:
                 task_statuses[task.task_id] = "failed"
-                execution_context[task.task_id] = ToolOutput(
+                dep_failed_output = ToolOutput(
                     tool_id=task.tool, status="failed", output_type="json",
                     error_message="依赖任务失败",
                     metadata={"error_category": "DEP_FAILED"},
+                )
+                execution_context[task.task_id] = dep_failed_output
+                await _apply_workspace_persistence(
+                    task, dep_failed_output, turn_index, workspace, ws_callback,
                 )
                 if ws_callback:
                     try:
@@ -792,7 +983,10 @@ async def execute_plan(
         layer_start = time.monotonic()
         results = await asyncio.gather(
             *[
-                _execute_single_task(t, execution_context, ws_callback, allowed_tools)
+                _execute_single_task(
+                    t, execution_context, ws_callback, allowed_tools,
+                    workspace=workspace,
+                )
                 for t in runnable
             ],
             return_exceptions=True,
@@ -802,12 +996,24 @@ async def execute_plan(
             task = runnable[i]
             if isinstance(result, Exception):
                 task_statuses[task.task_id] = "failed"
-                execution_context[task.task_id] = ToolOutput(
+                exc_output = ToolOutput(
                     tool_id=task.tool, status="failed", output_type="json",
                     error_message=str(result),
                 )
+                execution_context[task.task_id] = exc_output
+                await _apply_workspace_persistence(
+                    task, exc_output, turn_index, workspace, ws_callback,
+                )
             else:
                 tid, output = result
+                # ── V6 §5.3.2: persist successful / partial / skipped /
+                # failed task outputs to the workspace. Serialization
+                # failure flips the task itself to failed (R2).
+                persisted, persist_failed = await _apply_workspace_persistence(
+                    task, output, turn_index, workspace, ws_callback,
+                )
+                if persist_failed:
+                    output = persisted
                 # Preserve partial / skipped in the bucket so downstream
                 # content_collector / report tools can filter on it.
                 if output.status in ("success", "partial"):
@@ -1385,6 +1591,26 @@ async def execution_node(
                 snap["turn"] = turn.get("turn", 0)  # tag with source turn
                 _prev_data_snapshots.append(snap)
 
+    # ── V6 §5.3 — SessionWorkspace per-session ──
+    # Construct only when we have a session_id; tests / probes that
+    # invoke execute_plan directly without a session keep the legacy
+    # "no workspace" path.
+    workspace: SessionWorkspace | None = None
+    if session_id:
+        from backend.config import get_settings
+        try:
+            workspace = SessionWorkspace(
+                session_id=session_id,
+                root=get_settings().WORKSPACE_ROOT,
+            )
+        except Exception:
+            logger.exception(
+                "failed to init SessionWorkspace for %s; "
+                "execution will run without workspace persistence",
+                session_id,
+            )
+            workspace = None
+
     task_statuses, execution_context, needs_replan = await execute_plan(
         tasks,
         ws_callback=ws_callback,
@@ -1392,6 +1618,8 @@ async def execution_node(
         persist_snapshot=_persist_layer_snapshot if session_id else None,
         cancel_event=cancel_event,
         _prev_data_snapshots=_prev_data_snapshots,
+        workspace=workspace,
+        turn_index=int(state.get("turn_index", 0)),
     )
 
     state["task_statuses"] = task_statuses
