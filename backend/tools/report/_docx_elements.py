@@ -443,7 +443,7 @@ def _set_small_caps_on_run(run) -> None:
 # KPI row (legacy: multi-card overview row; kept for backward compat)
 # ---------------------------------------------------------------------------
 
-def build_kpi_row(doc: Document, kpis: list) -> None:
+def build_kpi_row(doc: Document, kpis: list, *, theme: Theme | None = None) -> None:
     """Render a KPI card row as a single-row docx table.
 
     Each cell shows ``label`` / ``value`` / ``sub`` stacked vertically, with
@@ -451,7 +451,7 @@ def build_kpi_row(doc: Document, kpis: list) -> None:
     """
     if not kpis:
         return
-    th = get_theme()
+    th = theme or get_theme()
     tbl = doc.add_table(rows=1, cols=len(kpis))
     tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
     for i, k in enumerate(kpis):
@@ -772,11 +772,16 @@ def build_stats_table(doc: Document, summary_stats: dict[str, Any]) -> None:
 # Growth indicators
 # ---------------------------------------------------------------------------
 
-def build_growth_indicators(doc: Document, growth_rates: dict[str, dict[str, float | None]]) -> None:
+def build_growth_indicators(
+    doc: Document,
+    growth_rates: dict[str, dict[str, float | None]],
+    *,
+    theme: Theme | None = None,
+) -> None:
     """Render growth rates as colored inline indicators."""
     if not growth_rates:
         return
-    th = get_theme()
+    th = theme or get_theme()
 
     doc.add_heading("\u589E\u957F\u7387\u6307\u6807", level=2)  # 增长率指标
 

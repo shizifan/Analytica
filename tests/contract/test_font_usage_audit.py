@@ -74,23 +74,27 @@ def _outline_with_kpi_and_table() -> ReportOutline:
 def test_docx_table_numeric_cells_reference_font_num():
     """python-docx writes <w:rFonts w:ascii="..."> per run.
 
-    Numeric cells (data rows) must reference ``T.FONT_NUM``
-    (the module-level constant); Chinese header cells reference
-    ``T.FONT_CN``. The DOCX builder reads module-level constants,
-    not the theme object, for font names.
+    Numeric cells (data rows) must reference ``theme.font_num``
+    (the active theme's monospace face); Chinese header / narrative
+    text references ``theme.font_cn`` via the eastAsia attribute on
+    the paragraph styles. Post the deterministic rendering refactor
+    the DOCX builder reads the theme object passed to the renderer,
+    not the module-level constants — so contract assertions here use
+    the theme attributes to stay in lock-step with the renderer.
     """
+    theme = CORPORATE_BLUE
     docx = render_outline(
-        _outline_with_kpi_and_table(), DocxBlockRenderer(theme=CORPORATE_BLUE),
+        _outline_with_kpi_and_table(), DocxBlockRenderer(theme=theme),
     )
     with zipfile.ZipFile(io.BytesIO(docx)) as zf:
         xml = zf.read("word/document.xml").decode()
 
-    assert T.FONT_NUM in xml, (
-        f"T.FONT_NUM={T.FONT_NUM!r} never appears in DOCX — "
+    assert theme.font_num in xml, (
+        f"theme.font_num={theme.font_num!r} never appears in DOCX — "
         "numeric cells likely lost their monospace font."
     )
-    assert T.FONT_CN in xml, (
-        f"T.FONT_CN={T.FONT_CN!r} never appears in DOCX — "
+    assert theme.font_cn in xml, (
+        f"theme.font_cn={theme.font_cn!r} never appears in DOCX — "
         "Chinese text fields lost their CJK font."
     )
 
@@ -116,10 +120,11 @@ def test_docx_growth_indicator_uses_font_num():
             OutlineSection(name="总结", role="appendix", blocks=[]),
         ],
     )
-    docx = render_outline(o, DocxBlockRenderer(theme=CORPORATE_BLUE))
+    theme = CORPORATE_BLUE
+    docx = render_outline(o, DocxBlockRenderer(theme=theme))
     with zipfile.ZipFile(io.BytesIO(docx)) as zf:
         xml = zf.read("word/document.xml").decode()
-    assert T.FONT_NUM in xml
+    assert theme.font_num in xml
 
 
 # ---------------------------------------------------------------------------
