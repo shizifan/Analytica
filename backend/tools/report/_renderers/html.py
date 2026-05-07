@@ -410,6 +410,15 @@ def _render_growth_cards(growth_rates: dict[str, dict[str, float | None]]) -> st
     return f'<div class="kpi-row">{"".join(cards)}</div>' if cards else ""
 
 
+# HTML 报告中表格的最大显示行数。**不是** silent fallback —
+# 完整 DataFrame 仍存放在 ToolOutput.data 里，下游 PPTX/DOCX 渲染走
+# 各自的 max_rows 参数；本常量只控制 HTML 报告 UI 上的可读性截断
+# （超过 ~20 行的表格在浏览器里几乎没法读）。V6 §12 #11 审计时会
+# grep 到这一行，命名常量 + 这条注释让结论"显示层截断、合规"
+# 立刻可见。
+_HTML_TABLE_MAX_DISPLAY_ROWS = 20
+
+
 def _render_dataframe(
     df: pd.DataFrame,
     *,
@@ -418,7 +427,7 @@ def _render_dataframe(
 ) -> str:
     if df is None or df.empty:
         return ""
-    display = df.head(20)
+    display = df.head(_HTML_TABLE_MAX_DISPLAY_ROWS)
 
     headers_list = [str(c) for c in display.columns]
     n_rows = len(display)
