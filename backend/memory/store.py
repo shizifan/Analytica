@@ -1,10 +1,38 @@
 from __future__ import annotations
 import json
+import math
 from typing import Any, Optional
 from uuid import uuid4
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+
+def _strip_nan_inf(obj: Any) -> Any:
+    """Recursively replace MySQL-incompatible float values (``NaN`` /
+    ``+inf`` / ``-inf``) with ``None``.
+
+    MySQL's JSON column type strictly follows RFC 8259, which has no
+    representation for these values. Python's ``json.dumps`` defaults
+    to ``allow_nan=True`` and emits the bare tokens ``NaN`` / ``Infinity``
+    — MySQL then rejects the payload with ``ER_INVALID_JSON_TEXT``.
+
+    Tools occasionally produce NaN downstream (waterfall deltas,
+    pandas missing values, divisions by zero). Replacing them with
+    ``None`` truthfully preserves the "missing" semantic without
+    failing the entire ``save_session_state`` call — losing the rest
+    of the multi-turn context just to flag a single missing number
+    would be a much worse failure mode.
+    """
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {k: _strip_nan_inf(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_strip_nan_inf(v) for v in obj]
+    return obj
 
 
 class MemoryStore:
@@ -317,13 +345,23 @@ class MemoryStore:
     # ── Session Management ───────────────────────────────────
 
     async def save_session_state(self, session_id: str, state_json: dict) -> None:
-        """Persist session state to MySQL."""
+        """Persist session state to MySQL.
+
+        Strips ``NaN`` / ``Infinity`` floats from the payload before
+        serialising — MySQL's JSON column rejects them with
+        ``ER_INVALID_JSON_TEXT`` (3140) even though Python's
+        ``json.dumps`` would emit the bare tokens. ``allow_nan=False``
+        on top of that turns any leftover non-finite float into a
+        loud ``ValueError`` rather than a silent malformed JSON write.
+        """
+        sanitized = _strip_nan_inf(state_json)
+        payload = json.dumps(sanitized, ensure_ascii=False, allow_nan=False)
         await self.session.execute(
             text("""
                 UPDATE sessions SET state_json = :state, updated_at = NOW()
                 WHERE session_id = :sid
             """),
-            {"sid": session_id, "state": json.dumps(state_json, ensure_ascii=False)},
+            {"sid": session_id, "state": payload},
         )
         await self.session.commit()
 

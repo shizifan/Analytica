@@ -1,10 +1,14 @@
 """Integration tests for multi-turn state persistence through MySQL.
 
 Verifies that the multi-turn state fields (``turn_index``, ``turn_type``,
-``analysis_history``, etc.) survive JSON round-trips through the DB.
+``analysis_history``, etc.) survive JSON round-trips through the DB,
+plus the defensive NaN/Inf stripping that keeps MySQL's strict JSON
+column from rejecting tool outputs that produced non-finite floats.
 """
 
 from __future__ import annotations
+
+import math
 
 import pytest
 
@@ -94,3 +98,55 @@ class TestStatePersistence:
         ]
         for key in expected_keys:
             assert key in state, f"Missing key: {key}"
+
+    async def test_save_state_strips_nan_and_infinity(
+        self, multiturn_db_state, test_db_session,
+    ):
+        """Regression: a tool output containing ``NaN`` / ``Infinity``
+        must not break ``save_session_state``.
+
+        Before the fix, MySQL rejected the JSON payload with
+        ER_INVALID_JSON_TEXT (3140) because Python's default
+        ``json.dumps`` emits the bare ``NaN`` token. Now the store
+        sanitises non-finite floats to ``None`` so the rest of the
+        multi-turn context still persists.
+        """
+        store = MemoryStore(test_db_session)
+        session_data = await store.get_session(multiturn_db_state)
+        state = session_data["state_json"]
+
+        # Inject the same shape the waterfall tool produced in the
+        # production stack-trace that motivated this fix.
+        state["execution_context"] = {
+            "T_WATERFALL": {
+                "metadata": {
+                    "yoy_growth": float("nan"),
+                    "ratio": float("inf"),
+                    "neg_ratio": float("-inf"),
+                    "rows": 12,
+                },
+            },
+        }
+        state.setdefault("analysis_history", []).append({
+            "turn": 99,
+            "key_findings": ["NaN regression sample"],
+            "stat": float("nan"),
+        })
+
+        # Must not raise — sanitiser swaps NaN/Inf for None on the way out.
+        await store.save_session_state(multiturn_db_state, state)
+
+        reloaded = await store.get_session(multiturn_db_state)
+        meta = reloaded["state_json"]["execution_context"]["T_WATERFALL"]["metadata"]
+        assert meta["yoy_growth"] is None
+        assert meta["ratio"] is None
+        assert meta["neg_ratio"] is None
+        assert meta["rows"] == 12  # finite values untouched
+
+        last_turn = reloaded["state_json"]["analysis_history"][-1]
+        assert last_turn["turn"] == 99
+        assert last_turn["stat"] is None
+        # And the JSON round-trip didn't reintroduce non-finites.
+        for v in (meta.get("yoy_growth"), meta.get("ratio"),
+                  meta.get("neg_ratio"), last_turn.get("stat")):
+            assert v is None or (isinstance(v, float) and math.isfinite(v))
