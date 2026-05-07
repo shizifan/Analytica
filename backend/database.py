@@ -17,6 +17,11 @@ class SessionModel(Base):
     user_id = Column(String(36), nullable=False, index=True)
     employee_id = Column(String(100), nullable=True, index=True)
     state_json = Column(JSON, nullable=True)
+    # SessionWorkspace manifest snapshot (V6 §5.2.6). On-disk manifest.json
+    # under WORKSPACE_ROOT is the source of truth; this column is an
+    # optional cache for API readers. NULL = no workspace yet; the loader
+    # surfaces an empty manifest in that case (no historical backfill).
+    workspace_manifest_json = Column(JSON, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

@@ -341,9 +341,20 @@ class MemoryStore:
         await self.session.commit()
 
     async def get_session(self, session_id: str) -> dict | None:
-        """Get session record."""
+        """Get session record.
+
+        ``workspace_manifest_json`` is normalised to an empty manifest
+        dict (``{"session_id": ..., "items": {}}``) when the DB column
+        is NULL — V6 §5.2.6 intentionally does **not** backfill
+        historical sessions, so older rows simply present as empty
+        workspaces (no surprise data appears retroactively).
+        """
         result = await self.session.execute(
-            text("SELECT session_id, user_id, employee_id, state_json, created_at FROM sessions WHERE session_id = :sid"),
+            text(
+                "SELECT session_id, user_id, employee_id, state_json, "
+                "workspace_manifest_json, created_at "
+                "FROM sessions WHERE session_id = :sid"
+            ),
             {"sid": session_id},
         )
         row = result.first()
@@ -355,10 +366,22 @@ class MemoryStore:
                 state = json.loads(state)
             except json.JSONDecodeError:
                 state = {}
+        workspace_manifest = row[4]
+        if isinstance(workspace_manifest, str):
+            try:
+                workspace_manifest = json.loads(workspace_manifest)
+            except json.JSONDecodeError:
+                workspace_manifest = None
+        if not isinstance(workspace_manifest, dict):
+            workspace_manifest = {"session_id": row[0], "items": {}}
+        else:
+            workspace_manifest.setdefault("session_id", row[0])
+            workspace_manifest.setdefault("items", {})
         return {
             "session_id": row[0],
             "user_id": row[1],
             "employee_id": row[2],
             "state_json": state,
-            "created_at": str(row[4]) if row[4] else None,
+            "workspace_manifest_json": workspace_manifest,
+            "created_at": str(row[5]) if row[5] else None,
         }
