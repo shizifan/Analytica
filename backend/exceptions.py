@@ -39,3 +39,15 @@ class TaskError(ExecutionError):
     """A single task failed in a way the executor must surface as
     task_error (not a process-level crash). Used by fail-fast paths
     like data_ref resolution and workspace persistence (V6 §5.3)."""
+
+
+class PlanValidationError(PlanningError):
+    """Static checks rejected an LLM-produced plan. Carries the list of
+    offending references so callers can show the LLM what to fix
+    (V6 §6.1.3 — new mode hard constraint)."""
+
+    def __init__(
+        self, message: str, *, offending_refs: list[str] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.offending_refs = list(offending_refs or [])

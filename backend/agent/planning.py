@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import Any, Optional
 from uuid import uuid4
 
-from backend.exceptions import PlanningError
+from backend.exceptions import PlanningError, PlanValidationError
 from backend.models.schemas import AnalysisPlan, TaskItem
 from backend.tracing import trace_span
 from backend.agent._complexity_rules import (
@@ -654,6 +654,275 @@ def _build_completed_plan_summary(plan_history: list[dict]) -> str:
         lines.append(f"第 {turn_label} 轮: {title}\n" + "\n".join(task_lines[:10]))
 
     return "\n".join(lines)
+
+
+# ── V6 §5.4 — workspace prompt block ─────────────────────────
+# When the planner sees this block in the prompt, it should declare
+# data_ref / data_refs in task.params instead of regenerating data
+# fetches. The execution layer (V6 §5.3) hydrates those refs from the
+# workspace before each tool runs.
+
+WORKSPACE_BLOCK = """\
+【本会话已有数据 — 当前可引用的产物】
+（共 {total_items} 项，其中 {confirmed_count} 项已被采纳）
+
+{manifest_summary_table}
+
+【data_ref 协议】
+- 引用上述任意 task_id 即可复用——execution 会自动加载，无需重新规划 data_fetch
+- 优先引用 user_confirmed=true（标记为 ✓）的产物
+- 仅在 manifest 中无满足需求的数据时，才规划新的 data_fetch
+- 跨轮引用无需特殊参数：data_ref="T001" 即可（无论 T001 来自哪一轮）
+
+【本轮规划约束】
+- 当前是第 {turn_idx} 轮，turn_type={turn_type}
+- 新增任务的 task_id 必须以 R{turn_idx}_ 为前缀
+- amend 模式：只产出 1-2 个 report_gen 任务，data_refs 指向前述 manifest 条目
+- continue 模式：可混合 data_ref 复用 + 新 data_fetch
+- new 模式：忽略上述 manifest（前轮数据与新话题无关）
+"""
+
+# Folding threshold — manifests below this stay fully expanded; above
+# it, only confirmed entries + the most-recent two turns render verbatim
+# while older turns collapse to a single counted summary line.
+_MANIFEST_FOLD_THRESHOLD = 30
+_MANIFEST_RECENT_TURNS_KEEP = 2
+
+# Task statuses we treat as "this entry is loadable / referenceable".
+_REUSABLE_STATUSES = frozenset({"done"})
+# Statuses we MUST surface in the prompt (failure must not be silent).
+_FAILED_STATUSES = frozenset({"failed", "unserializable", "missing"})
+
+
+def _summarize_manifest_item(item: dict[str, Any]) -> str:
+    """One-line summary used in the manifest table's `summary` column."""
+    kind = item.get("output_kind") or "?"
+    if kind == "dataframe":
+        ep = item.get("endpoint")
+        rows = item.get("rows")
+        bits = []
+        if ep:
+            bits.append(str(ep))
+        if rows is not None:
+            bits.append(f"{rows} 行")
+        cols = (item.get("schema") or {}).get("columns") or []
+        if cols:
+            bits.append("列=" + ",".join(str(c) for c in cols[:5]))
+        return ", ".join(bits) if bits else "(dataframe)"
+    if kind == "str":
+        preview = (item.get("preview") or "").replace("\n", " ")
+        return preview[:80] if preview else "(text)"
+    if kind == "json":
+        preview = (item.get("preview") or "").replace("\n", " ")
+        return preview[:80] if preview else "(json)"
+    if kind == "bytes":
+        size = item.get("size_bytes")
+        return f"二进制产物 ({size} bytes)" if size else "二进制产物"
+    if kind == "file":
+        artifact_id = item.get("artifact_id") or "?"
+        return f"文件产物 (artifact_id={artifact_id})"
+    return f"({kind})"
+
+
+def _format_manifest_row(task_id: str, item: dict[str, Any]) -> str:
+    turn_label = f"R{item.get('turn_index', '?')}"
+    type_label = (item.get("type") or "?")[:12]
+    kind_label = (item.get("output_kind") or "?")[:10]
+    status = item.get("status")
+    summary = _summarize_manifest_item(item)
+    if status in _FAILED_STATUSES:
+        err = (item.get("error") or "").replace("\n", " ")
+        marker = {
+            "failed": "失败",
+            "unserializable": "无法序列化",
+            "missing": "已淘汰: 文件清理",
+        }.get(status, status)
+        summary = f"[失败: {marker}] {err[:60]}"
+    confirmed = "✓" if item.get("user_confirmed") else " "
+    return (
+        f"| {task_id:<14} | {turn_label:<5} | {type_label:<11} "
+        f"| {kind_label:<9} | {summary[:60]:<60} | {confirmed} |"
+    )
+
+
+def _render_manifest_summary_table(
+    manifest: dict[str, Any] | None,
+    current_turn_index: int | None,
+) -> str:
+    """Render the manifest as a markdown table (V6 §5.4).
+
+    Visibility rules (V6 §7.3):
+      * ``finalized`` + ``done`` → full row
+      * ``ongoing`` + same turn + ``done`` → full row (in-flight upstream)
+      * cross-turn ``ongoing`` and ``abandoned`` → skipped silently
+      * ``failed`` / ``unserializable`` / ``missing`` → full row with
+        explicit failure marker
+
+    Folding (V6 §5.4):
+      * ≤ ``_MANIFEST_FOLD_THRESHOLD`` items → all rows rendered
+      * Above threshold → keep ``user_confirmed=true`` AND items from
+        the most recent two turns; older non-confirmed items collapse
+        into a per-turn count summary.
+    """
+    items_dict = (manifest or {}).get("items") or {}
+    if not items_dict:
+        return "（暂无可引用产物）"
+
+    visible: list[tuple[str, dict[str, Any]]] = []
+    for tid, item in items_dict.items():
+        status = item.get("status")
+        turn_status = item.get("turn_status")
+        turn_idx = item.get("turn_index")
+        if status in _REUSABLE_STATUSES:
+            if turn_status == "finalized":
+                visible.append((tid, item))
+            elif (
+                turn_status == "ongoing"
+                and current_turn_index is not None
+                and turn_idx == current_turn_index
+            ):
+                visible.append((tid, item))
+            elif turn_status == "ongoing" and current_turn_index is None:
+                # Default rendering when no current_turn_index is known —
+                # still useful as an audit view.
+                visible.append((tid, item))
+            # else: cross-turn ongoing → skip silently per spec
+            continue
+        if status in _FAILED_STATUSES:
+            visible.append((tid, item))
+        # else: skipped / pending / abandoned → ignored
+
+    if not visible:
+        return "（暂无可引用产物）"
+
+    # Sort by (turn_index ASC, task_id ASC) — natural reading order.
+    visible.sort(key=lambda t: (
+        t[1].get("turn_index") if isinstance(t[1].get("turn_index"), int) else 999,
+        t[0],
+    ))
+
+    header = (
+        "| task_id        | turn  | type        | kind      "
+        "| summary                                                      | ✓ |\n"
+        "|----------------|-------|-------------|-----------"
+        "|--------------------------------------------------------------|---|"
+    )
+
+    if len(visible) <= _MANIFEST_FOLD_THRESHOLD:
+        rows = [_format_manifest_row(tid, item) for tid, item in visible]
+        return header + "\n" + "\n".join(rows)
+
+    # Folding path — keep confirmed + recent turns verbatim, collapse rest.
+    turn_indices = sorted({
+        item.get("turn_index") for _, item in visible
+        if isinstance(item.get("turn_index"), int)
+    })
+    recent_turns = set(turn_indices[-_MANIFEST_RECENT_TURNS_KEEP:])
+    keep: list[tuple[str, dict[str, Any]]] = []
+    folded: dict[int, int] = {}
+    for tid, item in visible:
+        if item.get("user_confirmed") or item.get("turn_index") in recent_turns:
+            keep.append((tid, item))
+        else:
+            ti = item.get("turn_index")
+            if isinstance(ti, int):
+                folded[ti] = folded.get(ti, 0) + 1
+
+    rows = [_format_manifest_row(tid, item) for tid, item in keep]
+    fold_lines = [
+        f"  …第 R{turn} 轮还有 {count} 项已折叠（详见 inspector）"
+        for turn, count in sorted(folded.items())
+    ]
+    parts = [header, *rows]
+    if fold_lines:
+        parts.append("\n".join(fold_lines))
+    return "\n".join(parts)
+
+
+def _render_workspace_block(
+    manifest: dict[str, Any] | None,
+    *,
+    turn_index: int,
+    turn_type: str,
+) -> str:
+    """Render the full WORKSPACE_BLOCK for inclusion in the planning
+    prompt. Returns "" when the manifest has nothing to surface — the
+    caller can keep the prompt compact in first-turn / empty cases."""
+    items_dict = (manifest or {}).get("items") or {}
+    if not items_dict:
+        return ""
+    total_items = len(items_dict)
+    confirmed_count = sum(
+        1 for it in items_dict.values() if it.get("user_confirmed")
+    )
+    table = _render_manifest_summary_table(manifest, current_turn_index=turn_index)
+    return WORKSPACE_BLOCK.format(
+        total_items=total_items,
+        confirmed_count=confirmed_count,
+        manifest_summary_table=table,
+        turn_idx=turn_index,
+        turn_type=turn_type,
+    )
+
+
+def validate_plan_against_workspace(
+    plan: AnalysisPlan | dict,
+    *,
+    turn_type: str,
+    current_turn_index: int,
+    workspace_manifest: dict[str, Any] | None,
+) -> None:
+    """Static check enforcing V6 §6.1.3 — when ``turn_type='new'``, the
+    plan must NOT reference any ``data_ref`` whose source task lives in
+    a previous turn (``turn_index < current_turn_index``).
+
+    Raises ``PlanValidationError`` listing the offending references so
+    the caller can re-prompt the LLM with explicit feedback. References
+    pointing at task_ids produced inside the same plan (same-turn
+    upstream) are allowed regardless of mode.
+    """
+    if turn_type != "new":
+        return
+    items_dict = (workspace_manifest or {}).get("items") or {}
+    if not items_dict:
+        return  # nothing in manifest → no possibility of cross-turn ref
+
+    tasks = plan.tasks if isinstance(plan, AnalysisPlan) else (plan.get("tasks") or [])
+    same_turn_ids: set[str] = set()
+    refs_in_plan: list[tuple[str, str]] = []  # (task_id_owner, ref)
+    for t in tasks:
+        tid = t.task_id if isinstance(t, TaskItem) else (t.get("task_id") or "")
+        params = t.params if isinstance(t, TaskItem) else (t.get("params") or {})
+        if not isinstance(params, dict):
+            params = {}
+        if tid:
+            same_turn_ids.add(tid)
+        for field_name in ("data_ref", "data_refs"):
+            v = params.get(field_name)
+            if isinstance(v, str) and v:
+                refs_in_plan.append((tid, v))
+            elif isinstance(v, list):
+                refs_in_plan.extend(
+                    (tid, x) for x in v if isinstance(x, str) and x
+                )
+
+    offending: list[str] = []
+    for owner_tid, ref in refs_in_plan:
+        if ref in same_turn_ids:
+            continue  # plan-internal DAG reference, not cross-turn
+        item = items_dict.get(ref)
+        if item is None:
+            continue  # unknown ref — execution layer will fail-fast at run time
+        ref_turn = item.get("turn_index")
+        if isinstance(ref_turn, int) and ref_turn < current_turn_index:
+            offending.append(ref)
+
+    if offending:
+        unique = sorted(set(offending))
+        raise PlanValidationError(
+            "cross-turn data_ref disallowed in new mode: " + ", ".join(unique),
+            offending_refs=unique,
+        )
 
 
 def build_amend_plan(prev_state: dict, user_message: str) -> AnalysisPlan | None:
@@ -1658,29 +1927,46 @@ class PlanningEngine:
 
         structured_hints = ("【意图结构化提示】\n" + "\n".join(hint_lines)) if hint_lines else ""
 
-        # Multi-turn context block (PR-2: Layer 3 — enhanced)
+        # ── V6 §5.4 / §6.2 — multi-turn context block (workspace-driven) ──
+        # Two independent blocks:
+        #   1. plan_history → 前轮规划思路（仅供参考）
+        #   2. WORKSPACE_BLOCK → 数据复用真理之源（manifest 摘要 + data_ref 协议）
+        # The legacy "已调用的数据端点 / 端点复用提示" was data-flow guidance
+        # built from analysis_history; V6 routes data through manifest +
+        # data_ref instead, so those lines are dropped.
         multi_turn_text = ""
         if multiturn_context:
+            turn_idx = multiturn_context.get("turn_index", 0)
+            turn_type = multiturn_context.get("turn_type", "continue")
             latest = multiturn_context.get("latest_summary", {})
             findings = multiturn_context.get("all_key_findings", [])[:5]
-            prev_endpoints = multiturn_context.get("prev_data_endpoints", [])
-            turn_idx = multiturn_context.get("turn_index", 0)
             plan_history = multiturn_context.get("plan_history", [])
-            completed_summary = _build_completed_plan_summary(plan_history)
+            workspace_manifest = multiturn_context.get("workspace_manifest") or {}
 
-            multi_turn_text = (
-                f"【多轮分析上下文 — 必读】\n"
-                f"当前是第 {turn_idx} 轮分析（延续上轮）。前轮分析已完成：\n"
+            completed_summary = _build_completed_plan_summary(plan_history)
+            workspace_block = _render_workspace_block(
+                workspace_manifest, turn_index=turn_idx, turn_type=turn_type,
+            )
+
+            parts: list[str] = []
+            findings_line = (
+                "；".join(f[:_MAX_FINDING_LEN] for f in findings)
+                if findings else "无"
+            )
+            parts.append(
+                f"【前轮分析摘要】\n"
+                f"当前是第 {turn_idx} 轮（turn_type={turn_type}）。前轮已完成：\n"
                 f"- 主题：{latest.get('plan_title', '')[:150]}\n"
                 f"- 已完成 {latest.get('completed_count', 0)}/{latest.get('task_count', 0)} 个任务\n"
-                f"- 关键发现：{'；'.join(f[:_MAX_FINDING_LEN] for f in findings) if findings else '无'}\n"
-                f"- 已调用的数据端点：{', '.join(prev_endpoints) if prev_endpoints else '无'}\n"
-                f"\n【前轮已完成任务列表 — 绝对不要重复规划】\n{completed_summary}\n"
-                f"\n【本轮规划约束】\n"
-                f"- 以下端点数据已经获取，可直接复用（不需要重复 data_fetch）：{', '.join(prev_endpoints)}\n"
-                f"- task_id 请以 R{turn_idx}_ 为前缀\n"
-                f"- 仅规划本轮新增任务，不要重复已有任务\n"
+                f"- 关键发现：{findings_line}"
             )
+            parts.append(
+                "\n【前轮规划思路（仅供参考，避免重复同样的分析角度）】\n"
+                f"{completed_summary}"
+            )
+            if workspace_block:
+                parts.append("\n" + workspace_block)
+            multi_turn_text = "\n".join(parts)
 
         result = PLANNING_PROMPT.format(
             multiturn_context=multi_turn_text,

@@ -14,6 +14,8 @@ from uuid import uuid4
 
 from langgraph.graph import StateGraph, END
 
+from backend.exceptions import PlanValidationError
+
 logger = logging.getLogger("analytica.graph")
 
 
@@ -307,6 +309,34 @@ def trim_analysis_history(history: list[dict]) -> list[dict]:
     return history
 
 
+def _load_workspace_manifest_for_state(state: dict) -> dict[str, Any]:
+    """Load the on-disk SessionWorkspace manifest for the current state.
+
+    Returns ``{"session_id": ..., "items": {}}`` when no workspace exists
+    yet (first-turn / no session_id) so callers don't need to None-check.
+    Failures are logged and degraded to an empty manifest — V6 prefers
+    "show LLM nothing" to "crash the planning prompt"."""
+    session_id = state.get("session_id") or ""
+    empty = {"session_id": session_id, "items": {}}
+    if not session_id:
+        return empty
+    try:
+        from backend.config import get_settings
+        from backend.memory.session_workspace import SessionWorkspace
+
+        ws = SessionWorkspace(
+            session_id=session_id,
+            root=get_settings().WORKSPACE_ROOT,
+        )
+        return ws.manifest
+    except Exception:
+        logger.exception(
+            "[multiturn_context] failed to load workspace manifest for %s",
+            session_id,
+        )
+        return empty
+
+
 def _build_multiturn_context_injection(state: dict) -> dict:
     """Build context dict for injection into perception/planning prompts."""
     history = state.get("analysis_history", [])
@@ -332,6 +362,8 @@ def _build_multiturn_context_injection(state: dict) -> dict:
         "prev_artifacts": latest.get("artifacts", []),
         "current_slots": _extract_slot_snapshot(state.get("slots", {})),
         "plan_history": state.get("plan_history", []),
+        # V6 §5.4 — manifest snapshot drives data_ref reuse in planning.
+        "workspace_manifest": _load_workspace_manifest_for_state(state),
     }
 
 
@@ -492,6 +524,26 @@ async def planning_node(state: AgentState) -> AgentState:
             search_public_hint=search_public_hint,
             _multiturn_context=state.get("_multiturn_context"),
         )
+
+        # ── V6 §6.1.3 — new-mode hard constraint ──
+        # Before accepting the plan, verify that ``turn_type='new'``
+        # plans don't reach back into the previous turn's manifest.
+        # PlanValidationError surfaces the offending refs so the LLM
+        # can fix them on the next iteration.
+        try:
+            from backend.agent.planning import validate_plan_against_workspace
+            mt = state.get("_multiturn_context") or {}
+            validate_plan_against_workspace(
+                plan,
+                turn_type=mt.get("turn_type") or state.get("turn_type", "continue"),
+                current_turn_index=int(state.get("turn_index", 0)),
+                workspace_manifest=mt.get("workspace_manifest"),
+            )
+        except PlanValidationError:
+            # Re-raise as-is — the graph layer's outer handlers will
+            # log it and surface a degraded plan / re-prompt path.
+            # No silent fallback here (V6 "失败显式化").
+            raise
 
         plan_dict = plan.model_dump()
         state["analysis_plan"] = plan_dict
