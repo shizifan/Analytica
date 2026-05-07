@@ -99,36 +99,13 @@ async def plan_outline(
     Raises ``_LLMPlannerFailure`` when the LLM call fails or the
     response is malformed.
     """
-    # ── Multi-turn: load previous artifacts' execution context ──────
-    _previous_artifacts = params.get("_previous_artifacts", [])
-    if _previous_artifacts:
-        from backend.memory.artifact_store import read_conversion_context
-        _merged_count = 0
-        for art in _previous_artifacts:
-            art_id = art.get("artifact_id", "")
-            if not art_id:
-                continue
-            prev_ctx = read_conversion_context(art_id)
-            if prev_ctx is None:
-                continue
-
-            # Restore previous task order (may be needed for collection)
-            if task_order is None:
-                task_order = prev_ctx.get("task_order")
-
-            # Merge previous context into current — current turn data
-            # takes precedence (skip keys already present).
-            for tid, val in prev_ctx.get("context", {}).items():
-                if tid not in context:
-                    context[tid] = val
-                    _merged_count += 1
-
-        if _merged_count > 0:
-            logger.info(
-                "plan_outline: merged %d previous artifacts into context "
-                "from %d sources",
-                _merged_count, len(_previous_artifacts),
-            )
+    # V6 §5.6 — _previous_artifacts / conversion_context loading deleted.
+    # Cross-turn data reuse is now declared explicitly in the plan via
+    # ``data_refs``: planning emits the list of upstream task_ids, and
+    # ``execution._resolve_data_refs`` hydrates them from the workspace
+    # manifest into ``context`` BEFORE this function runs. By the time
+    # we get here, ``context`` already contains the referenced
+    # ToolOutputs — no in-tool merging needed.
 
     rc = collect_and_associate(params, context, task_order=task_order)
 

@@ -925,88 +925,11 @@ def validate_plan_against_workspace(
         )
 
 
-def build_amend_plan(prev_state: dict, user_message: str) -> AnalysisPlan | None:
-    """Build a minimal execution plan for amend turn (format add/replace).
-
-    Key fix: does NOT depends_on previous turn's task_ids. Instead passes
-    _previous_artifacts via params so the report tool can load them from DB.
-
-    Returns AnalysisPlan, or None when format cannot be detected
-    (caller should route to LLM planning).
-    """
-    from uuid import uuid4
-
-    msg = user_message.lower().strip()
-    turn_index = prev_state.get("turn_index", 0) + 1
-
-    is_replace = any(kw in msg for kw in ["换成", "转成", "导出为", "改为"])
-
-    fmt_map = {
-        "pptx": "tool_report_pptx",
-        "docx": "tool_report_docx",
-        "word": "tool_report_docx",
-        "html": "tool_report_html",
-        "ppt": "tool_report_pptx",
-        "markdown": "tool_report_markdown",
-        "md": "tool_report_markdown",
-    }
-
-    # Short keywords ("word", "ppt", "md") use word-boundary matching
-    # to avoid false positives (e.g. "word" in "keyword", "md" in "cmd").
-    _word_boundary_keys = {"word", "ppt", "md"}
-
-    detected_fmts: list[tuple[str, str]] = []
-    for keyword, tool_id in fmt_map.items():
-        if keyword in _word_boundary_keys:
-            matched = bool(re.search(r'\b' + re.escape(keyword) + r'\b', msg))
-        else:
-            matched = keyword in msg
-        if matched and tool_id not in [f for _, f in detected_fmts]:
-            detected_fmts.append((keyword.upper(), tool_id))
-
-    if not detected_fmts:
-        logger.warning(
-            "Amend fast path could not detect format from: %s", user_message[:80]
-        )
-        return None
-
-    prev_turn = (prev_state.get("analysis_history") or [{}])[-1]
-    prev_artifacts = prev_turn.get("artifacts", [])
-    prev_findings = prev_turn.get("key_findings", [])
-    prev_plan = prev_state.get("analysis_plan") or {}
-
-    tasks: list[TaskItem] = []
-    for fmt_label, tool_id in detected_fmts:
-        tasks.append(TaskItem(
-            task_id=f"R{turn_index}_REPORT_{fmt_label}",
-            type="report_gen",
-            name=f"生成{fmt_label}报告",
-            description=f"{'追加' if not is_replace else ''}生成 {fmt_label} 格式报告",
-            depends_on=[],
-            tool=tool_id,
-            params={
-                "intent": prev_plan.get("analysis_goal", "数据分析报告"),
-                "report_structure": prev_plan.get("report_structure"),
-                "_previous_artifacts": prev_artifacts,
-                "_previous_findings": prev_findings,
-                "is_replace": is_replace,
-            },
-            intent=prev_plan.get("analysis_goal", ""),
-            estimated_seconds=30,
-        ))
-
-    return AnalysisPlan(
-        plan_id=str(uuid4()),
-        version=1,
-        turn_index=turn_index,
-        parent_plan_id=prev_plan.get("plan_id"),
-        title=f"[{'追加' if not is_replace else '格式转换'}] {prev_plan.get('title', '')}",
-        analysis_goal=prev_plan.get("analysis_goal", ""),
-        estimated_duration=sum(t.estimated_seconds for t in tasks),
-        tasks=tasks,
-        report_structure=prev_plan.get("report_structure"),
-        revision_log=[],
-    )
+# V6 §5.6 — build_amend_plan deleted. Amend turns are now handled by
+# the regular LLM planning path: perception's MULTITURN_INTENT_PROMPT
+# emits turn_type="amend" and the planner sees the workspace manifest
+# (V6 §5.4 WORKSPACE_BLOCK), so it produces a tiny report_gen plan
+# whose params declare data_refs into existing manifest entries.
 
 
 class PlanningEngine:

@@ -202,82 +202,15 @@ async def _apply_workspace_persistence(
         ), True
 
 
-# ── Multi-turn execution context ────────────────────────────
-
-
-def _build_multiturn_execution_context(
-    state: dict[str, Any],
-) -> dict[str, Any]:
-    """Build lightweight context from analysis_history for cross-turn reuse.
-
-    Returns a dict keyed by original task_id with dict representations
-    (NOT ToolOutput objects), safe for serialization and reuse.
-    """
-    mt_context: dict[str, Any] = {}
-    for turn in state.get("analysis_history", []):
-        for snap in turn.get("data_snapshots", []):
-            mt_context[snap.get("task_id", "")] = {
-                "_type": "data_snapshot",
-                "endpoint": snap.get("endpoint"),
-                "rows": snap.get("rows"),
-                "columns": snap.get("columns"),
-                "sample": snap.get("sample"),
-                "params": snap.get("params"),
-            }
-
-        # Inject previous turn findings for analysis/report reference
-        findings_key = f"R{turn.get('turn', 0)}_FINDINGS"
-        mt_context[findings_key] = {
-            "_type": "findings",
-            "text": "\n".join(turn.get("key_findings", [])),
-        }
-
-    return mt_context
-
-
-def _params_match(p1: dict[str, Any], p2: dict[str, Any]) -> bool:
-    """Check if two endpoint parameter sets are semantically equal.
-
-    Only compares key dimension params: time, region, granularity.
-    Other differences (format, sort, etc.) don't affect skip judgment.
-    """
-    key_params = {
-        "dateYear", "dateMonth", "date", "curDateYear", "curDateMonth",
-        "startDate", "endDate", "regionName", "zoneName",
-        "businessSegment", "ownerZone",
-    }
-    for k in key_params:
-        if k in p1 or k in p2:
-            if p1.get(k) != p2.get(k):
-                return False
-    return True
-
-
-def _should_skip_data_fetch(
-    task: TaskItem,
-    prev_data_snapshots: list[dict[str, Any]],
-) -> bool:
-    """Check if data_fetch duplicates a previous turn's successful fetch."""
-    if not prev_data_snapshots:
-        return False
-
-    ep = task.params.get("endpoint_id", "")
-    task_params = {k: v for k, v in task.params.items() if k != "endpoint_id"}
-
-    for snap in prev_data_snapshots:
-        if snap.get("endpoint") != ep:
-            continue
-        snap_params = {
-            k: v for k, v in snap.get("params", {}).items()
-            if k != "endpoint_id"
-        }
-        if _params_match(task_params, snap_params):
-            logger.info(
-                "Skipping duplicate data_fetch %s (ep=%s, matched turn %d)",
-                task.task_id, ep, snap.get("turn", 0),
-            )
-            return True
-    return False
+# V6 §5.6 — _build_multiturn_execution_context / _params_match /
+# _should_skip_data_fetch deleted. Cross-turn data reuse now flows
+# through the manifest-driven data_ref protocol (V6 §5.3.1):
+#   * planner emits ``data_ref="T001"`` in task.params
+#   * _resolve_data_refs (above) hydrates execution_context from
+#     workspace.load() before each tool runs
+# Heuristic param matching for skipping duplicate fetches is gone —
+# the planner now sees the manifest directly and decides reuse vs.
+# refetch on its own.
 
 
 # ── 并发 / 超时 / 重试配置 ─────────────────────────────────
@@ -806,7 +739,6 @@ async def execute_plan(
     report_dir: Path | str | None = None,
     persist_snapshot: Callable[[dict[str, str]], Any] | None = None,
     cancel_event: asyncio.Event | None = None,
-    _prev_data_snapshots: list[dict[str, Any]] | None = None,
     workspace: SessionWorkspace | None = None,
     turn_index: int = 0,
 ) -> tuple[dict[str, str], dict[str, ToolOutput], bool]:
@@ -825,7 +757,10 @@ async def execute_plan(
         workspace: optional SessionWorkspace. When provided, every task
             outputs are persisted to its manifest and ``data_ref``
             params are hydrated from previously-stored entries before
-            the tool runs (V6 §5.3).
+            the tool runs (V6 §5.3). Cross-turn data reuse is now
+            entirely manifest-driven — the legacy
+            ``_prev_data_snapshots`` skip optimisation has been removed
+            (V6 §5.6).
         turn_index: which conversation turn this execution belongs to.
             Stamped onto every workspace entry so the planner can fold
             old turns into the manifest summary.
@@ -834,10 +769,6 @@ async def execute_plan(
         task_statuses: dict mapping task_id → "done"/"failed"/"skipped"
         execution_context: dict mapping task_id → ToolOutput
         needs_replan: whether dynamic re-planning is needed
-
-        _prev_data_snapshots: from analysis_history for multi-turn data_fetch
-            skip optimization — avoids duplicate API calls when the same
-            endpoint+params were already fetched in a previous turn.
     """
     import backend.tools.loader  # noqa: F401 — ensure all tools are registered
 
@@ -899,55 +830,11 @@ async def execute_plan(
                     continue
 
             if _deps_satisfied(task, task_statuses):
-                # ── Multi-turn: skip duplicate data_fetch ──────────
-                if (task.type == "data_fetch"
-                        and _prev_data_snapshots
-                        and _should_skip_data_fetch(task, _prev_data_snapshots)):
-                    # Synthesize a success output from the previous turn's
-                    # snapshot so downstream tasks have data to work with.
-                    for snap in _prev_data_snapshots:
-                        if (snap.get("endpoint") == task.params.get("endpoint_id", "")
-                                and snap.get("sample")):
-                            skip_output = ToolOutput(
-                                tool_id=task.tool,
-                                status="success",
-                                output_type="dataframe",
-                                data=pd.DataFrame(snap["sample"]),
-                                metadata={
-                                    "rows": snap.get("rows", len(snap["sample"])),
-                                    "columns": snap.get("columns", []),
-                                    "skip_reason": "DUPLICATE_SKIP",
-                                    "matched_turn": snap.get("turn", 0),
-                                },
-                            )
-                            persisted, persist_failed = await _apply_workspace_persistence(
-                                task, skip_output, turn_index, workspace, ws_callback,
-                            )
-                            if persist_failed:
-                                task_statuses[task.task_id] = "failed"
-                                execution_context[task.task_id] = persisted
-                            else:
-                                task_statuses[task.task_id] = "done"
-                                execution_context[task.task_id] = skip_output
-                            if ws_callback:
-                                try:
-                                    label = (
-                                        "跳过（复用前轮数据）"
-                                        if not persist_failed else "持久化失败"
-                                    )
-                                    await ws_callback({
-                                        "event": "task_update",
-                                        "task_id": task.task_id,
-                                        "status": task_statuses[task.task_id],
-                                        "message": f"{label}: {task.name or task.tool}",
-                                    })
-                                except Exception:
-                                    pass
-                            break  # 找到对应快照即停止
-                    else:
-                        # No matching snapshot found — fall through to normal execution
-                        runnable.append(task)
-                    continue
+                # V6 §5.6 — duplicate-fetch skipping was a heuristic
+                # over analysis_history snapshots; cross-turn reuse is
+                # now declared explicitly via ``data_ref`` in
+                # task.params and hydrated by ``_resolve_data_refs`` in
+                # _execute_single_task's pre-flight stage.
 
                 # Inject global task order into report_gen params so the
                 # content collector can iterate in template-declaration order.
@@ -1230,56 +1117,13 @@ async def _persist_file_artifacts(
 
         if row:
             artifacts[tid] = row
-
-            # Phase 5.7 — save upstream context for ALL report formats
-            # so the user can click "生成 DOCX / PPTX" later and we can
-            # re-run the rendering tool without a full graph execution.
-            if (task.tool or "").startswith("tool_report_"):
-                try:
-                    sub_ctx = _collect_report_context(
-                        task, tasks, execution_context,
-                    )
-                    from backend.memory import artifact_store
-                    artifact_store.write_conversion_context(
-                        row["id"],
-                        {
-                            "params": dict(task.params or {}),
-                            "context": sub_ctx,
-                            "session_id": session_id,
-                            "task_order": [t.task_id for t in tasks],
-                        },
-                    )
-                except Exception:
-                    logger.exception(
-                        "failed to persist conversion ctx for %s", tid,
-                    )
+            # V6 §5.6 — _collect_report_context + write_conversion_context
+            # deleted. Re-rendering a report later (e.g. "生成 DOCX") now
+            # goes through the workspace: the report tool declares
+            # data_refs in its plan task, and execution.py's
+            # _resolve_data_refs hydrates them from manifest entries.
 
     return artifacts
-
-
-def _collect_report_context(
-    report_task: TaskItem,
-    all_tasks: list[TaskItem],
-    execution_context: dict[str, ToolOutput],
-) -> dict[str, Any]:
-    """Walk transitively from the report task through `depends_on` and
-    build a minimal context dict for later tool re-invocation."""
-    needed: set[str] = set()
-    frontier: list[str] = list(report_task.depends_on or [])
-    by_id = {t.task_id: t for t in all_tasks}
-    while frontier:
-        tid = frontier.pop()
-        if tid in needed:
-            continue
-        needed.add(tid)
-        nxt = by_id.get(tid)
-        if nxt and nxt.depends_on:
-            frontier.extend(nxt.depends_on)
-    return {
-        tid: execution_context[tid]
-        for tid in needed
-        if tid in execution_context
-    }
 
 
 def _build_task_results_payload(
@@ -1581,16 +1425,6 @@ async def execution_node(
     registry = get_registry()
     cancel_event = registry.get_cancel_event(session_id) if session_id else None
 
-    # ── Multi-turn: build prev_data_snapshots for skip optimization ──
-    _prev_data_snapshots: list[dict[str, Any]] | None = None
-    analysis_history = state.get("analysis_history", [])
-    if analysis_history:
-        _prev_data_snapshots = []
-        for turn in analysis_history:
-            for snap in turn.get("data_snapshots", []):
-                snap["turn"] = turn.get("turn", 0)  # tag with source turn
-                _prev_data_snapshots.append(snap)
-
     # ── V6 §5.3 — SessionWorkspace per-session ──
     # Construct only when we have a session_id; tests / probes that
     # invoke execute_plan directly without a session keep the legacy
@@ -1617,7 +1451,6 @@ async def execution_node(
         allowed_tools=allowed_tools,
         persist_snapshot=_persist_layer_snapshot if session_id else None,
         cancel_event=cancel_event,
-        _prev_data_snapshots=_prev_data_snapshots,
         workspace=workspace,
         turn_index=int(state.get("turn_index", 0)),
     )

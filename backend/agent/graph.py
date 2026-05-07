@@ -348,16 +348,6 @@ def _build_multiturn_context_injection(state: dict) -> dict:
     }
 
 
-def _build_amend_plan(prev_state: dict, user_message: str):
-    """Delegate to planning.build_amend_plan() for format add/replace.
-
-    Returns AnalysisPlan, or None when format cannot be detected
-    (caller should fall through to LLM planning).
-    """
-    from backend.agent.planning import build_amend_plan
-    return build_amend_plan(prev_state, user_message)
-
-
 def _append_turn_summary(state: dict) -> None:
     """Build turn summary and append to analysis_history in-place."""
     if state.get("analysis_plan") and state.get("execution_context"):

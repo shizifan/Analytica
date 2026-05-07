@@ -445,9 +445,9 @@ def multiturn_state():
     """Pure-data fixture: a completed R0 turn suitable as prev_state.
 
     Usable by both unit and integration tests that need a realistic
-    previous-turn state dict to pass to ``_classify_turn()``,
-    ``_build_turn_summary()``, ``_build_amend_plan()``,
-    ``_build_multiturn_context_injection()``, etc.
+    previous-turn state dict to pass to ``run_perception()``,
+    ``_build_turn_summary()``, ``_build_multiturn_context_injection()``,
+    or ``make_continue_message()`` from tests.lib.multiturn_helpers.
 
     No DB, no LLM, no network — purely a Python dict.
     """

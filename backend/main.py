@@ -595,90 +595,31 @@ async def convert_report(
     format: str,
     db=Depends(get_db_session),
 ):
-    """Phase 5.7 — on-demand DOCX / PPTX generation from an already-
-    generated HTML report.
+    """V6 §5.6 — quick-convert was backed by the conversion-context
+    pickle (now deleted). Format add / replace requests now flow
+    through the regular chat pipeline: the user sends "再生成一份
+    PPTX"; perception classifies it as ``turn_type="amend"`` and the
+    planner produces a tiny report_gen plan whose params declare
+    ``data_refs`` into the existing workspace manifest entries.
 
-    Reads the conversion context pickled during the original execution,
-    re-invokes the matching report tool, writes a new artifact row,
-    and returns the new `artifact_id`. Seconds instead of minutes
-    because no data-fetch / analysis re-runs.
+    The endpoint is preserved as a 410 Gone so older clients fall
+    back to the chat path with a clear message instead of failing
+    silently.
     """
-    from backend.memory import artifact_store
-    from backend.tools.base import ToolInput, tool_executor
-    from backend.tools.registry import ToolRegistry
-
     fmt = format.lower()
     if fmt not in ("docx", "pptx"):
         raise HTTPException(
             status_code=400,
             detail="format must be 'docx' or 'pptx'",
         )
-
-    source = await artifact_store.get_artifact(db, artifact_id)
-    if source is None:
-        raise HTTPException(status_code=404, detail="Source artifact not found")
-
-    ctx = artifact_store.read_conversion_context(artifact_id)
-    if ctx is None:
-        raise HTTPException(
-            status_code=410,
-            detail="Conversion context missing — original generation may have been purged",
-        )
-
-    # Ensure all tools are registered (lazy-loaded at app startup, but
-    # an uvicorn --reload cycle can leave the registry bound to a fresh
-    # module copy without the decorators re-running).
-    import backend.tools.loader  # noqa: F401
-
-    # Re-invoke the docx / pptx tool with the same params + saved context.
-    tool_id = f"tool_report_{fmt}"
-    tool = ToolRegistry.get_instance().get_tool(tool_id)
-    if tool is None:
-        raise HTTPException(
-            status_code=500, detail=f"Tool not available: {tool_id}",
-        )
-
-    params = dict(ctx.get("params") or {})
-    context = ctx.get("context") or {}
-    inp = ToolInput(
-        params=params,
-        context_refs=list(params.get("_task_order") or context.keys()),
+    raise HTTPException(
+        status_code=410,
+        detail=(
+            "/api/reports/{id}/convert is gone in V6 — please request "
+            "the new format via chat (e.g. \"再生成一份 PPTX\"); the "
+            "session workspace will reuse the existing data."
+        ),
     )
-
-    try:
-        output = await tool_executor(tool, inp, context, timeout_seconds=120.0)
-    except Exception as e:
-        logger.exception("convert_report tool execution failed")
-        raise HTTPException(
-            status_code=500, detail=f"Tool raised: {type(e).__name__}: {e}",
-        )
-    if output.status not in ("success", "partial"):
-        raise HTTPException(
-            status_code=500,
-            detail=f"Generation failed: {output.error_message or 'unknown'}",
-        )
-
-    # Persist the new artifact under the same session.
-    session_id = source["session_id"]
-    title = (output.metadata or {}).get("title") or source.get("title")
-    new_row = await artifact_store.persist_artifact(
-        db,
-        session_id=session_id,
-        task_id=source.get("task_id"),
-        tool_id=tool_id,
-        fmt=fmt,
-        title=title,
-        content=output.data,
-        meta={
-            **(output.metadata or {}),
-            "source_artifact_id": artifact_id,
-            "converted_from": "html",
-        },
-    )
-    if new_row is None:
-        raise HTTPException(status_code=500, detail="artifact persistence failed")
-
-    return {"artifact_id": new_row["id"], "format": fmt, "status": "ready"}
 
 
 @app.get("/api/reports/{artifact_id}/preview")

@@ -235,57 +235,14 @@ def ensure_reports_dir() -> Path:
     return path
 
 
-# ── Phase 5.7: conversion context ──────────────────────────────
+# V6 §5.6 — conversion-context pickle helpers (_context_dir,
+# write_conversion_context, read_conversion_context) deleted.
 #
-# For on-demand DOCX / PPTX generation we pickle the execution context
-# + task params that produced the HTML report, so the rendering tool
-# can be re-invoked later without re-running the whole graph.
-
-def _context_dir() -> Path:
-    return _reports_dir() / "_conversion_ctx"
-
-
-def write_conversion_context(
-    artifact_id: str,
-    payload: dict[str, Any],
-) -> Optional[Path]:
-    """Pickle a conversion-ready blob next to the artifact.
-
-    The blob is opaque from DB's perspective — callers decide what
-    dict keys (`params`, `context`, ...) to put in.
-    """
-    import pickle
-
-    ctx_dir = _context_dir()
-    try:
-        ctx_dir.mkdir(parents=True, exist_ok=True)
-    except OSError:
-        logger.exception("conversion ctx dir create failed: %s", ctx_dir)
-        return None
-
-    path = ctx_dir / f"{artifact_id}.pkl"
-    try:
-        with path.open("wb") as fh:
-            pickle.dump(payload, fh)
-    except Exception:
-        logger.exception("conversion ctx write failed: %s", path)
-        return None
-    return path
-
-
-def read_conversion_context(artifact_id: str) -> Optional[dict[str, Any]]:
-    import pickle
-
-    path = _context_dir() / f"{artifact_id}.pkl"
-    if not path.exists():
-        return None
-    try:
-        with path.open("rb") as fh:
-            return pickle.load(fh)
-    except Exception:
-        logger.exception("conversion ctx load failed: %s", path)
-        return None
-
+# Re-rendering a report later (e.g. user clicks "生成 DOCX" after an
+# HTML report) now flows through the workspace: the planner writes a
+# new task whose params declare ``data_refs`` into manifest entries,
+# and ``execution._resolve_data_refs`` hydrates those into the
+# tool's execution_context. No pickle on disk → no RCE attack surface.
 
 # Keep os import live for future use (relative path calculation etc.)
 _ = os
