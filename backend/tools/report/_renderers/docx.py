@@ -87,7 +87,7 @@ class DocxBlockRenderer(BlockRendererBase):
         E.build_cover_page(self._doc, self._title, author, date, theme=self._theme)
         E.build_toc_placeholder(self._doc, theme=self._theme)
         if outline.kpi_summary:
-            E.build_kpi_row(self._doc, list(outline.kpi_summary))
+            E.build_kpi_row(self._doc, list(outline.kpi_summary), theme=self._theme)
 
     def end_document(self) -> bytes:
         buffer = io.BytesIO()
@@ -132,7 +132,7 @@ class DocxBlockRenderer(BlockRendererBase):
 
     def emit_kpi_row(self, block: KpiRowBlock) -> None:
         if block.items:
-            E.build_kpi_row(self._doc, list(block.items))
+            E.build_kpi_row(self._doc, list(block.items), theme=self._theme)
 
     def emit_kpi_strip(self, block: KpiStripBlock) -> None:
         """Render a 4-cell KPI strip (SS5.3)."""
@@ -320,7 +320,7 @@ class DocxBlockRenderer(BlockRendererBase):
 
     def emit_growth_indicators(self, block: GrowthIndicatorsBlock) -> None:
         if block.growth_rates:
-            E.build_growth_indicators(self._doc, block.growth_rates)
+            E.build_growth_indicators(self._doc, block.growth_rates, theme=self._theme)
 
     def emit_section_cover(self, block: SectionCoverBlock) -> None:
         """Render section heading in Liangang Data Journal style (SS5.6)."""
