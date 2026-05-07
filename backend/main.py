@@ -846,6 +846,168 @@ async def regenerate_plan_endpoint(
     }
 
 
+# ── Workspace APIs (V6 §5.3.3) ───────────────────────────────
+
+
+class WorkspaceConfirmRequest(BaseModel):
+    """Body for confirm / unconfirm endpoints. ``actor`` is the
+    user_id; the field is required so audit logs always carry an
+    attribution. ``source`` is reserved for future automated callers
+    (e.g. reflection-driven endorsement); user-clicked actions always
+    use ``user_marked`` (the default)."""
+
+    actor: str
+    source: str = "user_marked"
+
+
+def _open_workspace_for_session(session_id: str):
+    """Construct a SessionWorkspace bound to settings.WORKSPACE_ROOT.
+    Raises 503 if the underlying directory cannot be opened — the
+    workspace is required for every V6 session, so a missing one is
+    treated as a service-level failure rather than silently degrading."""
+    from backend.config import get_settings
+    from backend.memory.session_workspace import SessionWorkspace
+
+    try:
+        return SessionWorkspace(
+            session_id=session_id,
+            root=get_settings().WORKSPACE_ROOT,
+        )
+    except Exception as e:
+        logger.exception(
+            "[workspace] failed to open SessionWorkspace for %s",
+            session_id,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=f"workspace storage unavailable: {e}",
+        )
+
+
+def _redact_manifest_for_response(manifest: dict[str, Any]) -> dict[str, Any]:
+    """Return a manifest copy safe for the network. Each item's ``path``
+    is left as the relative form already stored on disk; absolute paths
+    or session_id leak the storage layout to the frontend, so we drop
+    any field that doesn't belong to the public schema."""
+    items_in = (manifest or {}).get("items") or {}
+    items_out: dict[str, Any] = {}
+    for tid, item in items_in.items():
+        if not isinstance(item, dict):
+            continue
+        copy = dict(item)
+        # path is already relative to workspace_dir (e.g. "T001.parquet");
+        # make sure no caller stuffed an absolute path in.
+        path = copy.get("path")
+        if isinstance(path, str) and path.startswith("/"):
+            copy["path"] = None
+        items_out[tid] = copy
+    return {
+        "session_id": (manifest or {}).get("session_id"),
+        "items": items_out,
+    }
+
+
+@app.get("/api/sessions/{session_id}/workspace")
+async def get_workspace_manifest(
+    session_id: str, db=Depends(get_db_session),
+):
+    """Return the SessionWorkspace manifest for the given session.
+
+    Empty when the session has no workspace yet (first-turn / older
+    sessions predating V6). Path fields are surfaced as relative
+    paths only — callers should not rely on absolute filesystem
+    locations.
+    """
+    store = MemoryStore(db)
+    session = await store.get_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    ws = _open_workspace_for_session(session_id)
+    return _redact_manifest_for_response(ws.manifest)
+
+
+@app.post("/api/sessions/{session_id}/workspace/{task_id}/confirm")
+async def confirm_workspace_item(
+    session_id: str,
+    task_id: str,
+    req: WorkspaceConfirmRequest,
+    db=Depends(get_db_session),
+):
+    """Mark a manifest item as user_confirmed=true (V6 §5.2.3).
+
+    The endpoint is idempotent — confirming an already-confirmed item
+    appends a fresh history entry but doesn't error out. Broadcasts
+    a ``workspace_update`` WS event so other sessions / panels see the
+    change live.
+    """
+    from backend.exceptions import WorkspaceError
+
+    store = MemoryStore(db)
+    session = await store.get_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    ws = _open_workspace_for_session(session_id)
+    try:
+        ws.mark_confirmed(task_id, source=req.source, actor=req.actor)
+    except WorkspaceError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    from backend.agent.session_registry import get_registry
+    get_registry().broadcast(session_id, {
+        "event": "workspace_update",
+        "session_id": session_id,
+        "task_id": task_id,
+        "action": "confirm",
+        "actor": req.actor,
+    })
+
+    return {
+        "task_id": task_id,
+        "user_confirmed": True,
+        "confirmed_history": ws.confirmed_history(task_id),
+    }
+
+
+@app.post("/api/sessions/{session_id}/workspace/{task_id}/unconfirm")
+async def unconfirm_workspace_item(
+    session_id: str,
+    task_id: str,
+    req: WorkspaceConfirmRequest,
+    db=Depends(get_db_session),
+):
+    """Reverse a previous confirm. Same shape / events as confirm —
+    history grows on every flip so audits can replay the sequence."""
+    from backend.exceptions import WorkspaceError
+
+    store = MemoryStore(db)
+    session = await store.get_session(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    ws = _open_workspace_for_session(session_id)
+    try:
+        ws.mark_unconfirmed(task_id, actor=req.actor)
+    except WorkspaceError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    from backend.agent.session_registry import get_registry
+    get_registry().broadcast(session_id, {
+        "event": "workspace_update",
+        "session_id": session_id,
+        "task_id": task_id,
+        "action": "unconfirm",
+        "actor": req.actor,
+    })
+
+    return {
+        "task_id": task_id,
+        "user_confirmed": False,
+        "confirmed_history": ws.confirmed_history(task_id),
+    }
+
+
 # ── Reflection APIs ──────────────────────────────────────────
 
 class ReflectionSaveRequest(BaseModel):
